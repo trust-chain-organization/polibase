@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  polibase:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      - ENV_VAR_NAME=env_var_value  # 必要な環境変数を設定
+    ports:
+      - "8000:8000"  # 必要に応じてポートを設定
+    stdin_open: true  # 追加
+    tty: true         # 追加
