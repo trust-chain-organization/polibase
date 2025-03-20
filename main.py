@@ -271,13 +271,13 @@ class MinutesProcessAgent:
     # 議事録の文字列に対する前処理を行う
     processed_minutes = self.minutes_devidor.pre_process(state.original_minutes)
     memory = {'processed_minutes': processed_minutes}
-    memory_id = _put_to_memory(namespace="memories", memory=memory)
+    memory_id = self._put_to_memory(namespace="processed_minutes", memory=memory)
     return {
       "processed_minutes_memory_id": memory_id
     }
   def _divide_minutes_to_keyword(self, state: MinutesProcessState) -> dict:
     memory_id = state.processed_minutes_memory_id
-    processed_minutes = _get_from_memory(namespace="memories", memory_id)
+    processed_minutes = self._get_from_memory(namespace="processed_minutes", memory_id=memory_id)
     # 議事録を分割する
     section_info_list = self.minutes_devidor.section_divide_run(processed_minutes)
     section_list_length = len(section_info_list.section_info_list)
@@ -288,19 +288,21 @@ class MinutesProcessAgent:
     }
   def _divide_minutes_to_string(self, state: MinutesProcessState) -> dict:
     memory_id = state.processed_minutes_memory_id
-    processed_minutes = _get_from_memory("memories", memory_id)
+    processed_minutes = self._get_from_memory("processed_minutes", memory_id)
     # 議事録を分割する
     section_string_list = self.minutes_devidor.do_divide(processed_minutes, state.section_info_list)
-    memory_id = _put_to_memory(namespace="section_string_list", memory=memory)
+    memory = {'section_string_list': section_string_list}
+    memory_id = self._put_to_memory(namespace="section_string_list", memory=memory)
     return {
         "section_string_list_memory_id": memory_id
     }
   def _check_length(self, state: MinutesProcessState) -> dict:
     memory_id = state.section_string_list_memory_id
-    section_string_list = _get_from_memory("section_string_list", memory_id)
+    section_string_list = self._get_from_memory("section_string_list", memory_id)
     # 文字列のバイト数をチェックする
     redivide_section_string_list = self.minutes_devidor.check_length(section_string_list)
-    memory_id = _put_to_memory(namespace="redivide_section_string_list", memory=memory)
+    memory = {'redivide_section_string_list': redivide_section_string_list}
+    memory_id = self._put_to_memory(namespace="redivide_section_string_list", memory=memory)
     print("check_length_done")
     return {
         "redivide_section_string_list_memory_id": memory_id
@@ -308,7 +310,7 @@ class MinutesProcessAgent:
 
   def _divide_speech(self, state: MinutesProcessState) -> dict:
     memory_id = state.section_string_list_memory_id
-    section_string_list = _get_from_memory("section_string_list", memory_id)
+    section_string_list = self._get_from_memory("section_string_list", memory_id)
     if state.index - 1 < len(section_string_list):
         if state.index - 1 in [0,1,2,3]:
             # 発言者と発言内容に分割する
@@ -321,7 +323,10 @@ class MinutesProcessAgent:
     print(f"divide_speech_done on index_number: {state.index} all_length: {state.section_list_length}")
     # 現在のdivide_speech_listを取得
     memory_id = state.divided_speech_list_memory_id
-    divided_speech_list = _get_from_memory("divided_speech_list", memory_id)
+    divided_speech_list = self._get_from_memory("divided_speech_list", memory_id)
+    # 初回はNULLなのでその場合は空配列を作成
+    if divided_speech_list is None:
+        divided_speech_list = []
     # もしspeaker_and_speech_content_listがNoneの場合は、現在のリストを更新用リストとして返す
     if speaker_and_speech_content_list is None:
         print("Warning: speaker_and_speech_content_list is None. Skipping this section.")
@@ -330,11 +335,11 @@ class MinutesProcessAgent:
       if state.index - 1 in [0,1,2,3]:
         updated_speaker_and_speech_content_list = divided_speech_list + speaker_and_speech_content_list.speaker_and_speech_content_list
         memory = {'divided_speech_list': updated_speaker_and_speech_content_list}
-        memory_id = _put_to_memory(namespace="divided_speech_list", memory=memory)
+        memory_id = self._put_to_memory(namespace="divided_speech_list", memory=memory)
       else:
         updated_speaker_and_speech_content_list = divided_speech_list
         memory = {'divided_speech_list': updated_speaker_and_speech_content_list}
-        memory_id = _put_to_memory(namespace="divided_speech_list", memory=memory)
+        memory_id = self._put_to_memory(namespace="divided_speech_list", memory=memory)
     incremented_index = state.index + 1
     print(f"incremented_speech_divide_index: {incremented_index}")
     return {
@@ -346,7 +351,7 @@ class MinutesProcessAgent:
     # 初期状態の設定
     initial_state = MinutesProcessState(original_minutes=original_minutes)
     # グラフの実行
-    final_state = self.graph.invoke(initial_state, config={"recursion_limit": 100,"thread_id": "example-1"})
+    final_state = self.graph.invoke(initial_state, config={"recursion_limit": 300,"thread_id": "example-1"})
     # 分割結果の取得
     return final_state["divided_speech_list_memory_id"]
 
