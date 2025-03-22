@@ -11,7 +11,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: "./applications/looks_sheet_streamer/.python-version"
+          python-version: 3.11.4
       - name: setup poetry
         uses: abatilo/actions-poetry@v2
         with:
