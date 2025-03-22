@@ -5,7 +5,7 @@ import uuid
 from typing import Annotated, List, Dict, Optional
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-# from langchain_core.stores import BaseStore, InMemoryStore
+import duckdb
 from langgraph.store.memory import InMemoryStore
 from langgraph.checkpoint.memory import MemorySaver
 from langchain.output_parsers import StructuredOutputParser, ResponseSchema
@@ -62,6 +62,8 @@ class RedividedSectionInfoList(BaseModel):
 class SpeakerAndSpeechContent(BaseModel):
     speaker: str = Field(..., description="発言者")
     speech_content: str = Field(..., description="発言内容")
+    chapter_number: int = Field(default=1, description="分割した文字列を前から順に割り振った番号")
+    sub_chapter_number: int = Field(default=1, description="再分割した場合の文字列番号")
     speech_order: int = Field(default=1, description="発言順")
 class SpeakerAndSpeechContentList(BaseModel):
     speaker_and_speech_content_list: List[SpeakerAndSpeechContent] = Field(default_factory=list, description="各発言者と発言内容のリスト")
@@ -172,16 +174,21 @@ class MinutesDividor:
             "minutes": minutes,
         }
     )
+    # resultがSectionInfoList型であることを確認
+    if isinstance(result, SectionInfoList):
+        section_info_list = result.section_info_list
+    else:
+        raise TypeError("Expected result to be of type SectionInfoList")
     # section_info_listのchapter_numberを確認して、連番になっているか確認
     last_chapter_number = 0
-    for section_info in result:
+    for section_info in section_info_list:
       if section_info.chapter_number != last_chapter_number + 1:
         print(f"section_infoのchapter_numberが連番になっていません。")
         # 連番になっていない場合はsection_info.chapter_numberをlast_chapter_number + 1で上書きする
         section_info.chapter_number = last_chapter_number + 1
       last_chapter_number = section_info.chapter_number
     # 連番が上書きされたsection_info_listを返す
-    return result
+    return SectionInfoList(section_info_list=section_info_list)
 
   def check_length(self, section_string_list: SectionStringList) -> RedivideSectionStringList:
     redivide_list = []
@@ -226,15 +233,23 @@ class MinutesDividor:
             "section_string": section_string,
         }
     )
+    if result is None:
+        print("Error: result is None")
+        return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
+    # resultがSectionInfoList型であることを確認
+    if isinstance(result, SpeakerAndSpeechContentList):
+        speaker_and_speech_content_list = result.speaker_and_speech_content_list
+    else:
+        raise TypeError("Expected result to be of type SpeakerAndSpeechContentList")
     # speaker_and_speech_content_listのspeech_orderを確認して、連番になっているか確認
     last_speech_order = 0
-    for speaker_and_speech_content in result:
+    for speaker_and_speech_content in speaker_and_speech_content_list:
       if speaker_and_speech_content.speech_order != last_speech_order + 1:
         print(f"speaker_and_speech_contentのspeech_orderが連番になっていません。")
         # 連番になっていない場合はspeaker_and_speech_content.speech_orderをlast_chapter_number + 1で上書きする
         speaker_and_speech_content.speech_order = last_speech_order + 1
       last_speech_order = speaker_and_speech_content.speech_order
-    return result
+    return SpeakerAndSpeechContentList(speaker_and_speech_content_list=speaker_and_speech_content_list)
 
 # 議事録処理AIエージェントのクラス
 class MinutesProcessAgent:
@@ -336,10 +351,6 @@ class MinutesProcessAgent:
     else:
         print(f"Warning: Index {state.index - 1} is out of range for section_string_list.")
         speaker_and_speech_content_list = None
-    if speaker_and_speech_content_list is not None:
-      for speaker_and_speech_content in speaker_and_speech_content_list:
-        print(f"speaker: {speaker_and_speech_content.speaker}")
-        print(f"speech_content: {speaker_and_speech_content.speech_content}")
     print(f"divide_speech_done on index_number: {state.index} all_length: {state.section_list_length}")
     # 現在のdivide_speech_listを取得
     memory_id = state.divided_speech_list_memory_id
