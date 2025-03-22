@@ -5,7 +5,7 @@ import uuid
 from typing import Annotated, List, Dict, Optional
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-# from langchain_core.stores import BaseStore, InMemoryStore
+import duckdb
 from langgraph.store.memory import InMemoryStore
 from langgraph.checkpoint.memory import MemorySaver
 from langchain.output_parsers import StructuredOutputParser, ResponseSchema
@@ -33,14 +33,14 @@ except FileNotFoundError:
 extracted_text = extract_text_from_pdf(file_content)
 
 class SectionInfo(BaseModel):
-    chapter_number: int = Field(..., description="分割した文字列を前から順に割り振った番号")
+    chapter_number: int = Field(default=1, description="分割した文字列を前から順に割り振った番号")
     keyword: str = Field(..., description="分割した文字列の先頭30文字をそのまま抽出した文字列")
 class SectionInfoList(BaseModel):
     section_info_list: list[SectionInfo] = Field(default_factory=list, description="各小節ごとのキーワード情報")
 
 class SectionString(BaseModel):
-    chapter_number: int = Field(..., description="分割した文字列を前から順に割り振った番号")
-    sub_chapter_number: int = Field(default=0, description="再分割した場合の文字列番号")
+    chapter_number: int = Field(default=1, description="分割した文字列を前から順に割り振った番号")
+    sub_chapter_number: int = Field(default=1, description="再分割した場合の文字列番号")
     section_string: str = Field(..., description="分割した文字列")
 class SectionStringList(BaseModel):
     section_string_list: List[SectionString] = Field(default_factory=list, description="各小節ごとの文字列リスト")
@@ -48,13 +48,13 @@ class SectionStringList(BaseModel):
 class RedivideSectionString(BaseModel):
     redivide_section_string: SectionString = Field(..., description="再分割対象の文字列")
     redivide_section_string_bytes: int = Field(..., description="再分割対象の文字列のバイト数")
-    original_index: int = Field(..., description="元のindex")
+    original_index: int = Field(default=1, description="元のindex")
 class RedivideSectionStringList(BaseModel):
     redivide_section_string_list: List[RedivideSectionString] = Field(default_factory=list, description="再分割対象の文字列リスト")
 
 class RedividedSectionInfo(BaseModel):
-    chapter_number: int = Field(..., description="再分割前の順番を表す番号")
-    sub_chapter_number: int = Field(..., description="再分割した中での順番を表す番号")
+    chapter_number: int = Field(default=1, description="再分割前の順番を表す番号")
+    sub_chapter_number: int = Field(default=1, description="再分割した中での順番を表す番号")
     keyword: str = Field(..., description="分割した文字列の先頭30文字をそのまま抽出した文字列")
 class RedividedSectionInfoList(BaseModel):
     redivided_section_info_list: List[RedividedSectionInfo] = Field(default_factory=list, description="再分割されたキーワードリスト")
@@ -62,7 +62,9 @@ class RedividedSectionInfoList(BaseModel):
 class SpeakerAndSpeechContent(BaseModel):
     speaker: str = Field(..., description="発言者")
     speech_content: str = Field(..., description="発言内容")
-    speech_order: int = Field(..., description="発言順")
+    chapter_number: int = Field(default=1, description="分割した文字列を前から順に割り振った番号")
+    sub_chapter_number: int = Field(default=1, description="再分割した場合の文字列番号")
+    speech_order: int = Field(default=1, description="発言順")
 class SpeakerAndSpeechContentList(BaseModel):
     speaker_and_speech_content_list: List[SpeakerAndSpeechContent] = Field(default_factory=list, description="各発言者と発言内容のリスト")
 
@@ -72,11 +74,9 @@ class MinutesProcessState(BaseModel):
     section_info_list: Annotated[list[SectionInfo], operator.add] = Field(default_factory=list, description="分割された各小節ごとのキーワード情報")
     section_string_list_memory_id: str = Field(default="", description="分割された各小節ごとの文字列リストを保存したメモリID")
     redivide_section_string_list: Annotated[list[RedivideSectionString], operator.add] = Field(default_factory=list, description="再分割対象の文字列リスト")
-    # speaker_and_speech_content_list: Annotated[list[SpeakerAndSpeechContent], operator.add] = Field(default_factory=list, description="各発言者と発言内容のリスト")
     divided_speech_list_memory_id: str = Field(default="", description="分割された各発言者と発言内容のリストを保存したメモリID")
     section_list_length: int = Field(default=0, description="分割できたsectionnの数")
     index: int = Field(default=1, description="現在処理しているsection数")
-
 
 class MinutesDividor:
   def __init__(self, llm: ChatGoogleGenerativeAI, k: int = 5):
@@ -174,7 +174,21 @@ class MinutesDividor:
             "minutes": minutes,
         }
     )
-    return result
+    # resultがSectionInfoList型であることを確認
+    if isinstance(result, SectionInfoList):
+        section_info_list = result.section_info_list
+    else:
+        raise TypeError("Expected result to be of type SectionInfoList")
+    # section_info_listのchapter_numberを確認して、連番になっているか確認
+    last_chapter_number = 0
+    for section_info in section_info_list:
+      if section_info.chapter_number != last_chapter_number + 1:
+        print(f"section_infoのchapter_numberが連番になっていません。")
+        # 連番になっていない場合はsection_info.chapter_numberをlast_chapter_number + 1で上書きする
+        section_info.chapter_number = last_chapter_number + 1
+      last_chapter_number = section_info.chapter_number
+    # 連番が上書きされたsection_info_listを返す
+    return SectionInfoList(section_info_list=section_info_list)
 
   def check_length(self, section_string_list: SectionStringList) -> RedivideSectionStringList:
     redivide_list = []
@@ -219,7 +233,23 @@ class MinutesDividor:
             "section_string": section_string,
         }
     )
-    return result
+    if result is None:
+        print("Error: result is None")
+        return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
+    # resultがSectionInfoList型であることを確認
+    if isinstance(result, SpeakerAndSpeechContentList):
+        speaker_and_speech_content_list = result.speaker_and_speech_content_list
+    else:
+        raise TypeError("Expected result to be of type SpeakerAndSpeechContentList")
+    # speaker_and_speech_content_listのspeech_orderを確認して、連番になっているか確認
+    last_speech_order = 0
+    for speaker_and_speech_content in speaker_and_speech_content_list:
+      if speaker_and_speech_content.speech_order != last_speech_order + 1:
+        print(f"speaker_and_speech_contentのspeech_orderが連番になっていません。")
+        # 連番になっていない場合はspeaker_and_speech_content.speech_orderをlast_chapter_number + 1で上書きする
+        speaker_and_speech_content.speech_order = last_speech_order + 1
+      last_speech_order = speaker_and_speech_content.speech_order
+    return SpeakerAndSpeechContentList(speaker_and_speech_content_list=speaker_and_speech_content_list)
 
 # 議事録処理AIエージェントのクラス
 class MinutesProcessAgent:
