@@ -12,7 +12,7 @@ class MinutesDividor:
   def __init__(self, llm: ChatGoogleGenerativeAI, k: int = 5):
     self.section_info_list_formatted_llm = llm.with_structured_output(SectionInfoList)
     self.speaker_and_speech_content_formatted_llm = llm.with_structured_output(SpeakerAndSpeechContentList)
-    self.k = 5
+    self.k = k
 
   # 議事録の文字列に対する前処理を行う
   def pre_process(self, original_minutes: str) -> str:
@@ -26,6 +26,9 @@ class MinutesDividor:
     return processed_minutes
 
   def do_divide(self, processed_minutes: str, section_info_list: SectionInfoList) -> SectionStringList:
+    # processed_minutesが空の場合、空のリストを返す
+    if not processed_minutes:
+      return SectionStringList(section_string_list=[])
     # キーワードをベースに分割を実施
     """
     section_info_listは以下のような形式で渡されます
@@ -50,6 +53,7 @@ class MinutesDividor:
     skipped_keywords = []
     i = 0
     output_order = 1 # 出現順を記録する変数
+    section_info_list = section_info_list.section_info_list  # リスト属性にアクセス
     while i < len(section_info_list):
       section_info = section_info_list[i]
       keyword = section_info.keyword
@@ -84,13 +88,13 @@ class MinutesDividor:
       # 分割された文字列を取得
       split_text = processed_minutes[start_index:end_index].strip()
       # SectionStringインスタンスを作成してlistにappend
-      split_minutes_list.append(SectionString(chapter_number=output_order, section_string=split_text))
+      split_minutes_list.append(SectionString(chapter_number=section_info.chapter_number, sub_chapter_number=1, section_string=split_text))
       # 次の検索開始位置を更新
       start_index = end_index
       # インデックスと出現順を更新
       i = j
       output_order += 1
-    return split_minutes_list
+    return SectionStringList(section_string_list=split_minutes_list)
   
   # 議事録の情報をベースに議事録を30分割する
   def section_divide_run(self, minutes: str) -> SectionInfoList:
