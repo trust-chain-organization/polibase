@@ -9,7 +9,7 @@ from src.minutes_divide_processor.models import SectionInfoList, SectionStringLi
 
 class TestMinutesDividor(unittest.TestCase):
 
-    @patch('minutes_dividor.ChatGoogleGenerativeAI')
+    @patch('src.minutes_divide_processor.minutes_dividor.ChatGoogleGenerativeAI')
     def setUp(self, MockChatGoogleGenerativeAI):
         llm_mock = MockChatGoogleGenerativeAI.return_value
         self.dividor = MinutesDividor(llm_mock)
