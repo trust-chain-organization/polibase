@@ -4,7 +4,7 @@ from langchain_core.runnables import RunnablePassthrough
 import re
 import unicodedata
 import json
-from models import (
+from src.minutes_divide_processor.models import (
     SectionInfoList, SectionStringList, RedivideSectionStringList, RedividedSectionInfoList, SpeakerAndSpeechContentList, SectionString
 )
 

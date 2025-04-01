@@ -4,12 +4,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import unittest
 from unittest.mock import MagicMock, patch
-from minutes_dividor import MinutesDividor
-from models import SectionInfoList, SectionStringList, SectionInfo, SectionString
+from src.minutes_divide_processor.minutes_dividor import MinutesDividor
+from src.minutes_divide_processor.models import SectionInfoList, SectionStringList, SectionInfo, SectionString
 
 class TestMinutesDividor(unittest.TestCase):
 
-    @patch('minutes_dividor.ChatGoogleGenerativeAI')
+    @patch('src.minutes_divide_processor.minutes_dividor.ChatGoogleGenerativeAI')
     def setUp(self, MockChatGoogleGenerativeAI):
         llm_mock = MockChatGoogleGenerativeAI.return_value
         self.dividor = MinutesDividor(llm_mock)
