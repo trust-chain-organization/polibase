@@ -71,7 +71,7 @@ class MinutesProcessAgent:
     section_list_length = len(section_info_list.section_info_list)
     print("divide_minutes_to_keyword_done")
     return {
-        "section_info_list": section_info_list.section_info_list, # SectionInfoList ではなく SectionInfo のリストを返す
+        "section_info_list": section_info_list.section_info_list,  # リストとして返す
         "section_list_length": section_list_length
     }
   def _divide_minutes_to_string(self, state: MinutesProcessState) -> dict:
@@ -99,10 +99,10 @@ class MinutesProcessAgent:
   def _divide_speech(self, state: MinutesProcessState) -> dict:
     memory_id = state.section_string_list_memory_id
     section_string_list = self._get_from_memory("section_string_list", memory_id)
-    if state.index - 1 < len(section_string_list):
+    if state.index - 1 < len(section_string_list.section_string_list):
         if state.index - 1 in [0,1,2,3]:
             # 発言者と発言内容に分割する
-            speaker_and_speech_content_list = self.minutes_devidor.speech_divide_run(section_string_list[state.index - 1])
+            speaker_and_speech_content_list = self.minutes_devidor.speech_divide_run(section_string_list.section_string_list[state.index - 1])
         else:
             speaker_and_speech_content_list = None
     else:
