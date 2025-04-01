@@ -1,13 +1,13 @@
-import config
+import src.config.config as config
 from utils.text_extractor import extract_text_from_pdf
 import duckdb
 import csv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from models import (
+from src.minutes_divide_processor.models import (
     SectionInfo, SectionInfoList, SectionString, SectionStringList, RedivideSectionString, RedivideSectionStringList,
     RedividedSectionInfo, RedividedSectionInfoList, SpeakerAndSpeechContent, SpeakerAndSpeechContentList, MinutesProcessState
 )
-from minutes_process_agent import MinutesProcessAgent
+from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
 
 # config.pyを呼び出して環境変数を設定
 config.set_env()
