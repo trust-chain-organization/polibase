@@ -1,5 +1,6 @@
 # コードの配置
 
+```
 .
 ├── src/
 │   ├── config/              # 設定関連 (必要であれば)
@@ -7,8 +8,8 @@
 │   │   └── settings.py
 │   ├── minutes_divide_processor/   # 議事録分割処理
 │   │   ├── __init__.py
-│   │   ├── dividor.py
-│   │   ├── agent.py
+│   │   ├── minutes_dividor.py
+│   │   ├── minutes_process_agent.py
 │   │   └── models.py
 │   ├── metadata_processor/  # 会議メタデータ処理
 │   │   ├── __init__.py
@@ -33,3 +34,4 @@
 ├── pyproject.toml           # or requirements.txt
 ├── README.md
 └── .gitignore
+```
