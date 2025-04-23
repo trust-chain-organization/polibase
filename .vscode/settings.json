@@ -1,2 +1,35 @@
 {
+    "mcp": {
+        "servers": {
+            // https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem
+            "filesystem": {
+                "command": "npx",
+                "args": [
+                    "-y",
+                    "@modelcontextprotocol/server-filesystem",
+                    "/Users/okodoon/project/polibase",
+                ],
+            }
+        }
+    },
+    // コード生成のための設定
+    "github.copilot.chat.codeGeneration.instructions": [
+        {"file": ".vscode/code-style.md"}
+    ],
+    // テスト生成のための設定
+    "github.copilot.chat.testGeneration.instructions": [
+        {"file": ".vscode/test-style.md"}
+    ],
+    // コードレビューのための設定
+    "github.copilot.chat.reviewSelection.instructions": [
+        {"file": ".vscode/review-style.md"}
+    ],
+    // commitメッセージ生成のための設定
+    "github.copilot.chat.commitMessageGeneration.instructions": [
+        {"file": ".vscode/commit-message-style.md"}
+    ],
+    // Pull Requestのタイトルと説明の生成のための設定
+    "github.copilot.chat.pullRequestDescriptionGeneration.instructions": [
+        {"file": ".vscode/pull-request-style.md"}
+    ],
 }
