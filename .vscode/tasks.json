@@ -1,0 +1,18 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "test_polibase_project",
+            "type": "shell",
+            "group": "test",
+            "options": {
+                "cwd": "${workspaceFolder}/tests"
+            },
+            "command": "poetry",
+            "args": [
+                "run",
+                "pytest"
+            ],
+        }
+    ]
+}
