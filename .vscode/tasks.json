@@ -13,6 +13,20 @@
                 "run",
                 "pytest"
             ],
+        },
+        {
+            "label": "run_minutes_divide_processor",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "-m",
+                "src.main"
+            ],
         }
     ]
 }

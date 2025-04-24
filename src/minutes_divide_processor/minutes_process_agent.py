@@ -1,13 +1,16 @@
 import uuid
-from typing import Optional
+from typing import Optional, List
 from langgraph.store.memory import InMemoryStore
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
-from src.minutes_divide_processor.models import (
-    SectionInfoList, SectionStringList, RedivideSectionStringList, RedividedSectionInfoList, SpeakerAndSpeechContentList, SectionString, MinutesProcessState
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.pydantic_v1 import BaseModel, Field
+# Use relative import for modules within the same package
+from .models import (
+    SectionInfoList, SectionStringList, RedivideSectionStringList, RedividedSectionInfoList, SpeakerAndSpeechContentList, SectionString, MinutesProcessState, SpeakerAndSpeechContent
 )
-from src.minutes_divide_processor.minutes_dividor import MinutesDividor
+from .minutes_dividor import MinutesDividor
 
 class MinutesProcessAgent:
   def __init__(self, llm: ChatGoogleGenerativeAI, k: Optional[int] = None):

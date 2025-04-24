@@ -4,8 +4,16 @@ from langchain_core.runnables import RunnablePassthrough
 import re
 import unicodedata
 import json
-from src.minutes_divide_processor.models import (
-    SectionInfoList, SectionStringList, RedivideSectionStringList, RedivideSectionString, RedividedSectionInfoList, SpeakerAndSpeechContentList, SectionString
+# Use relative import for modules within the same package
+from .models import (
+    SectionInfo,
+    SectionInfoList,
+    SectionString,
+    SectionStringList,
+    RedivideSectionStringList,
+    RedivideSectionString,
+    SpeakerAndSpeechContentList,
+    RedividedSectionInfoList,
 )
 
 class MinutesDividor:
