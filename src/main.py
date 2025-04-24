@@ -1,9 +1,9 @@
-import src.config.config as config
-from src.utils.text_extractor import extract_text_from_pdf
+import config.config as config
+from utils.text_extractor import extract_text_from_pdf
 import duckdb
 import csv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
+from minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
 import os
 
 # config.pyを呼び出して環境変数を設定
