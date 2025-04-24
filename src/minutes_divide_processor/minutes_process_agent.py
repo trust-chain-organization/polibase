@@ -6,10 +6,11 @@ from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.pydantic_v1 import BaseModel, Field
-from minutes_divide_processor.models import (
+# Use relative import for modules within the same package
+from .models import (
     SectionInfoList, SectionStringList, RedivideSectionStringList, RedividedSectionInfoList, SpeakerAndSpeechContentList, SectionString, MinutesProcessState, SpeakerAndSpeechContent
 )
-from minutes_divide_processor.minutes_dividor import MinutesDividor
+from .minutes_dividor import MinutesDividor
 
 class MinutesProcessAgent:
   def __init__(self, llm: ChatGoogleGenerativeAI, k: Optional[int] = None):

@@ -1,9 +1,11 @@
-import config.config as config
-from utils.text_extractor import extract_text_from_pdf
+# Use absolute import from the 'src' package when running as a module
+import src.config.config as config
+from src.utils.text_extractor import extract_text_from_pdf
 import duckdb
 import csv
 from langchain_google_genai import ChatGoogleGenerativeAI
-from minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
+# Relative import for modules within the same subpackage is fine
+from .minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
 import os
 
 # config.pyを呼び出して環境変数を設定
@@ -37,7 +39,8 @@ def main():
   print(f"CSVファイルに変換しました: data/output/{output_file}")
   return speaker_and_speech_content_list
 
-speaker_and_speech_content_list = main()
-print("--------結果出力--------")
-print(speaker_and_speech_content_list)
-print('全部終わったよ')
+if __name__ == "__main__":
+    speaker_and_speech_content_list = main()
+    print("--------結果出力--------")
+    print(speaker_and_speech_content_list)
+    print('全部終わったよ')

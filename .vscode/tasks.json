@@ -24,7 +24,8 @@
             "args": [
                 "run",
                 "python",
-                "src/main.py"
+                "-m",
+                "src.main"
             ],
         }
     ]
