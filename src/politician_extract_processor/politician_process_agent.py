@@ -13,7 +13,7 @@ from src.politician_extract_processor.models import (
 )
 from .politician_extractor import PoliticianExtractor
 
-class PoliticianProcessor:
+class PoliticianProcessAgent:
     def __init__(self, llm: ChatGoogleGenerativeAI, k: Optional[int] = None):
         self.minutes_devidor = PoliticianExtractor(llm=llm, k=k)
         self.in_memory_store = InMemoryStore()
@@ -44,7 +44,7 @@ class PoliticianProcessor:
 
         return state
 
-    def create_graph(self) -> Graph:
+    def _create_graph(self) -> Graph:
         """LangGraphを使用して処理フローを定義する"""
         workflow = StateGraph(PoliticianProcessState)
 

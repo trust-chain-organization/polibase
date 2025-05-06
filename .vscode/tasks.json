@@ -27,6 +27,20 @@
                 "-m",
                 "src.main"
             ],
-        }
+        },
+        {
+            "label": "run_politician_extract_processor",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "-m",
+                "src.main2"
+            ],
+        },        
     ]
 }

@@ -1,12 +1,9 @@
-from src.politician_extract_processor.politician_process_agent import PoliticianProcessor
+from src.politician_extract_processor.politician_process_agent import PoliticianProcessAgent
 from src.politician_extract_processor.models import PoliticianInfo, PoliticianInfoList, PoliticianProcessState
-from src.politician_extract_processor.prompts import politician_extraction_prompt, participant_extraction_prompt
 
 __all__ = [
-    "PoliticianProcessor",
+    "PoliticianProcessAgent",
     "PoliticianInfo",
     "PoliticianInfoList",
-    "PoliticianProcessState",
-    "politician_extraction_prompt",
-    "participant_extraction_prompt"
+    "PoliticianProcessState"
 ]
