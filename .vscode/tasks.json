@@ -12,7 +12,7 @@
             "args": [
                 "run",
                 "pytest"
-            ],
+            ]
         },
         {
             "label": "run_minutes_divide_processor",
@@ -26,7 +26,21 @@
                 "python",
                 "-m",
                 "src.main"
-            ],
+            ]
+        },
+        {
+            "label": "run_politician_extract_processor",
+            "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "command": "poetry",
+            "args": [
+                "run",
+                "python",
+                "-m",
+                "src.main2"
+            ]
         }
     ]
 }
