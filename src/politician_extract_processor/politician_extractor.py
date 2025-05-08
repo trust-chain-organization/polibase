@@ -14,15 +14,8 @@ class PoliticianExtractor:
         self.speaker_and_speech_content_formatted_llm = llm.with_structured_output(PoliticianInfoList)
         self.k = k
 
-    def extract_info(self):
-        return {
-            "name": self.name,
-            "party": self.party,
-            "position": self.position
-        }
-
     def politician_extract_run(self, minutes: str) -> PoliticianInfoList:
-        prompt_template = hub.pull("extract_politician_information")
+        prompt_template = hub.pull("politician_extraction_prompt")
         runnable_prompt = prompt_template | self.politician_extract_llm
         # 議事録を分割するチェーンを作成
         chain = {"minutes": RunnablePassthrough()} | runnable_prompt
@@ -32,3 +25,4 @@ class PoliticianExtractor:
                 "minutes": minutes,
             }
         )
+        return result

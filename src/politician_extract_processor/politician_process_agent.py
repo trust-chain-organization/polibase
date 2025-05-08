@@ -3,7 +3,7 @@ from langchain import hub
 from langchain_core.runnables import RunnablePassthrough
 from langgraph.graph import Graph, StateGraph
 from langgraph.store.memory import InMemoryStore
-from typing import Annotated, Dict, TypedDict, Optional
+from typing import Annotated, Dict, TypedDict, Optional, List  # List をインポート
 import re
 import unicodedata
 from src.politician_extract_processor.models import (
@@ -15,34 +15,28 @@ from .politician_extractor import PoliticianExtractor
 
 class PoliticianProcessAgent:
     def __init__(self, llm: ChatGoogleGenerativeAI, k: Optional[int] = None):
-        self.minutes_devidor = PoliticianExtractor(llm=llm, k=k)
+        self.politician_extractor = PoliticianExtractor(llm=llm, k=k if k is not None else 5)  # kのデフォルト値を考慮
         self.in_memory_store = InMemoryStore()
         self.graph = self._create_graph()
 
-    def _extract_politician_info(self, state: PoliticianProcessState) -> PoliticianProcessState:
+    def _extract_politician_info(self, state: PoliticianProcessState) -> Dict:  # 戻り値の型を Dict に変更
         """議事録から政治家情報を抽出する"""
-        prompt_template = hub.pull("politician_extraction_prompt")
-        runnable_prompt = prompt_template | self.politician_info_formatted_llm
-        
-        chain = {"minutes": RunnablePassthrough()} | runnable_prompt
-        
-        result = chain.invoke({
-            "minutes": state["processed_minutes"]
-        })
+        original_minutes = state.original_minutes  # Pydanticモデルの属性としてアクセス
+        result = self.politician_extractor.politician_extract_run(original_minutes)
         
         if isinstance(result, PoliticianInfoList):
-            state["politician_info_list"] = result.politician_info_list
+            # 更新するフィールドとその値を辞書で返す
+            return {"politician_info_list": result.politician_info_list}
         else:
-            raise TypeError("Expected result to be of type PoliticianInfoList")
-        
-        return state
+            # このエラーは通常発生しないはず (Pydanticのバリデーションによる)
+            raise TypeError("Expected politician_extract_run to return PoliticianInfoList")
 
-    def _check_politician_info(self, state: PoliticianProcessState) -> PoliticianProcessState:
-
+    def _check_politician_info(self, state: PoliticianProcessState) -> Dict:  # 戻り値の型を Dict に変更
         """政治家情報を確認する"""
-
-
-        return state
+        # 現状は状態を変更しないため、空の辞書を返す
+        # 将来的にこのノードで状態を利用・変更する場合は、state.politician_info_list などでアクセスし、
+        # 更新内容を辞書で返す。
+        return {}
 
     def _create_graph(self) -> Graph:
         """LangGraphを使用して処理フローを定義する"""
@@ -61,12 +55,21 @@ class PoliticianProcessAgent:
 
         return workflow.compile()
 
-    def run(self, original_minutes: str) -> str:
+    def run(self, original_minutes: str) -> PoliticianInfoList:
         # 初期状態の設定
-        initial_state = PoliticianProcessState(original_minutes=original_minutes)
+        initial_state: PoliticianProcessState = {
+            "original_minutes": original_minutes,
+            "politician_info_list": []  # None から空リスト [] に修正
+        }
         # グラフの実行
-        final_state = self.graph.invoke(initial_state, config={"recursion_limit": 300,"thread_id": "example-1"})
-        # 分割結果の取得
-        memory_id = final_state["divided_speech_list_memory_id"]
-        divided_speech_list = self._get_from_memory("divided_speech_list", memory_id)
-        return divided_speech_list
+        # configのthread_idは永続化ストアを利用する場合に特に意味を持つが、InMemoryStoreでも実行の区別に使える
+        final_state_dict = self.graph.invoke(initial_state, config={"recursion_limit": 300, "thread_id": "example-1"})
+        
+        # final_state_dict は PoliticianProcessState と同じキーを持つ辞書
+        politician_info_list_data: Optional[List[PoliticianInfo]] = final_state_dict.get("politician_info_list")
+
+        if politician_info_list_data is not None:
+            return PoliticianInfoList(politician_info_list=politician_info_list_data)
+        else:
+            # 抽出結果がなかった場合、空のリストを持つ PoliticianInfoList を返す
+            return PoliticianInfoList(politician_info_list=[])
