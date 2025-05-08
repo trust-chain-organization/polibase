@@ -35,14 +35,10 @@ def convert_to_csv(politician_info_list_obj: PoliticianInfoList, output_file: st
         # PoliticianInfoList から PoliticianInfo のリストを取り出す
         for politician_info_item in politician_info_list_obj.politician_info_list: # 変数名を明確化 (politician_info から politician_info_item へ)
             # PoliticianInfoモデルの属性を使用してデータを書き込む
-            # speech_contentsはリストなので、文字列に結合する (例: セミコロン区切り)
-            speech_contents_str = "; ".join(politician_info_item.speech_contents)
             writer.writerow([
                 politician_info_item.name,
                 politician_info_item.party,
                 politician_info_item.position,
-                politician_info_item.speech_count,
-                speech_contents_str
             ])
 
 def main():
