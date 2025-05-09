@@ -9,7 +9,7 @@ def extract_text_from_pdf(file_content: bytes) -> str:
         text = ""
         for page in pdf_document:
             text_page = page.get_textpage()
-            text += text_page.get_text_range()
+            text += text_page.get_text_bounded()
             text_page.close()
             page.close()
         return text
