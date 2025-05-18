@@ -12,5 +12,3 @@ class PoliticianInfoList(BaseModel):
 class PoliticianProcessState(BaseModel):
     original_minutes: str = Field(..., description="元の議事録全体")
     politician_info_list: List[PoliticianInfo] = Field(default_factory=list, description="抽出された政治家情報のリスト")
-    current_section: str = Field(default="", description="現在処理中のセクション")
-    section_index: int = Field(default=0, description="現在処理中のセクションのインデックス") 

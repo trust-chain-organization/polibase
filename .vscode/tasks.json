@@ -8,7 +8,7 @@
             "options": {
                 "cwd": "${workspaceFolder}/tests"
             },
-            "command": "poetry",
+            "command": "uv",
             "args": [
                 "run",
                 "pytest"
@@ -23,7 +23,7 @@
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "command": "poetry",
+            "command": "uv",
             "args": [
                 "run",
                 "python",
@@ -40,7 +40,7 @@
             "options": {
                 "cwd": "${workspaceFolder}"
             },
-            "command": "poetry",
+            "command": "uv",
             "args": [
                 "run",
                 "python",

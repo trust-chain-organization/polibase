@@ -11,14 +11,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11.4
-      - name: setup poetry
-        uses: abatilo/actions-poetry@v2
-        with:
-          poetry-version: 1.8.5
-      - name: setup
+          python-version: 3.11.0
+      - name: Install uv
         run: |
-          poetry install
+          pip install uv
+      - name: Install dependencies
+        run: |
+          uv sync
       - name: run pytest
         run: |
-          poetry run pytest
+          uv run pytest
