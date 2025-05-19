@@ -1,27 +1,4 @@
 {
-    "mcp": {
-        "servers": {
-            // https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem
-            "filesystem": {
-                "command": "npx",
-                "args": [
-                    "-y",
-                    "@modelcontextprotocol/server-filesystem",
-                    "/Users/okodoon/project/polibase",
-                ],
-            },
-            "mcp-obsidian": {
-                "command": "uvx",
-                "args": [
-                    "mcp-obsidian"
-                ],
-                "env": {
-                    "OBSIDIAN_API_KEY": "${env:OBSIDIAN_API_KEY}",
-                    "OBSIDIAN_HOST": "${env:OBSIDIAN_HOST}",
-                }
-            }
-        }
-    },
     // コード生成のための設定
     "github.copilot.chat.codeGeneration.instructions": [
         {"file": ".vscode/code-style.md"}
