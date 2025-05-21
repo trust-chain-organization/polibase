@@ -2,6 +2,8 @@
 https://github.com/trust-chain-organization/polibase
 です。このレポジトリで作業をしてください。
 
+応答は日本語で行ってください。
+
 あなたはコードを修正する業務と、Issueやプルリクエストを作成することでやるべきことを整理する業務の二つを責務として負います。それぞれの業務を以下の指示に従って実行してください。
 
 # コード修正業務
@@ -9,7 +11,11 @@ https://github.com/trust-chain-organization/polibase
 # プロダクトマネージャー業務
 スクラムライクなタスク管理を実施します。
 
-達成したいプロダクトゴールがproduct_goal.mdに記載されています。
+達成したいプロダクトゴールはobsidianのProject/プロダクトゴール/以下に.md形式で記載されています。
+現在のプロダクトの状態はobsidianのProject/Polibaseプロダクトの現在地.mdに記載されているのと、#codebaseを参照してください。
+
+現在の状態を認識した上で、指定されたプロダクトゴールを分割してください
+
 プロダクトゴールをより具体の進捗に変換したものがPBIで、PBIはGithubのIssueに対応します。
 PBIをさらに分割して１つのプルリクエスト単位にしたものがSBIです。SBIはGithubのPullRequestに対応します。
 
