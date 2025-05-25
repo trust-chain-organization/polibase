@@ -1,0 +1,117 @@
+// Database Schema for a Political Activity Tracking Application
+// ERD Source: image_742e3b.png
+
+Table GoverningBodies {
+  id int [pk, increment] // 自動採番される主キー
+  Name varchar [not null]
+  type varchar // 例: "国", "都道府県", "市町村"
+  note: '開催主体'
+}
+
+Table Conferences {
+  id int [pk, increment]
+  Name varchar [not null]
+  type varchar // 例: "国会全体", "議院", "地方議会全体", "常任委員会"
+  governing_body_id int [ref: > GoverningBodies.id, not null] // どの開催主体に属するか
+  note: '会議体 (議会や委員会など)'
+}
+
+Table Meetings {
+  id int [pk, increment]
+  conference_id int [ref: > Conferences.id, not null] // どの会議体による開催か
+  date date // 開催日
+  note: '会議 (具体的な開催インスタンス)'
+}
+
+Table Minutes {
+  id int [pk, increment]
+  url varchar // 議事録PDFなどのURL
+  meeting_id int [ref: > Meetings.id, not null] // どの会議の議事録か
+  note: '議事録'
+}
+
+Table Speakers {
+  id int [pk, increment]
+  name varchar [not null] // 発言者名
+  type varchar // 例: "政治家", "参考人", "議長", "政府職員"
+  note: '発言者'
+}
+
+Table PoliticalParties {
+  id int [pk, increment]
+  name varchar [not null, unique] // 政党名 (重複なし)
+  // political_party_n... は name と同義と判断し、name に統一
+  note: '政党'
+}
+
+Table Politicians {
+  id int [pk, increment] // 政治家固有のID
+  name varchar [not null] // 政治家名
+  political_party_id int [ref: > PoliticalParties.id] // 現在の主要所属政党 (履歴はPartyMembershipHistoryで管理)
+  speaker_id int [ref: > Speakers.id, unique, not null] // 各政治家は一意の発言者でもある (1対1関係)
+  note: '政治家'
+}
+
+Table Pledges {
+  id int [pk, increment]
+  politician_id int [ref: > Politicians.id, not null] // どの政治家の公約か
+  title varchar [not null] // 公約のタイトル
+  content text // 公約の詳細内容
+  note: '公約'
+}
+
+Table PartyMembershipHistory {
+  id int [pk, increment]
+  politician_id int [ref: > Politicians.id, not null] // どの政治家の所属履歴か
+  political_party_id int [ref: > PoliticalParties.id, not null] // どの政党に所属していたか
+  start_date date [not null] // 所属開始日
+  end_date date // 所属終了日 (現所属の場合はNULL)
+  note: '政治家の政党所属履歴'
+}
+
+Table Conversations {
+  id int [pk, increment]
+  minutes_id int [ref: > Minutes.id, not null] // どの議事録の発言か
+  speaker_id int [ref: > Speakers.id, not null] // どの発言者の発言か
+  comment text [not null] // 発言内容
+  sequence_number int [not null] // 議事録内の発言順序
+  note: '発言'
+
+  indexes {
+    (minutes_id, sequence_number) [unique] // 同一議事録内での発言順序は一意
+  }
+}
+
+Table Proposals {
+  id int [pk, increment]
+  content text [not null] // 議案内容
+  status varchar // 例: "審議中", "可決", "否決"
+  note: '議案'
+}
+
+Table ProposalJudges {
+  id int [pk, increment]
+  proposal_id int [ref: > Proposals.id, not null] // どの議案に対する賛否か
+  politician_id int [ref: > Politicians.id, not null] // どの政治家の賛否か
+  politician_party_id int [ref: > PoliticalParties.id] // 票決時の所属政党
+  approve varchar // 例: "賛成", "反対", "棄権", "欠席" (または boolean型)
+  note: '議案への賛否情報 (誰が議案に賛成したか)'
+}
+
+Table PoliticianAffiliations {
+  id int [pk, increment]
+  politician_id int [ref: > Politicians.id, not null] // どの政治家の所属情報か
+  conference_id int [ref: > Conferences.id, not null] // どの会議体（議会・委員会）に所属しているか
+  start_date date [not null] // 所属開始日
+  end_date date // 所属終了日 (現所属の場合はNULL)
+  // role varchar // 役職 (例: '議員', '議長') などを追加可能
+  note: '議員の議会所属情報'
+}
+
+Table ProposalMeetingOccurrences {
+  id int [pk, increment]
+  proposal_id int [ref: > Proposals.id, not null] // どの議案か
+  meeting_id int [ref: > Meetings.id, not null] // どの会議で扱われたか
+  occurrence_type varchar // 例: "提出", "審議", "委員会採決", "本会議採決"
+  note: '議案と会議の紐付け情報（議案の会議経過）'
+}

@@ -1,0 +1,33 @@
+name: Build DBML Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.dbml'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.dbml'
+
+
+jobs:
+  build-with-dbdocs:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # LTS版のNode.jsを指定
+      - name: Install dbdocs
+        run: sudo npm install -g dbdocs
+
+      - name: Check dbdocs
+        run: dbdocs
+
+      - name: Update dbdocs project
+        env:
+          DBDOCS_TOKEN: ${{ secrets.DBDOCS_TOKEN }}
+        run: dbdocs build ./polibase.dbml --project Polibase
