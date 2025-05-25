@@ -30,4 +30,4 @@ jobs:
       - name: Update dbdocs project
         env:
           DBDOCS_TOKEN: ${{ secrets.DBDOCS_TOKEN }}
-        run: dbdocs build ./polibase.dbml
+        run: dbdocs build ./polibase.dbml --project Polibase
