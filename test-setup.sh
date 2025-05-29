@@ -1,0 +1,46 @@
+#!/bin/bash
+# データベース接続テストスクリプト
+
+echo "🏗️  Polibase データベース接続テスト"
+echo "=================================="
+
+# Docker Composeが起動しているかチェック
+if ! docker-compose ps postgres | grep -q "Up"; then
+    echo "❌ PostgreSQLコンテナが起動していません"
+    echo "以下のコマンドでDockerサービスを起動してください："
+    echo "docker-compose up -d"
+    exit 1
+fi
+
+echo "✅ PostgreSQLコンテナが起動中です"
+
+# データベース接続テスト
+echo ""
+echo "🔍 データベース接続テストを実行中..."
+docker-compose exec -T polibase uv run python -c "
+from src.config.database import test_connection
+import sys
+if test_connection():
+    print('✅ データベース接続成功')
+    sys.exit(0)
+else:
+    print('❌ データベース接続失敗')
+    sys.exit(1)
+"
+
+if [ $? -eq 0 ]; then
+    echo ""
+    echo "🗃️  データベース構造を確認中..."
+    docker-compose exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
+    
+    echo ""
+    echo "🎉 セットアップ完了！"
+    echo "以下のコマンドでアプリケーションを実行できます："
+    echo "- 議事録分割処理: docker-compose exec polibase uv run python -m src.main"
+    echo "- 政治家抽出処理: docker-compose exec polibase uv run python -m src.main2"
+    echo "- テスト実行: docker-compose exec polibase uv run pytest"
+else
+    echo ""
+    echo "❌ セットアップに失敗しました"
+    echo "ログを確認してください: docker-compose logs"
+fi
