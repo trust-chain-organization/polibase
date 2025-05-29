@@ -9,6 +9,7 @@ LANGCHAIN_PROJECT = os.getenv('LANGCHAIN_PROJECT')
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 TAVILY_API_KEY = os.getenv('TAVILY_API_KEY')
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://polibase_user:polibase_password@localhost:5432/polibase_db')
 
 def set_env():
     # 環境変数として設定
@@ -19,3 +20,4 @@ def set_env():
     os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
     os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY
     os.environ['TAVILY_API_KEY'] = TAVILY_API_KEY
+    os.environ['DATABASE_URL'] = DATABASE_URL

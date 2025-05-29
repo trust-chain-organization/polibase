@@ -1,21 +1,25 @@
 FROM python:3.13-slim
 
+# PostgreSQLクライアントのインストール
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
 # 作業ディレクトリを設定
 WORKDIR /app
 
 # 必要なファイルをコピー
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml uv.lock ./
 
-# Poetryをインストール
-RUN pip install poetry
+# uvをインストール
+RUN pip install uv
 
 # 依存関係をインストール
-RUN poetry install --no-root
+RUN uv sync
 
 # 必要なファイルをコピー
-COPY main.py main.py
-COPY config.py config.py
-COPY utils/ utils/
+COPY src/ src/
+COPY database/ database/
 
 # コンテナ起動時に実行するコマンド
 CMD ["/bin/bash"]
