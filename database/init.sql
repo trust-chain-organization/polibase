@@ -98,15 +98,15 @@ CREATE TABLE party_membership_history (
 -- 発言テーブル
 CREATE TABLE conversations (
     id SERIAL PRIMARY KEY,
-    minutes_id INTEGER NOT NULL REFERENCES minutes(id), -- どの議事録の発言か
-    speaker_id INTEGER NOT NULL REFERENCES speakers(id), -- どの発言者の発言か
+    minutes_id INTEGER REFERENCES minutes(id), -- どの議事録の発言か（NULL許可で仮の議事録なしでも保存可能）
+    speaker_id INTEGER REFERENCES speakers(id), -- どの発言者の発言か（NULL許可で発言者が特定できない場合）
+    speaker_name VARCHAR, -- 元の発言者名（名前の完全一致ができない場合のための保管用）
     comment TEXT NOT NULL, -- 発言内容
     sequence_number INTEGER NOT NULL, -- 議事録内の発言順序
+    chapter_number INTEGER, -- 分割した文字列を前から順に割り振った番号
+    sub_chapter_number INTEGER, -- 再分割した場合の文字列番号
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    -- 同一議事録内での発言順序は一意
-    UNIQUE(minutes_id, sequence_number)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 議案テーブル
