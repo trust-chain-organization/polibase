@@ -46,8 +46,14 @@ CREATE TABLE speakers (
     id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL, -- 発言者名
     type VARCHAR, -- 例: "政治家", "参考人", "議長", "政府職員"
+    political_party_name VARCHAR, -- 所属政党名（政治家の場合）
+    position VARCHAR, -- 役職・肩書き
+    is_politician BOOLEAN DEFAULT FALSE, -- 政治家かどうか
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- 同じ名前、政党、役職の組み合わせは一意とする
+    UNIQUE(name, political_party_name, position)
 );
 
 -- 政党テーブル

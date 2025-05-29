@@ -35,10 +35,10 @@ cp .env.example .env
 ### 3. Docker環境の起動
 ```bash
 # PostgreSQLデータベースとアプリケーションを起動
-docker-compose up -d
+docker compose up -d
 
 # ログの確認
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ### 4. Python依存関係のインストール（ローカル開発用）
@@ -60,7 +60,7 @@ uv sync
 #### 議事録分割処理
 ```bash
 # Docker環境で実行
-docker-compose exec polibase uv run python -m src.main
+docker compose exec polibase uv run python -m src.main
 
 # ローカル環境で実行
 uv run python -m src.main
@@ -69,7 +69,7 @@ uv run python -m src.main
 #### 政治家抽出処理
 ```bash
 # Docker環境で実行
-docker-compose exec polibase uv run python -m src.main2
+docker compose exec polibase uv run python -m src.main2
 
 # ローカル環境で実行
 uv run python -m src.main2
@@ -78,7 +78,7 @@ uv run python -m src.main2
 ### テストの実行
 ```bash
 # Docker環境で実行
-docker-compose exec polibase uv run pytest
+docker compose exec polibase uv run pytest
 
 # ローカル環境で実行
 uv run pytest
@@ -89,7 +89,7 @@ uv run pytest
 ### 1. PostgreSQLに接続
 ```bash
 # Docker環境のPostgreSQLに接続
-docker-compose exec postgres psql -U polibase_user -d polibase_db
+docker compose exec postgres psql -U polibase_user -d polibase_db
 ```
 
 ### 2. 基本的なSQLクエリ例
@@ -118,7 +118,7 @@ LIMIT 10;
 ### 3. データベース接続テスト
 ```bash
 # Pythonでデータベース接続をテスト
-docker-compose exec polibase uv run python -c "
+docker compose exec polibase uv run python -c "
 from src.config.database import test_connection
 test_connection()
 "
@@ -129,16 +129,16 @@ test_connection()
 ### データ永続化について
 
 **デフォルト設定（永続化モード）**:
-- `docker-compose.yml`を使用すると、データベースは自動的に永続化されます
+- `docker compose.yml`を使用すると、データベースは自動的に永続化されます
 - `postgres_data`ボリュームにデータが保存され、コンテナを停止・再起動してもデータは保持されます
 
 ```bash
 # 永続化モードで起動（デフォルト）
-docker-compose up -d
+docker compose up -d
 
 # コンテナを停止してもデータは保持される
-docker-compose down
-docker-compose up -d  # データがそのまま残る
+docker compose down
+docker compose up -d  # データがそのまま残る
 ```
 
 **非永続化モード（一時的な使用）**:
@@ -147,11 +147,11 @@ docker-compose up -d  # データがそのまま残る
 
 ```bash
 # 非永続化モードで起動
-docker-compose -f docker-compose.temp.yml up -d
+docker compose -f docker compose.temp.yml up -d
 
 # または、既存のボリュームを使用せずに起動
-docker-compose down -v
-docker-compose up -d --renew-anon-volumes
+docker compose down -v
+docker compose up -d --renew-anon-volumes
 ```
 
 ### データベースのリセット
@@ -165,10 +165,10 @@ docker-compose up -d --renew-anon-volumes
 #### 手動リセット
 ```bash
 # 1. コンテナとボリュームを完全削除
-docker-compose down -v
+docker compose down -v
 
 # 2. 再起動（初期データで復元）
-docker-compose up -d
+docker compose up -d
 ```
 
 ### データのバックアップ・リストア
@@ -191,10 +191,10 @@ docker-compose up -d
 #### 手動バックアップ・リストア
 ```bash
 # 手動バックアップ
-docker-compose exec postgres pg_dump -U polibase_user polibase_db > backup.sql
+docker compose exec postgres pg_dump -U polibase_user polibase_db > backup.sql
 
 # 手動リストア
-docker-compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
+docker compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
 ```
 
 ## 📁 プロジェクト構成
@@ -213,8 +213,8 @@ polibase/
 │   └── backups/                # データベースバックアップファイル
 ├── data/                       # データファイル
 ├── tests/                      # テストコード
-├── docker-compose.yml          # Docker Compose設定（永続化モード）
-├── docker-compose.temp.yml     # Docker Compose設定（非永続化モード）
+├── docker compose.yml          # Docker Compose設定（永続化モード）
+├── docker compose.temp.yml     # Docker Compose設定（非永続化モード）
 ├── Dockerfile                  # Dockerイメージ設定
 ├── reset-database.sh           # データベースリセットスクリプト
 ├── backup-database.sh          # データベースバックアップスクリプト
@@ -242,14 +242,14 @@ lsof -i :5432
 lsof -i :8000
 
 # Docker Composeを再起動
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 ```
 
 #### データベース接続エラー
 ```bash
 # PostgreSQLコンテナのログを確認
-docker-compose logs postgres
+docker compose logs postgres
 
 # データベース接続テスト
 ./test-setup.sh
@@ -258,8 +258,8 @@ docker-compose logs postgres
 #### コンテナのリセット
 ```bash
 # 全てのコンテナとボリュームを削除して再作成
-docker-compose down -v
-docker-compose up -d
+docker compose down -v
+docker compose up -d
 ```
 
 #### データベースの問題
@@ -315,13 +315,13 @@ uv sync --reinstall
 ```bash
 # 🏗️ 初期セットアップ
 cp .env.example .env
-docker-compose up -d
+docker compose up -d
 ./test-setup.sh
 
 # 🔄 通常の起動・停止
-docker-compose up -d      # バックグラウンド起動
-docker-compose down       # 停止（データは保持）
-docker-compose logs -f    # ログ確認
+docker compose up -d      # バックグラウンド起動
+docker compose down       # 停止（データは保持）
+docker compose logs -f    # ログ確認
 
 # 💾 データベース管理
 ./backup-database.sh backup           # バックアップ作成
@@ -329,23 +329,23 @@ docker-compose logs -f    # ログ確認
 ./reset-database.sh                   # データベースリセット
 
 # 🏃 アプリケーション実行
-docker-compose exec polibase uv run python -m src.main   # 議事録分割
-docker-compose exec polibase uv run python -m src.main2  # 政治家抽出
-docker-compose exec polibase uv run pytest              # テスト実行
+docker compose exec polibase uv run python -m src.main   # 議事録分割
+docker compose exec polibase uv run python -m src.main2  # 政治家抽出
+docker compose exec polibase uv run pytest              # テスト実行
 
 # 🗃️ データベース操作
-docker-compose exec postgres psql -U polibase_user -d polibase_db  # DB接続
+docker compose exec postgres psql -U polibase_user -d polibase_db  # DB接続
 ```
 
 ### 開発モード
 
 ```bash
 # 🔧 非永続化モード（テスト用）
-docker-compose -f docker-compose.temp.yml up -d
+docker compose -f docker compose.temp.yml up -d
 
 # 🐛 デバッグモード
-docker-compose up          # フォアグラウンド実行
-docker-compose exec polibase bash  # コンテナ内でshell実行
+docker compose up          # フォアグラウンド実行
+docker compose exec polibase bash  # コンテナ内でshell実行
 ```
 
 # 開発環境の生成AIの設定
