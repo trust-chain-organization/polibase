@@ -7,7 +7,30 @@ services:
       - .:/app
     environment:
       - ENV_VAR_NAME=env_var_value  # 必要な環境変数を設定
+      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
     ports:
       - "8000:8000"  # 必要に応じてポートを設定
     stdin_open: true  # 追加
     tty: true         # 追加
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: polibase_db
+      POSTGRES_USER: polibase_user
+      POSTGRES_PASSWORD: polibase_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
