@@ -205,20 +205,30 @@ polibase/
 │   ├── config/                   # 設定ファイル
 │   │   ├── database.py          # データベース接続設定
 │   │   └── config.py            # アプリケーション設定
+│   ├── common/                   # 共通機能
+│   │   ├── app_logic.py         # アプリケーション共通ロジック
+│   │   └── database_utils.py    # データベース共通処理
 │   ├── minutes_divide_processor/ # 議事録分割処理
 │   ├── politician_extract_processor/ # 政治家抽出処理
+│   ├── database/                 # データベースリポジトリ
 │   └── utils/                   # ユーティリティ関数
 ├── database/                    # データベース関連
 │   ├── init.sql                # データベース初期化スクリプト
 │   └── backups/                # データベースバックアップファイル
+├── scripts/                     # 管理スクリプト
+│   ├── backup-database.sh      # データベースバックアップスクリプト
+│   ├── reset-database.sh       # データベースリセットスクリプト
+│   ├── test-setup.sh           # セットアップテストスクリプト
+│   └── setup_database.sh       # データベースセットアップスクリプト
 ├── data/                       # データファイル
 ├── tests/                      # テストコード
 ├── docker compose.yml          # Docker Compose設定（永続化モード）
 ├── docker compose.temp.yml     # Docker Compose設定（非永続化モード）
 ├── Dockerfile                  # Dockerイメージ設定
-├── reset-database.sh           # データベースリセットスクリプト
-├── backup-database.sh          # データベースバックアップスクリプト
-├── test-setup.sh              # セットアップテストスクリプト
+├── backup-database.sh          # → scripts/backup-database.sh (シンボリックリンク)
+├── reset-database.sh           # → scripts/reset-database.sh (シンボリックリンク)
+├── test-setup.sh              # → scripts/test-setup.sh (シンボリックリンク)
+├── update_speaker_links.py     # 発言者紐付け更新スクリプト
 ├── pyproject.toml             # Python依存関係
 └── polibase.dbml              # データベーススキーマ定義
 ```
