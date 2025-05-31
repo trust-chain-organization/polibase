@@ -5,13 +5,15 @@ from typing import List, Optional
 from sqlalchemy import text
 from src.config.database import get_db_session
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent, SpeakerAndSpeechContentList
+from src.database.speaker_matching_service import SpeakerMatchingService
 
 
 class ConversationRepository:
     """Conversationsテーブルに対するデータベース操作を管理するクラス"""
     
-    def __init__(self):
+    def __init__(self, speaker_matching_service: Optional[SpeakerMatchingService] = None):
         self.session = get_db_session()
+        self.speaker_matching_service = speaker_matching_service
     
     def save_speaker_and_speech_content_list(self, speaker_and_speech_content_list: List[SpeakerAndSpeechContent]) -> List[int]:
         """
@@ -95,6 +97,20 @@ class ConversationRepository:
         Returns:
             Optional[int]: 一致するSpeakerのID（見つからない場合はNone）
         """
+        # LLMベースのマッチングサービスが利用可能な場合はそれを使用
+        if self.speaker_matching_service:
+            match_result = self.speaker_matching_service.find_best_match(speaker_name)
+            if match_result.matched:
+                return match_result.speaker_id
+            return None
+        
+        # フォールバック: 従来のルールベースマッチング
+        return self._legacy_find_speaker_id(speaker_name)
+    
+    def _legacy_find_speaker_id(self, speaker_name: str) -> Optional[int]:
+        """
+        従来のルールベース発言者検索（後方互換性のため）
+        """
         # 完全一致を優先して検索
         query = text("""
             SELECT id FROM speakers 
@@ -129,7 +145,7 @@ class ConversationRepository:
         cleaned_name = re.sub(r'^[◆○◎]', '', speaker_name)
         if cleaned_name != speaker_name:
             # 再帰的に検索
-            return self._find_speaker_id(cleaned_name)
+            return self._legacy_find_speaker_id(cleaned_name)
         
         # それでも見つからない場合は部分一致を試行
         query = text("""
@@ -217,9 +233,22 @@ class ConversationRepository:
     def update_speaker_links(self) -> int:
         """
         既存のConversationsレコードのspeaker_idを更新する
+        LLMマッチングサービスが利用可能な場合はそれを使用
         
         Returns:
             int: 更新されたレコード数
+        """
+        if self.speaker_matching_service:
+            # LLMベースの一括更新を使用
+            stats = self.speaker_matching_service.batch_update_speaker_links()
+            return stats['successfully_matched']
+        
+        # フォールバック: 従来のルールベース更新
+        return self._legacy_update_speaker_links()
+    
+    def _legacy_update_speaker_links(self) -> int:
+        """
+        従来のルールベースでspeaker_idを更新（後方互換性のため）
         """
         try:
             # speaker_idがNULLのレコードを取得
@@ -234,7 +263,7 @@ class ConversationRepository:
             updated_count = 0
             
             for conversation_id, speaker_name in unlinked_conversations:
-                speaker_id = self._find_speaker_id(speaker_name)
+                speaker_id = self._legacy_find_speaker_id(speaker_name)
                 
                 if speaker_id:
                     # speaker_idを更新

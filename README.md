@@ -57,7 +57,7 @@ uv sync
 
 ### アプリケーションの実行
 
-#### 議事録分割処理
+#### 議事録分割処理（発言抽出）
 ```bash
 # Docker環境で実行
 docker compose exec polibase uv run python -m src.main
@@ -65,8 +65,9 @@ docker compose exec polibase uv run python -m src.main
 # ローカル環境で実行
 uv run python -m src.main
 ```
+議事録PDFファイルを読み込み、発言単位に分割してデータベースに保存します。
 
-#### 政治家抽出処理
+#### 政治家情報抽出処理（発言者抽出）
 ```bash
 # Docker環境で実行
 docker compose exec polibase uv run python -m src.main2
@@ -74,6 +75,26 @@ docker compose exec polibase uv run python -m src.main2
 # ローカル環境で実行
 uv run python -m src.main2
 ```
+議事録から政治家（発言者）の情報を抽出してデータベースに保存します。
+
+#### LLMベース発言者マッチング処理
+```bash
+# Docker環境で実行
+docker compose exec polibase uv run python update_speaker_links_llm.py
+
+# ローカル環境で実行
+uv run python update_speaker_links_llm.py
+```
+LLMを活用したfuzzy matchingにより、議事録の発言(`conversations.speaker_name`)と発言者マスタ(`speakers.name`)の間で高精度なマッチングを実行し、未紐付けの会話に適切な発言者IDを自動で紐付けます。
+
+**特徴:**
+- ルールベース + LLMベースのハイブリッドマッチング
+- 表記揺れや記号の有無に対応した高精度マッチング
+- インタラクティブな確認機能付き
+- 詳細な処理結果レポート
+
+**必要な環境変数:**
+- `GOOGLE_API_KEY`: Google Gemini APIキー（.envファイルに設定）
 
 ### テストの実行
 ```bash
@@ -107,6 +128,13 @@ SELECT * FROM governing_bodies;
 SELECT c.*, g.name as governing_body_name 
 FROM conferences c 
 JOIN governing_bodies g ON c.governing_body_id = g.id;
+
+-- 発言データと発言者の紐付け状況を確認
+SELECT 
+    COUNT(*) as total_conversations,
+    COUNT(speaker_id) as linked_conversations,
+    COUNT(*) - COUNT(speaker_id) as unlinked_conversations
+FROM conversations;
 
 -- 発言データを確認（サンプルがある場合）
 SELECT s.name as speaker_name, c.comment, c.sequence_number
@@ -228,7 +256,8 @@ polibase/
 ├── backup-database.sh          # → scripts/backup-database.sh (シンボリックリンク)
 ├── reset-database.sh           # → scripts/reset-database.sh (シンボリックリンク)
 ├── test-setup.sh              # → scripts/test-setup.sh (シンボリックリンク)
-├── update_speaker_links.py     # 発言者紐付け更新スクリプト
+├── update_speaker_links.py     # 発言者紐付け更新スクリプト（レガシー）
+├── update_speaker_links_llm.py # LLMベース発言者マッチングスクリプト
 ├── pyproject.toml             # Python依存関係
 └── polibase.dbml              # データベーススキーマ定義
 ```
@@ -313,10 +342,11 @@ uv sync --reinstall
 
 ## 🗂️ データの流れ
 
-1. **議事録PDFの処理**: `src/main.py` - 議事録を発言単位に分割
-2. **政治家情報の抽出**: `src/main2.py` - 発言から政治家情報を抽出
-3. **データベース保存**: 抽出された情報をPostgreSQLに保存
-4. **分析・検索**: 蓄積されたデータから政治活動を分析
+1. **議事録PDFの処理**: `src/main.py` - 議事録を発言単位に分割してデータベースに保存
+2. **政治家情報の抽出**: `src/main2.py` - 発言から政治家情報を抽出してデータベースに保存
+3. **発言者マッチング**: `update_speaker_links_llm.py` - LLMを活用して発言と発言者を高精度でマッチング
+4. **データベース保存**: 抽出・マッチングされた情報をPostgreSQLに保存
+5. **分析・検索**: 蓄積されたデータから政治活動を分析
 
 ## 🚀 クイックリファレンス
 
@@ -339,8 +369,9 @@ docker compose logs -f    # ログ確認
 ./reset-database.sh                   # データベースリセット
 
 # 🏃 アプリケーション実行
-docker compose exec polibase uv run python -m src.main   # 議事録分割
-docker compose exec polibase uv run python -m src.main2  # 政治家抽出
+docker compose exec polibase uv run python -m src.main   # 議事録分割（発言抽出）
+docker compose exec polibase uv run python -m src.main2  # 政治家抽出（発言者抽出）
+docker compose exec polibase uv run python update_speaker_links_llm.py  # LLM発言者マッチング
 docker compose exec polibase uv run pytest              # テスト実行
 
 # 🗃️ データベース操作
