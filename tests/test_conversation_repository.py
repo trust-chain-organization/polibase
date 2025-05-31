@@ -81,8 +81,8 @@ class TestConversationRepository(unittest.TestCase):
         """発言者IDが見つかる場合の個別保存テスト"""
         test_speech = self.create_test_speech_data()[0]
         
-        # _find_speaker_idが123を返すように設定
-        with patch.object(self.repository, '_find_speaker_id', return_value=123):
+        # _legacy_find_speaker_idが123を返すように設定
+        with patch.object(self.repository, '_legacy_find_speaker_id', return_value=123):
             # SQLクエリ実行結果をモック
             mock_result = MagicMock()
             mock_result.fetchone.return_value = [456]  # 新しく作成されたconversation_id
@@ -106,8 +106,8 @@ class TestConversationRepository(unittest.TestCase):
         """発言者IDが見つからない場合の個別保存テスト"""
         test_speech = self.create_test_speech_data()[1]
         
-        # _find_speaker_idがNoneを返すように設定
-        with patch.object(self.repository, '_find_speaker_id', return_value=None):
+        # _legacy_find_speaker_idがNoneを返すように設定
+        with patch.object(self.repository, '_legacy_find_speaker_id', return_value=None):
             # SQLクエリ実行結果をモック
             mock_result = MagicMock()
             mock_result.fetchone.return_value = [789]
@@ -125,7 +125,7 @@ class TestConversationRepository(unittest.TestCase):
             self.assertIsNone(query_params['speaker_id'])
             self.assertEqual(query_params['speaker_name'], "◆委員(佐藤花子)")
 
-    def test_find_speaker_id_exact_match(self):
+    def test_legacy_find_speaker_id_exact_match(self):
         """発言者名の完全一致テスト"""
         # 完全一致で見つかる場合のモック設定
         mock_result = MagicMock()
@@ -133,13 +133,13 @@ class TestConversationRepository(unittest.TestCase):
         self.mock_session.execute.return_value = mock_result
         
         # 実行
-        result = self.repository._find_speaker_id("田中太郎")
+        result = self.repository._legacy_find_speaker_id("田中太郎")
         
         # 検証
         self.assertEqual(result, 555)
         self.mock_session.execute.assert_called_once()
 
-    def test_find_speaker_id_bracket_extraction(self):
+    def test_legacy_find_speaker_id_bracket_extraction(self):
         """括弧内名前抽出テスト"""
         # 完全一致では見つからず、括弧内抽出で見つかる場合
         mock_results = [
@@ -152,13 +152,13 @@ class TestConversationRepository(unittest.TestCase):
         self.mock_session.execute.side_effect = mock_results
         
         # 実行
-        result = self.repository._find_speaker_id("委員長(田中太郎)")
+        result = self.repository._legacy_find_speaker_id("委員長(田中太郎)")
         
         # 検証
         self.assertEqual(result, 666)
         self.assertEqual(self.mock_session.execute.call_count, 2)
 
-    def test_find_speaker_id_no_match(self):
+    def test_legacy_find_speaker_id_no_match(self):
         """発言者が見つからない場合のテスト"""
         # 全ての検索で見つからない場合
         mock_result = MagicMock()
@@ -166,7 +166,7 @@ class TestConversationRepository(unittest.TestCase):
         self.mock_session.execute.return_value = mock_result
         
         # 実行
-        result = self.repository._find_speaker_id("存在しない発言者")
+        result = self.repository._legacy_find_speaker_id("存在しない発言者")
         
         # 検証
         self.assertIsNone(result)
@@ -240,8 +240,8 @@ class TestConversationRepository(unittest.TestCase):
         mock_select_result = MagicMock()
         mock_select_result.fetchall.return_value = unlinked_conversations
         
-        # _find_speaker_idの戻り値を設定
-        with patch.object(self.repository, '_find_speaker_id', side_effect=[123, None]):
+        # _legacy_find_speaker_idの戻り値を設定
+        with patch.object(self.repository, '_legacy_find_speaker_id', side_effect=[123, None]):
             self.mock_session.execute.side_effect = [
                 mock_select_result,  # SELECT文の結果
                 MagicMock(),         # 1回目のUPDATE文
