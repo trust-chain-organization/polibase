@@ -20,6 +20,7 @@ Table Meetings {
   id int [pk, increment]
   conference_id int [ref: > Conferences.id, not null] // どの会議体による開催か
   date date // 開催日
+  url varchar // 会議関連のURLまたは議事録PDFのURL
   note: '会議 (具体的な開催インスタンス)'
 }
 

@@ -34,6 +34,7 @@ CREATE TABLE meetings (
     id SERIAL PRIMARY KEY,
     conference_id INTEGER NOT NULL REFERENCES conferences(id),
     date DATE, -- 開催日
+    url VARCHAR, -- 会議関連のURLまたは議事録PDFのURL
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
