@@ -10,7 +10,10 @@ CREATE TABLE governing_bodies (
     name VARCHAR NOT NULL,
     type VARCHAR, -- 例: "国", "都道府県", "市町村"
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- 同じ名前と種別の組み合わせは一意とする
+    UNIQUE(name, type)
 );
 
 -- 会議体テーブル (議会や委員会など)
@@ -20,7 +23,10 @@ CREATE TABLE conferences (
     type VARCHAR, -- 例: "国会全体", "議院", "地方議会全体", "常任委員会"
     governing_body_id INTEGER NOT NULL REFERENCES governing_bodies(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- 同じ開催主体内で同じ名前の会議体は一意とする
+    UNIQUE(name, governing_body_id)
 );
 
 -- 会議テーブル (具体的な開催インスタンス)
@@ -193,18 +199,15 @@ CREATE TRIGGER update_proposal_judges_updated_at BEFORE UPDATE ON proposal_judge
 CREATE TRIGGER update_politician_affiliations_updated_at BEFORE UPDATE ON politician_affiliations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_proposal_meeting_occurrences_updated_at BEFORE UPDATE ON proposal_meeting_occurrences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- サンプルデータの挿入（テスト用）
-INSERT INTO governing_bodies (name, type) VALUES 
-('日本国', '国'),
-('東京都', '都道府県'),
-('千代田区', '市町村');
+-- SEEDデータの読み込み
+-- 開催主体マスターデータの挿入
+\i /docker-entrypoint-initdb.d/seed_governing_bodies.sql
 
-INSERT INTO political_parties (name) VALUES 
-('自民党'),
-('立憲民主党'),
-('公明党'),
-('日本維新の会'),
-('国民民主党');
+-- 政党マスターデータの挿入  
+\i /docker-entrypoint-initdb.d/seed_political_parties.sql
+
+-- 会議体マスターデータの挿入
+\i /docker-entrypoint-initdb.d/seed_conferences.sql
 
 COMMENT ON TABLE governing_bodies IS '開催主体';
 COMMENT ON TABLE conferences IS '会議体 (議会や委員会など)';
