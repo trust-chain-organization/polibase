@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/Users/okodoon/project/polibase"],
+      "description": "Access to the polibase project files"
+    },
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db"],
+      "description": "Direct access to the Polibase PostgreSQL database"
+    }
+  }
+}

@@ -16,7 +16,7 @@ from .models import (
     RedividedSectionInfoList,
 )
 
-class MinutesDividor:
+class MinutesDivider:
   def __init__(self, llm: ChatGoogleGenerativeAI, k: int = 5):
     self.section_info_list_formatted_llm = llm.with_structured_output(SectionInfoList)
     self.speaker_and_speech_content_formatted_llm = llm.with_structured_output(SpeakerAndSpeechContentList)

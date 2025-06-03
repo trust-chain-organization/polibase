@@ -10,12 +10,12 @@ from pydantic import BaseModel, Field  # langchain_core.pydantic_v1 から pydan
 from .models import (
     SectionInfoList, SectionStringList, RedivideSectionStringList, RedividedSectionInfoList, SpeakerAndSpeechContentList, SectionString, MinutesProcessState, SpeakerAndSpeechContent
 )
-from .minutes_dividor import MinutesDividor
+from .minutes_divider import MinutesDivider
 
 class MinutesProcessAgent:
   def __init__(self, llm: ChatGoogleGenerativeAI, k: Optional[int] = None):
     # 各種ジェネレータの初期化
-    self.minutes_devidor = MinutesDividor(llm=llm, k=k)
+    self.minutes_divider = MinutesDivider(llm=llm, k=k)
     self.in_memory_store = InMemoryStore()
     self.graph = self._create_graph()
 
@@ -60,7 +60,7 @@ class MinutesProcessAgent:
 
   def _process_minutes(self, state: MinutesProcessState) -> dict:
     # 議事録の文字列に対する前処理を行う
-    processed_minutes = self.minutes_devidor.pre_process(state.original_minutes)
+    processed_minutes = self.minutes_divider.pre_process(state.original_minutes)
     memory = {'processed_minutes': processed_minutes}
     memory_id = self._put_to_memory(namespace="processed_minutes", memory=memory)
     return {
@@ -70,7 +70,7 @@ class MinutesProcessAgent:
     memory_id = state.processed_minutes_memory_id
     processed_minutes = self._get_from_memory(namespace="processed_minutes", memory_id=memory_id)
     # 議事録を分割する
-    section_info_list = self.minutes_devidor.section_divide_run(processed_minutes)
+    section_info_list = self.minutes_divider.section_divide_run(processed_minutes)
     section_list_length = len(section_info_list.section_info_list)
     print("divide_minutes_to_keyword_done")
     return {
@@ -81,7 +81,7 @@ class MinutesProcessAgent:
     memory_id = state.processed_minutes_memory_id
     processed_minutes = self._get_from_memory("processed_minutes", memory_id)
     # 議事録を分割する
-    section_string_list = self.minutes_devidor.do_divide(processed_minutes, state.section_info_list)
+    section_string_list = self.minutes_divider.do_divide(processed_minutes, state.section_info_list)
     memory = {'section_string_list': section_string_list}
     memory_id = self._put_to_memory(namespace="section_string_list", memory=memory)
     return {
@@ -91,7 +91,7 @@ class MinutesProcessAgent:
     memory_id = state.section_string_list_memory_id
     section_string_list = self._get_from_memory("section_string_list", memory_id)
     # 文字列のバイト数をチェックする
-    redivide_section_string_list = self.minutes_devidor.check_length(section_string_list)
+    redivide_section_string_list = self.minutes_divider.check_length(section_string_list)
     memory = {'redivide_section_string_list': redivide_section_string_list}
     memory_id = self._put_to_memory(namespace="redivide_section_string_list", memory=memory)
     print("check_length_done")
@@ -105,7 +105,7 @@ class MinutesProcessAgent:
     if state.index - 1 < len(section_string_list.section_string_list):
         if state.index - 1 in [0,1,2,3]:
             # 発言者と発言内容に分割する
-            speaker_and_speech_content_list = self.minutes_devidor.speech_divide_run(section_string_list.section_string_list[state.index - 1])
+            speaker_and_speech_content_list = self.minutes_divider.speech_divide_run(section_string_list.section_string_list[state.index - 1])
         else:
             speaker_and_speech_content_list = None
     else:

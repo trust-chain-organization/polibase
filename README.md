@@ -55,25 +55,50 @@ uv sync
 
 ## 🏃 使用方法
 
-### アプリケーションの実行
+### 統一CLIコマンド
+
+新しく統一されたCLIインターフェースが利用可能です：
+
+```bash
+# 利用可能なコマンドを表示
+docker compose exec polibase uv run polibase --help
+
+# 議事録を処理（発言を抽出）
+docker compose exec polibase uv run polibase process-minutes
+
+# 政治家情報を抽出
+docker compose exec polibase uv run polibase extract-politicians
+
+# 発言者をマッチング（LLM使用）
+docker compose exec polibase uv run polibase update-speakers --use-llm
+
+# データベース接続をテスト
+docker compose exec polibase uv run polibase test-connection
+```
+
+### アプリケーションの実行（従来の方法）
 
 #### 議事録分割処理（発言抽出）
 ```bash
-# Docker環境で実行
+# Docker環境で実行（新しいファイル名でも実行可能）
+docker compose exec polibase uv run python -m src.process_minutes
+# または従来のコマンド
 docker compose exec polibase uv run python -m src.main
 
 # ローカル環境で実行
-uv run python -m src.main
+uv run python -m src.process_minutes
 ```
 議事録PDFファイルを読み込み、発言単位に分割してデータベースに保存します。
 
 #### 政治家情報抽出処理（発言者抽出）
 ```bash
-# Docker環境で実行
+# Docker環境で実行（新しいファイル名でも実行可能）
+docker compose exec polibase uv run python -m src.extract_politicians
+# または従来のコマンド
 docker compose exec polibase uv run python -m src.main2
 
 # ローカル環境で実行
-uv run python -m src.main2
+uv run python -m src.extract_politicians
 ```
 議事録から政治家（発言者）の情報を抽出してデータベースに保存します。
 
@@ -103,6 +128,9 @@ docker compose exec polibase uv run pytest
 
 # ローカル環境で実行
 uv run pytest
+
+# 特定のテストを実行
+uv run pytest tests/test_minutes_divider.py -v
 ```
 
 ## 🗃️ データベースの確認方法
@@ -240,13 +268,18 @@ docker compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sq
 ```
 polibase/
 ├── src/                          # メインアプリケーションコード
+│   ├── cli.py                   # 統一CLIエントリーポイント
+│   ├── process_minutes.py       # 議事録分割処理
+│   ├── extract_politicians.py   # 政治家抽出処理
 │   ├── config/                   # 設定ファイル
 │   │   ├── database.py          # データベース接続設定
-│   │   └── config.py            # アプリケーション設定
+│   │   ├── config.py            # アプリケーション設定
+│   │   └── settings.py          # 環境変数管理
 │   ├── common/                   # 共通機能
 │   │   ├── app_logic.py         # アプリケーション共通ロジック
 │   │   └── database_utils.py    # データベース共通処理
 │   ├── minutes_divide_processor/ # 議事録分割処理
+│   │   └── minutes_divider.py   # 分割ロジック
 │   ├── politician_extract_processor/ # 政治家抽出処理
 │   ├── database/                 # データベースリポジトリ
 │   └── utils/                   # ユーティリティ関数
@@ -269,16 +302,9 @@ polibase/
 ├── update_speaker_links.py     # 発言者紐付け更新スクリプト（レガシー）
 ├── update_speaker_links_llm.py # LLMベース発言者マッチングスクリプト
 ├── pyproject.toml             # Python依存関係
+├── CLAUDE.md                  # Claude Code用ガイド
 └── polibase.dbml              # データベーススキーマ定義
 ```
-
-## 🔧 開発用タスク
-
-VS Codeでタスクを実行する場合：
-
-- **テスト実行**: `Ctrl+Shift+P` → "Tasks: Run Task" → "test_polibase_project"
-- **議事録分割処理**: `Ctrl+Shift+P` → "Tasks: Run Task" → "run_minutes_divide_processor"  
-- **政治家抽出処理**: `Ctrl+Shift+P` → "Tasks: Run Task" → "run_politician_extract_processor"
 
 ## 🛠️ トラブルシューティング
 
@@ -352,8 +378,8 @@ uv sync --reinstall
 
 ## 🗂️ データの流れ
 
-1. **議事録PDFの処理**: `src/main.py` - 議事録を発言単位に分割してデータベースに保存
-2. **政治家情報の抽出**: `src/main2.py` - 発言から政治家情報を抽出してデータベースに保存
+1. **議事録PDFの処理**: `src/process_minutes.py` - 議事録を発言単位に分割してデータベースに保存
+2. **政治家情報の抽出**: `src/extract_politicians.py` - 発言から政治家情報を抽出してデータベースに保存
 3. **発言者マッチング**: `update_speaker_links_llm.py` - LLMを活用して発言と発言者を高精度でマッチング
 4. **データベース保存**: 抽出・マッチングされた情報をPostgreSQLに保存
 5. **分析・検索**: 蓄積されたデータから政治活動を分析
@@ -378,9 +404,14 @@ docker compose logs -f    # ログ確認
 ./backup-database.sh list             # バックアップ一覧
 ./reset-database.sh                   # データベースリセット
 
-# 🏃 アプリケーション実行
-docker compose exec polibase uv run python -m src.main   # 議事録分割（発言抽出）
-docker compose exec polibase uv run python -m src.main2  # 政治家抽出（発言者抽出）
+# 🏃 アプリケーション実行（新しいCLI）
+docker compose exec polibase uv run polibase process-minutes      # 議事録分割
+docker compose exec polibase uv run polibase extract-politicians  # 政治家抽出
+docker compose exec polibase uv run polibase update-speakers --use-llm  # LLM発言者マッチング
+
+# 🏃 アプリケーション実行（従来の方法）
+docker compose exec polibase uv run python -m src.process_minutes  # 議事録分割（発言抽出）
+docker compose exec polibase uv run python -m src.extract_politicians  # 政治家抽出（発言者抽出）
 docker compose exec polibase uv run python update_speaker_links_llm.py  # LLM発言者マッチング
 docker compose exec polibase uv run pytest              # テスト実行
 
@@ -399,30 +430,3 @@ docker compose up          # フォアグラウンド実行
 docker compose exec polibase bash  # コンテナ内でshell実行
 ```
 
-# 開発環境の生成AIの設定
-https://code.visualstudio.com/docs/copilot/copilot-customization
-
-- .github/prompts/hogehoge.prompt.md
-  - chat/editで使えるカスタムのプロンプトを配置
-
-- .vscode/settings.json
-    - 開発環境の設定を記載
-    - このプロジェクト用のMCPの設定を記載
-- .github/copilot-instructions.md
-  - エージェントが従う作業フローの指示を記載
-    - プロダクトマネージャー業務の指示
-        - product_management業務の参照ドキュメント
-            - product_management_reference/product_goal.md
-            - product_management_reference/daily_task.md
-    - コード修正業務の指示
-- このプロジェクト用のcopilotの作業時の設定を記載(copilot-instructions.mdを継承)
-    - .vscode/code-style.md
-        - コード生成時のルール
-    - .vscode/test-style.md
-        - テスト生成時のルール
-    - .vscode/review-style.md
-        - レビュー時のルール
-    - .vscode/commit-message-style.md
-        - コミットメッセージの生成時のルール
-    - .vscode/pull-request-style.md
-        - pull requestの生成時のルール
