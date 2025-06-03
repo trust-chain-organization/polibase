@@ -111,5 +111,31 @@ def reset_database():
     else:
         click.echo("Database reset cancelled.")
 
+@cli.command()
+@click.option('--port', default=8501, help='Port number for Streamlit app')
+@click.option('--host', default='localhost', help='Host address')
+def streamlit(port, host):
+    """Launch Streamlit web interface for meeting management (会議管理Web UI)
+    
+    This command starts a web interface where you can:
+    - View all registered meetings
+    - Add new meetings with URLs and dates
+    - Edit existing meeting information
+    - Delete meetings
+    """
+    import subprocess
+    import os
+    
+    click.echo(f"Starting Streamlit app on http://{host}:{port}")
+    click.echo("Press Ctrl+C to stop the server")
+    
+    # Streamlitアプリケーションを起動
+    subprocess.run([
+        sys.executable, '-m', 'streamlit', 'run',
+        'src/streamlit_app.py',
+        '--server.port', str(port),
+        '--server.address', host
+    ])
+
 if __name__ == '__main__':
     cli()

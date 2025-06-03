@@ -74,6 +74,9 @@ docker compose exec polibase uv run polibase update-speakers --use-llm
 
 # データベース接続をテスト
 docker compose exec polibase uv run polibase test-connection
+
+# 会議管理Web UIを起動
+docker compose exec polibase uv run polibase streamlit
 ```
 
 ### アプリケーションの実行（従来の方法）
@@ -101,6 +104,22 @@ docker compose exec polibase uv run python -m src.main2
 uv run python -m src.extract_politicians
 ```
 議事録から政治家（発言者）の情報を抽出してデータベースに保存します。
+
+#### 会議管理Web UI
+```bash
+# Docker環境で実行（ポート8501でWeb UIが起動）
+docker compose exec -p 8501:8501 polibase uv run polibase streamlit
+
+# ローカル環境で実行
+uv run polibase streamlit
+
+# カスタムポートで起動
+uv run polibase streamlit --port 8080
+```
+Webブラウザで会議情報（URL、日付）を管理できるインターフェースを提供します：
+- 会議一覧の表示・フィルタリング
+- 新規会議の登録（開催主体、会議体、日付、URL）
+- 既存会議の編集・削除
 
 #### LLMベース発言者マッチング処理
 ```bash
@@ -269,6 +288,7 @@ docker compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sq
 polibase/
 ├── src/                          # メインアプリケーションコード
 │   ├── cli.py                   # 統一CLIエントリーポイント
+│   ├── streamlit_app.py         # 会議管理Web UI
 │   ├── process_minutes.py       # 議事録分割処理
 │   ├── extract_politicians.py   # 政治家抽出処理
 │   ├── config/                   # 設定ファイル
@@ -282,6 +302,8 @@ polibase/
 │   │   └── minutes_divider.py   # 分割ロジック
 │   ├── politician_extract_processor/ # 政治家抽出処理
 │   ├── database/                 # データベースリポジトリ
+│   │   ├── meeting_repository.py # 会議データリポジトリ
+│   │   └── ...                  # その他リポジトリ
 │   └── utils/                   # ユーティリティ関数
 ├── database/                    # データベース関連
 │   ├── init.sql                # データベース初期化スクリプト

@@ -16,6 +16,7 @@ dependencies = [
     "psycopg2-binary>=2.9.0,<3",
     "sqlalchemy>=2.0.0,<3",
     "click>=8.0.0,<9",
+    "streamlit>=1.29.0,<2",
 ]
 
 [project.scripts]
