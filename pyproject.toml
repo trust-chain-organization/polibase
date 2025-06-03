@@ -19,6 +19,12 @@ dependencies = [
     "streamlit>=1.29.0,<2",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+
 [project.scripts]
 polibase = "src.cli:cli"
 

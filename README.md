@@ -1,5 +1,7 @@
 # Polibase - 政治活動追跡アプリケーション
 
+[![Tests](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml/badge.svg)](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml)
+
 政治家の発言、議事録、公約などを体系的に管理・分析するためのアプリケーションです。
 
 ## 🗄️ テーブル構造
@@ -153,6 +155,13 @@ uv run pytest
 
 # 特定のテストを実行
 uv run pytest tests/test_minutes_divider.py -v
+
+# Streamlit関連のテストを実行
+uv run pytest tests/test_streamlit_app.py tests/test_meeting_repository.py -v
+
+# カバレッジレポート付きでテスト実行（開発時）
+uv pip install pytest-cov
+uv run pytest --cov=src tests/
 ```
 
 ## 🗃️ データベースの確認方法
