@@ -1,0 +1,1 @@
+"""Web scraper module for extracting minutes from various council websites"""

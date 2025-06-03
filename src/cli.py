@@ -137,5 +137,142 @@ def streamlit(port, host):
         '--server.address', host
     ])
 
+@cli.command()
+@click.argument('url')
+@click.option('--output-dir', default='data/scraped', help='Output directory for scraped content')
+@click.option('--format', type=click.Choice(['txt', 'json', 'both']), default='both', help='Output format')
+@click.option('--no-cache', is_flag=True, help='Ignore cache and force re-scraping')
+def scrape_minutes(url, output_dir, format, no_cache):
+    """Scrape meeting minutes from council website (議事録Web取得)
+    
+    This command fetches meeting minutes from supported council websites
+    and saves them as text or JSON files.
+    
+    Example:
+        polibase scrape-minutes "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
+    """
+    import asyncio
+    from src.web_scraper.scraper_service import ScraperService
+    from pathlib import Path
+    
+    click.echo(f"Scraping minutes from: {url}")
+    
+    # サービス初期化
+    service = ScraperService()
+    
+    # スクレイピング実行
+    async def scrape():
+        minutes = await service.fetch_from_url(url, use_cache=not no_cache)
+        if not minutes:
+            click.echo("Failed to scrape minutes", err=True)
+            return False
+        
+        # 出力ディレクトリ作成
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        # ファイル名生成
+        base_name = f"{minutes.council_id}_{minutes.schedule_id}"
+        
+        # テキスト形式で保存
+        if format in ['txt', 'both']:
+            txt_path = output_path / f"{base_name}.txt"
+            if service.export_to_text(minutes, str(txt_path)):
+                click.echo(f"Saved text to: {txt_path}")
+            else:
+                click.echo("Failed to save text file", err=True)
+        
+        # JSON形式で保存
+        if format in ['json', 'both']:
+            json_path = output_path / f"{base_name}.json"
+            import json
+            try:
+                with open(json_path, 'w', encoding='utf-8') as f:
+                    json.dump(minutes.to_dict(), f, ensure_ascii=False, indent=2)
+                click.echo(f"Saved JSON to: {json_path}")
+            except Exception as e:
+                click.echo(f"Failed to save JSON file: {e}", err=True)
+        
+        # 基本情報を表示
+        click.echo("\n--- Minutes Summary ---")
+        click.echo(f"Title: {minutes.title}")
+        click.echo(f"Date: {minutes.date.strftime('%Y年%m月%d日') if minutes.date else 'Unknown'}")
+        click.echo(f"Speakers found: {len(minutes.speakers)}")
+        click.echo(f"Content length: {len(minutes.content)} characters")
+        if minutes.pdf_url:
+            click.echo(f"PDF URL: {minutes.pdf_url}")
+        
+        return True
+    
+    # 非同期実行
+    success = asyncio.run(scrape())
+    sys.exit(0 if success else 1)
+
+@cli.command()
+@click.option('--council', default='kyoto', help='Council name (e.g., kyoto)')
+@click.option('--start-id', default=6000, help='Start council ID')
+@click.option('--end-id', default=6100, help='End council ID')
+@click.option('--max-schedule', default=10, help='Maximum schedule ID to try')
+@click.option('--output-dir', default='data/scraped/batch', help='Output directory')
+@click.option('--concurrent', default=3, help='Number of concurrent requests')
+def batch_scrape(council, start_id, end_id, max_schedule, output_dir, concurrent):
+    """Batch scrape multiple meeting minutes (議事録一括取得)
+    
+    This command tries to scrape multiple meeting minutes by iterating
+    through council and schedule IDs.
+    """
+    import asyncio
+    from src.web_scraper.scraper_service import ScraperService
+    from pathlib import Path
+    
+    click.echo(f"Batch scraping {council} council minutes")
+    click.echo(f"Council IDs: {start_id} to {end_id}")
+    click.echo(f"Schedule IDs: 1 to {max_schedule}")
+    
+    # URL生成
+    base_url = f"https://ssp.kaigiroku.net/tenant/{council}/MinuteView.html"
+    urls = []
+    for council_id in range(start_id, end_id + 1):
+        for schedule_id in range(1, max_schedule + 1):
+            url = f"{base_url}?council_id={council_id}&schedule_id={schedule_id}"
+            urls.append(url)
+    
+    click.echo(f"Total URLs to try: {len(urls)}")
+    
+    if not click.confirm('Do you want to continue?'):
+        return
+    
+    # サービス初期化
+    service = ScraperService()
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # バッチ処理実行
+    async def batch_process():
+        results = await service.fetch_multiple(urls, max_concurrent=concurrent)
+        
+        success_count = 0
+        for minutes in results:
+            if minutes:
+                # テキストとJSONで保存
+                base_name = f"{minutes.council_id}_{minutes.schedule_id}"
+                txt_path = output_path / f"{base_name}.txt"
+                json_path = output_path / f"{base_name}.json"
+                
+                service.export_to_text(minutes, str(txt_path))
+                
+                import json
+                with open(json_path, 'w', encoding='utf-8') as f:
+                    json.dump(minutes.to_dict(), f, ensure_ascii=False, indent=2)
+                
+                success_count += 1
+        
+        click.echo(f"\nCompleted: {success_count}/{len(urls)} URLs successfully scraped")
+        return success_count
+    
+    # 非同期実行
+    success_count = asyncio.run(batch_process())
+    click.echo(f"Saved {success_count} meeting minutes to {output_path}")
+
 if __name__ == '__main__':
     cli()

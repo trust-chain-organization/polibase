@@ -145,6 +145,33 @@ LLMを活用したfuzzy matchingにより、議事録の発言(`conversations.sp
 **必要な環境変数:**
 - `GOOGLE_API_KEY`: Google Gemini APIキー（.envファイルに設定）
 
+#### 議事録Web取得処理
+```bash
+# 単一の議事録を取得
+docker compose exec polibase uv run polibase scrape-minutes "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
+
+# 出力形式とディレクトリを指定
+uv run polibase scrape-minutes "URL" --output-dir data/scraped --format txt
+
+# キャッシュを無視して再取得
+uv run polibase scrape-minutes "URL" --no-cache
+
+# 複数の議事録を一括取得
+uv run polibase batch-scrape --council kyoto --start-id 6000 --end-id 6100
+```
+
+Webサイトから議事録を自動取得し、テキストまたはJSON形式で保存します。
+
+**特徴:**
+- JavaScriptで動的に生成される議事録にも対応
+- 発言者の抽出と整理
+- キャッシュ機能で再取得を効率化
+- バッチ処理で複数の議事録を一括取得
+
+**対応サイト:**
+- 京都市議会（ssp.kaigiroku.net/tenant/kyoto）
+- 今後、他の自治体にも対応予定
+
 ### テストの実行
 ```bash
 # Docker環境で実行
@@ -313,6 +340,10 @@ polibase/
 │   ├── minutes_divide_processor/ # 議事録分割処理
 │   │   └── minutes_divider.py   # 分割ロジック
 │   ├── politician_extract_processor/ # 政治家抽出処理
+│   ├── web_scraper/             # 議事録Web取得
+│   │   ├── base_scraper.py      # スクレーパー基底クラス
+│   │   ├── kyoto_scraper.py     # 京都市議会スクレーパー
+│   │   └── scraper_service.py   # スクレーパーサービス
 │   ├── database/                 # データベースリポジトリ
 │   │   ├── meeting_repository.py # 会議データリポジトリ
 │   │   └── ...                  # その他リポジトリ
