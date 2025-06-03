@@ -107,8 +107,11 @@ uv run python -m src.extract_politicians
 
 #### 会議管理Web UI
 ```bash
-# Docker環境で実行（ポート8501でWeb UIが起動）
-docker compose exec -p 8501:8501 polibase uv run polibase streamlit
+# Docker環境で実行（コンテナ内で起動）
+docker compose exec polibase uv run polibase streamlit --host 0.0.0.0
+
+# Docker環境で実行（ポートフォワーディング付き）
+docker compose run -p 8501:8501 polibase uv run polibase streamlit --host 0.0.0.0
 
 # ローカル環境で実行
 uv run polibase streamlit
