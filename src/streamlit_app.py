@@ -51,10 +51,14 @@ def show_meetings_list():
     with col1:
         governing_bodies = repo.get_governing_bodies()
         gb_options = ["すべて"] + [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
-        gb_index = st.selectbox("開催主体", gb_options, key="list_gb")
+        gb_selected = st.selectbox("開催主体", gb_options, key="list_gb")
         
-        if gb_index > 0:
-            selected_gb = governing_bodies[gb_index - 1]
+        if gb_selected != "すべて":
+            # 選択されたオプションから対応するgoverning_bodyを探す
+            for i, gb in enumerate(governing_bodies):
+                if f"{gb['name']} ({gb['type']})" == gb_selected:
+                    selected_gb = gb
+                    break
             conferences = repo.get_conferences_by_governing_body(selected_gb['id'])
         else:
             conferences = []
@@ -62,14 +66,19 @@ def show_meetings_list():
     with col2:
         if conferences:
             conf_options = ["すべて"] + [conf['name'] for conf in conferences]
-            conf_index = st.selectbox("会議体", conf_options, key="list_conf")
+            conf_selected = st.selectbox("会議体", conf_options, key="list_conf")
             
-            if conf_index > 0:
-                selected_conf_id = conferences[conf_index - 1]['id']
+            if conf_selected != "すべて":
+                # 選択されたオプションから対応するconferenceを探す
+                for conf in conferences:
+                    if conf['name'] == conf_selected:
+                        selected_conf_id = conf['id']
+                        break
             else:
                 selected_conf_id = None
         else:
             selected_conf_id = None
+            st.info("会議体を選択してください")
     
     # 会議一覧取得
     meetings = repo.get_meetings(conference_id=selected_conf_id)
@@ -84,19 +93,21 @@ def show_meetings_list():
         df['開催日'] = df['date'].dt.strftime('%Y年%m月%d日')
         df['開催主体・会議体'] = df['governing_body_name'] + " - " + df['conference_name']
         
-        # URLをクリッカブルにする
-        df['URL'] = df['url'].apply(lambda x: f'<a href="{x}" target="_blank">{x}</a>' if x else '')
-        
         # 編集・削除ボタン用のカラム
         for idx, row in df.iterrows():
             col1, col2, col3 = st.columns([6, 1, 1])
             
             with col1:
+                # URLを表示
+                url_display = row['url'] if row['url'] else "URLなし"
                 st.markdown(
-                    f"**{row['開催日']}** - {row['開催主体・会議体']}<br>"
-                    f"URL: {row['URL']}",
+                    f"**{row['開催日']}** - {row['開催主体・会議体']}",
                     unsafe_allow_html=True
                 )
+                if row['url']:
+                    st.markdown(f"URL: [{url_display}]({row['url']})")
+                else:
+                    st.markdown(f"URL: {url_display}")
             
             with col2:
                 if st.button("編集", key=f"edit_{row['id']}"):
@@ -128,22 +139,37 @@ def add_new_meeting():
     with st.form("new_meeting_form"):
         # 開催主体選択
         governing_bodies = repo.get_governing_bodies()
+        if not governing_bodies:
+            st.error("開催主体が登録されていません。先にマスターデータを登録してください。")
+            repo.close()
+            return
+            
         gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
-        gb_index = st.selectbox("開催主体を選択", range(len(gb_options)), 
-                                format_func=lambda x: gb_options[x])
+        gb_selected = st.selectbox("開催主体を選択", gb_options)
         
-        selected_gb = governing_bodies[gb_index]
+        # 選択されたgoverning_bodyを取得
+        selected_gb = None
+        for gb in governing_bodies:
+            if f"{gb['name']} ({gb['type']})" == gb_selected:
+                selected_gb = gb
+                break
         
         # 会議体選択
-        conferences = repo.get_conferences_by_governing_body(selected_gb['id'])
-        if conferences:
-            conf_options = [conf['name'] for conf in conferences]
-            conf_index = st.selectbox("会議体を選択", range(len(conf_options)),
-                                     format_func=lambda x: conf_options[x])
-            selected_conf = conferences[conf_index]
-        else:
-            st.error("選択された開催主体に会議体が登録されていません")
-            selected_conf = None
+        if selected_gb:
+            conferences = repo.get_conferences_by_governing_body(selected_gb['id'])
+            if conferences:
+                conf_options = [conf['name'] for conf in conferences]
+                conf_selected = st.selectbox("会議体を選択", conf_options)
+                
+                # 選択されたconferenceを取得
+                selected_conf = None
+                for conf in conferences:
+                    if conf['name'] == conf_selected:
+                        selected_conf = conf
+                        break
+            else:
+                st.error("選択された開催主体に会議体が登録されていません")
+                selected_conf = None
         
         # 日付入力
         meeting_date = st.date_input("開催日", value=date.today())
