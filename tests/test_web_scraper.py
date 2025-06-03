@@ -5,7 +5,7 @@ from datetime import datetime
 import asyncio
 
 from src.web_scraper.base_scraper import MinutesData
-from src.web_scraper.kyoto_scraper import KyotoCouncilScraper
+from src.web_scraper.kaigiroku_net_scraper import KaigirokuNetScraper
 from src.web_scraper.scraper_service import ScraperService
 
 
@@ -54,12 +54,12 @@ class TestMinutesData:
         assert result["scraped_at"] == scraped_at.isoformat()
 
 
-class TestKyotoCouncilScraper:
-    """Test KyotoCouncilScraper class"""
+class TestKaigirokuNetScraper:
+    """Test KaigirokuNetScraper class"""
     
     def test_parse_japanese_date(self):
         """Test parsing Japanese date strings"""
-        scraper = KyotoCouncilScraper()
+        scraper = KaigirokuNetScraper()
         
         # 令和の日付
         date1 = scraper.parse_japanese_date("令和6年12月20日")
@@ -80,7 +80,7 @@ class TestKyotoCouncilScraper:
     @pytest.mark.asyncio
     async def test_extract_minutes_text(self):
         """Test extracting minutes text from HTML"""
-        scraper = KyotoCouncilScraper()
+        scraper = KaigirokuNetScraper()
         
         html = """
         <html>
@@ -100,7 +100,7 @@ class TestKyotoCouncilScraper:
     @pytest.mark.asyncio
     async def test_extract_speakers(self):
         """Test extracting speaker information from HTML"""
-        scraper = KyotoCouncilScraper()
+        scraper = KaigirokuNetScraper()
         
         html = """
         <html>

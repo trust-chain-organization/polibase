@@ -1,4 +1,4 @@
-"""京都市議会議事録スクレーパー"""
+"""kaigiroku.net議事録システムスクレーパー"""
 import asyncio
 import re
 from datetime import datetime
@@ -11,17 +11,21 @@ from bs4 import BeautifulSoup
 from .base_scraper import BaseScraper, MinutesData
 
 
-class KyotoCouncilScraper(BaseScraper):
-    """京都市議会議事録スクレーパー
+class KaigirokuNetScraper(BaseScraper):
+    """kaigiroku.net議事録システム汎用スクレーパー
     
-    URLパターン:
-    https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1
+    対応URL例:
+    - https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1
+    - https://ssp.kaigiroku.net/tenant/osaka/MinuteView.html?council_id=1234&schedule_id=1
+    - https://ssp.kaigiroku.net/tenant/kobe/MinuteView.html?council_id=5678&schedule_id=1
+    
+    kaigiroku.netは多くの地方議会で使用されている統一システムのため、
+    tenant名が異なっても同じ構造で議事録を取得可能です。
     """
     
     def __init__(self, headless: bool = True):
         super().__init__()
         self.headless = headless
-        self.base_url = "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html"
     
     async def fetch_minutes(self, url: str) -> Optional[MinutesData]:
         """指定されたURLから議事録を取得"""

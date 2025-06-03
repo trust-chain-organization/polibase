@@ -147,7 +147,7 @@ LLMを活用したfuzzy matchingにより、議事録の発言(`conversations.sp
 
 #### 議事録Web取得処理
 ```bash
-# 単一の議事録を取得
+# 単一の議事録を取得（kaigiroku.net対応）
 docker compose exec polibase uv run polibase scrape-minutes "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
 
 # 出力形式とディレクトリを指定
@@ -156,8 +156,9 @@ uv run polibase scrape-minutes "URL" --output-dir data/scraped --format txt
 # キャッシュを無視して再取得
 uv run polibase scrape-minutes "URL" --no-cache
 
-# 複数の議事録を一括取得
-uv run polibase batch-scrape --council kyoto --start-id 6000 --end-id 6100
+# 複数の議事録を一括取得（kaigiroku.net）
+uv run polibase batch-scrape --tenant kyoto --start-id 6000 --end-id 6100
+uv run polibase batch-scrape --tenant osaka --start-id 1000 --end-id 1100
 ```
 
 Webサイトから議事録を自動取得し、テキストまたはJSON形式で保存します。
@@ -168,9 +169,13 @@ Webサイトから議事録を自動取得し、テキストまたはJSON形式�
 - キャッシュ機能で再取得を効率化
 - バッチ処理で複数の議事録を一括取得
 
-**対応サイト:**
-- 京都市議会（ssp.kaigiroku.net/tenant/kyoto）
-- 今後、他の自治体にも対応予定
+**対応システム:**
+- **kaigiroku.net** - 多くの地方議会で使用される統一システム
+  - 京都市（tenant/kyoto）
+  - 大阪市（tenant/osaka）
+  - 神戸市（tenant/kobe）
+  - その他多数の自治体
+- 今後、独自システムを使用する自治体にも対応予定
 
 ### テストの実行
 ```bash
@@ -342,7 +347,7 @@ polibase/
 │   ├── politician_extract_processor/ # 政治家抽出処理
 │   ├── web_scraper/             # 議事録Web取得
 │   │   ├── base_scraper.py      # スクレーパー基底クラス
-│   │   ├── kyoto_scraper.py     # 京都市議会スクレーパー
+│   │   ├── kaigiroku_net_scraper.py # kaigiroku.net対応スクレーパー
 │   │   └── scraper_service.py   # スクレーパーサービス
 │   ├── database/                 # データベースリポジトリ
 │   │   ├── meeting_repository.py # 会議データリポジトリ

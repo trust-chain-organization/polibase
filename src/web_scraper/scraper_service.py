@@ -7,7 +7,7 @@ from datetime import datetime
 import logging
 
 from .base_scraper import MinutesData
-from .kyoto_scraper import KyotoCouncilScraper
+from .kaigiroku_net_scraper import KaigirokuNetScraper
 
 
 class ScraperService:
@@ -17,11 +17,6 @@ class ScraperService:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.logger = logging.getLogger(__name__)
-        
-        # スクレーパーのマッピング
-        self.scrapers = {
-            "kyoto": KyotoCouncilScraper,
-        }
     
     async def fetch_from_url(self, url: str, use_cache: bool = True) -> Optional[MinutesData]:
         """URLから議事録を取得"""
@@ -64,10 +59,12 @@ class ScraperService:
     
     def _get_scraper_for_url(self, url: str) -> Optional[object]:
         """URLに基づいて適切なスクレーパーを選択"""
-        if "ssp.kaigiroku.net/tenant/kyoto" in url:
-            return KyotoCouncilScraper()
+        # kaigiroku.netシステムの場合
+        if "kaigiroku.net/tenant/" in url:
+            return KaigirokuNetScraper()
         
-        # 他の自治体のスクレーパーをここに追加
+        # 今後、他の議事録システムのスクレーパーをここに追加
+        # 例: 独自システムを使う自治体など
         
         return None
     

@@ -209,28 +209,32 @@ def scrape_minutes(url, output_dir, format, no_cache):
     sys.exit(0 if success else 1)
 
 @cli.command()
-@click.option('--council', default='kyoto', help='Council name (e.g., kyoto)')
+@click.option('--tenant', required=True, help='Tenant name in kaigiroku.net (e.g., kyoto, osaka, kobe)')
 @click.option('--start-id', default=6000, help='Start council ID')
 @click.option('--end-id', default=6100, help='End council ID')
 @click.option('--max-schedule', default=10, help='Maximum schedule ID to try')
 @click.option('--output-dir', default='data/scraped/batch', help='Output directory')
 @click.option('--concurrent', default=3, help='Number of concurrent requests')
-def batch_scrape(council, start_id, end_id, max_schedule, output_dir, concurrent):
-    """Batch scrape multiple meeting minutes (議事録一括取得)
+def batch_scrape(tenant, start_id, end_id, max_schedule, output_dir, concurrent):
+    """Batch scrape multiple meeting minutes from kaigiroku.net (議事録一括取得)
     
-    This command tries to scrape multiple meeting minutes by iterating
-    through council and schedule IDs.
+    This command tries to scrape multiple meeting minutes from kaigiroku.net
+    by iterating through council and schedule IDs.
+    
+    Examples:
+        polibase batch-scrape --tenant kyoto --start-id 6000 --end-id 6010
+        polibase batch-scrape --tenant osaka --start-id 1000 --end-id 1100
     """
     import asyncio
     from src.web_scraper.scraper_service import ScraperService
     from pathlib import Path
     
-    click.echo(f"Batch scraping {council} council minutes")
+    click.echo(f"Batch scraping from kaigiroku.net tenant: {tenant}")
     click.echo(f"Council IDs: {start_id} to {end_id}")
     click.echo(f"Schedule IDs: 1 to {max_schedule}")
     
     # URL生成
-    base_url = f"https://ssp.kaigiroku.net/tenant/{council}/MinuteView.html"
+    base_url = f"https://ssp.kaigiroku.net/tenant/{tenant}/MinuteView.html"
     urls = []
     for council_id in range(start_id, end_id + 1):
         for schedule_id in range(1, max_schedule + 1):
