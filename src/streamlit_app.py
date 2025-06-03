@@ -78,7 +78,8 @@ def show_meetings_list():
                 selected_conf_id = None
         else:
             selected_conf_id = None
-            st.info("会議体を選択してください")
+            if gb_selected != "すべて":
+                st.info("会議体を選択してください")
     
     # 会議一覧取得
     meetings = repo.get_meetings(conference_id=selected_conf_id)
@@ -136,40 +137,81 @@ def add_new_meeting():
     
     repo = MeetingRepository()
     
+    # 会議体選択の方法を選ぶ
+    selection_method = st.radio(
+        "会議体の選択方法",
+        ["開催主体から選択", "すべての会議体から選択"],
+        horizontal=True
+    )
+    
     with st.form("new_meeting_form"):
-        # 開催主体選択
-        governing_bodies = repo.get_governing_bodies()
-        if not governing_bodies:
-            st.error("開催主体が登録されていません。先にマスターデータを登録してください。")
-            repo.close()
-            return
-            
-        gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
-        gb_selected = st.selectbox("開催主体を選択", gb_options)
+        selected_conf = None
         
-        # 選択されたgoverning_bodyを取得
-        selected_gb = None
-        for gb in governing_bodies:
-            if f"{gb['name']} ({gb['type']})" == gb_selected:
-                selected_gb = gb
-                break
-        
-        # 会議体選択
-        if selected_gb:
-            conferences = repo.get_conferences_by_governing_body(selected_gb['id'])
-            if conferences:
-                conf_options = [conf['name'] for conf in conferences]
-                conf_selected = st.selectbox("会議体を選択", conf_options)
+        if selection_method == "開催主体から選択":
+            # 従来の方法：開催主体 → 会議体
+            governing_bodies = repo.get_governing_bodies()
+            if not governing_bodies:
+                st.error("開催主体が登録されていません。先にマスターデータを登録してください。")
+                repo.close()
+                return
                 
-                # 選択されたconferenceを取得
-                selected_conf = None
-                for conf in conferences:
-                    if conf['name'] == conf_selected:
-                        selected_conf = conf
-                        break
-            else:
-                st.error("選択された開催主体に会議体が登録されていません")
-                selected_conf = None
+            gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
+            gb_selected = st.selectbox("開催主体を選択", gb_options)
+            
+            # 選択されたgoverning_bodyを取得
+            selected_gb = None
+            for gb in governing_bodies:
+                if f"{gb['name']} ({gb['type']})" == gb_selected:
+                    selected_gb = gb
+                    break
+            
+            # 会議体選択
+            if selected_gb:
+                conferences = repo.get_conferences_by_governing_body(selected_gb['id'])
+                if conferences:
+                    conf_options = []
+                    for conf in conferences:
+                        conf_display = f"{conf['name']}"
+                        if conf.get('type'):
+                            conf_display += f" ({conf['type']})"
+                        conf_options.append(conf_display)
+                    
+                    conf_selected = st.selectbox("会議体を選択", conf_options)
+                    
+                    # 選択されたconferenceを取得
+                    for i, conf in enumerate(conferences):
+                        if conf_options[i] == conf_selected:
+                            selected_conf = conf
+                            break
+                else:
+                    st.error("選択された開催主体に会議体が登録されていません")
+                    
+        else:
+            # 新しい方法：すべての会議体から直接選択
+            all_conferences = repo.get_all_conferences()
+            if not all_conferences:
+                st.error("会議体が登録されていません。先にマスターデータを登録してください。")
+                repo.close()
+                return
+            
+            # 会議体を開催主体でグループ化して表示
+            conf_options = []
+            conf_map = {}
+            
+            for conf in all_conferences:
+                display_name = f"{conf['governing_body_name']} - {conf['name']}"
+                if conf.get('type'):
+                    display_name += f" ({conf['type']})"
+                conf_options.append(display_name)
+                conf_map[display_name] = conf
+            
+            conf_selected = st.selectbox(
+                "会議体を選択（開催主体 - 会議体名）", 
+                conf_options,
+                help="形式: 開催主体名 - 会議体名 (種別)"
+            )
+            
+            selected_conf = conf_map[conf_selected]
         
         # 日付入力
         meeting_date = st.date_input("開催日", value=date.today())
@@ -197,6 +239,17 @@ def add_new_meeting():
                     st.rerun()
                 except Exception as e:
                     st.error(f"エラーが発生しました: {str(e)}")
+    
+    # 登録済み会議体の確認セクション
+    with st.expander("登録済み会議体一覧", expanded=False):
+        all_conferences = repo.get_all_conferences()
+        if all_conferences:
+            conf_df = pd.DataFrame(all_conferences)
+            conf_df = conf_df[['governing_body_name', 'governing_body_type', 'name', 'type']]
+            conf_df.columns = ['開催主体', '開催主体種別', '会議体名', '会議体種別']
+            st.dataframe(conf_df, use_container_width=True)
+        else:
+            st.info("会議体が登録されていません")
     
     repo.close()
 

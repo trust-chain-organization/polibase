@@ -45,6 +45,30 @@ class MeetingRepository:
         )
         return [{"id": row[0], "name": row[1], "type": row[2]} for row in result]
     
+    def get_all_conferences(self) -> List[Dict]:
+        """Get all conferences with their governing bodies"""
+        query = """
+        SELECT 
+            c.id,
+            c.name,
+            c.type,
+            c.governing_body_id,
+            gb.name as governing_body_name,
+            gb.type as governing_body_type
+        FROM conferences c
+        JOIN governing_bodies gb ON c.governing_body_id = gb.id
+        ORDER BY gb.type, gb.name, c.name
+        """
+        result = self.session.execute(text(query))
+        return [{
+            "id": row[0],
+            "name": row[1],
+            "type": row[2],
+            "governing_body_id": row[3],
+            "governing_body_name": row[4],
+            "governing_body_type": row[5]
+        } for row in result]
+    
     def get_meetings(self, conference_id: Optional[int] = None, limit: int = 100) -> List[Dict]:
         """Get meetings, optionally filtered by conference"""
         if conference_id:
