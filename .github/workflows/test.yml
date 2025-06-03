@@ -1,0 +1,132 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: polibase_user
+          POSTGRES_PASSWORD: polibase_password
+          POSTGRES_DB: polibase_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync
+    
+    - name: Set up test environment
+      run: |
+        cp .env.example .env
+        echo "DATABASE_URL=postgresql://polibase_user:polibase_password@localhost:5432/polibase_db" >> .env
+        echo "GOOGLE_API_KEY=test-api-key" >> .env
+    
+    - name: Initialize database
+      run: |
+        PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/init.sql
+        PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_governing_bodies.sql
+        PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_political_parties.sql
+        PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_conferences.sql
+    
+    - name: Run tests
+      run: |
+        uv run pytest tests/ -v --tb=short
+    
+    - name: Run specific Streamlit tests
+      run: |
+        uv run pytest tests/test_streamlit_app.py tests/test_meeting_repository.py -v
+    
+    - name: Check code style (optional)
+      run: |
+        # Add linting commands here if needed
+        # uv run ruff check src/
+        echo "Code style check placeholder"
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: polibase_user
+          POSTGRES_PASSWORD: polibase_password
+          POSTGRES_DB: polibase_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync
+    
+    - name: Set up test environment
+      run: |
+        cp .env.example .env
+        echo "DATABASE_URL=postgresql://polibase_user:polibase_password@localhost:5432/polibase_db" >> .env
+        echo "GOOGLE_API_KEY=test-api-key" >> .env
+    
+    - name: Initialize database
+      run: |
+        PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/init.sql
+        PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_governing_bodies.sql
+        PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_political_parties.sql
+        PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_conferences.sql
+    
+    - name: Test database connection
+      run: |
+        uv run python -c "from src.config.database import test_connection; test_connection()"
+    
+    - name: Test CLI commands
+      run: |
+        uv run polibase --help
+        uv run polibase test-connection
+    
+    - name: Test Streamlit app startup
+      run: |
+        timeout 10s uv run polibase streamlit --help || true

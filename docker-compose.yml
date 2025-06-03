@@ -10,6 +10,7 @@ services:
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
     ports:
       - "8000:8000"  # 必要に応じてポートを設定
+      - "8501:8501"  # Streamlit用ポート
     stdin_open: true  # 追加
     tty: true         # 追加
     depends_on:

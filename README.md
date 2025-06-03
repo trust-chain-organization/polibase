@@ -1,5 +1,7 @@
 # Polibase - 政治活動追跡アプリケーション
 
+[![Tests](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml/badge.svg)](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml)
+
 政治家の発言、議事録、公約などを体系的に管理・分析するためのアプリケーションです。
 
 ## 🗄️ テーブル構造
@@ -74,6 +76,9 @@ docker compose exec polibase uv run polibase update-speakers --use-llm
 
 # データベース接続をテスト
 docker compose exec polibase uv run polibase test-connection
+
+# 会議管理Web UIを起動
+docker compose exec polibase uv run polibase streamlit
 ```
 
 ### アプリケーションの実行（従来の方法）
@@ -101,6 +106,25 @@ docker compose exec polibase uv run python -m src.main2
 uv run python -m src.extract_politicians
 ```
 議事録から政治家（発言者）の情報を抽出してデータベースに保存します。
+
+#### 会議管理Web UI
+```bash
+# Docker環境で実行（コンテナ内で起動）
+docker compose exec polibase uv run polibase streamlit --host 0.0.0.0
+
+# Docker環境で実行（ポートフォワーディング付き）
+docker compose run -p 8501:8501 polibase uv run polibase streamlit --host 0.0.0.0
+
+# ローカル環境で実行
+uv run polibase streamlit
+
+# カスタムポートで起動
+uv run polibase streamlit --port 8080
+```
+Webブラウザで会議情報（URL、日付）を管理できるインターフェースを提供します：
+- 会議一覧の表示・フィルタリング
+- 新規会議の登録（開催主体、会議体、日付、URL）
+- 既存会議の編集・削除
 
 #### LLMベース発言者マッチング処理
 ```bash
@@ -131,6 +155,13 @@ uv run pytest
 
 # 特定のテストを実行
 uv run pytest tests/test_minutes_divider.py -v
+
+# Streamlit関連のテストを実行
+uv run pytest tests/test_streamlit_app.py tests/test_meeting_repository.py -v
+
+# カバレッジレポート付きでテスト実行（開発時）
+uv pip install pytest-cov
+uv run pytest --cov=src tests/
 ```
 
 ## 🗃️ データベースの確認方法
@@ -269,6 +300,7 @@ docker compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sq
 polibase/
 ├── src/                          # メインアプリケーションコード
 │   ├── cli.py                   # 統一CLIエントリーポイント
+│   ├── streamlit_app.py         # 会議管理Web UI
 │   ├── process_minutes.py       # 議事録分割処理
 │   ├── extract_politicians.py   # 政治家抽出処理
 │   ├── config/                   # 設定ファイル
@@ -282,6 +314,8 @@ polibase/
 │   │   └── minutes_divider.py   # 分割ロジック
 │   ├── politician_extract_processor/ # 政治家抽出処理
 │   ├── database/                 # データベースリポジトリ
+│   │   ├── meeting_repository.py # 会議データリポジトリ
+│   │   └── ...                  # その他リポジトリ
 │   └── utils/                   # ユーティリティ関数
 ├── database/                    # データベース関連
 │   ├── init.sql                # データベース初期化スクリプト

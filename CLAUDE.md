@@ -34,6 +34,9 @@ docker compose exec polibase uv run polibase extract-politicians
 
 # Update speaker links with LLM
 docker compose exec polibase uv run polibase update-speakers --use-llm
+
+# Launch meeting management web UI
+docker compose exec polibase uv run polibase streamlit
 ```
 
 #### Direct Module Execution (Legacy)
@@ -76,6 +79,7 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 1. **Minutes Divider** (`src/minutes_divide_processor/`): Processes PDF minutes using LangGraph state management and Gemini API to extract individual speeches
 2. **Politician Extractor** (`src/politician_extract_processor/`): Identifies politicians from extracted speeches using LangChain and Gemini
 3. **Speaker Matching** (`update_speaker_links_llm.py`): Uses hybrid rule-based + LLM matching to link conversations to speaker records
+4. **Meeting Management UI** (`src/streamlit_app.py`): Streamlit-based web interface for managing meeting URLs and dates
 
 ### Database Design
 - **Master Data** (pre-populated via seed files):
