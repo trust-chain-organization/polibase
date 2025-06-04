@@ -9,6 +9,9 @@ import logging
 from .base_scraper import MinutesData
 from .kaigiroku_net_scraper import KaigirokuNetScraper
 
+# ロギング設定
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
 
 class ScraperService:
     """議事録スクレーパーの統合サービス"""

@@ -6,3 +6,5 @@ output.csv
 
 # Database backups
 database/backups/*.sql
+data/scraped/**
+cache/**
