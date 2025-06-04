@@ -17,12 +17,18 @@ dependencies = [
     "sqlalchemy>=2.0.0,<3",
     "click>=8.0.0,<9",
     "streamlit>=1.29.0,<2",
+    "selenium>=4.0.0,<5",
+    "playwright>=1.40.0,<2",
+    "beautifulsoup4>=4.12.0,<5",
+    "aiohttp>=3.9.0,<4",
+    "requests>=2.31.0,<3",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
+    "pytest-asyncio>=0.21.0",
 ]
 
 [project.scripts]

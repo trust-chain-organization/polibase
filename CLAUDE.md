@@ -37,6 +37,13 @@ docker compose exec polibase uv run polibase update-speakers --use-llm
 
 # Launch meeting management web UI
 docker compose exec polibase uv run polibase streamlit
+
+# Scrape meeting minutes from web
+docker compose exec polibase uv run polibase scrape-minutes "URL"
+
+# Batch scrape multiple minutes from kaigiroku.net
+docker compose exec polibase uv run polibase batch-scrape --tenant kyoto
+docker compose exec polibase uv run polibase batch-scrape --tenant osaka
 ```
 
 #### Direct Module Execution (Legacy)
@@ -80,6 +87,9 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 2. **Politician Extractor** (`src/politician_extract_processor/`): Identifies politicians from extracted speeches using LangChain and Gemini
 3. **Speaker Matching** (`update_speaker_links_llm.py`): Uses hybrid rule-based + LLM matching to link conversations to speaker records
 4. **Meeting Management UI** (`src/streamlit_app.py`): Streamlit-based web interface for managing meeting URLs and dates
+5. **Web Scraper** (`src/web_scraper/`): Extracts meeting minutes from council websites
+   - Supports kaigiroku.net system used by many Japanese local councils
+   - Uses Playwright for JavaScript-heavy sites
 
 ### Database Design
 - **Master Data** (pre-populated via seed files):
@@ -95,8 +105,9 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 - **Database**: PostgreSQL 15 with SQLAlchemy ORM
 - **Package Management**: UV (modern Python package manager)
 - **PDF Processing**: pypdfium2
+- **Web Scraping**: Playwright, BeautifulSoup4
 - **State Management**: LangGraph for complex workflows
-- **Testing**: pytest
+- **Testing**: pytest with pytest-asyncio for async tests
 
 ### Development Patterns
 - Docker-first development (all commands run through `docker compose exec`)
