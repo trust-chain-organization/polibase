@@ -17,6 +17,10 @@ docker compose up -d
 
 # Install dependencies for local development
 uv sync
+
+# Google Cloud Storage setup (optional)
+gcloud auth application-default login  # Authenticate for GCS access
+# Edit .env to set GCS_BUCKET_NAME and GCS_UPLOAD_ENABLED=true
 ```
 
 ### Running the Application
@@ -41,9 +45,16 @@ docker compose exec polibase uv run polibase streamlit
 # Scrape meeting minutes from web
 docker compose exec polibase uv run polibase scrape-minutes "URL"
 
+# Scrape with Google Cloud Storage upload
+docker compose exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs
+docker compose exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
+
 # Batch scrape multiple minutes from kaigiroku.net
 docker compose exec polibase uv run polibase batch-scrape --tenant kyoto
 docker compose exec polibase uv run polibase batch-scrape --tenant osaka
+
+# Batch scrape with GCS upload
+docker compose exec polibase uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
 ```
 
 #### Direct Module Execution (Legacy)
@@ -108,6 +119,7 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 - **Web Scraping**: Playwright, BeautifulSoup4
 - **State Management**: LangGraph for complex workflows
 - **Testing**: pytest with pytest-asyncio for async tests
+- **Cloud Storage**: Google Cloud Storage for scraped data persistence
 
 ### Development Patterns
 - Docker-first development (all commands run through `docker compose exec`)
@@ -122,3 +134,5 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 - **Processing Order**: Always run process-minutes → extract-politicians → update-speakers in sequence
 - **File Naming**: Fixed typo in minutes_divider.py (was minutes_dividor.py)
 - **Unified CLI**: New `polibase` command provides single entry point for all operations
+- **GCS Authentication**: Run `gcloud auth application-default login` before using GCS features
+- **GCS Structure**: Files are organized by date: `scraped/YYYY/MM/DD/{council_id}_{schedule_id}.{ext}`
