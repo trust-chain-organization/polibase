@@ -201,7 +201,7 @@ class TestScraperService:
             temp_path = f.name
         
         try:
-            result = service.export_to_text(minutes, temp_path)
+            result, _ = service.export_to_text(minutes, temp_path)
             assert result is True
             
             # ファイルの内容を確認

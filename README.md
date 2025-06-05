@@ -14,6 +14,7 @@ https://dbdocs.io/polibase/Polibase
 - Docker & Docker Compose
 - Python 3.13
 - uv（Pythonパッケージマネージャー）
+- Google Cloud SDK（GCS機能を使用する場合）
 
 ### 1. リポジトリのクローン
 ```bash
@@ -33,6 +34,11 @@ cp .env.example .env
 **重要**: Google Gemini APIキーは以下で取得できます：
 - [Google AI Studio](https://aistudio.google.com/)でAPIキーを取得
 - `.env`ファイルの`GOOGLE_API_KEY`に設定
+
+**Google Cloud Storage（オプション）**: 
+- スクレイピングしたデータをGCSに保存する場合は、以下の設定も必要です：
+  - `gcloud auth application-default login`で認証
+  - `.env`ファイルで`GCS_BUCKET_NAME`と`GCS_UPLOAD_ENABLED=true`を設定
 
 ### 3. Docker環境の起動
 ```bash
@@ -156,9 +162,16 @@ uv run polibase scrape-minutes "URL" --output-dir data/scraped --format txt
 # キャッシュを無視して再取得
 uv run polibase scrape-minutes "URL" --no-cache
 
+# Google Cloud Storageにアップロード
+uv run polibase scrape-minutes "URL" --upload-to-gcs
+uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
+
 # 複数の議事録を一括取得（kaigiroku.net）
 uv run polibase batch-scrape --tenant kyoto --start-id 6000 --end-id 6100
 uv run polibase batch-scrape --tenant osaka --start-id 1000 --end-id 1100
+
+# バッチ取得でGCSにアップロード
+uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
 ```
 
 Webサイトから議事録を自動取得し、テキストまたはJSON形式で保存します。
@@ -353,6 +366,7 @@ polibase/
 │   │   ├── meeting_repository.py # 会議データリポジトリ
 │   │   └── ...                  # その他リポジトリ
 │   └── utils/                   # ユーティリティ関数
+│       └── gcs_storage.py       # Google Cloud Storageユーティリティ
 ├── database/                    # データベース関連
 │   ├── init.sql                # データベース初期化スクリプト
 │   └── backups/                # データベースバックアップファイル
@@ -444,6 +458,26 @@ source $HOME/.cargo/env
 ```bash
 # 依存関係を再インストール
 uv sync --reinstall
+```
+
+### Google Cloud Storage関連の問題
+
+#### 認証エラー
+```bash
+# GCP認証を再設定
+gcloud auth application-default login
+
+# プロジェクトIDを設定
+gcloud config set project YOUR_PROJECT_ID
+```
+
+#### バケットアクセスエラー
+```bash
+# バケットの存在確認
+gsutil ls gs://YOUR_BUCKET_NAME/
+
+# 権限の確認
+gsutil iam get gs://YOUR_BUCKET_NAME/
 ```
 
 ## 🗂️ データの流れ

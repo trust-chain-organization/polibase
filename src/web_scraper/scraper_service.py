@@ -2,12 +2,14 @@
 import asyncio
 import json
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 from datetime import datetime
 import logging
 
 from .base_scraper import MinutesData
 from .kaigiroku_net_scraper import KaigirokuNetScraper
+from ..utils.gcs_storage import GCSStorage
+from ..config import config
 
 # ロギング設定
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -16,10 +18,24 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 class ScraperService:
     """議事録スクレーパーの統合サービス"""
     
-    def __init__(self, cache_dir: str = "./cache/minutes"):
+    def __init__(self, cache_dir: str = "./cache/minutes", enable_gcs: bool = None):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.logger = logging.getLogger(__name__)
+        
+        # GCS設定
+        self.enable_gcs = enable_gcs if enable_gcs is not None else config.GCS_UPLOAD_ENABLED
+        self.gcs_storage = None
+        if self.enable_gcs:
+            try:
+                self.gcs_storage = GCSStorage(
+                    bucket_name=config.GCS_BUCKET_NAME,
+                    project_id=config.GCS_PROJECT_ID
+                )
+                self.logger.info(f"GCS storage enabled. Bucket: {config.GCS_BUCKET_NAME}")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize GCS storage: {e}")
+                self.enable_gcs = False
     
     async def fetch_from_url(self, url: str, use_cache: bool = True) -> Optional[MinutesData]:
         """URLから議事録を取得"""
@@ -113,24 +129,147 @@ class ScraperService:
         # reportlabやweasyprint等を使用
         pass
     
-    def export_to_text(self, minutes: MinutesData, output_path: str) -> bool:
-        """議事録をテキストファイルにエクスポート"""
-        try:
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(f"タイトル: {minutes.title}\n")
-                f.write(f"日付: {minutes.date.strftime('%Y年%m月%d日') if minutes.date else '不明'}\n")
-                f.write(f"URL: {minutes.url}\n")
-                f.write("\n" + "="*50 + "\n\n")
-                f.write(minutes.content)
-                
-                if minutes.speakers:
-                    f.write("\n\n" + "="*50 + "\n")
-                    f.write("発言者一覧:\n\n")
-                    for speaker in minutes.speakers:
-                        f.write(f"【{speaker['name']}】\n")
-                        f.write(f"{speaker['content']}\n\n")
+    def export_to_text(self, minutes: MinutesData, output_path: str, upload_to_gcs: bool = True) -> Tuple[bool, Optional[str]]:
+        """議事録をテキストファイルにエクスポート
+        
+        Args:
+            minutes: 議事録データ
+            output_path: 出力ファイルパス
+            upload_to_gcs: GCSにアップロードするかどうか
             
-            return True
+        Returns:
+            (成功フラグ, GCS URL or None)
+        """
+        gcs_url = None
+        try:
+            # テキスト内容を作成
+            content = self._format_minutes_as_text(minutes)
+            
+            # ローカルに保存
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            # GCSにアップロード
+            if upload_to_gcs and self.enable_gcs and self.gcs_storage:
+                try:
+                    gcs_path = self._generate_gcs_path(minutes, 'txt')
+                    gcs_url = self.gcs_storage.upload_content(
+                        content=content,
+                        gcs_path=gcs_path,
+                        content_type='text/plain; charset=utf-8'
+                    )
+                    self.logger.info(f"Uploaded to GCS: {gcs_url}")
+                except Exception as e:
+                    self.logger.error(f"Failed to upload to GCS: {e}")
+            
+            return True, gcs_url
         except Exception as e:
             self.logger.error(f"Failed to export to text: {e}")
-            return False
+            return False, None
+    
+    def _format_minutes_as_text(self, minutes: MinutesData) -> str:
+        """議事録をテキスト形式にフォーマット"""
+        lines = []
+        lines.append(f"タイトル: {minutes.title}")
+        lines.append(f"日付: {minutes.date.strftime('%Y年%m月%d日') if minutes.date else '不明'}")
+        lines.append(f"URL: {minutes.url}")
+        lines.append("\n" + "="*50 + "\n")
+        lines.append(minutes.content)
+        
+        if minutes.speakers:
+            lines.append("\n" + "="*50)
+            lines.append("発言者一覧:\n")
+            for speaker in minutes.speakers:
+                lines.append(f"【{speaker['name']}】")
+                lines.append(f"{speaker['content']}\n")
+        
+        return "\n".join(lines)
+    
+    def _generate_gcs_path(self, minutes: MinutesData, extension: str) -> str:
+        """GCSのパスを生成"""
+        # URLからcouncil_idとschedule_idを抽出
+        if "kaigiroku.net" in minutes.url:
+            parts = minutes.url.split('/')
+            if 'tenant' in parts:
+                tenant_idx = parts.index('tenant')
+                council_id = parts[tenant_idx + 1] if tenant_idx + 1 < len(parts) else 'unknown'
+            else:
+                council_id = 'unknown'
+            
+            # schedule_idを抽出
+            if 'schedule_id=' in minutes.url:
+                schedule_id = minutes.url.split('schedule_id=')[1].split('&')[0]
+            else:
+                schedule_id = 'unknown'
+        else:
+            council_id = 'unknown'
+            schedule_id = 'unknown'
+        
+        # 日付ベースのディレクトリ構造
+        date_str = minutes.date.strftime('%Y/%m/%d') if minutes.date else 'unknown_date'
+        
+        return f"scraped/{date_str}/{council_id}_{schedule_id}.{extension}"
+    
+    def export_to_json(self, minutes: MinutesData, output_path: str, upload_to_gcs: bool = True) -> Tuple[bool, Optional[str]]:
+        """議事録をJSONファイルにエクスポート
+        
+        Args:
+            minutes: 議事録データ
+            output_path: 出力ファイルパス
+            upload_to_gcs: GCSにアップロードするかどうか
+            
+        Returns:
+            (成功フラグ, GCS URL or None)
+        """
+        gcs_url = None
+        try:
+            # JSON内容を作成
+            content = json.dumps(minutes.to_dict(), ensure_ascii=False, indent=2)
+            
+            # ローカルに保存
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            
+            # GCSにアップロード
+            if upload_to_gcs and self.enable_gcs and self.gcs_storage:
+                try:
+                    gcs_path = self._generate_gcs_path(minutes, 'json')
+                    gcs_url = self.gcs_storage.upload_content(
+                        content=content,
+                        gcs_path=gcs_path,
+                        content_type='application/json'
+                    )
+                    self.logger.info(f"Uploaded to GCS: {gcs_url}")
+                except Exception as e:
+                    self.logger.error(f"Failed to upload to GCS: {e}")
+            
+            return True, gcs_url
+        except Exception as e:
+            self.logger.error(f"Failed to export to JSON: {e}")
+            return False, None
+    
+    def upload_pdf_to_gcs(self, pdf_path: str, minutes: MinutesData) -> Optional[str]:
+        """PDFファイルをGCSにアップロード
+        
+        Args:
+            pdf_path: PDFファイルのローカルパス
+            minutes: 議事録データ（メタデータ用）
+            
+        Returns:
+            GCS URL or None
+        """
+        if not self.enable_gcs or not self.gcs_storage:
+            return None
+            
+        try:
+            gcs_path = self._generate_gcs_path(minutes, 'pdf')
+            gcs_url = self.gcs_storage.upload_file(
+                local_path=pdf_path,
+                gcs_path=gcs_path,
+                content_type='application/pdf'
+            )
+            self.logger.info(f"Uploaded PDF to GCS: {gcs_url}")
+            return gcs_url
+        except Exception as e:
+            self.logger.error(f"Failed to upload PDF to GCS: {e}")
+            return None

@@ -142,7 +142,9 @@ def streamlit(port, host):
 @click.option('--output-dir', default='data/scraped', help='Output directory for scraped content')
 @click.option('--format', type=click.Choice(['txt', 'json', 'both']), default='both', help='Output format')
 @click.option('--no-cache', is_flag=True, help='Ignore cache and force re-scraping')
-def scrape_minutes(url, output_dir, format, no_cache):
+@click.option('--upload-to-gcs', is_flag=True, help='Upload scraped files to Google Cloud Storage')
+@click.option('--gcs-bucket', help='GCS bucket name (overrides environment variable)')
+def scrape_minutes(url, output_dir, format, no_cache, upload_to_gcs, gcs_bucket):
     """Scrape meeting minutes from council website (議事録Web取得)
     
     This command fetches meeting minutes from supported council websites
@@ -157,8 +159,13 @@ def scrape_minutes(url, output_dir, format, no_cache):
     
     click.echo(f"Scraping minutes from: {url}")
     
+    # GCS設定の上書き
+    if gcs_bucket:
+        import os
+        os.environ['GCS_BUCKET_NAME'] = gcs_bucket
+    
     # サービス初期化
-    service = ScraperService()
+    service = ScraperService(enable_gcs=upload_to_gcs)
     
     # スクレイピング実行
     async def scrape():
@@ -177,21 +184,32 @@ def scrape_minutes(url, output_dir, format, no_cache):
         # テキスト形式で保存
         if format in ['txt', 'both']:
             txt_path = output_path / f"{base_name}.txt"
-            if service.export_to_text(minutes, str(txt_path)):
+            success, gcs_url = service.export_to_text(minutes, str(txt_path), upload_to_gcs=upload_to_gcs)
+            if success:
                 click.echo(f"Saved text to: {txt_path}")
+                if gcs_url:
+                    click.echo(f"Uploaded to GCS: {gcs_url}")
             else:
                 click.echo("Failed to save text file", err=True)
         
         # JSON形式で保存
         if format in ['json', 'both']:
             json_path = output_path / f"{base_name}.json"
-            import json
-            try:
-                with open(json_path, 'w', encoding='utf-8') as f:
-                    json.dump(minutes.to_dict(), f, ensure_ascii=False, indent=2)
+            success, gcs_url = service.export_to_json(minutes, str(json_path), upload_to_gcs=upload_to_gcs)
+            if success:
                 click.echo(f"Saved JSON to: {json_path}")
-            except Exception as e:
-                click.echo(f"Failed to save JSON file: {e}", err=True)
+                if gcs_url:
+                    click.echo(f"Uploaded to GCS: {gcs_url}")
+            else:
+                click.echo("Failed to save JSON file", err=True)
+        
+        # PDFをGCSにアップロード（PDFがローカルに保存されている場合）
+        if upload_to_gcs and minutes.pdf_url:
+            pdf_path = output_path / f"{base_name}.pdf"
+            if pdf_path.exists():
+                gcs_url = service.upload_pdf_to_gcs(str(pdf_path), minutes)
+                if gcs_url:
+                    click.echo(f"Uploaded PDF to GCS: {gcs_url}")
         
         # 基本情報を表示
         click.echo("\n--- Minutes Summary ---")
@@ -215,7 +233,9 @@ def scrape_minutes(url, output_dir, format, no_cache):
 @click.option('--max-schedule', default=10, help='Maximum schedule ID to try')
 @click.option('--output-dir', default='data/scraped/batch', help='Output directory')
 @click.option('--concurrent', default=3, help='Number of concurrent requests')
-def batch_scrape(tenant, start_id, end_id, max_schedule, output_dir, concurrent):
+@click.option('--upload-to-gcs', is_flag=True, help='Upload scraped files to Google Cloud Storage')
+@click.option('--gcs-bucket', help='GCS bucket name (overrides environment variable)')
+def batch_scrape(tenant, start_id, end_id, max_schedule, output_dir, concurrent, upload_to_gcs, gcs_bucket):
     """Batch scrape multiple meeting minutes from kaigiroku.net (議事録一括取得)
     
     This command tries to scrape multiple meeting minutes from kaigiroku.net
@@ -246,8 +266,13 @@ def batch_scrape(tenant, start_id, end_id, max_schedule, output_dir, concurrent)
     if not click.confirm('Do you want to continue?'):
         return
     
+    # GCS設定の上書き
+    if gcs_bucket:
+        import os
+        os.environ['GCS_BUCKET_NAME'] = gcs_bucket
+    
     # サービス初期化
-    service = ScraperService()
+    service = ScraperService(enable_gcs=upload_to_gcs)
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
@@ -263,13 +288,16 @@ def batch_scrape(tenant, start_id, end_id, max_schedule, output_dir, concurrent)
                 txt_path = output_path / f"{base_name}.txt"
                 json_path = output_path / f"{base_name}.json"
                 
-                service.export_to_text(minutes, str(txt_path))
+                # テキスト形式で保存（GCS対応）
+                txt_success, txt_gcs_url = service.export_to_text(minutes, str(txt_path), upload_to_gcs=upload_to_gcs)
                 
-                import json
-                with open(json_path, 'w', encoding='utf-8') as f:
-                    json.dump(minutes.to_dict(), f, ensure_ascii=False, indent=2)
+                # JSON形式で保存（GCS対応）
+                json_success, json_gcs_url = service.export_to_json(minutes, str(json_path), upload_to_gcs=upload_to_gcs)
                 
-                success_count += 1
+                if txt_success and json_success:
+                    success_count += 1
+                    if txt_gcs_url or json_gcs_url:
+                        click.echo(f"Scraped and uploaded: {base_name}")
         
         click.echo(f"\nCompleted: {success_count}/{len(urls)} URLs successfully scraped")
         return success_count

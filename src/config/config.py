@@ -11,6 +11,11 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 TAVILY_API_KEY = os.getenv('TAVILY_API_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://polibase_user:polibase_password@localhost:5432/polibase_db')
 
+# GCS Configuration
+GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME', 'polibase-scraped-minutes')
+GCS_PROJECT_ID = os.getenv('GCS_PROJECT_ID')  # Optional, uses default if not set
+GCS_UPLOAD_ENABLED = os.getenv('GCS_UPLOAD_ENABLED', 'false').lower() == 'true'
+
 def set_env():
     # 環境変数として設定
     os.environ['LANGCHAIN_TRACING_V2'] = LANGCHAIN_TRACING_V2
