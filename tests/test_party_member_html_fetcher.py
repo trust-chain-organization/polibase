@@ -13,17 +13,21 @@ class TestPartyMemberPageFetcher:
     async def mock_playwright(self):
         """Playwrightのモック"""
         with patch('src.party_member_extractor.html_fetcher.async_playwright') as mock:
-            # Playwrightのモック設定
+            # async_playwright()の戻り値をモック
+            mock_async_playwright = MagicMock()
+            mock.return_value = mock_async_playwright
+            
+            # startメソッドを非同期にする
             mock_playwright_instance = AsyncMock()
-            mock.return_value.start.return_value = mock_playwright_instance
+            mock_async_playwright.start = AsyncMock(return_value=mock_playwright_instance)
             
             # ブラウザのモック
             mock_browser = AsyncMock()
-            mock_playwright_instance.chromium.launch.return_value = mock_browser
+            mock_playwright_instance.chromium.launch = AsyncMock(return_value=mock_browser)
             
             # コンテキストのモック
             mock_context = AsyncMock()
-            mock_browser.new_context.return_value = mock_context
+            mock_browser.new_context = AsyncMock(return_value=mock_context)
             
             yield {
                 'playwright': mock_playwright_instance,
@@ -233,14 +237,19 @@ class TestPartyMemberPageFetcher:
     async def test_context_manager(self):
         """コンテキストマネージャのテスト"""
         with patch('src.party_member_extractor.html_fetcher.async_playwright') as mock_playwright:
+            # async_playwright()の戻り値をモック
+            mock_async_playwright = MagicMock()
+            mock_playwright.return_value = mock_async_playwright
+            
+            # startメソッドを非同期にする
             mock_playwright_instance = AsyncMock()
-            mock_playwright.return_value.start.return_value = mock_playwright_instance
+            mock_async_playwright.start = AsyncMock(return_value=mock_playwright_instance)
             
             mock_browser = AsyncMock()
-            mock_playwright_instance.chromium.launch.return_value = mock_browser
+            mock_playwright_instance.chromium.launch = AsyncMock(return_value=mock_browser)
             
             mock_context = AsyncMock()
-            mock_browser.new_context.return_value = mock_context
+            mock_browser.new_context = AsyncMock(return_value=mock_context)
             
             # テスト実行
             async with PartyMemberPageFetcher() as fetcher:

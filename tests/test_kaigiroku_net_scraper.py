@@ -1,5 +1,6 @@
 """kaigiroku.netスクレーパーのテスト"""
 import asyncio
+import os
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
@@ -172,6 +173,10 @@ class TestKaigirokuNetScraper:
         assert "兵藤しんいち議員" in text
 
 
+@pytest.mark.skipif(
+    os.environ.get('CI') == 'true',
+    reason="Skip integration test in CI environment"
+)
 @pytest.mark.asyncio
 async def test_scraper_integration():
     """統合テスト: 実際のURLでスクレーパーをテスト（ネットワーク接続が必要）"""
