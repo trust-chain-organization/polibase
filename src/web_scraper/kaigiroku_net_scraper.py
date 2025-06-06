@@ -331,7 +331,7 @@ class KaigirokuNetScraper(BaseScraper):
                 
                 text = '\n'.join(cleaned_lines)
                 
-                if text and len(text) > 500:  # より多くのコンテンツを要求
+                if text and len(text) > 10:  # 最小限のコンテンツがあれば返す
                     self.logger.info(f"Found content with selector {selector}, length: {len(text)}")
                     return text
         
