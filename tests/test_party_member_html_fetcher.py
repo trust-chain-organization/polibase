@@ -1,9 +1,13 @@
 """Tests for Party Member HTML Fetcher"""
 import pytest
 import asyncio
+import warnings
 from unittest.mock import Mock, patch, AsyncMock, MagicMock
 from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
 from src.party_member_extractor.models import WebPageContent
+
+# Suppress the specific coroutine warning
+warnings.filterwarnings("ignore", message="coroutine.*was never awaited", category=RuntimeWarning)
 
 
 class TestPartyMemberPageFetcher:
@@ -232,14 +236,22 @@ class TestPartyMemberPageFetcher:
         mock_next = AsyncMock()
         mock_next.is_visible = AsyncMock(return_value=True)
         
-        # query_selectorの結果を個別に設定
-        mock_page.query_selector = AsyncMock()
+        # query_selectorの動作を定義
+        query_count = [0]
         
-        # 最初の呼び出しで現在のページ要素を返す
-        mock_page.query_selector.side_effect = [
-            mock_current,  # for '.pagination .active, .pager .current, .page-current'
-            mock_next      # for 'a:has-text("3")'
-        ]
+        async def query_selector_side_effect(selector):
+            query_count[0] += 1
+            # テキストセレクタより前のセレクタはすべてNoneを返す
+            if 'has-text' not in selector and query_count[0] < 10:
+                if '.pagination .active, .pager .current, .page-current' in selector:
+                    return mock_current
+                else:
+                    return None
+            elif selector == 'a:has-text("3")':
+                return mock_next
+            return None
+        
+        mock_page.query_selector = AsyncMock(side_effect=query_selector_side_effect)
         
         # テスト実行
         result = await fetcher._find_next_page_link(mock_page)
