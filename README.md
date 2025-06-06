@@ -85,6 +85,9 @@ docker compose exec polibase uv run polibase test-connection
 
 # 会議管理Web UIを起動
 docker compose exec polibase uv run polibase streamlit
+
+# 政党議員情報を取得（Web スクレイピング）
+docker compose exec polibase uv run polibase scrape-politicians --all-parties
 ```
 
 ### アプリケーションの実行（従来の方法）
@@ -127,10 +130,11 @@ uv run polibase streamlit
 # カスタムポートで起動
 uv run polibase streamlit --port 8080
 ```
-Webブラウザで会議情報（URL、日付）を管理できるインターフェースを提供します：
+Webブラウザで会議情報（URL、日付）と政党情報を管理できるインターフェースを提供します：
 - 会議一覧の表示・フィルタリング
 - 新規会議の登録（開催主体、会議体、日付、URL）
 - 既存会議の編集・削除
+- 政党管理（議員一覧ページURLの設定）
 
 #### LLMベース発言者マッチング処理
 ```bash
@@ -175,6 +179,33 @@ uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
 ```
 
 Webサイトから議事録を自動取得し、テキストまたはJSON形式で保存します。
+
+#### 政党議員情報取得処理（LLMベース）
+```bash
+# 全政党の議員情報を取得（議員一覧URLが設定されている政党）
+docker compose exec polibase uv run polibase scrape-politicians --all-parties
+
+# 特定の政党のみ取得（政党IDを指定）
+docker compose exec polibase uv run polibase scrape-politicians --party-id 5
+
+# ドライラン（データベースに保存せずに確認）
+docker compose exec polibase uv run polibase scrape-politicians --all-parties --dry-run
+
+# 最大ページ数を指定（ページネーション対応）
+docker compose exec polibase uv run polibase scrape-politicians --all-parties --max-pages 5
+```
+
+各政党のWebサイトから議員情報を自動取得し、データベースに保存します。
+
+**特徴:**
+- LLMを活用してHTMLから議員情報を構造化データとして抽出
+- サイト固有のセレクタに依存しない汎用的な実装
+- ページネーション対応（複数ページの自動取得）
+- 重複チェック機能（既存議員は更新、新規議員は追加）
+
+**事前準備:**
+1. Streamlit UIの「政党管理」タブで議員一覧ページURLを設定
+2. GOOGLE_API_KEYが設定されていることを確認
 
 **特徴:**
 - JavaScriptで動的に生成される議事録にも対応

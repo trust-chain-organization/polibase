@@ -29,10 +29,14 @@ class PartyMemberPageFetcher:
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.context:
-            await self.context.close()
-        if self.browser:
-            await self.browser.close()
+        try:
+            if self.context:
+                await self.context.close()
+            if self.browser:
+                await self.browser.close()
+        except Exception:
+            # 終了時のエラーは無視
+            pass
     
     async def fetch_all_pages(self, start_url: str, max_pages: int = 20) -> List[WebPageContent]:
         """
@@ -83,18 +87,23 @@ class PartyMemberPageFetcher:
                     break
                 
                 # 次のページへ移動
-                logger.info(f"Moving to next page: {next_link}")
-                await next_link.click()
-                await page.wait_for_load_state('networkidle', timeout=30000)
-                await asyncio.sleep(2)
+                try:
+                    logger.info(f"Attempting to click next page link")
+                    await next_link.click()
+                    await page.wait_for_load_state('networkidle', timeout=30000)
+                    await asyncio.sleep(2)
+                except Exception as e:
+                    logger.warning(f"Failed to navigate to next page: {e}")
+                    break
                 
                 current_page_num += 1
             
             return pages_content
             
         except Exception as e:
-            logger.error(f"Error fetching pages: {e}")
-            return pages_content
+            logger.warning(f"Error during page fetching: {e}")
+            # エラーが発生しても、取得済みのページは返す
+            return pages_content if pages_content else []
         finally:
             await page.close()
     
