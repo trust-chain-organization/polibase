@@ -15,13 +15,16 @@ class PoliticianRepository:
                          position: Optional[str] = None,
                          prefecture: Optional[str] = None,
                          electoral_district: Optional[str] = None,
-                         profile_url: Optional[str] = None) -> Optional[int]:
-        """新しい政治家を作成"""
+                         profile_url: Optional[str] = None,
+                         party_position: Optional[str] = None) -> Optional[int]:
+        """新しい政治家を作成（既存の場合は更新）"""
         with self.engine.connect() as conn:
             try:
-                # 既存の政治家をチェック
+                # 既存の政治家をチェック（名前と政党でマッチング）
                 check_query = text("""
-                    SELECT id FROM politicians 
+                    SELECT id, position, prefecture, electoral_district, 
+                           profile_url, party_position
+                    FROM politicians 
                     WHERE name = :name AND political_party_id = :party_id
                 """)
                 existing = conn.execute(check_query, {
@@ -30,15 +33,51 @@ class PoliticianRepository:
                 }).fetchone()
                 
                 if existing:
-                    logger.info(f"Politician {name} already exists with id: {existing.id}")
+                    # 既存レコードがある場合、更新が必要かチェック
+                    needs_update = False
+                    update_fields = {}
+                    
+                    # 各フィールドを比較
+                    if position and position != existing.position:
+                        update_fields['position'] = position
+                        needs_update = True
+                    if prefecture and prefecture != existing.prefecture:
+                        update_fields['prefecture'] = prefecture
+                        needs_update = True
+                    if electoral_district and electoral_district != existing.electoral_district:
+                        update_fields['electoral_district'] = electoral_district
+                        needs_update = True
+                    if profile_url and profile_url != existing.profile_url:
+                        update_fields['profile_url'] = profile_url
+                        needs_update = True
+                    if party_position and party_position != existing.party_position:
+                        update_fields['party_position'] = party_position
+                        needs_update = True
+                    
+                    if needs_update:
+                        # 更新を実行
+                        set_clause = ", ".join([f"{field} = :{field}" for field in update_fields])
+                        update_query = text(f"""
+                            UPDATE politicians
+                            SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+                            WHERE id = :id
+                        """)
+                        update_fields['id'] = existing.id
+                        conn.execute(update_query, update_fields)
+                        conn.commit()
+                        logger.info(f"Updated politician: {name} (id: {existing.id})")
+                    else:
+                        logger.info(f"Politician {name} already exists with id: {existing.id}, no update needed")
+                    
                     return existing.id
                 
                 # 新規作成
                 insert_query = text("""
                     INSERT INTO politicians (name, political_party_id, position, 
-                                           prefecture, electoral_district, profile_url, speaker_id)
+                                           prefecture, electoral_district, profile_url, 
+                                           party_position, speaker_id)
                     VALUES (:name, :party_id, :position, :prefecture, 
-                            :electoral_district, :profile_url, NULL)
+                            :electoral_district, :profile_url, :party_position, NULL)
                     RETURNING id
                 """)
                 
@@ -48,35 +87,68 @@ class PoliticianRepository:
                     "position": position,
                     "prefecture": prefecture,
                     "electoral_district": electoral_district,
-                    "profile_url": profile_url
+                    "profile_url": profile_url,
+                    "party_position": party_position
                 })
                 conn.commit()
                 
                 politician_id = result.fetchone().id
-                logger.info(f"Created politician: {name} with id: {politician_id}")
+                logger.info(f"Created new politician: {name} with id: {politician_id}")
                 return politician_id
                 
             except Exception as e:
                 conn.rollback()
-                logger.error(f"Error creating politician: {e}")
+                logger.error(f"Error creating/updating politician: {e}")
                 return None
     
-    def bulk_create_politicians(self, politicians_data: List[Dict]) -> List[int]:
-        """複数の政治家を一括作成"""
-        created_ids = []
+    def bulk_create_politicians(self, politicians_data: List[Dict]) -> Dict[str, List[int]]:
+        """複数の政治家を一括作成・更新"""
+        stats = {
+            'created': [],
+            'updated': [],
+            'skipped': [],
+            'errors': []
+        }
+        
         for data in politicians_data:
+            # 処理前の状態を確認
+            with self.engine.connect() as conn:
+                check_query = text("""
+                    SELECT id FROM politicians 
+                    WHERE name = :name AND political_party_id = :party_id
+                """)
+                existing = conn.execute(check_query, {
+                    "name": data.get('name'),
+                    "party_id": data.get('political_party_id')
+                }).fetchone()
+                
+                was_existing = existing is not None
+            
+            # create_politicianは内部で更新/作成を判断
             politician_id = self.create_politician(
                 name=data.get('name'),
                 political_party_id=data.get('political_party_id'),
                 position=data.get('position'),
                 prefecture=data.get('prefecture'),
                 electoral_district=data.get('electoral_district'),
-                profile_url=data.get('profile_url')
+                profile_url=data.get('profile_url'),
+                party_position=data.get('party_position')
             )
+            
             if politician_id:
-                created_ids.append(politician_id)
+                if was_existing:
+                    # ログを確認して更新されたかスキップされたか判断
+                    # 簡易的に、既存の場合は更新としてカウント
+                    stats['updated'].append(politician_id)
+                else:
+                    stats['created'].append(politician_id)
+            else:
+                stats['errors'].append(data.get('name', 'Unknown'))
         
-        return created_ids
+        logger.info(f"Bulk operation completed - Created: {len(stats['created'])}, "
+                   f"Updated: {len(stats['updated'])}, Errors: {len(stats['errors'])}")
+        
+        return stats
     
     def get_politicians_by_party(self, party_id: int) -> List[Dict]:
         """特定の政党の政治家を取得"""

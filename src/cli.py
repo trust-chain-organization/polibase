@@ -428,21 +428,30 @@ def scrape_politicians(party_id, all_parties, dry_run, max_pages):
                         member_dict['political_party_id'] = party.id
                         members_data.append(member_dict)
                     
-                    created_ids = repo.bulk_create_politicians(members_data)
+                    stats = repo.bulk_create_politicians(members_data)
                     repo.close()
                     
-                    click.echo(f"  Saved {len(created_ids)} politicians to database")
-                    total_scraped += len(created_ids)
+                    # 統計情報を表示
+                    click.echo(f"  Database operation results:")
+                    click.echo(f"    - Created: {len(stats['created'])} new politicians")
+                    click.echo(f"    - Updated: {len(stats['updated'])} existing politicians")
+                    click.echo(f"    - Errors: {len(stats['errors'])}")
+                    
+                    total_scraped += len(stats['created']) + len(stats['updated'])
         
         return total_scraped
     
     # 非同期実行
-    total = asyncio.run(scrape_all())
-    
-    if not dry_run:
-        click.echo(f"\nTotal politicians saved: {total}")
-    
-    engine.dispose()
+    try:
+        total = asyncio.run(scrape_all())
+        
+        if not dry_run:
+            click.echo(f"\nTotal politicians saved: {total}")
+    finally:
+        engine.dispose()
+        # 少し待機してから終了
+        import time
+        time.sleep(0.5)
 
 
 if __name__ == '__main__':
