@@ -113,8 +113,18 @@ class TestPartyMemberPageFetcher:
         """最大ページ数制限のテスト"""
         # ページのモック
         mock_page = AsyncMock()
-        mock_page.url = "https://example.com/members"
+        # URLを変化させる
+        page_count = 0
+        
+        def get_url():
+            nonlocal page_count
+            page_count += 1
+            return f"https://example.com/members?page={page_count}"
+        
+        # URLプロパティをモック
+        type(mock_page).url = property(lambda self: get_url())
         mock_page.content.return_value = "<html><body>Page</body></html>"
+        mock_page.wait_for_load_state = AsyncMock()
         fetcher.context.new_page.return_value = mock_page
         
         # 常に次ページがある
@@ -175,10 +185,14 @@ class TestPartyMemberPageFetcher:
         
         # 無効化されたリンク要素
         mock_element = AsyncMock()
-        mock_element.is_visible.return_value = True
-        mock_element.get_attribute.side_effect = lambda attr: 'true' if attr == 'aria-disabled' else None
+        mock_element.is_visible = AsyncMock(return_value=True)
         
-        mock_page.query_selector.return_value = mock_element
+        async def get_attribute_side_effect(attr):
+            return 'true' if attr == 'aria-disabled' else None
+        
+        mock_element.get_attribute = AsyncMock(side_effect=get_attribute_side_effect)
+        
+        mock_page.query_selector = AsyncMock(return_value=mock_element)
         
         # テスト実行
         result = await fetcher._find_next_page_link(mock_page)
@@ -194,20 +208,20 @@ class TestPartyMemberPageFetcher:
         
         # 現在のページ番号要素
         mock_current = AsyncMock()
-        mock_current.text_content.return_value = "2"
+        mock_current.text_content = AsyncMock(return_value="2")
         
         # 次のページ番号リンク
         mock_next = AsyncMock()
-        mock_next.is_visible.return_value = True
+        mock_next.is_visible = AsyncMock(return_value=True)
         
-        def query_selector_side_effect(selector):
+        async def query_selector_side_effect(selector):
             if selector in ['.pagination .active', '.pager .current', '.page-current']:
                 return mock_current
             elif selector == 'a:has-text("3")':
                 return mock_next
             return None
         
-        mock_page.query_selector.side_effect = query_selector_side_effect
+        mock_page.query_selector = AsyncMock(side_effect=query_selector_side_effect)
         
         # テスト実行
         result = await fetcher._find_next_page_link(mock_page)

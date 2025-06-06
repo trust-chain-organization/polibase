@@ -104,10 +104,15 @@ class TestPartyMemberIntegration:
             mock_engine = Mock()
             mock_conn = Mock()
             mock_get_engine.return_value = mock_engine
+            mock_engine.dispose = Mock()
             mock_context = Mock()
             mock_context.__enter__ = Mock(return_value=mock_conn)
             mock_context.__exit__ = Mock(return_value=None)
             mock_engine.connect.return_value = mock_context
+            
+            # commitとrollbackメソッドを追加
+            mock_conn.commit = Mock()
+            mock_conn.rollback = Mock()
             
             # 既存チェックは全てなし
             mock_conn.execute.return_value.fetchone.return_value = None
@@ -160,10 +165,15 @@ class TestPartyMemberIntegration:
             mock_engine = Mock()
             mock_conn = Mock()
             mock_get_engine.return_value = mock_engine
+            mock_engine.dispose = Mock()
             mock_context = Mock()
             mock_context.__enter__ = Mock(return_value=mock_conn)
             mock_context.__exit__ = Mock(return_value=None)
             mock_engine.connect.return_value = mock_context
+            
+            # commitとrollbackメソッドを追加
+            mock_conn.commit = Mock()
+            mock_conn.rollback = Mock()
             
             # 初回: 新規作成
             mock_conn.execute.side_effect = [
