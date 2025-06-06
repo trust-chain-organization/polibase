@@ -315,5 +315,135 @@ def batch_scrape(tenant, start_id, end_id, max_schedule, output_dir, concurrent,
     success_count = asyncio.run(batch_process())
     click.echo(f"Saved {success_count} meeting minutes to {output_path}")
 
+@cli.command()
+@click.option('--party-id', type=int, help='Specific party ID to scrape')
+@click.option('--all-parties', is_flag=True, help='Scrape all parties with member list URLs')
+@click.option('--dry-run', is_flag=True, help='Show what would be scraped without saving')
+@click.option('--max-pages', default=10, help='Maximum pages to fetch per party')
+def scrape_politicians(party_id, all_parties, dry_run, max_pages):
+    """Scrape politician data from party member list pages (政党議員一覧取得)
+    
+    This command fetches politician information from political party websites
+    using LLM to extract structured data and saves them to the database.
+    
+    Examples:
+        polibase scrape-politicians --party-id 1
+        polibase scrape-politicians --all-parties
+        polibase scrape-politicians --all-parties --dry-run
+    """
+    import asyncio
+    from sqlalchemy import text
+    from src.config.database import get_db_engine
+    from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
+    from src.party_member_extractor.extractor import PartyMemberExtractor
+    from src.database.politician_repository import PoliticianRepository
+    
+    engine = get_db_engine()
+    
+    # 対象の政党を取得
+    with engine.connect() as conn:
+        if party_id:
+            query = text("""
+                SELECT id, name, members_list_url 
+                FROM political_parties 
+                WHERE id = :party_id AND members_list_url IS NOT NULL
+            """)
+            result = conn.execute(query, {"party_id": party_id})
+        else:
+            query = text("""
+                SELECT id, name, members_list_url 
+                FROM political_parties 
+                WHERE members_list_url IS NOT NULL
+                ORDER BY name
+            """)
+            result = conn.execute(query)
+        
+        parties = result.fetchall()
+    
+    if not parties:
+        click.echo("No parties found with member list URLs", err=True)
+        return
+    
+    click.echo(f"Found {len(parties)} parties to scrape:")
+    for party in parties:
+        click.echo(f"  - {party.name}: {party.members_list_url}")
+    
+    if not click.confirm('\nDo you want to continue?'):
+        return
+    
+    # スクレイピング実行
+    async def scrape_all():
+        total_scraped = 0
+        
+        # HTMLフェッチャーとエクストラクターを初期化
+        extractor = PartyMemberExtractor()
+        
+        async with PartyMemberPageFetcher() as fetcher:
+            for party in parties:
+                click.echo(f"\nProcessing {party.name}...")
+                click.echo(f"  URL: {party.members_list_url}")
+                
+                # HTMLページを取得（ページネーション対応）
+                click.echo(f"  Fetching pages (max: {max_pages})...")
+                pages = await fetcher.fetch_all_pages(party.members_list_url, max_pages=max_pages)
+                
+                if not pages:
+                    click.echo(f"  Failed to fetch pages for {party.name}")
+                    continue
+                
+                click.echo(f"  Fetched {len(pages)} pages")
+                
+                # LLMで議員情報を抽出
+                click.echo("  Extracting member information using LLM...")
+                result = extractor.extract_from_pages(pages, party.name)
+                
+                if not result or not result.members:
+                    click.echo(f"  No members found for {party.name}")
+                    continue
+                
+                click.echo(f"  Extracted {len(result.members)} members")
+                
+                if dry_run:
+                    # ドライランモード：データを表示するだけ
+                    for member in result.members[:5]:  # 最初の5件を表示
+                        click.echo(f"    - {member.name}")
+                        if member.position:
+                            click.echo(f"      Position: {member.position}")
+                        if member.electoral_district:
+                            click.echo(f"      District: {member.electoral_district}")
+                        if member.prefecture:
+                            click.echo(f"      Prefecture: {member.prefecture}")
+                        if member.party_position:
+                            click.echo(f"      Party Role: {member.party_position}")
+                    if len(result.members) > 5:
+                        click.echo(f"    ... and {len(result.members) - 5} more")
+                else:
+                    # データベースに保存
+                    repo = PoliticianRepository()
+                    
+                    # Pydanticモデルを辞書に変換してpolitical_party_idを追加
+                    members_data = []
+                    for member in result.members:
+                        member_dict = member.model_dump()
+                        member_dict['political_party_id'] = party.id
+                        members_data.append(member_dict)
+                    
+                    created_ids = repo.bulk_create_politicians(members_data)
+                    repo.close()
+                    
+                    click.echo(f"  Saved {len(created_ids)} politicians to database")
+                    total_scraped += len(created_ids)
+        
+        return total_scraped
+    
+    # 非同期実行
+    total = asyncio.run(scrape_all())
+    
+    if not dry_run:
+        click.echo(f"\nTotal politicians saved: {total}")
+    
+    engine.dispose()
+
+
 if __name__ == '__main__':
     cli()
