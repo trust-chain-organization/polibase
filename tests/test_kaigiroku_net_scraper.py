@@ -42,10 +42,12 @@ class TestKaigirokuNetScraper:
             </html>
         """)
         mock_page.query_selector = AsyncMock()
-        mock_page.evaluate = AsyncMock(return_value="")
+        mock_page.evaluate = AsyncMock(return_value="令和７年１月まちづくり委員会（第１９回）")
+        mock_page.query_selector_all = AsyncMock(return_value=[])
         
         # モックブラウザーを作成
         mock_browser = AsyncMock()
+        mock_browser.close = AsyncMock()  # closeメソッドを追加
         mock_browser.new_context = AsyncMock()
         mock_context = AsyncMock()
         mock_context.new_page = AsyncMock(return_value=mock_page)
@@ -57,8 +59,15 @@ class TestKaigirokuNetScraper:
             mock_p.chromium.launch = AsyncMock(return_value=mock_browser)
             mock_playwright.return_value.__aenter__.return_value = mock_p
             
-            # テスト実行
-            result = await scraper.fetch_minutes(test_url)
+            # 必要なメソッドをモック
+            with patch.object(scraper, '_extract_iframe_content', AsyncMock(return_value=None)):
+                with patch.object(scraper, '_wait_for_content', AsyncMock()):
+                    with patch.object(scraper, '_extract_title', AsyncMock(return_value="まちづくり委員会")):
+                        with patch.object(scraper, '_extract_date', AsyncMock(return_value="2025-01-23")):
+                            with patch.object(scraper, '_extract_pdf_url', AsyncMock(return_value=None)):
+                                with patch.object(scraper, '_find_text_view_url', AsyncMock(return_value=None)):
+                                    # テスト実行
+                                    result = await scraper.fetch_minutes(test_url)
             
             # 結果を検証
             assert result is not None
