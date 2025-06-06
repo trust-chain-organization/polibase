@@ -3,6 +3,8 @@ import streamlit as st
 from datetime import date, datetime
 from src.database.meeting_repository import MeetingRepository
 import pandas as pd
+from sqlalchemy import text
+from src.config.database import get_db_engine
 
 # ページ設定
 st.set_page_config(
@@ -27,7 +29,7 @@ def main():
     st.markdown("議事録の会議情報（URL、日付）を管理します")
     
     # タブ作成
-    tab1, tab2, tab3 = st.tabs(["会議一覧", "新規会議登録", "会議編集"])
+    tab1, tab2, tab3, tab4 = st.tabs(["会議一覧", "新規会議登録", "会議編集", "政党管理"])
     
     with tab1:
         show_meetings_list()
@@ -37,6 +39,9 @@ def main():
     
     with tab3:
         edit_meeting()
+    
+    with tab4:
+        manage_political_parties()
 
 
 def show_meetings_list():
@@ -318,6 +323,75 @@ def edit_meeting():
             st.rerun()
     
     repo.close()
+
+
+def manage_political_parties():
+    """政党管理（議員一覧ページURL）"""
+    st.header("政党管理")
+    st.markdown("各政党の議員一覧ページURLを管理します")
+    
+    engine = get_db_engine()
+    conn = engine.connect()
+    
+    try:
+        # 政党一覧を取得
+        query = text("""
+            SELECT id, name, members_list_url
+            FROM political_parties
+            ORDER BY name
+        """)
+        result = conn.execute(query)
+        parties = result.fetchall()
+        
+        if not parties:
+            st.info("政党が登録されていません")
+            return
+        
+        # 政党ごとにURL編集フォームを表示
+        for party in parties:
+            with st.expander(f"{party.name}"):
+                with st.form(f"party_form_{party.id}"):
+                    current_url = party.members_list_url or ""
+                    new_url = st.text_input(
+                        "議員一覧ページURL",
+                        value=current_url,
+                        placeholder="https://example.com/members",
+                        help="この政党の議員一覧が掲載されているWebページのURL"
+                    )
+                    
+                    submitted = st.form_submit_button("更新")
+                    
+                    if submitted:
+                        update_query = text("""
+                            UPDATE political_parties
+                            SET members_list_url = :url
+                            WHERE id = :party_id
+                        """)
+                        conn.execute(update_query, {"url": new_url if new_url else None, "party_id": party.id})
+                        conn.commit()
+                        st.success(f"{party.name}のURLを更新しました")
+                        st.rerun()
+                
+                # 現在のURL表示
+                if party.members_list_url:
+                    st.markdown(f"現在のURL: [{party.members_list_url}]({party.members_list_url})")
+                else:
+                    st.markdown("現在のURL: 未設定")
+        
+        # 一括確認セクション
+        with st.expander("登録済みURL一覧", expanded=False):
+            df_data = []
+            for party in parties:
+                df_data.append({
+                    "政党名": party.name,
+                    "議員一覧URL": party.members_list_url or "未設定"
+                })
+            
+            df = pd.DataFrame(df_data)
+            st.dataframe(df, use_container_width=True)
+    
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
