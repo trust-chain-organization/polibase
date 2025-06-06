@@ -117,17 +117,23 @@ class TestPartyMemberIntegration:
             # 既存チェックは全てなし
             mock_conn.execute.return_value.fetchone.return_value = None
             
-            # INSERTの結果
-            mock_conn.execute.side_effect = [
-                # 1人目のチェック
-                Mock(fetchone=Mock(return_value=None)),
-                # 1人目のINSERT
-                Mock(fetchone=Mock(return_value=Mock(id=1))),
-                # 2人目のチェック
-                Mock(fetchone=Mock(return_value=None)),
-                # 2人目のINSERT
-                Mock(fetchone=Mock(return_value=Mock(id=2)))
-            ]
+            # executorメソッドのモック設定を改善
+            def execute_side_effect(query, params=None):
+                # SELECTクエリの場合（既存チェック）
+                if "SELECT" in str(query):
+                    return Mock(fetchone=Mock(return_value=None))
+                # INSERTクエリの場合
+                elif "INSERT" in str(query):
+                    # 呼び出し回数に応じてIDを返す
+                    if not hasattr(execute_side_effect, 'insert_count'):
+                        execute_side_effect.insert_count = 0
+                    execute_side_effect.insert_count += 1
+                    return Mock(fetchone=Mock(return_value=Mock(id=execute_side_effect.insert_count)))
+                # UPDATEクエリの場合
+                else:
+                    return Mock()
+            
+            mock_conn.execute = Mock(side_effect=execute_side_effect)
             
             # リポジトリ実行
             repo = PoliticianRepository()
@@ -175,11 +181,21 @@ class TestPartyMemberIntegration:
             mock_conn.commit = Mock()
             mock_conn.rollback = Mock()
             
-            # 初回: 新規作成
-            mock_conn.execute.side_effect = [
-                Mock(fetchone=Mock(return_value=None)),  # 既存なし
-                Mock(fetchone=Mock(return_value=Mock(id=1)))  # INSERT成功
-            ]
+            # 初回用のexecuteモック
+            call_count = [0]
+            
+            def execute_side_effect_initial(query, params=None):
+                call_count[0] += 1
+                # SELECTクエリの場合（既存チェック）
+                if "SELECT" in str(query):
+                    return Mock(fetchone=Mock(return_value=None))  # 既存なし
+                # INSERTクエリの場合
+                elif "INSERT" in str(query):
+                    return Mock(fetchone=Mock(return_value=Mock(id=1)))
+                else:
+                    return Mock()
+            
+            mock_conn.execute = Mock(side_effect=execute_side_effect_initial)
             
             repo = PoliticianRepository()
             first_stats = repo.bulk_create_politicians(initial_data)
@@ -194,10 +210,17 @@ class TestPartyMemberIntegration:
                 party_position=None
             )
             
-            mock_conn.execute.side_effect = [
-                Mock(fetchone=Mock(return_value=existing_record)),  # 既存あり
-                Mock()  # UPDATE実行
-            ]
+            def execute_side_effect_update(query, params=None):
+                # SELECTクエリの場合（既存チェック）
+                if "SELECT" in str(query):
+                    return Mock(fetchone=Mock(return_value=existing_record))  # 既存あり
+                # UPDATEクエリの場合
+                elif "UPDATE" in str(query):
+                    return Mock()
+                else:
+                    return Mock()
+            
+            mock_conn.execute = Mock(side_effect=execute_side_effect_update)
             
             second_stats = repo.bulk_create_politicians(update_data)
             

@@ -114,12 +114,12 @@ class TestPartyMemberPageFetcher:
         # ページのモック
         mock_page = AsyncMock()
         # URLを変化させる
-        page_count = 0
+        urls = ["https://example.com/members", "https://example.com/members?page=2", "https://example.com/members?page=3"]
+        url_index = 0
         
         def get_url():
-            nonlocal page_count
-            page_count += 1
-            return f"https://example.com/members?page={page_count}"
+            nonlocal url_index
+            return urls[min(url_index, len(urls) - 1)]
         
         # URLプロパティをモック
         type(mock_page).url = property(lambda self: get_url())
@@ -129,12 +129,30 @@ class TestPartyMemberPageFetcher:
         
         # 常に次ページがある
         mock_next_link = AsyncMock()
-        with patch.object(fetcher, '_find_next_page_link', return_value=mock_next_link):
+        
+        async def click_effect():
+            nonlocal url_index
+            url_index += 1
+        
+        mock_next_link.click.side_effect = click_effect
+        
+        # 最初は次ページリンクあり、2回目はなし
+        find_next_calls = [0]
+        
+        async def find_next_side_effect(page):
+            find_next_calls[0] += 1
+            if find_next_calls[0] == 1:
+                return mock_next_link  # 最初の呼び出しではリンクを返す
+            else:
+                return None  # 2回目以降はNoneを返す
+        
+        with patch.object(fetcher, '_find_next_page_link', side_effect=find_next_side_effect):
             # テスト実行（最大2ページ）
             result = await fetcher.fetch_all_pages("https://example.com/members", max_pages=2)
         
         # アサーション
         assert len(result) == 2  # 最大ページ数で制限
+        # max_pages=2の場合、ページ1を取得してクリック、ページ2を取得して終了なので1回のクリック
         assert mock_next_link.click.call_count == 1
     
     @pytest.mark.asyncio
@@ -214,14 +232,14 @@ class TestPartyMemberPageFetcher:
         mock_next = AsyncMock()
         mock_next.is_visible = AsyncMock(return_value=True)
         
-        async def query_selector_side_effect(selector):
-            if selector in ['.pagination .active', '.pager .current', '.page-current']:
-                return mock_current
-            elif selector == 'a:has-text("3")':
-                return mock_next
-            return None
+        # query_selectorの結果を個別に設定
+        mock_page.query_selector = AsyncMock()
         
-        mock_page.query_selector = AsyncMock(side_effect=query_selector_side_effect)
+        # 最初の呼び出しで現在のページ要素を返す
+        mock_page.query_selector.side_effect = [
+            mock_current,  # for '.pagination .active, .pager .current, .page-current'
+            mock_next      # for 'a:has-text("3")'
+        ]
         
         # テスト実行
         result = await fetcher._find_next_page_link(mock_page)
