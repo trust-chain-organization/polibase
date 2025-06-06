@@ -237,16 +237,16 @@ class TestPartyMemberPageFetcher:
         mock_next.is_visible = AsyncMock(return_value=True)
         
         # query_selectorの動作を定義
-        query_count = [0]
-        
         async def query_selector_side_effect(selector):
-            query_count[0] += 1
-            # テキストセレクタより前のセレクタはすべてNoneを返す
-            if 'has-text' not in selector and query_count[0] < 10:
-                if '.pagination .active, .pager .current, .page-current' in selector:
-                    return mock_current
-                else:
-                    return None
+            # パターンベースのセレクタは全てNoneを返す
+            if selector in ['a:has-text("次へ")', 'a:has-text("次")', 'a:has-text("Next")', 
+                           'a:has-text(">")', 'a:has-text("»")', 'a[rel="next"]',
+                           '.pagination a.next', '.pager a.next', 'a.page-next', 'li.next a']:
+                return None
+            # 現在のページ番号を探すセレクタ
+            elif '.pagination .active, .pager .current, .page-current' in selector:
+                return mock_current
+            # 次のページ番号のリンクを探すセレクタ
             elif selector == 'a:has-text("3")':
                 return mock_next
             return None
