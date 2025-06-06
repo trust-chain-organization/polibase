@@ -55,6 +55,11 @@ docker compose exec polibase uv run polibase batch-scrape --tenant osaka
 
 # Batch scrape with GCS upload
 docker compose exec polibase uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
+
+# Scrape politician information from party websites
+docker compose exec polibase uv run polibase scrape-politicians --all-parties
+docker compose exec polibase uv run polibase scrape-politicians --party-id 5
+docker compose exec polibase uv run polibase scrape-politicians --all-parties --dry-run
 ```
 
 #### Direct Module Execution (Legacy)
@@ -97,19 +102,25 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 1. **Minutes Divider** (`src/minutes_divide_processor/`): Processes PDF minutes using LangGraph state management and Gemini API to extract individual speeches
 2. **Politician Extractor** (`src/politician_extract_processor/`): Identifies politicians from extracted speeches using LangChain and Gemini
 3. **Speaker Matching** (`update_speaker_links_llm.py`): Uses hybrid rule-based + LLM matching to link conversations to speaker records
-4. **Meeting Management UI** (`src/streamlit_app.py`): Streamlit-based web interface for managing meeting URLs and dates
+4. **Meeting Management UI** (`src/streamlit_app.py`): Streamlit-based web interface for managing meeting URLs, dates, and political party information
 5. **Web Scraper** (`src/web_scraper/`): Extracts meeting minutes from council websites
    - Supports kaigiroku.net system used by many Japanese local councils
    - Uses Playwright for JavaScript-heavy sites
+6. **Party Member Extractor** (`src/party_member_extractor/`): LLM-based extraction of politician information from party member list pages
+   - Uses Gemini API to extract structured data from HTML
+   - Supports pagination for multi-page member lists
+   - Implements duplicate checking to prevent creating duplicate records
 
 ### Database Design
 - **Master Data** (pre-populated via seed files):
   - `governing_bodies`: Government entities (国, 都道府県, 市町村)
   - `conferences`: Legislative bodies and committees  
-  - `political_parties`: Political parties
+  - `political_parties`: Political parties (includes `members_list_url` for web scraping)
 - **Core Tables**:
   - `meetings`, `minutes`, `speakers`, `politicians`, `conversations`, `proposals`
+  - `politicians` table includes party affiliation and profile information
 - Repository pattern used for database operations (`src/database/`)
+- Migrations in `database/migrations/` for schema updates
 
 ### Technology Stack
 - **LLM**: Google Gemini API (gemini-2.0-flash, gemini-1.5-flash) via LangChain
@@ -123,9 +134,11 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 
 ### Development Patterns
 - Docker-first development (all commands run through `docker compose exec`)
-- Two-phase processing: Extract conversations → Extract politicians → Match speakers
+- Multi-phase processing: Extract conversations → Extract politicians → Match speakers → Scrape party members
 - Environment variables for configuration (DATABASE_URL differs between Docker/local)
 - Modular architecture with shared utilities in `src/common/`
+- Async/await pattern for web scraping operations
+- Upsert pattern for politician data to prevent duplicates
 
 ## Important Notes
 - **API Key Required**: GOOGLE_API_KEY must be set in .env for Gemini API access
@@ -136,3 +149,6 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 - **Unified CLI**: New `polibase` command provides single entry point for all operations
 - **GCS Authentication**: Run `gcloud auth application-default login` before using GCS features
 - **GCS Structure**: Files are organized by date: `scraped/YYYY/MM/DD/{council_id}_{schedule_id}.{ext}`
+- **Party Member Scraping**: Before scraping, set `members_list_url` for parties via Streamlit UI's "政党管理" tab
+- **Playwright Dependencies**: Docker image includes Chromium and dependencies for web scraping
+- **Duplicate Prevention**: Politician scraper checks existing records by name + party to avoid duplicates
