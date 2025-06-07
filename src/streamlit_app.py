@@ -2,6 +2,7 @@
 import streamlit as st
 from datetime import date, datetime
 from src.database.meeting_repository import MeetingRepository
+from src.database.conference_repository import ConferenceRepository
 import pandas as pd
 from sqlalchemy import text
 from src.config.database import get_db_engine
@@ -29,7 +30,7 @@ def main():
     st.markdown("議事録の会議情報（URL、日付）を管理します")
     
     # タブ作成
-    tab1, tab2, tab3, tab4 = st.tabs(["会議一覧", "新規会議登録", "会議編集", "政党管理"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["会議一覧", "新規会議登録", "会議編集", "政党管理", "会議体管理"])
     
     with tab1:
         show_meetings_list()
@@ -42,6 +43,9 @@ def main():
     
     with tab4:
         manage_political_parties()
+    
+    with tab5:
+        manage_conferences()
 
 
 def show_meetings_list():
@@ -392,6 +396,144 @@ def manage_political_parties():
     
     finally:
         conn.close()
+
+
+def manage_conferences():
+    """会議体管理（登録・編集・削除）"""
+    st.header("会議体管理")
+    st.markdown("会議体（議会・委員会など）を管理します")
+    
+    conf_repo = ConferenceRepository()
+    
+    # サブタブを作成
+    conf_tab1, conf_tab2, conf_tab3 = st.tabs(["会議体一覧", "新規登録", "編集・削除"])
+    
+    with conf_tab1:
+        # 会議体一覧
+        st.subheader("登録済み会議体一覧")
+        
+        conferences = conf_repo.get_all_conferences()
+        if conferences:
+            # DataFrameに変換
+            df = pd.DataFrame(conferences)
+            df = df[['id', 'governing_body_name', 'governing_body_type', 'name', 'type']]
+            df.columns = ['ID', '開催主体', '開催主体種別', '会議体名', '会議体種別']
+            
+            # 開催主体でグループ化して表示
+            for gb_name in df['開催主体'].unique():
+                with st.expander(f"📂 {gb_name}"):
+                    gb_df = df[df['開催主体'] == gb_name]
+                    st.dataframe(
+                        gb_df[['ID', '会議体名', '会議体種別']], 
+                        use_container_width=True,
+                        hide_index=True
+                    )
+        else:
+            st.info("会議体が登録されていません")
+    
+    with conf_tab2:
+        # 新規登録
+        st.subheader("新規会議体登録")
+        
+        with st.form("new_conference_form"):
+            # 開催主体選択
+            governing_bodies = conf_repo.get_governing_bodies()
+            if not governing_bodies:
+                st.error("開催主体が登録されていません。先に開催主体を登録してください。")
+            else:
+                gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
+                gb_selected = st.selectbox("開催主体", gb_options)
+                
+                # 選択された開催主体のIDを取得
+                selected_gb_id = None
+                for gb in governing_bodies:
+                    if f"{gb['name']} ({gb['type']})" == gb_selected:
+                        selected_gb_id = gb['id']
+                        break
+                
+                # 会議体情報入力
+                conf_name = st.text_input("会議体名", placeholder="例: 本会議、予算委員会")
+                conf_type = st.text_input("会議体種別（任意）", placeholder="例: 本会議、常任委員会、特別委員会")
+                
+                submitted = st.form_submit_button("登録")
+                
+                if submitted:
+                    if not conf_name:
+                        st.error("会議体名を入力してください")
+                    elif selected_gb_id:
+                        conf_id = conf_repo.create_conference(
+                            name=conf_name,
+                            governing_body_id=selected_gb_id,
+                            type=conf_type if conf_type else None
+                        )
+                        if conf_id:
+                            st.success(f"会議体を登録しました (ID: {conf_id})")
+                            st.rerun()
+                        else:
+                            st.error("会議体の登録に失敗しました（同じ名前の会議体が既に存在する可能性があります）")
+    
+    with conf_tab3:
+        # 編集・削除
+        st.subheader("会議体の編集・削除")
+        
+        conferences = conf_repo.get_all_conferences()
+        if not conferences:
+            st.info("編集する会議体がありません")
+        else:
+            # 会議体選択
+            conf_options = []
+            conf_map = {}
+            for conf in conferences:
+                display_name = f"{conf['governing_body_name']} - {conf['name']}"
+                if conf.get('type'):
+                    display_name += f" ({conf['type']})"
+                conf_options.append(display_name)
+                conf_map[display_name] = conf
+            
+            selected_conf_display = st.selectbox(
+                "編集する会議体を選択",
+                conf_options
+            )
+            
+            selected_conf = conf_map[selected_conf_display]
+            
+            # 編集フォーム
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("#### 編集")
+                with st.form("edit_conference_form"):
+                    new_name = st.text_input("会議体名", value=selected_conf['name'])
+                    new_type = st.text_input("会議体種別", value=selected_conf.get('type', ''))
+                    
+                    submitted = st.form_submit_button("更新")
+                    
+                    if submitted:
+                        if not new_name:
+                            st.error("会議体名を入力してください")
+                        else:
+                            if conf_repo.update_conference(
+                                conference_id=selected_conf['id'],
+                                name=new_name,
+                                type=new_type if new_type else None
+                            ):
+                                st.success("会議体を更新しました")
+                                st.rerun()
+                            else:
+                                st.error("会議体の更新に失敗しました")
+            
+            with col2:
+                st.markdown("#### 削除")
+                st.warning("⚠️ 会議体を削除すると、関連するデータも削除される可能性があります")
+                
+                if st.button("🗑️ この会議体を削除", type="secondary"):
+                    if conf_repo.delete_conference(selected_conf['id']):
+                        st.success("会議体を削除しました")
+                        st.rerun()
+                    else:
+                        st.error("会議体を削除できませんでした（関連する会議が存在する可能性があります）")
+    
+    conf_repo.close()
 
 
 if __name__ == "__main__":
