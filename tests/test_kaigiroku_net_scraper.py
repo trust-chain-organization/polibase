@@ -63,9 +63,9 @@ class TestKaigirokuNetScraper:
             # 必要なメソッドをモック
             with patch.object(scraper, '_extract_iframe_content', AsyncMock(return_value=None)):
                 with patch.object(scraper, '_wait_for_content', AsyncMock()):
-                    with patch.object(scraper, '_extract_title', AsyncMock(return_value="まちづくり委員会")):
+                    with patch.object(scraper.content_extractor, 'extract_title', return_value="まちづくり委員会"):
                         with patch.object(scraper, '_extract_date', AsyncMock(return_value="2025-01-23")):
-                            with patch.object(scraper, '_extract_pdf_url', AsyncMock(return_value=None)):
+                            with patch.object(scraper, '_find_pdf_download_url', AsyncMock(return_value=None)):
                                 with patch.object(scraper, '_find_text_view_url', AsyncMock(return_value=None)):
                                     # テスト実行
                                     result = await scraper.fetch_minutes(test_url)
@@ -98,10 +98,10 @@ class TestKaigirokuNetScraper:
         speakers = await scraper.extract_speakers(html_content)
         
         assert len(speakers) == 3
-        assert speakers[0]["name"] == "山田太郎議員"
-        assert "重要な提案" in speakers[0]["content"]
-        assert speakers[1]["name"] == "鈴木花子"
-        assert speakers[2]["name"] == "佐藤"
+        assert speakers[0].name == "山田太郎"
+        assert "重要な提案" in speakers[0].content
+        assert speakers[1].name == "鈴木花子"
+        assert speakers[2].name == "佐藤"
     
     @pytest.mark.asyncio
     async def test_parse_japanese_date(self, scraper):

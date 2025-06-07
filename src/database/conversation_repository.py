@@ -40,7 +40,11 @@ class ConversationRepository(BaseRepository):
         """
         if not speaker_and_speech_content_list:
             logger.warning("No conversations to save")
-            return []
+            try:
+                self.session.commit()  # Empty commit for consistency
+                return []
+            finally:
+                self.session.close()
             
         saved_ids: List[int] = []
         failed_count = 0
@@ -64,6 +68,12 @@ class ConversationRepository(BaseRepository):
                 
             if failed_count > 0:
                 logger.warning(f"Failed to save {failed_count} conversations")
+                if failed_count == len(speaker_and_speech_content_list):
+                    # All conversations failed, raise an exception
+                    raise SaveError(
+                        f"Failed to save all {failed_count} conversations",
+                        {"failed_count": failed_count}
+                    )
                 
             return saved_ids
             
