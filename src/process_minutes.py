@@ -15,6 +15,7 @@ from src.common.app_logic import (
     run_main_process,
     setup_environment,
 )
+from src.config import config
 from src.database.conversation_repository import ConversationRepository
 from src.exceptions import (
     APIKeyError,
@@ -59,7 +60,7 @@ def save_to_database(
         raise DatabaseError(
             "Failed to save conversations to database",
             {"count": len(speaker_and_speech_content_list), "error": str(e)},
-        )
+        ) from e
 
 
 def display_database_status() -> None:
@@ -93,7 +94,9 @@ def display_database_status() -> None:
                 print(f"      発言: {conv['comment'][:50]}...")
     except Exception as e:
         logger.error(f"Failed to get database status: {e}")
-        raise DatabaseError("Failed to retrieve database status", {"error": str(e)})
+        raise DatabaseError(
+            "Failed to retrieve database status", {"error": str(e)}
+        ) from e
 
 
 def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:
@@ -140,7 +143,7 @@ def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:
         raise ProcessingError(
             "Failed to process meeting minutes",
             {"error": str(e), "text_length": len(extracted_text)},
-        )
+        ) from e
 
 
 def main() -> list[int] | None:
@@ -157,8 +160,61 @@ def main() -> list[int] | None:
         # 環境設定
         setup_environment()
 
-        # PDFテキストの読み込み
-        extracted_text = load_pdf_text()
+        # コマンドライン引数からmeeting_idを取得（オプション）
+        import argparse
+
+        parser = argparse.ArgumentParser(description="Process meeting minutes")
+        parser.add_argument(
+            "--meeting-id",
+            type=int,
+            help="Meeting ID to process (will fetch from GCS if available)",
+        )
+        args = parser.parse_args()
+
+        extracted_text = None
+
+        # meeting_idが指定された場合、GCS URIをチェック
+        if args.meeting_id:
+            from src.database.meeting_repository import MeetingRepository
+            from src.utils.gcs_storage import GCSStorage
+
+            repo = MeetingRepository()
+            meeting = repo.get_meeting_by_id(args.meeting_id)
+            repo.close()
+
+            if meeting and meeting.get("gcs_text_uri"):
+                logger.info(
+                    f"Found GCS text URI for meeting {args.meeting_id}: "
+                    f"{meeting['gcs_text_uri']}"
+                )
+                # GCSからテキストを取得
+                try:
+                    gcs_storage = GCSStorage(
+                        bucket_name=config.GCS_BUCKET_NAME,
+                        project_id=config.GCS_PROJECT_ID,
+                    )
+                    extracted_text = gcs_storage.download_content(
+                        meeting["gcs_text_uri"]
+                    )
+                    if extracted_text:
+                        logger.info(
+                            f"Successfully downloaded text from GCS "
+                            f"({len(extracted_text)} characters)"
+                        )
+                    else:
+                        logger.warning(
+                            "Failed to download text from GCS, "
+                            "falling back to PDF extraction"
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to initialize GCS or download content: {e}, "
+                        "falling back to PDF extraction"
+                    )
+
+        # GCSから取得できなかった場合は、通常のPDF読み込み
+        if not extracted_text:
+            extracted_text = load_pdf_text()
 
         # メイン処理の実行
         return run_main_process(

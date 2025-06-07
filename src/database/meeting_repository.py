@@ -66,6 +66,8 @@ class MeetingRepository(BaseRepository):
                 m.id,
                 m.date,
                 m.url,
+                m.gcs_pdf_uri,
+                m.gcs_text_uri,
                 c.name as conference_name,
                 gb.name as governing_body_name
             FROM meetings m
@@ -82,6 +84,8 @@ class MeetingRepository(BaseRepository):
                 m.id,
                 m.date,
                 m.url,
+                m.gcs_pdf_uri,
+                m.gcs_text_uri,
                 c.name as conference_name,
                 gb.name as governing_body_name
             FROM meetings m
@@ -94,20 +98,46 @@ class MeetingRepository(BaseRepository):
 
         return self.fetch_as_dict(query, params)
 
-    def create_meeting(self, conference_id: int, meeting_date: date, url: str) -> int:
+    def create_meeting(
+        self,
+        conference_id: int,
+        meeting_date: date,
+        url: str,
+        gcs_pdf_uri: str | None = None,
+        gcs_text_uri: str | None = None,
+    ) -> int:
         """Create a new meeting"""
-        return self.insert(
-            table="meetings",
-            data={"conference_id": conference_id, "date": meeting_date, "url": url},
-            returning="id",
-        )
+        data = {"conference_id": conference_id, "date": meeting_date, "url": url}
+        if gcs_pdf_uri:
+            data["gcs_pdf_uri"] = gcs_pdf_uri
+        if gcs_text_uri:
+            data["gcs_text_uri"] = gcs_text_uri
+        return self.insert(table="meetings", data=data, returning="id")
 
-    def update_meeting(self, meeting_id: int, meeting_date: date, url: str) -> bool:
+    def update_meeting(
+        self,
+        meeting_id: int,
+        meeting_date: date | None = None,
+        url: str | None = None,
+        gcs_pdf_uri: str | None = None,
+        gcs_text_uri: str | None = None,
+    ) -> bool:
         """Update an existing meeting"""
+        data = {}
+        if meeting_date is not None:
+            data["date"] = meeting_date
+        if url is not None:
+            data["url"] = url
+        if gcs_pdf_uri is not None:
+            data["gcs_pdf_uri"] = gcs_pdf_uri
+        if gcs_text_uri is not None:
+            data["gcs_text_uri"] = gcs_text_uri
+
+        if not data:
+            return False
+
         rows_affected = self.update(
-            table="meetings",
-            data={"date": meeting_date, "url": url},
-            where={"id": meeting_id},
+            table="meetings", data=data, where={"id": meeting_id}
         )
         return rows_affected > 0
 
@@ -133,6 +163,8 @@ class MeetingRepository(BaseRepository):
             m.conference_id,
             m.date,
             m.url,
+            m.gcs_pdf_uri,
+            m.gcs_text_uri,
             c.name as conference_name,
             c.governing_body_id,
             gb.name as governing_body_name
@@ -143,5 +175,23 @@ class MeetingRepository(BaseRepository):
         """
         results = self.fetch_as_dict(query, {"id": meeting_id})
         return results[0] if results else None
+
+    def update_meeting_gcs_uris(
+        self, meeting_id: int, gcs_pdf_uri: str | None, gcs_text_uri: str | None
+    ) -> bool:
+        """Update GCS URIs for a meeting"""
+        data = {}
+        if gcs_pdf_uri is not None:
+            data["gcs_pdf_uri"] = gcs_pdf_uri
+        if gcs_text_uri is not None:
+            data["gcs_text_uri"] = gcs_text_uri
+
+        if not data:
+            return False
+
+        rows_affected = self.update(
+            table="meetings", data=data, where={"id": meeting_id}
+        )
+        return rows_affected > 0
 
     # close() method is inherited from BaseRepository

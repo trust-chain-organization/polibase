@@ -64,6 +64,7 @@ class ScrapingCommands(BaseCommand):
         """Async implementation of scrape_minutes"""
         import os
 
+        from src.database.meeting_repository import MeetingRepository
         from src.web_scraper.scraper_service import ScraperService
 
         # GCS設定の上書き
@@ -93,6 +94,10 @@ class ScrapingCommands(BaseCommand):
         # ファイル名生成
         base_name = f"{minutes.council_id}_{minutes.schedule_id}"
 
+        # GCS URIを保存するための変数
+        gcs_text_uri = None
+        gcs_pdf_uri = None
+
         # テキスト形式で保存
         if format in ["txt", "both"]:
             txt_path = output_path / f"{base_name}.txt"
@@ -103,6 +108,7 @@ class ScrapingCommands(BaseCommand):
                 ScrapingCommands.show_progress(f"Saved text to: {txt_path}")
                 if gcs_url:
                     ScrapingCommands.show_progress(f"Uploaded to GCS: {gcs_url}")
+                    gcs_text_uri = gcs_url
             else:
                 ScrapingCommands.error("Failed to save text file", exit_code=0)
 
@@ -126,6 +132,31 @@ class ScrapingCommands(BaseCommand):
                 gcs_url = service.upload_pdf_to_gcs(str(pdf_path), minutes)
                 if gcs_url:
                     ScrapingCommands.show_progress(f"Uploaded PDF to GCS: {gcs_url}")
+                    gcs_pdf_uri = gcs_url
+
+        # meetingsテーブルのGCS URIを更新（URLから既存のmeetingを検索して更新）
+        if gcs_text_uri or gcs_pdf_uri:
+            try:
+                with spinner("Updating meeting record with GCS URIs"):
+                    repo = MeetingRepository()
+                    # URLでmeetingを検索
+                    meetings = repo.fetch_as_dict(
+                        "SELECT id FROM meetings WHERE url = :url", {"url": url}
+                    )
+                    if meetings:
+                        meeting_id = meetings[0]["id"]
+                        success = repo.update_meeting_gcs_uris(
+                            meeting_id, gcs_pdf_uri, gcs_text_uri
+                        )
+                        if success:
+                            ScrapingCommands.show_progress(
+                                f"Updated meeting {meeting_id} with GCS URIs"
+                            )
+                    repo.close()
+            except Exception as e:
+                ScrapingCommands.show_progress(
+                    f"Note: Could not update meeting record: {e}"
+                )
 
         # 基本情報を表示
         ScrapingCommands.show_progress("\n--- Minutes Summary ---")
