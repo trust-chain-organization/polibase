@@ -205,26 +205,10 @@ class ScraperService:
 
     def _generate_gcs_path(self, minutes: MinutesData, extension: str) -> str:
         """GCSのパスを生成"""
-        # URLからcouncil_idとschedule_idを抽出
-        if "kaigiroku.net" in minutes.url:
-            parts = minutes.url.split("/")
-            if "tenant" in parts:
-                tenant_idx = parts.index("tenant")
-                council_id = (
-                    parts[tenant_idx + 1] if tenant_idx + 1 < len(parts) else "unknown"
-                )
-            else:
-                council_id = "unknown"
-
-            # schedule_idを抽出
-            if "schedule_id=" in minutes.url:
-                schedule_id = minutes.url.split("schedule_id=")[1].split("&")[0]
-            else:
-                schedule_id = "unknown"
-        else:
-            council_id = "unknown"
-            schedule_id = "unknown"
-
+        # MinutesDataからcouncil_idとschedule_idを使用
+        council_id = minutes.council_id if minutes.council_id else "unknown"
+        schedule_id = minutes.schedule_id if minutes.schedule_id else "unknown"
+        
         # 日付ベースのディレクトリ構造
         date_str = minutes.date.strftime("%Y/%m/%d") if minutes.date else "unknown_date"
 

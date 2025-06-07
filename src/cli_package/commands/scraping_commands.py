@@ -139,10 +139,22 @@ class ScrapingCommands(BaseCommand):
             try:
                 with spinner("Updating meeting record with GCS URIs"):
                     repo = MeetingRepository()
-                    # URLでmeetingを検索
+                    # URLでmeetingを検索（パラメータの順序が異なる場合も考慮）
+                    # 完全一致で検索
                     meetings = repo.fetch_as_dict(
                         "SELECT id FROM meetings WHERE url = :url", {"url": url}
                     )
+                    
+                    # 完全一致で見つからない場合、LIKE検索を試す
+                    if not meetings:
+                        # URLの基本部分を抽出
+                        base_url = url.split("?")[0] if "?" in url else url
+                        if "minId=" in url:
+                            min_id = url.split("minId=")[1].split("&")[0]
+                            meetings = repo.fetch_as_dict(
+                                "SELECT id FROM meetings WHERE url LIKE :pattern",
+                                {"pattern": f"%minId={min_id}%"}
+                            )
                     if meetings:
                         meeting_id = meetings[0]["id"]
                         success = repo.update_meeting_gcs_uris(
