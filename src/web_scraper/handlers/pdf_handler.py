@@ -13,6 +13,8 @@ try:
 except ImportError:
     HAS_PDFIUM = False
 
+from ...config.settings import get_settings
+
 
 class PDFHandler:
     """PDFファイルのダウンロードと処理を行うハンドラー"""
@@ -21,6 +23,7 @@ class PDFHandler:
         self.download_dir = Path(download_dir)
         self.download_dir.mkdir(parents=True, exist_ok=True)
         self.logger = logger or logging.getLogger(__name__)
+        self.settings = get_settings()
         
         if not HAS_PDFIUM:
             self.logger.warning("pypdfium2 is not installed. PDF text extraction will not be available.")
@@ -37,7 +40,7 @@ class PDFHandler:
         """
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(pdf_url, timeout=aiohttp.ClientTimeout(total=60)) as response:
+                async with session.get(pdf_url, timeout=aiohttp.ClientTimeout(total=self.settings.pdf_download_timeout)) as response:
                     if response.status != 200:
                         self.logger.error(f"Failed to download PDF: HTTP {response.status}")
                         return None

@@ -370,6 +370,28 @@ docker compose exec postgres pg_dump -U polibase_user polibase_db > backup.sql
 docker compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
 ```
 
+## ⚙️ 環境変数設定
+
+主要な環境変数（`.env`ファイルで設定）:
+
+### 必須設定
+- `GOOGLE_API_KEY`: Google Gemini APIキー（議事録処理・政治家抽出に必要）
+- `DATABASE_URL`: PostgreSQL接続URL（デフォルト: `postgresql://polibase_user:polibase_password@localhost:5432/polibase_db`）
+
+### タイムアウト設定（秒単位）
+- `WEB_SCRAPER_TIMEOUT`: Webページ読み込みタイムアウト（デフォルト: 60秒）
+- `PDF_DOWNLOAD_TIMEOUT`: PDFダウンロードタイムアウト（デフォルト: 120秒）
+- `PAGE_LOAD_TIMEOUT`: ページロード状態待機タイムアウト（デフォルト: 30秒）
+- `SELECTOR_WAIT_TIMEOUT`: セレクタ待機タイムアウト（デフォルト: 10秒）
+
+### その他の設定
+- `LLM_MODEL`: 使用するLLMモデル（デフォルト: `gemini-2.0-flash`）
+- `LLM_TEMPERATURE`: LLMの温度パラメータ（デフォルト: 0.0）
+- `GCS_BUCKET_NAME`: Google Cloud Storageバケット名
+- `GCS_UPLOAD_ENABLED`: GCS自動アップロード有効化（`true`/`false`）
+
+処理時間の長いスクレイピングや大きなPDFファイルの処理でタイムアウトが発生する場合は、これらの値を調整してください。
+
 ## 📁 プロジェクト構成
 
 ```
