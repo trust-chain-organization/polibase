@@ -1,7 +1,7 @@
 -- Seed data for governing_bodies table
 -- 開催主体のマスターデータ
 
-INSERT INTO governing_bodies (name, type) VALUES 
+INSERT INTO governing_bodies (name, type) VALUES
 -- 国レベル
 ('日本国', '国'),
 

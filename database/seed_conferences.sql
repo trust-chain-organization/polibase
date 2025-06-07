@@ -1,7 +1,7 @@
 -- Seed data for conferences table
 -- 会議体（議会・委員会）のマスターデータ
 
-INSERT INTO conferences (name, type, governing_body_id) VALUES 
+INSERT INTO conferences (name, type, governing_body_id) VALUES
 -- 国レベルの会議体（日本国 = ID 1と仮定）
 ('国会', '国会全体', 1),
 ('衆議院', '議院', 1),

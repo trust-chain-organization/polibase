@@ -35,7 +35,7 @@ cp .env.example .env
 - [Google AI Studio](https://aistudio.google.com/)でAPIキーを取得
 - `.env`ファイルの`GOOGLE_API_KEY`に設定
 
-**Google Cloud Storage（オプション）**: 
+**Google Cloud Storage（オプション）**:
 - スクレイピングしたデータをGCSに保存する場合は、以下の設定も必要です：
   - `gcloud auth application-default login`で認証
   - `.env`ファイルで`GCS_BUCKET_NAME`と`GCS_UPLOAD_ENABLED=true`を設定
@@ -270,12 +270,12 @@ SELECT * FROM political_parties;
 SELECT * FROM governing_bodies;
 
 -- 会議体を確認
-SELECT c.*, g.name as governing_body_name 
-FROM conferences c 
+SELECT c.*, g.name as governing_body_name
+FROM conferences c
 JOIN governing_bodies g ON c.governing_body_id = g.id;
 
 -- 発言データと発言者の紐付け状況を確認
-SELECT 
+SELECT
     COUNT(*) as total_conversations,
     COUNT(speaker_id) as linked_conversations,
     COUNT(*) - COUNT(speaker_id) as unlinked_conversations
@@ -369,6 +369,14 @@ docker compose exec postgres pg_dump -U polibase_user polibase_db > backup.sql
 # 手動リストア
 docker compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
 ```
+
+## formattingとリンティング
+`docker compose exec polibase uv sync`で依存関係をインストール
+`docker compose exec polibase uv run --frozen ruff format .`でフォーマット実行
+`docker compose exec polibase uv run --frozen ruff check .`でリンティング実行
+`docker compose exec polibase uv run --frozen pyright`で型チェック実行
+`docker compose exec polibase uv run pre-commit install`でpre-commitフックをインストール
+`docker compose exec polibase uv run pre-commit run --all-files`で全ファイルチェック
 
 ## ⚙️ 環境変数設定
 
@@ -586,4 +594,3 @@ docker compose -f docker compose.temp.yml up -d
 docker compose up          # フォアグラウンド実行
 docker compose exec polibase bash  # コンテナ内でshell実行
 ```
-

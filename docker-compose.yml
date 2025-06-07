@@ -1,21 +1,21 @@
-version: '3.8'
+version: "3.8"
 
 services:
   polibase:
     build: .
     volumes:
       - .:/app
-      - ~/.config/gcloud:/root/.config/gcloud  # GCP認証情報をマウント
+      - ~/.config/gcloud:/root/.config/gcloud # GCP認証情報をマウント
     environment:
-      - ENV_VAR_NAME=env_var_value  # 必要な環境変数を設定
+      - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
       - GOOGLE_CLOUD_PROJECT=trust-chain-828ad
     ports:
-      - "8000:8000"  # 必要に応じてポートを設定
-      - "8501:8501"  # Streamlit用ポート
-    stdin_open: true  # 追加
-    tty: true         # 追加
+      - "8000:8000" # 必要に応じてポートを設定
+      - "8501:8501" # Streamlit用ポート
+    stdin_open: true # 追加
+    tty: true # 追加
     depends_on:
       - postgres
 

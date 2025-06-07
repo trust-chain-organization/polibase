@@ -1,7 +1,7 @@
 -- Seed data for political_parties table
 -- 政党のマスターデータ
 
-INSERT INTO political_parties (name) VALUES 
+INSERT INTO political_parties (name) VALUES
 -- 主要政党
 ('自由民主党'),
 ('立憲民主党'),

@@ -56,9 +56,9 @@ class MinutesDivider:
             )
         else:
             self.llm_service = LLMService.create_fast_instance()
-        
+
         self.chain_factory = ChainFactory(self.llm_service)
-        
+
         # Pre-create chains for performance
         self._section_divide_chain = self.chain_factory.create_minutes_divider_chain(SectionInfoList)
         self._speech_divide_chain = self.chain_factory.create_speech_divider_chain(SpeakerAndSpeechContentList)

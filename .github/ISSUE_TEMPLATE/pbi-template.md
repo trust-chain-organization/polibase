@@ -8,5 +8,5 @@ assignees: okodoon
 ---
 
 - 受け入れ基準
-  - [ ] 
+  - [ ]
   - [ ]

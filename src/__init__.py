@@ -1,101 +1,94 @@
 """
 Polibase package
 
-Political Activity Tracking Application for managing and analyzing Japanese political activities.
+Political Activity Tracking Application for managing and analyzing
+Japanese political activities.
 """
 
 # Export exceptions for easier access
 from .exceptions import (
-    PolibaseException,
-    ConfigurationError,
-    MissingConfigError,
-    InvalidConfigError,
-    DatabaseError,
-    ConnectionError,
-    QueryError,
-    IntegrityError,
-    RecordNotFoundError,
-    DuplicateRecordError,
-    ProcessingError,
-    PDFProcessingError,
-    TextExtractionError,
-    ParsingError,
-    LLMError,
     APIKeyError,
-    ModelError,
-    TokenLimitError,
-    ResponseParsingError,
-    ScrapingError,
-    URLError,
-    PageLoadError,
-    ElementNotFoundError,
-    DownloadError,
-    StorageError,
-    FileNotFoundError,
-    UploadError,
-    PermissionError,
-    ValidationError,
+    ConfigurationError,
+    ConnectionError,
+    DatabaseError,
     DataValidationError,
-    SchemaValidationError,
-    RepositoryError,
-    SaveError,
-    UpdateError,
     DeleteError,
+    DownloadError,
+    DuplicateRecordError,
+    ElementNotFoundError,
+    FileNotFoundError,
+    IntegrityError,
+    InvalidConfigError,
+    LLMError,
+    MissingConfigError,
+    ModelError,
+    PageLoadError,
+    ParsingError,
+    PDFProcessingError,
+    PermissionError,
+    PolibaseException,
+    ProcessingError,
+    QueryError,
+    RecordNotFoundError,
+    RepositoryError,
+    ResponseParsingError,
+    SaveError,
+    SchemaValidationError,
+    ScrapingError,
+    StorageError,
+    TextExtractionError,
+    TokenLimitError,
+    UpdateError,
+    UploadError,
+    URLError,
+    ValidationError,
 )
 
 __all__ = [
     # Base exception
-    'PolibaseException',
-    
+    "PolibaseException",
     # Configuration
-    'ConfigurationError',
-    'MissingConfigError',
-    'InvalidConfigError',
-    
+    "ConfigurationError",
+    "MissingConfigError",
+    "InvalidConfigError",
     # Database
-    'DatabaseError',
-    'ConnectionError',
-    'QueryError',
-    'IntegrityError',
-    'RecordNotFoundError',
-    'DuplicateRecordError',
-    
+    "DatabaseError",
+    "ConnectionError",
+    "QueryError",
+    "IntegrityError",
+    "RecordNotFoundError",
+    "DuplicateRecordError",
     # Processing
-    'ProcessingError',
-    'PDFProcessingError',
-    'TextExtractionError',
-    'ParsingError',
-    
+    "ProcessingError",
+    "PDFProcessingError",
+    "TextExtractionError",
+    "ParsingError",
     # LLM/AI
-    'LLMError',
-    'APIKeyError',
-    'ModelError',
-    'TokenLimitError',
-    'ResponseParsingError',
-    
+    "LLMError",
+    "APIKeyError",
+    "ModelError",
+    "TokenLimitError",
+    "ResponseParsingError",
     # Web Scraping
-    'ScrapingError',
-    'URLError',
-    'PageLoadError',
-    'ElementNotFoundError',
-    'DownloadError',
-    
+    "ScrapingError",
+    "URLError",
+    "PageLoadError",
+    "ElementNotFoundError",
+    "DownloadError",
     # Storage
-    'StorageError',
-    'FileNotFoundError',
-    'UploadError',
-    'PermissionError',
-    
+    "StorageError",
+    "FileNotFoundError",
+    "UploadError",
+    "PermissionError",
     # Validation
-    'ValidationError',
-    'DataValidationError',
-    'SchemaValidationError',
-    
+    "ValidationError",
+    "DataValidationError",
+    "SchemaValidationError",
     # Repository
-    'RepositoryError',
-    'SaveError',
-    'UpdateError',
-    'DeleteError',
+    "RepositoryError",
+    "SaveError",
+    "UpdateError",
+    "DeleteError",
 ]
 
-__version__ = '0.1.0'
+__version__ = "0.1.0"

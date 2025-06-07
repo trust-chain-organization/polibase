@@ -2,14 +2,13 @@ name: Build DBML Documentation
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - '**.dbml'
+      - "**.dbml"
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - '**.dbml'
-
+      - "**.dbml"
 
 jobs:
   build-with-dbdocs:
@@ -20,7 +19,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # LTS版のNode.jsを指定
+          node-version: "20" # LTS版のNode.jsを指定
       - name: Install dbdocs
         run: sudo npm install -g dbdocs
 
