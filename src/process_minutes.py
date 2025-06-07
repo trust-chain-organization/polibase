@@ -169,12 +169,92 @@ def main() -> list[int] | None:
             type=int,
             help="Meeting ID to process (will fetch from GCS if available)",
         )
+        parser.add_argument(
+            "--process-all-gcs",
+            action="store_true",
+            help="Process all meetings with GCS text URIs",
+        )
         args = parser.parse_args()
 
         extracted_text = None
 
+        # --process-all-gcsが指定された場合、すべてのGCS URIを持つmeetingを処理
+        if args.process_all_gcs:
+            from src.database.meeting_repository import MeetingRepository
+            from src.utils.gcs_storage import GCSStorage
+
+            repo = MeetingRepository()
+            # GCS text URIを持つすべてのmeetingを取得
+            meetings_with_gcs = repo.fetch_as_dict(
+                """
+                SELECT id, url, gcs_text_uri 
+                FROM meetings 
+                WHERE gcs_text_uri IS NOT NULL 
+                ORDER BY id
+                """
+            )
+            repo.close()
+
+            if not meetings_with_gcs:
+                logger.warning("No meetings found with GCS text URIs")
+                print("⚠️  GCS text URIを持つmeetingが見つかりませんでした")
+                return None
+
+            print(f"📋 {len(meetings_with_gcs)}件のmeetingを処理します")
+            
+            # GCS storageを初期化
+            try:
+                gcs_storage = GCSStorage(
+                    bucket_name=config.GCS_BUCKET_NAME,
+                    project_id=config.GCS_PROJECT_ID,
+                )
+            except Exception as e:
+                logger.error(f"Failed to initialize GCS storage: {e}")
+                print(f"❌ GCS初期化エラー: {e}")
+                return None
+
+            all_saved_ids = []
+            
+            # 各meetingを処理
+            for meeting in meetings_with_gcs:
+                meeting_id = meeting["id"]
+                gcs_uri = meeting["gcs_text_uri"]
+                
+                print(f"\n🔍 Meeting ID {meeting_id} を処理中...")
+                print(f"   GCS URI: {gcs_uri}")
+                
+                try:
+                    # GCSからテキストを取得
+                    extracted_text = gcs_storage.download_content(gcs_uri)
+                    if not extracted_text:
+                        logger.warning(f"No content downloaded for meeting {meeting_id}")
+                        print(f"   ⚠️  コンテンツが取得できませんでした")
+                        continue
+                    
+                    print(f"   ✅ テキストを取得しました ({len(extracted_text)} 文字)")
+                    
+                    # 議事録を処理
+                    results = process_minutes(extracted_text)
+                    if results:
+                        # データベースに保存
+                        saved_ids = save_to_database(results)
+                        all_saved_ids.extend(saved_ids)
+                        print(f"   ✅ {len(saved_ids)}件の発言を保存しました")
+                    else:
+                        print(f"   ⚠️  発言が抽出されませんでした")
+                        
+                except Exception as e:
+                    logger.error(f"Failed to process meeting {meeting_id}: {e}")
+                    print(f"   ❌ 処理エラー: {e}")
+                    continue
+            
+            # 処理結果を表示
+            display_database_status()
+            print(f"\n✅ 処理完了: 合計 {len(all_saved_ids)}件の発言を保存しました")
+            return all_saved_ids
+
         # meeting_idが指定された場合、GCS URIをチェック
-        if args.meeting_id:
+        elif args.meeting_id:
             from src.database.meeting_repository import MeetingRepository
             from src.utils.gcs_storage import GCSStorage
 

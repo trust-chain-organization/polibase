@@ -266,7 +266,7 @@ class ConversationRepository(BaseRepository):
         Returns:
             int: レコード数
         """
-        count = self.count("conversations")
+        count = self.count("conversations", where={})
         self.close()  # For backward compatibility with tests
         return count
 
