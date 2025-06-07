@@ -294,6 +294,48 @@ class ConversationRepository(BaseRepository):
         self.close()  # For backward compatibility with tests
         return stats
 
+    def get_conversations_by_minutes_id(self, minutes_id: int) -> list[dict]:
+        """
+        指定されたminutes_idに紐づく全てのConversationレコードを取得する
+
+        Args:
+            minutes_id: 議事録ID
+
+        Returns:
+            List[dict]: Conversationレコードのリスト
+        """
+        query = """
+            SELECT c.id, c.minutes_id, c.speaker_id, c.speaker_name, c.comment,
+                   c.sequence_number, c.chapter_number, c.sub_chapter_number,
+                   c.created_at, c.updated_at, s.name as linked_speaker_name
+            FROM conversations c
+            LEFT JOIN speakers s ON c.speaker_id = s.id
+            WHERE c.minutes_id = :minutes_id
+            ORDER BY c.sequence_number ASC
+        """
+        
+        results = self.fetch_as_dict(query, {"minutes_id": minutes_id})
+        return results
+
+    def get_all_conversations_without_speaker_id(self) -> list[dict]:
+        """
+        speaker_idが設定されていない全てのConversationレコードを取得する
+
+        Returns:
+            List[dict]: speaker_idがNULLのConversationレコードのリスト
+        """
+        query = """
+            SELECT c.id, c.minutes_id, c.speaker_id, c.speaker_name, c.comment,
+                   c.sequence_number, c.chapter_number, c.sub_chapter_number,
+                   c.created_at, c.updated_at
+            FROM conversations c
+            WHERE c.speaker_id IS NULL
+            ORDER BY c.minutes_id, c.sequence_number ASC
+        """
+        
+        results = self.fetch_as_dict(query)
+        return results
+
     def update_speaker_links(self) -> int:
         """
         既存のConversationsレコードのspeaker_idを更新する
