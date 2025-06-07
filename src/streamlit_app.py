@@ -287,8 +287,7 @@ def edit_meeting():
 
     if not st.session_state.edit_mode or not st.session_state.edit_meeting_id:
         st.info(
-            "編集する会議を選択してください"
-            "（会議一覧タブから編集ボタンをクリック）"
+            "編集する会議を選択してください" "（会議一覧タブから編集ボタンをクリック）"
         )
         return
 
@@ -302,9 +301,7 @@ def edit_meeting():
         st.session_state.edit_meeting_id = None
         return
 
-    st.info(
-        f"編集中: {meeting['governing_body_name']} - {meeting['conference_name']}"
-    )
+    st.info(f"編集中: {meeting['governing_body_name']} - {meeting['conference_name']}")
 
     with st.form("edit_meeting_form"):
         # 日付入力
@@ -475,13 +472,10 @@ def manage_conferences():
             governing_bodies = conf_repo.get_governing_bodies()
             if not governing_bodies:
                 st.error(
-                    "開催主体が登録されていません。"
-                    "先に開催主体を登録してください。"
+                    "開催主体が登録されていません。" "先に開催主体を登録してください。"
                 )
             else:
-                gb_options = [
-                    f"{gb['name']} ({gb['type']})" for gb in governing_bodies
-                ]
+                gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
                 gb_selected = st.selectbox("開催主体", gb_options)
 
                 # 選択された開催主体のIDを取得

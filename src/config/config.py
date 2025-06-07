@@ -47,7 +47,8 @@ def validate_config() -> None:
         warnings.warn(
             "GOOGLE_API_KEY is not set. LLM features will not work. "
             "Please set it in your .env file or environment variables.",
-            RuntimeWarning, stacklevel=2,
+            RuntimeWarning,
+            stacklevel=2,
         )
 
     # Validate DATABASE_URL format

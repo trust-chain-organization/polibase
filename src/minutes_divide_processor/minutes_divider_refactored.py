@@ -292,9 +292,7 @@ class MinutesDivider:
 
             if result is None:
                 logger.error("Error: result is None")
-                return SpeakerAndSpeechContentList(
-                    speaker_and_speech_content_list=[]
-                )
+                return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
 
             # resultがSpeakerAndSpeechContentList型であることを確認
             if isinstance(result, SpeakerAndSpeechContentList):
@@ -311,7 +309,7 @@ class MinutesDivider:
                 if speaker_and_speech_content.speech_order != last_speech_order + 1:
                     logger.warning(
                         "speaker_and_speech_contentのspeech_orderが"
-                    "連番になっていません。"
+                        "連番になっていません。"
                     )
                     # 連番になっていない場合は
                     # speaker_and_speech_content.speech_orderを

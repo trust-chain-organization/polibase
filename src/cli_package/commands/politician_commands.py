@@ -43,9 +43,7 @@ class PoliticianCommands(BaseCommand):
     @click.command()
     @click.option("--party-id", type=int, help="Specific party ID to scrape")
     @click.option(
-        "--all-parties",
-        is_flag=True,
-        help="Scrape all parties with member list URLs"
+        "--all-parties", is_flag=True, help="Scrape all parties with member list URLs"
     )
     @click.option(
         "--dry-run", is_flag=True, help="Show what would be scraped without saving"
@@ -107,9 +105,7 @@ class PoliticianCommands(BaseCommand):
                 )
                 return
 
-            PoliticianCommands.show_progress(
-                f"Found {len(parties)} parties to scrape:"
-            )
+            PoliticianCommands.show_progress(f"Found {len(parties)} parties to scrape:")
             for party in parties:
                 PoliticianCommands.show_progress(
                     f"  - {party.name}: {party.members_list_url}"
@@ -158,9 +154,7 @@ class PoliticianCommands(BaseCommand):
                             f"Extracting member information using LLM "
                             f"for {party.name}..."
                         ):
-                            result = extractor.extract_from_pages(
-                                pages, party.name
-                            )
+                            result = extractor.extract_from_pages(pages, party.name)
 
                         if not result or not result.members:
                             PoliticianCommands.show_progress(
@@ -175,9 +169,7 @@ class PoliticianCommands(BaseCommand):
                         if dry_run:
                             # ドライランモード：データを表示するだけ
                             for member in result.members[:5]:  # 最初の5件を表示
-                                PoliticianCommands.show_progress(
-                                    f"    - {member.name}"
-                                )
+                                PoliticianCommands.show_progress(f"    - {member.name}")
                                 if member.position:
                                     PoliticianCommands.show_progress(
                                         f"      Position: {member.position}"
@@ -239,9 +231,7 @@ class PoliticianCommands(BaseCommand):
                         tracker.update(1, f"Completed {party.name}")
 
             if not dry_run:
-                PoliticianCommands.success(
-                    f"Total politicians saved: {total_scraped}"
-                )
+                PoliticianCommands.success(f"Total politicians saved: {total_scraped}")
 
         finally:
             engine.dispose()

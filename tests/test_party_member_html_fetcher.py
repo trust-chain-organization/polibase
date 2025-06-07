@@ -19,9 +19,7 @@ class TestPartyMemberPageFetcher:
     @pytest.fixture
     async def mock_playwright(self):
         """Playwrightのモック"""
-        with patch(
-            "src.party_member_extractor.html_fetcher.async_playwright"
-        ) as mock:
+        with patch("src.party_member_extractor.html_fetcher.async_playwright") as mock:
             # async_playwright()の戻り値をモック
             mock_async_playwright = MagicMock()
             mock.return_value = mock_async_playwright
@@ -293,9 +291,7 @@ class TestPartyMemberPageFetcher:
         """単一ページ取得のテスト"""
         # ページのモック
         mock_page = AsyncMock()
-        mock_page.content.return_value = (
-            "<html><body>Single page content</body></html>"
-        )
+        mock_page.content.return_value = "<html><body>Single page content</body></html>"
         fetcher.context.new_page.return_value = mock_page
 
         # テスト実行

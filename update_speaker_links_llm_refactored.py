@@ -18,8 +18,7 @@ from src.services import LLMService
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -46,9 +45,7 @@ def main():
     # LLMサービスの初期化
     try:
         print("\n🔧 LLMサービスを初期化中...")
-        llm_service = LLMService.create_fast_instance(
-            temperature=0.1, max_tokens=1000
-        )
+        llm_service = LLMService.create_fast_instance(temperature=0.1, max_tokens=1000)
 
         # Validate API key
         if not llm_service.validate_api_key():
@@ -110,9 +107,7 @@ def main():
         print("📈 処理結果:")
         print(f"   - 処理総数: {matching_stats['total_processed']}件")
         print(f"   - マッチ成功: {matching_stats['successfully_matched']}件")
-        print(
-            f"   - 高信頼度マッチ: {matching_stats['high_confidence_matches']}件"
-        )
+        print(f"   - 高信頼度マッチ: {matching_stats['high_confidence_matches']}件")
         print(f"   - マッチ失敗: {matching_stats['failed_matches']}件")
 
         success_rate = (
@@ -127,9 +122,7 @@ def main():
         print(f"   - 成功率: {success_rate:.1f}%")
 
         if matching_stats["failed_matches"] > 0:
-            print(
-                f"\n⚠️  {matching_stats['failed_matches']}件のマッチに失敗しました。"
-            )
+            print(f"\n⚠️  {matching_stats['failed_matches']}件のマッチに失敗しました。")
             print("   これらの発言者名は手動での確認が必要かもしれません。")
 
     except Exception as e:
@@ -172,9 +165,7 @@ def test_single_match():
         result = matching_service.find_best_match(name)
 
         if result.matched:
-            print(
-                f"   ✅ マッチ: {result.speaker_name} (ID: {result.speaker_id})"
-            )
+            print(f"   ✅ マッチ: {result.speaker_name} (ID: {result.speaker_id})")
             print(f"   信頼度: {result.confidence:.2f}")
             print(f"   理由: {result.reason}")
         else:

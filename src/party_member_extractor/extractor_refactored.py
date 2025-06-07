@@ -100,10 +100,7 @@ class PartyMemberExtractor:
             # URLを絶対URLに変換
             base_url = self._get_base_url(page.url)
             for member in result.members:
-                if (
-                    member.profile_url
-                    and not member.profile_url.startswith("http")
-                ):
+                if member.profile_url and not member.profile_url.startswith("http"):
                     member.profile_url = base_url + member.profile_url.lstrip("/")
 
             return result

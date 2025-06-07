@@ -72,15 +72,11 @@ class SpeakerMatchingService:
 
         if not available_speakers:
             return SpeakerMatch(
-                matched=False,
-                confidence=0.0,
-                reason="利用可能な発言者リストが空です"
+                matched=False, confidence=0.0, reason="利用可能な発言者リストが空です"
             )
 
         # まず従来のルールベースマッチングを試行
-        rule_based_match = self._rule_based_matching(
-            speaker_name, available_speakers
-        )
+        rule_based_match = self._rule_based_matching(speaker_name, available_speakers)
         if rule_based_match.matched and rule_based_match.confidence >= 0.9:
             return rule_based_match
 
@@ -180,9 +176,7 @@ class SpeakerMatchingService:
                 )
 
         return SpeakerMatch(
-            matched=False,
-            confidence=0.0,
-            reason="ルールベースマッチングでは一致なし"
+            matched=False, confidence=0.0, reason="ルールベースマッチングでは一致なし"
         )
 
     def _filter_candidates(
@@ -212,8 +206,7 @@ class SpeakerMatchingService:
 
             # 括弧内名前との一致
             if extracted_name and (
-                speaker["name"] == extracted_name
-                or extracted_name in speaker["name"]
+                speaker["name"] == extracted_name or extracted_name in speaker["name"]
             ):
                 score += 5
 
@@ -297,9 +290,7 @@ class SpeakerMatchingService:
                     if match_result.confidence >= 0.9:
                         stats["high_confidence_matches"] += 1
 
-                    confidence_emoji = (
-                        "🟢" if match_result.confidence >= 0.9 else "🟡"
-                    )
+                    confidence_emoji = "🟢" if match_result.confidence >= 0.9 else "🟡"
                     logger.info(
                         f"  {confidence_emoji} マッチ成功: {speaker_name} → "
                         f"{match_result.speaker_name} "
@@ -316,9 +307,7 @@ class SpeakerMatchingService:
             logger.info("マッチング結果:")
             logger.info(f"   - 処理総数: {stats['total_processed']}件")
             logger.info(f"   - マッチ成功: {stats['successfully_matched']}件")
-            logger.info(
-                f"   - 高信頼度マッチ: {stats['high_confidence_matches']}件"
-            )
+            logger.info(f"   - 高信頼度マッチ: {stats['high_confidence_matches']}件")
             logger.info(f"   - マッチ失敗: {stats['failed_matches']}件")
 
             return stats

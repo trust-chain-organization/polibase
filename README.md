@@ -370,6 +370,14 @@ docker compose exec postgres pg_dump -U polibase_user polibase_db > backup.sql
 docker compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
 ```
 
+## formattingとリンティング
+`docker compose exec polibase uv sync`で依存関係をインストール
+`docker compose exec polibase uv run --frozen ruff format .`でフォーマット実行
+`docker compose exec polibase uv run --frozen ruff check .`でリンティング実行
+`docker compose exec polibase uv run --frozen pyright`で型チェック実行
+`docker compose exec polibase uv run pre-commit install`でpre-commitフックをインストール
+`docker compose exec polibase uv run pre-commit run --all-files`で全ファイルチェック
+
 ## ⚙️ 環境変数設定
 
 主要な環境変数（`.env`ファイルで設定）:

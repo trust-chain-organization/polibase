@@ -95,9 +95,7 @@ class LLMService:
         schema_name = schema.__name__
 
         if schema_name not in self._structured_llms:
-            self._structured_llms[schema_name] = self.llm.with_structured_output(
-                schema
-            )
+            self._structured_llms[schema_name] = self.llm.with_structured_output(schema)
 
         return self._structured_llms[schema_name]
 
@@ -195,9 +193,7 @@ class LLMService:
         # Extract temperature to avoid duplicate keyword argument
         temperature = kwargs.pop("temperature", 0.1)
         return cls(
-            model_name=cls.DEFAULT_MODELS["advanced"],
-            temperature=temperature,
-            **kwargs
+            model_name=cls.DEFAULT_MODELS["advanced"], temperature=temperature, **kwargs
         )
 
     def validate_api_key(self) -> bool:

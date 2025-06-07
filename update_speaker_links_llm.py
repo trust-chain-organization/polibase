@@ -115,9 +115,7 @@ def main():
         print(f"   - 成功率: {success_rate:.1f}%")
 
         if matching_stats["failed_matches"] > 0:
-            print(
-                f"\n⚠️  {matching_stats['failed_matches']}件のマッチに失敗しました。"
-            )
+            print(f"\n⚠️  {matching_stats['failed_matches']}件のマッチに失敗しました。")
             print("   これらの発言者名は手動での確認が必要かもしれません。")
 
     except Exception as e:
@@ -160,9 +158,7 @@ def test_single_match():
         result = matching_service.find_best_match(name)
 
         if result.matched:
-            print(
-                f"   ✅ マッチ: {result.speaker_name} (ID: {result.speaker_id})"
-            )
+            print(f"   ✅ マッチ: {result.speaker_name} (ID: {result.speaker_id})")
             print(f"   信頼度: {result.confidence:.2f}")
             print(f"   理由: {result.reason}")
         else:

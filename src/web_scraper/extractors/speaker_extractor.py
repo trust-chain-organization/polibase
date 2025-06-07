@@ -140,7 +140,7 @@ class SpeakerExtractor:
         """行から発言者を検出
 
         Returns:
-            {'name': '発言者名', 'role': '役職', 
+            {'name': '発言者名', 'role': '役職',
              'remaining_text': '残りのテキスト'} or None
         """
         for pattern, has_role in self.SPEAKER_PATTERNS:

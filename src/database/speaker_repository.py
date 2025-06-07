@@ -88,7 +88,7 @@ class SpeakerRepository(BaseRepository):
         query = """
             SELECT id FROM speakers
             WHERE name = :name
-            AND (political_party_name = :political_party_name 
+            AND (political_party_name = :political_party_name
                 OR (political_party_name IS NULL AND :political_party_name IS NULL))
             AND (position = :position OR (position IS NULL AND :position IS NULL))
         """
@@ -112,7 +112,7 @@ class SpeakerRepository(BaseRepository):
             List[dict]: Speakerレコードのリスト
         """
         query = """
-            SELECT id, name, type, political_party_name, position, 
+            SELECT id, name, type, political_party_name, position,
                 is_politician, created_at, updated_at
             FROM speakers
             ORDER BY created_at DESC

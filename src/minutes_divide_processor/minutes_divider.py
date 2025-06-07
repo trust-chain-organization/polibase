@@ -171,9 +171,7 @@ class MinutesDivider:
             size_in_bytes = len(section_string.section_string.encode("utf-8"))
             print(f"size_in_bytes: {size_in_bytes}")
             if size_in_bytes > 6000:  # 6000文字より多いか確認
-                print(
-                    "section_stringの文字数が6000文字を超えています。再分割します。"
-                )
+                print("section_stringの文字数が6000文字を超えています。再分割します。")
                 redivide_dict = RedivideSectionString(
                     original_index=index,
                     redivide_section_string_bytes=size_in_bytes,
@@ -229,9 +227,7 @@ class MinutesDivider:
         if isinstance(result, SpeakerAndSpeechContentList):
             speaker_and_speech_content_list = result.speaker_and_speech_content_list
         else:
-            raise TypeError(
-                "Expected result to be of type SpeakerAndSpeechContentList"
-            )
+            raise TypeError("Expected result to be of type SpeakerAndSpeechContentList")
         # speaker_and_speech_content_listのspeech_orderを確認して、
         # 連番になっているか確認
         last_speech_order = 0

@@ -130,9 +130,7 @@ class ScrapingCommands(BaseCommand):
         # 基本情報を表示
         ScrapingCommands.show_progress("\n--- Minutes Summary ---")
         ScrapingCommands.show_progress(f"Title: {minutes.title}")
-        date_str = (
-            minutes.date.strftime('%Y年%m月%d日') if minutes.date else 'Unknown'
-        )
+        date_str = minutes.date.strftime("%Y年%m月%d日") if minutes.date else "Unknown"
         ScrapingCommands.show_progress(f"Date: {date_str}")
         ScrapingCommands.show_progress(f"Speakers found: {len(minutes.speakers)}")
         ScrapingCommands.show_progress(

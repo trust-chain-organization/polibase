@@ -93,9 +93,7 @@ class ChainFactory:
 
         return {"minutes": RunnablePassthrough()} | prompt | llm
 
-    def create_speaker_matching_chain(
-        self, output_schema: type[BaseModel]
-    ) -> Runnable:
+    def create_speaker_matching_chain(self, output_schema: type[BaseModel]) -> Runnable:
         """
         Create chain for speaker matching with JSON output
 
