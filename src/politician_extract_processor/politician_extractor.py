@@ -1,17 +1,16 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.runnables import RunnablePassthrough
-from .models import (
-    PoliticianInfo,
-    PoliticianInfoList,
-    PoliticianProcessState
-)
 from langchain import hub
+from langchain_core.runnables import RunnablePassthrough
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+from .models import PoliticianInfoList
 
 
 class PoliticianExtractor:
     def __init__(self, llm: ChatGoogleGenerativeAI, k: int = 5):
         self.politician_extract_llm = llm.with_structured_output(PoliticianInfoList)
-        self.speaker_and_speech_content_formatted_llm = llm.with_structured_output(PoliticianInfoList)
+        self.speaker_and_speech_content_formatted_llm = llm.with_structured_output(
+            PoliticianInfoList
+        )
         self.k = k
 
     def politician_extract_run(self, minutes: str) -> PoliticianInfoList:

@@ -1,5 +1,6 @@
 """Web scraper handlers"""
-from .pdf_handler import PDFHandler
+
 from .file_handler import FileHandler
+from .pdf_handler import PDFHandler
 
 __all__ = ["PDFHandler", "FileHandler"]

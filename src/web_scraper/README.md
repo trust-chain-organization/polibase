@@ -118,11 +118,11 @@ class CustomCouncilScraper(BaseScraper):
     async def fetch_minutes(self, url: str) -> Optional[MinutesData]:
         # Implementation
         pass
-    
+
     async def extract_minutes_text(self, html_content: str) -> str:
         # Implementation
         pass
-    
+
     async def extract_speakers(self, html_content: str) -> List[SpeakerData]:
         # Implementation
         pass

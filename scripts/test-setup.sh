@@ -32,7 +32,7 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "🗃️  データベース構造を確認中..."
     docker compose exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
-    
+
     echo ""
     echo "🎉 セットアップ完了！"
     echo "以下のコマンドでアプリケーションを実行できます："

@@ -1,55 +1,36 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "test_polibase_project",
-            "type": "shell",
-            "group": "test",
-            "options": {
-                "cwd": "${workspaceFolder}/tests"
-            },
-            "command": "uv",
-            "args": [
-                "run",
-                "pytest"
-            ],
-            "problemMatcher": [
-                "$python"
-            ]
-        },
-        {
-            "label": "run_minutes_divide_processor",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "command": "uv",
-            "args": [
-                "run",
-                "python",
-                "-m",
-                "src.main"
-            ],
-            "problemMatcher": [
-                "$python"
-            ]
-        },
-        {
-            "label": "run_politician_extract_processor",
-            "type": "shell",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "command": "uv",
-            "args": [
-                "run",
-                "python",
-                "-m",
-                "src.main2"
-            ],
-            "problemMatcher": [
-                "$python"
-            ]
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "test_polibase_project",
+      "type": "shell",
+      "group": "test",
+      "options": {
+        "cwd": "${workspaceFolder}/tests"
+      },
+      "command": "uv",
+      "args": ["run", "pytest"],
+      "problemMatcher": ["$python"]
+    },
+    {
+      "label": "run_minutes_divide_processor",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "command": "uv",
+      "args": ["run", "python", "-m", "src.main"],
+      "problemMatcher": ["$python"]
+    },
+    {
+      "label": "run_politician_extract_processor",
+      "type": "shell",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "command": "uv",
+      "args": ["run", "python", "-m", "src.main2"],
+      "problemMatcher": ["$python"]
+    }
+  ]
 }

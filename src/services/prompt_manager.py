@@ -1,18 +1,19 @@
 """Centralized prompt management for all LLM operations"""
-from typing import Dict, Optional
-from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
-from langchain import hub
+
 import logging
+
+from langchain import hub
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 
 logger = logging.getLogger(__name__)
 
 
 class PromptManager:
     """Manages prompts for different LLM operations"""
-    
+
     # Centralized prompt templates
     PROMPTS = {
-        'minutes_divide': """議事録を分析し、30個のセクションに分割してください。
+        "minutes_divide": """議事録を分析し、30個のセクションに分割してください。
 各セクションには以下の情報を含めてください：
 - chapter_number: セクション番号（1から始まる連番）
 - keyword: そのセクションを識別するキーワード（発言者名や重要な語句）
@@ -20,8 +21,7 @@ class PromptManager:
 議事録:
 {minutes}
 """,
-        
-        'speech_divide': """以下のセクションから発言者と発言内容を抽出してください。
+        "speech_divide": """以下のセクションから発言者と発言内容を抽出してください。
 各発言について以下の情報を含めてください：
 - speech_order: 発言順序（1から始まる連番）
 - speaker: 発言者名
@@ -30,8 +30,7 @@ class PromptManager:
 セクション:
 {section_string}
 """,
-        
-        'politician_extract': """議事録から政治家の情報を抽出してください。
+        "politician_extract": """議事録から政治家の情報を抽出してください。
 各政治家について以下の情報を含めてください：
 - name: 氏名
 - party: 所属政党（わかる場合）
@@ -40,8 +39,7 @@ class PromptManager:
 議事録:
 {minutes}
 """,
-        
-        'speaker_match': """あなたは議事録の発言者名マッチング専門家です。
+        "speaker_match": """あなたは議事録の発言者名マッチング専門家です。
 議事録から抽出された発言者名と、既存の発言者リストから最も適切なマッチを見つけてください。
 
 # 抽出された発言者名
@@ -72,8 +70,8 @@ class PromptManager:
 - confidence は 0.8 以上の場合のみマッチとして扱ってください
 - 複数の候補がある場合は最も確からしいものを選んでください
 """,
-        
-        'party_member_extract': """あなたは政党の議員一覧ページから議員情報を抽出する専門家です。
+        "party_member_extract": """あなたは政党の議員一覧ページから議員情報を抽出する
+専門家です。
 以下のHTMLコンテンツから、{party_name}所属の議員情報を抽出してください。
 
 抽出する情報：
@@ -92,28 +90,28 @@ class PromptManager:
 
 HTMLコンテンツ：
 {content}
-"""
+""",
     }
-    
+
     # LangChain Hub prompt mappings
     HUB_PROMPTS = {
-        'divide_chapter_prompt': 'divide_chapter_prompt',
-        'redivide_chapter_prompt': 'redivide_chapter_prompt',
-        'comment_divide_prompt': 'comment_divide_prompt',
-        'politician_extraction_prompt': 'politician_extraction_prompt'
+        "divide_chapter_prompt": "divide_chapter_prompt",
+        "redivide_chapter_prompt": "redivide_chapter_prompt",
+        "comment_divide_prompt": "comment_divide_prompt",
+        "politician_extraction_prompt": "politician_extraction_prompt",
     }
-    
+
     def __init__(self):
-        self._cached_prompts: Dict[str, ChatPromptTemplate] = {}
-        self._hub_prompts: Dict[str, PromptTemplate] = {}
-    
+        self._cached_prompts: dict[str, ChatPromptTemplate] = {}
+        self._hub_prompts: dict[str, PromptTemplate] = {}
+
     def get_prompt(self, prompt_key: str) -> ChatPromptTemplate:
         """
         Get a prompt template by key
-        
+
         Args:
             prompt_key: Key identifying the prompt
-            
+
         Returns:
             ChatPromptTemplate instance
         """
@@ -124,60 +122,60 @@ HTMLコンテンツ：
                 )
             else:
                 raise ValueError(f"Unknown prompt key: {prompt_key}")
-        
+
         return self._cached_prompts[prompt_key]
-    
+
     def get_hub_prompt(self, prompt_key: str) -> PromptTemplate:
         """
         Get a prompt from LangChain Hub
-        
+
         Args:
             prompt_key: Key identifying the hub prompt
-            
+
         Returns:
             PromptTemplate from hub
         """
         if prompt_key not in self._hub_prompts:
             if prompt_key in self.HUB_PROMPTS:
                 try:
-                    self._hub_prompts[prompt_key] = hub.pull(self.HUB_PROMPTS[prompt_key])
+                    self._hub_prompts[prompt_key] = hub.pull(
+                        self.HUB_PROMPTS[prompt_key]
+                    )
                 except Exception as e:
                     logger.warning(f"Failed to pull prompt from hub: {e}")
                     # Fallback to local prompt if available
-                    fallback_key = prompt_key.replace('_prompt', '')
+                    fallback_key = prompt_key.replace("_prompt", "")
                     if fallback_key in self.PROMPTS:
                         return self.get_prompt(fallback_key)
                     raise
             else:
                 raise ValueError(f"Unknown hub prompt key: {prompt_key}")
-        
+
         return self._hub_prompts[prompt_key]
-    
+
     def create_custom_prompt(
-        self,
-        template: str,
-        cache_key: Optional[str] = None
+        self, template: str, cache_key: str | None = None
     ) -> ChatPromptTemplate:
         """
         Create a custom prompt template
-        
+
         Args:
             template: Prompt template string
             cache_key: Optional key to cache the prompt
-            
+
         Returns:
             ChatPromptTemplate instance
         """
         prompt = ChatPromptTemplate.from_template(template)
-        
+
         if cache_key:
             self._cached_prompts[cache_key] = prompt
-        
+
         return prompt
-    
+
     @classmethod
-    def get_default_instance(cls) -> 'PromptManager':
+    def get_default_instance(cls) -> "PromptManager":
         """Get default instance (singleton pattern)"""
-        if not hasattr(cls, '_instance'):
+        if not hasattr(cls, "_instance"):
             cls._instance = cls()
         return cls._instance

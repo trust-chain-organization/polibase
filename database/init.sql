@@ -11,7 +11,7 @@ CREATE TABLE governing_bodies (
     type VARCHAR, -- 例: "国", "都道府県", "市町村"
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- 同じ名前と種別の組み合わせは一意とする
     UNIQUE(name, type)
 );
@@ -24,7 +24,7 @@ CREATE TABLE conferences (
     governing_body_id INTEGER NOT NULL REFERENCES governing_bodies(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- 同じ開催主体内で同じ名前の会議体は一意とする
     UNIQUE(name, governing_body_id)
 );
@@ -58,7 +58,7 @@ CREATE TABLE speakers (
     is_politician BOOLEAN DEFAULT FALSE, -- 政治家かどうか
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- 同じ名前、政党、役職の組み合わせは一意とする
     UNIQUE(name, political_party_name, position)
 );
@@ -204,7 +204,7 @@ CREATE TRIGGER update_proposal_meeting_occurrences_updated_at BEFORE UPDATE ON p
 -- 開催主体マスターデータの挿入
 \i /docker-entrypoint-initdb.d/seed_governing_bodies.sql
 
--- 政党マスターデータの挿入  
+-- 政党マスターデータの挿入
 \i /docker-entrypoint-initdb.d/seed_political_parties.sql
 
 -- 会議体マスターデータの挿入

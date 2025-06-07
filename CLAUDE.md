@@ -83,6 +83,65 @@ docker compose exec polibase uv run pytest
 docker compose exec polibase uv run python -c "from src.config.database import test_connection; test_connection()"
 ```
 
+### Code Formatting and Quality
+
+#### Ruff (Code Formatter and Linter)
+```bash
+# Format code
+docker compose exec polibase uv run --frozen ruff format .
+
+# Check code style
+docker compose exec polibase uv run --frozen ruff check .
+
+# Fix auto-fixable issues
+docker compose exec polibase uv run --frozen ruff check . --fix
+```
+
+**Critical Ruff Rules:**
+- Line length: 88 characters
+- Import sorting (I001)
+- Unused imports removal
+- Line wrapping conventions:
+  - Strings: use parentheses for multi-line
+  - Function calls: multi-line with proper indentation
+  - Imports: split into multiple lines when needed
+
+#### Type Checking
+```bash
+# Run type checking with pyright
+docker compose exec polibase uv run --frozen pyright
+```
+
+**Requirements:**
+- Explicit `None` checks for `Optional` types
+- Proper type narrowing for strings
+- Version warnings can be ignored if type checks pass
+
+#### Pre-commit Hooks
+```bash
+# Install pre-commit hooks (first time only)
+docker compose exec polibase uv run pre-commit install
+
+# Run pre-commit manually on all files
+docker compose exec polibase uv run pre-commit run --all-files
+
+# Update pre-commit hooks to latest versions
+docker compose exec polibase uv run pre-commit autoupdate
+```
+
+**Pre-commit Configuration:**
+- Config file: `.pre-commit-config.yaml`
+- Runs automatically on `git commit`
+- Tools included:
+  - Prettier: for YAML/JSON formatting
+  - Ruff: for Python formatting and linting
+  - Standard hooks: trailing whitespace, EOF fixer, etc.
+
+**Updating Ruff in pre-commit:**
+1. Check latest version on PyPI
+2. Update `rev` in `.pre-commit-config.yaml`
+3. Commit config changes first before running
+
 ### Database Management
 ```bash
 # Access PostgreSQL
@@ -114,7 +173,7 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 ### Database Design
 - **Master Data** (pre-populated via seed files):
   - `governing_bodies`: Government entities (国, 都道府県, 市町村)
-  - `conferences`: Legislative bodies and committees  
+  - `conferences`: Legislative bodies and committees
   - `political_parties`: Political parties (includes `members_list_url` for web scraping)
 - **Core Tables**:
   - `meetings`, `minutes`, `speakers`, `politicians`, `conversations`, `proposals`
