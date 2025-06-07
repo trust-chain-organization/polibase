@@ -2,17 +2,17 @@
 from typing import List, Dict, Optional
 from datetime import date
 from sqlalchemy import text
-from src.config.database import get_db_session
+from src.database.base_repository import BaseRepository
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-class MeetingRepository:
+class MeetingRepository(BaseRepository):
     """Repository class for Meeting-related database operations"""
     
     def __init__(self):
-        self.session = get_db_session()
+        super().__init__(use_session=True)
     
     def get_governing_bodies(self) -> List[Dict]:
         """Get all governing bodies"""
@@ -28,8 +28,7 @@ class MeetingRepository:
             END,
             name
         """
-        result = self.session.execute(text(query))
-        return [{"id": row[0], "name": row[1], "type": row[2]} for row in result]
+        return self.fetch_as_dict(query)
     
     def get_conferences_by_governing_body(self, governing_body_id: int) -> List[Dict]:
         """Get conferences for a specific governing body"""
@@ -39,11 +38,7 @@ class MeetingRepository:
         WHERE governing_body_id = :governing_body_id
         ORDER BY name
         """
-        result = self.session.execute(
-            text(query), 
-            {"governing_body_id": governing_body_id}
-        )
-        return [{"id": row[0], "name": row[1], "type": row[2]} for row in result]
+        return self.fetch_as_dict(query, {"governing_body_id": governing_body_id})
     
     def get_all_conferences(self) -> List[Dict]:
         """Get all conferences with their governing bodies"""
@@ -59,15 +54,7 @@ class MeetingRepository:
         JOIN governing_bodies gb ON c.governing_body_id = gb.id
         ORDER BY gb.type, gb.name, c.name
         """
-        result = self.session.execute(text(query))
-        return [{
-            "id": row[0],
-            "name": row[1],
-            "type": row[2],
-            "governing_body_id": row[3],
-            "governing_body_name": row[4],
-            "governing_body_type": row[5]
-        } for row in result]
+        return self.fetch_as_dict(query)
     
     def get_meetings(self, conference_id: Optional[int] = None, limit: int = 100) -> List[Dict]:
         """Get meetings, optionally filtered by conference"""
@@ -103,70 +90,43 @@ class MeetingRepository:
             """
             params = {"limit": limit}
         
-        result = self.session.execute(text(query), params)
-        return [{
-            "id": row[0],
-            "date": row[1],
-            "url": row[2],
-            "conference_name": row[3],
-            "governing_body_name": row[4]
-        } for row in result]
+        return self.fetch_as_dict(query, params)
     
     def create_meeting(self, conference_id: int, meeting_date: date, url: str) -> int:
         """Create a new meeting"""
-        query = """
-        INSERT INTO meetings (conference_id, date, url)
-        VALUES (:conference_id, :date, :url)
-        RETURNING id
-        """
-        result = self.session.execute(
-            text(query),
-            {
+        return self.insert(
+            table='meetings',
+            data={
                 "conference_id": conference_id,
                 "date": meeting_date,
                 "url": url
-            }
+            },
+            returning='id'
         )
-        self.session.commit()
-        return result.fetchone()[0]
     
     def update_meeting(self, meeting_id: int, meeting_date: date, url: str) -> bool:
         """Update an existing meeting"""
-        query = """
-        UPDATE meetings
-        SET date = :date, url = :url, updated_at = CURRENT_TIMESTAMP
-        WHERE id = :id
-        """
-        result = self.session.execute(
-            text(query),
-            {
-                "id": meeting_id,
+        rows_affected = self.update(
+            table='meetings',
+            data={
                 "date": meeting_date,
                 "url": url
-            }
+            },
+            where={"id": meeting_id}
         )
-        self.session.commit()
-        return result.rowcount > 0
+        return rows_affected > 0
     
     def delete_meeting(self, meeting_id: int) -> bool:
         """Delete a meeting"""
         # First check if there are related minutes
-        check_query = """
-        SELECT COUNT(*) FROM minutes WHERE meeting_id = :meeting_id
-        """
-        result = self.session.execute(text(check_query), {"meeting_id": meeting_id})
-        count = result.fetchone()[0]
+        count = self.count('minutes', {'meeting_id': meeting_id})
         
         if count > 0:
             logger.warning(f"Cannot delete meeting {meeting_id}: has {count} related minutes")
             return False
         
-        delete_query = """
-        DELETE FROM meetings WHERE id = :id
-        """
-        result = self.session.execute(text(delete_query), {"id": meeting_id})
-        self.session.commit()
-        return result.rowcount > 0
+        rows_affected = self.delete('meetings', {'id': meeting_id})
+        return rows_affected > 0
     
     def get_meeting_by_id(self, meeting_id: int) -> Optional[Dict]:
         """Get a specific meeting by ID"""
@@ -184,20 +144,7 @@ class MeetingRepository:
         JOIN governing_bodies gb ON c.governing_body_id = gb.id
         WHERE m.id = :id
         """
-        result = self.session.execute(text(query), {"id": meeting_id})
-        row = result.fetchone()
-        if row:
-            return {
-                "id": row[0],
-                "conference_id": row[1],
-                "date": row[2],
-                "url": row[3],
-                "conference_name": row[4],
-                "governing_body_id": row[5],
-                "governing_body_name": row[6]
-            }
-        return None
+        results = self.fetch_as_dict(query, {"id": meeting_id})
+        return results[0] if results else None
     
-    def close(self):
-        """Close the database session"""
-        self.session.close()
+    # close() method is inherited from BaseRepository

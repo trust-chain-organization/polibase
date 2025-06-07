@@ -3,15 +3,15 @@ Speaker テーブルへのデータ操作を管理するリポジトリクラス
 """
 from typing import List, Optional
 from sqlalchemy import text
-from src.config.database import get_db_session
+from src.database.base_repository import BaseRepository
 from src.politician_extract_processor.models import PoliticianInfo, PoliticianInfoList
 
 
-class SpeakerRepository:
+class SpeakerRepository(BaseRepository):
     """Speakerテーブルに対するデータベース操作を管理するクラス"""
     
     def __init__(self):
-        self.session = get_db_session()
+        super().__init__(use_session=True)
     
     def save_politician_info_list(self, politician_info_list: PoliticianInfoList) -> List[int]:
         """
@@ -59,21 +59,18 @@ class SpeakerRepository:
             return existing_id
         
         # 新規レコードの挿入
-        query = text("""
-            INSERT INTO speakers (name, type, political_party_name, position, is_politician)
-            VALUES (:name, :type, :political_party_name, :position, :is_politician)
-            RETURNING id
-        """)
+        speaker_id = self.insert(
+            table='speakers',
+            data={
+                'name': politician_info.name,
+                'type': '政治家',  # PoliticianInfoなので固定で「政治家」
+                'political_party_name': politician_info.party,
+                'position': politician_info.position,
+                'is_politician': True
+            },
+            returning='id'
+        )
         
-        result = self.session.execute(query, {
-            'name': politician_info.name,
-            'type': '政治家',  # PoliticianInfoなので固定で「政治家」
-            'political_party_name': politician_info.party,
-            'position': politician_info.position,
-            'is_politician': True
-        })
-        
-        speaker_id = result.fetchone()[0]
         print(f"➕ 新規追加: {politician_info.name} (ID: {speaker_id})")
         return speaker_id
     
@@ -87,20 +84,19 @@ class SpeakerRepository:
         Returns:
             Optional[int]: 既存レコードのID（存在しない場合はNone）
         """
-        query = text("""
+        query = """
             SELECT id FROM speakers 
             WHERE name = :name 
             AND (political_party_name = :political_party_name OR (political_party_name IS NULL AND :political_party_name IS NULL))
             AND (position = :position OR (position IS NULL AND :position IS NULL))
-        """)
+        """
         
-        result = self.session.execute(query, {
+        row = self.fetch_one(query, {
             'name': politician_info.name,
             'political_party_name': politician_info.party,
             'position': politician_info.position
         })
         
-        row = result.fetchone()
         return row[0] if row else None
     
     def get_all_speakers(self) -> List[dict]:
@@ -110,22 +106,13 @@ class SpeakerRepository:
         Returns:
             List[dict]: Speakerレコードのリスト
         """
-        query = text("""
+        query = """
             SELECT id, name, type, political_party_name, position, is_politician, created_at, updated_at
             FROM speakers
             ORDER BY created_at DESC
-        """)
+        """
         
-        result = self.session.execute(query)
-        columns = result.keys()
-        
-        speakers = []
-        for row in result.fetchall():
-            speaker_dict = dict(zip(columns, row))
-            speakers.append(speaker_dict)
-        
-        self.session.close()
-        return speakers
+        return self.fetch_as_dict(query)
     
     def get_speakers_count(self) -> int:
         """
@@ -134,8 +121,4 @@ class SpeakerRepository:
         Returns:
             int: レコード数
         """
-        query = text("SELECT COUNT(*) FROM speakers")
-        result = self.session.execute(query)
-        count = result.fetchone()[0]
-        self.session.close()
-        return count
+        return self.count('speakers')

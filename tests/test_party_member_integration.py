@@ -100,15 +100,23 @@ class TestPartyMemberIntegration:
         ]
         
         # リポジトリのモック
-        with patch('src.database.politician_repository.get_db_engine') as mock_get_engine:
+        with patch('src.database.base_repository.get_db_engine') as mock_get_engine:
             mock_engine = Mock()
             mock_conn = Mock()
             mock_get_engine.return_value = mock_engine
             mock_engine.dispose = Mock()
-            mock_context = Mock()
-            mock_context.__enter__ = Mock(return_value=mock_conn)
-            mock_context.__exit__ = Mock(return_value=None)
-            mock_engine.connect.return_value = mock_context
+            
+            # engine.begin() のコンテキストマネージャーをモック
+            mock_begin_context = Mock()
+            mock_begin_context.__enter__ = Mock(return_value=mock_conn)
+            mock_begin_context.__exit__ = Mock(return_value=None)
+            mock_engine.begin.return_value = mock_begin_context
+            
+            # engine.connect() のコンテキストマネージャーもモック
+            mock_connect_context = Mock()
+            mock_connect_context.__enter__ = Mock(return_value=mock_conn)
+            mock_connect_context.__exit__ = Mock(return_value=None)
+            mock_engine.connect.return_value = mock_connect_context
             
             # commitとrollbackメソッドを追加
             mock_conn.commit = Mock()
@@ -167,15 +175,23 @@ class TestPartyMemberIntegration:
             }
         ]
         
-        with patch('src.database.politician_repository.get_db_engine') as mock_get_engine:
+        with patch('src.database.base_repository.get_db_engine') as mock_get_engine:
             mock_engine = Mock()
             mock_conn = Mock()
             mock_get_engine.return_value = mock_engine
             mock_engine.dispose = Mock()
-            mock_context = Mock()
-            mock_context.__enter__ = Mock(return_value=mock_conn)
-            mock_context.__exit__ = Mock(return_value=None)
-            mock_engine.connect.return_value = mock_context
+            
+            # engine.begin() のコンテキストマネージャーをモック
+            mock_begin_context = Mock()
+            mock_begin_context.__enter__ = Mock(return_value=mock_conn)
+            mock_begin_context.__exit__ = Mock(return_value=None)
+            mock_engine.begin.return_value = mock_begin_context
+            
+            # engine.connect() のコンテキストマネージャーもモック
+            mock_connect_context = Mock()
+            mock_connect_context.__enter__ = Mock(return_value=mock_conn)
+            mock_connect_context.__exit__ = Mock(return_value=None)
+            mock_engine.connect.return_value = mock_connect_context
             
             # commitとrollbackメソッドを追加
             mock_conn.commit = Mock()
