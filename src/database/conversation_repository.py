@@ -27,13 +27,15 @@ class ConversationRepository(BaseRepository):
         self.speaker_matching_service = speaker_matching_service
 
     def save_speaker_and_speech_content_list(
-        self, speaker_and_speech_content_list: list[SpeakerAndSpeechContent]
+        self, speaker_and_speech_content_list: list[SpeakerAndSpeechContent],
+        minutes_id: int | None = None
     ) -> list[int]:
         """
         SpeakerAndSpeechContentのリストをConversationsテーブルに保存する
 
         Args:
             speaker_and_speech_content_list: 保存する発言データリスト
+            minutes_id: 紐付けるminutesレコードのID
 
         Returns:
             List[int]: 保存されたレコードのIDリスト
@@ -59,7 +61,7 @@ class ConversationRepository(BaseRepository):
             ):
                 try:
                     conversation_id = self._save_conversation(
-                        speaker_and_speech_content
+                        speaker_and_speech_content, minutes_id
                     )
                     if conversation_id:
                         saved_ids.append(conversation_id)
@@ -114,25 +116,21 @@ class ConversationRepository(BaseRepository):
             self.session.close()
 
     def _save_conversation(
-        self, speaker_and_speech_content: SpeakerAndSpeechContent
+        self, speaker_and_speech_content: SpeakerAndSpeechContent,
+        minutes_id: int | None = None
     ) -> int | None:
         """
         個別のSpeakerAndSpeechContentをConversationsテーブルに保存する
 
         Args:
             speaker_and_speech_content: 保存する発言データ
+            minutes_id: 紐付けるminutesレコードのID
 
         Returns:
             保存されたレコードのID、失敗した場合はNone
 
         Raises:
             SaveError: If save operation fails
-
-        Args:
-            speaker_and_speech_content: 保存する発言データ
-
-        Returns:
-            Optional[int]: 保存されたレコードのID
         """
         # speaker_idを検索（名前の完全一致または部分一致）
         speaker_id = self._find_speaker_id(speaker_and_speech_content.speaker)
@@ -141,7 +139,7 @@ class ConversationRepository(BaseRepository):
         conversation_id = self.insert(
             table="conversations",
             data={
-                "minutes_id": None,  # 現時点では議事録IDは未設定
+                "minutes_id": minutes_id,  # minutesレコードと紐付け
                 "speaker_id": speaker_id,
                 "speaker_name": speaker_and_speech_content.speaker,
                 "comment": speaker_and_speech_content.speech_content,
@@ -266,7 +264,7 @@ class ConversationRepository(BaseRepository):
         Returns:
             int: レコード数
         """
-        count = self.count("conversations")
+        count = self.count("conversations", where={})
         self.close()  # For backward compatibility with tests
         return count
 
