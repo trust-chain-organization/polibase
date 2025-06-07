@@ -8,6 +8,7 @@ from pathlib import Path
 from ..config import config
 from ..utils.gcs_storage import GCSStorage
 from .kaigiroku_net_scraper import KaigirokuNetScraper
+from .kokkai_scraper import KokkaiScraper
 from .models import MinutesData
 
 # ロギング設定
@@ -89,6 +90,10 @@ class ScraperService:
         # kaigiroku.netシステムの場合
         if "kaigiroku.net/tenant/" in url:
             return KaigirokuNetScraper()
+        
+        # 国会会議録検索システムの場合
+        if "kokkai.ndl.go.jp" in url:
+            return KokkaiScraper()
 
         # 今後、他の議事録システムのスクレーパーをここに追加
         # 例: 独自システムを使う自治体など
