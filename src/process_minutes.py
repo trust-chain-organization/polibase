@@ -31,12 +31,14 @@ logger = logging.getLogger(__name__)
 
 def save_to_database(
     speaker_and_speech_content_list: list[SpeakerAndSpeechContent],
+    minutes_id: int | None = None,
 ) -> list[int]:
     """
     SpeakerAndSpeechContentのリストをデータベースのConversationsテーブルに保存する
 
     Args:
         speaker_and_speech_content_list: 保存する発言データリスト
+        minutes_id: 紐付けるminutesレコードのID
 
     Returns:
         List[int]: 保存されたレコードのIDリスト
@@ -51,7 +53,7 @@ def save_to_database(
     try:
         conversation_repo = ConversationRepository()
         saved_ids = conversation_repo.save_speaker_and_speech_content_list(
-            speaker_and_speech_content_list
+            speaker_and_speech_content_list, minutes_id=minutes_id
         )
         logger.info(f"Saved {len(saved_ids)} conversations to database")
         return saved_ids
@@ -233,13 +235,37 @@ def main() -> list[int] | None:
                     
                     print(f"   ✅ テキストを取得しました ({len(extracted_text)} 文字)")
                     
+                    # minutesレコードを作成（既存のものがあるかチェック）
+                    from src.database.base_repository import BaseRepository
+                    minutes_repo = BaseRepository(use_session=False)
+                    
+                    # 既存のminutesレコードを確認
+                    existing_minutes = minutes_repo.fetch_one(
+                        "SELECT id FROM minutes WHERE meeting_id = :meeting_id",
+                        {"meeting_id": meeting_id}
+                    )
+                    
+                    if existing_minutes:
+                        minutes_id = existing_minutes[0]
+                        print(f"   ℹ️  既存のMinutes ID {minutes_id} を使用します")
+                    else:
+                        minutes_id = minutes_repo.insert(
+                            table="minutes",
+                            data={
+                                "meeting_id": meeting_id,
+                                "url": meeting["url"],
+                            },
+                            returning="id"
+                        )
+                        print(f"   ✅ Minutes ID {minutes_id} を作成しました")
+                    
                     # 議事録を処理
                     results = process_minutes(extracted_text)
                     if results:
-                        # データベースに保存
-                        saved_ids = save_to_database(results)
+                        # データベースに保存（minutes_idを紐付け）
+                        saved_ids = save_to_database(results, minutes_id=minutes_id)
                         all_saved_ids.extend(saved_ids)
-                        print(f"   ✅ {len(saved_ids)}件の発言を保存しました")
+                        print(f"   ✅ {len(saved_ids)}件の発言を保存しました (Minutes ID: {minutes_id})")
                     else:
                         print(f"   ⚠️  発言が抽出されませんでした")
                         
@@ -280,6 +306,39 @@ def main() -> list[int] | None:
                         logger.info(
                             f"Successfully downloaded text from GCS "
                             f"({len(extracted_text)} characters)"
+                        )
+                        
+                        # minutesレコードを作成（既存のものがあるかチェック）
+                        from src.database.base_repository import BaseRepository
+                        minutes_repo = BaseRepository(use_session=False)
+                        
+                        # 既存のminutesレコードを確認
+                        existing_minutes = minutes_repo.fetch_one(
+                            "SELECT id FROM minutes WHERE meeting_id = :meeting_id",
+                            {"meeting_id": args.meeting_id}
+                        )
+                        
+                        if existing_minutes:
+                            minutes_id = existing_minutes[0]
+                            logger.info(f"Using existing minutes record with ID: {minutes_id}")
+                        else:
+                            minutes_id = minutes_repo.insert(
+                                table="minutes",
+                                data={
+                                    "meeting_id": args.meeting_id,
+                                    "url": meeting["url"],
+                                },
+                                returning="id"
+                            )
+                            logger.info(f"Created minutes record with ID: {minutes_id}")
+                        
+                        # メイン処理の実行（minutes_idを渡す）
+                        return run_main_process(
+                            process_func=process_minutes,
+                            process_name="発言データ",
+                            display_status_func=display_database_status,
+                            save_func=lambda results: save_to_database(results, minutes_id=minutes_id),
+                            extracted_text=extracted_text,
                         )
                     else:
                         logger.warning(
