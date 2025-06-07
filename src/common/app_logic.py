@@ -1,15 +1,43 @@
 """
 アプリケーション共通ロジック
+
+Provides common application logic with proper error handling and type safety.
 """
-from typing import List, Optional, Any
+import logging
+import os
+from typing import List, Optional, Any, Callable, TypeVar
+
 import src.config.config as config
 from src.utils.text_extractor import extract_text_from_pdf
 from src.config.database import test_connection
+from src.exceptions import (
+    ConfigurationError, DatabaseError, PDFProcessingError,
+    ProcessingError, FileNotFoundError as PolibaseFileNotFoundError
+)
+
+logger = logging.getLogger(__name__)
+
+# Type variables for generic functions
+T = TypeVar('T')
+R = TypeVar('R')
 
 
 def setup_environment() -> None:
-    """環境変数を設定する"""
-    config.set_env()
+    """環境変数を設定する
+    
+    Raises:
+        ConfigurationError: If configuration validation fails
+    """
+    try:
+        config.set_env()
+        config.validate_config()
+        logger.info("Environment setup completed")
+    except Exception as e:
+        logger.error(f"Failed to setup environment: {e}")
+        raise ConfigurationError(
+            "Failed to setup application environment",
+            {"error": str(e)}
+        )
 
 
 def load_pdf_text(file_path: str = 'data/minutes.pdf') -> str:
@@ -24,15 +52,39 @@ def load_pdf_text(file_path: str = 'data/minutes.pdf') -> str:
         
     Raises:
         FileNotFoundError: ファイルが見つからない場合
+        PDFProcessingError: PDF処理が失敗した場合
     """
+    if not os.path.exists(file_path):
+        logger.error(f"PDF file not found: {file_path}")
+        raise PolibaseFileNotFoundError(
+            f"PDF file not found: {file_path}",
+            {"file_path": file_path}
+        )
+    
     try:
+        logger.info(f"Loading PDF from: {file_path}")
         with open(file_path, 'rb') as f:
             file_content = f.read()
-    except FileNotFoundError:
-        print(f"Source file not found: {file_path}")
+            
+        if not file_content:
+            raise PDFProcessingError(
+                "PDF file is empty",
+                {"file_path": file_path, "size": 0}
+            )
+            
+        text = extract_text_from_pdf(file_content)
+        logger.info(f"Extracted {len(text)} characters from PDF")
+        
+        return text
+        
+    except (PolibaseFileNotFoundError, PDFProcessingError):
         raise
-    
-    return extract_text_from_pdf(file_content)
+    except Exception as e:
+        logger.error(f"Failed to load PDF: {e}")
+        raise PDFProcessingError(
+            f"Failed to process PDF file: {file_path}",
+            {"file_path": file_path, "error": str(e)}
+        )
 
 
 def validate_database_connection() -> bool:
@@ -41,15 +93,34 @@ def validate_database_connection() -> bool:
     
     Returns:
         bool: 接続が成功した場合True
+        
+    Raises:
+        DatabaseError: If connection test fails with unexpected error
     """
     print("🔍 データベース接続テストを開始...")
-    if not test_connection():
-        print("❌ データベースに接続できません。docker compose でPostgreSQLが起動していることを確認してください。")
-        return False
-    return True
+    
+    try:
+        if not test_connection():
+            print("❌ データベースに接続できません。docker compose でPostgreSQLが起動していることを確認してください。")
+            logger.warning("Database connection test failed")
+            return False
+        return True
+    except Exception as e:
+        logger.error(f"Database connection test error: {e}")
+        raise DatabaseError(
+            "Failed to test database connection",
+            {"error": str(e)}
+        )
 
 
-def run_main_process(process_func, process_name: str, display_status_func, save_func, *args, **kwargs) -> Any:
+def run_main_process(
+    process_func: Callable[..., T],
+    process_name: str,
+    display_status_func: Callable[[], None],
+    save_func: Callable[[T], List[int]],
+    *args: Any,
+    **kwargs: Any
+) -> Optional[T]:
     """
     メイン処理の共通フロー
     
@@ -58,35 +129,59 @@ def run_main_process(process_func, process_name: str, display_status_func, save_
         process_name: 処理名（ログ用）
         display_status_func: データベース状態表示関数
         save_func: データベース保存関数
-        *args, **kwargs: process_funcに渡す引数
+        *args: process_funcに渡す引数
+        **kwargs: process_funcに渡すキーワード引数
         
     Returns:
-        Any: 処理結果
+        処理結果またはNone
+        
+    Raises:
+        DatabaseError: If database operation fails
+        ProcessingError: If processing fails
     """
     try:
         # データベース接続テスト
         if not validate_database_connection():
+            logger.error("Database connection validation failed")
             return None
         
         print("📊 処理前のデータベース状態:")
         display_status_func()
         
         # メイン処理の実行
+        logger.info(f"Starting {process_name} processing")
         result = process_func(*args, **kwargs)
+        
+        if result is None:
+            logger.warning(f"{process_name} returned no results")
+            print(f"⚠️ {process_name}の結果がありません")
+            return None
         
         # データベースに保存
         saved_ids = save_func(result)
-        print(f"💾 データベース保存完了: {len(saved_ids)}件の{process_name}レコードを保存しました")
-        print(f"{process_name}の抽出が完了しました。{len(saved_ids)}件のレコードをデータベースに保存しました。")
+        
+        if saved_ids:
+            print(f"💾 データベース保存完了: {len(saved_ids)}件の{process_name}レコードを保存しました")
+            print(f"{process_name}の抽出が完了しました。{len(saved_ids)}件のレコードをデータベースに保存しました。")
+            logger.info(f"Saved {len(saved_ids)} {process_name} records")
+        else:
+            print(f"⚠️ 保存する{process_name}データがありませんでした")
         
         print("\n📊 処理後のデータベース状態:")
         display_status_func()
         
         return result
         
-    except Exception as e:
-        print(f"❌ {process_name}処理エラー: {e}")
+    except (DatabaseError, ProcessingError):
+        # These are already properly formatted, re-raise as-is
         raise
+    except Exception as e:
+        logger.error(f"{process_name} processing error: {e}", exc_info=True)
+        print(f"❌ {process_name}処理エラー: {e}")
+        raise ProcessingError(
+            f"{process_name} processing failed",
+            {"process_name": process_name, "error": str(e)}
+        )
 
 
 def print_completion_message(result_data: Any, process_name: str = "処理") -> None:
@@ -97,6 +192,21 @@ def print_completion_message(result_data: Any, process_name: str = "処理") -> 
         result_data: 処理結果データ
         process_name: 処理名
     """
-    print("--------結果出力--------")
-    print(result_data)
-    print(f'{process_name}が全部終わったよ')
+    if result_data is not None:
+        print("--------結果出力--------")
+        if isinstance(result_data, list):
+            print(f"結果数: {len(result_data)}件")
+            if len(result_data) > 0 and len(result_data) <= 5:
+                # Show all items if 5 or fewer
+                for i, item in enumerate(result_data, 1):
+                    print(f"{i}. {item}")
+            elif len(result_data) > 5:
+                # Show first 3 items if more than 5
+                for i, item in enumerate(result_data[:3], 1):
+                    print(f"{i}. {item}")
+                print(f"... 他 {len(result_data) - 3} 件")
+        else:
+            print(result_data)
+        
+    print(f'\n✅ {process_name}が全部終わったよ')
+    logger.info(f"{process_name} completed successfully")

@@ -1,18 +1,27 @@
 """
 Conversations テーブルへのデータ操作を管理するリポジトリクラス
+
+Provides database operations for conversations with proper error handling.
 """
-from typing import List, Optional
+import logging
+from typing import List, Optional, Dict, Any
+
 from sqlalchemy import text
-from src.config.database import get_db_session
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError as SQLIntegrityError
+
+from src.database.base_repository import BaseRepository
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent, SpeakerAndSpeechContentList
 from src.database.speaker_matching_service import SpeakerMatchingService
+from src.exceptions import DatabaseError, SaveError, IntegrityError
+
+logger = logging.getLogger(__name__)
 
 
-class ConversationRepository:
+class ConversationRepository(BaseRepository):
     """Conversationsテーブルに対するデータベース操作を管理するクラス"""
     
     def __init__(self, speaker_matching_service: Optional[SpeakerMatchingService] = None):
-        self.session = get_db_session()
+        super().__init__(use_session=True)
         self.speaker_matching_service = speaker_matching_service
     
     def save_speaker_and_speech_content_list(self, speaker_and_speech_content_list: List[SpeakerAndSpeechContent]) -> List[int]:
@@ -24,23 +33,61 @@ class ConversationRepository:
             
         Returns:
             List[int]: 保存されたレコードのIDリスト
+            
+        Raises:
+            SaveError: If saving conversations fails
+            IntegrityError: If data integrity constraint is violated
         """
-        saved_ids = []
+        if not speaker_and_speech_content_list:
+            logger.warning("No conversations to save")
+            return []
+            
+        saved_ids: List[int] = []
+        failed_count = 0
         
         try:
-            for speaker_and_speech_content in speaker_and_speech_content_list:
-                conversation_id = self._save_conversation(speaker_and_speech_content)
-                if conversation_id:
-                    saved_ids.append(conversation_id)
+            for i, speaker_and_speech_content in enumerate(speaker_and_speech_content_list):
+                try:
+                    conversation_id = self._save_conversation(speaker_and_speech_content)
+                    if conversation_id:
+                        saved_ids.append(conversation_id)
+                except Exception as e:
+                    logger.warning(f"Failed to save conversation {i+1}: {e}")
+                    failed_count += 1
+                    # Continue with other conversations
             
             self.session.commit()
-            print(f"✅ {len(saved_ids)}件の発言データをデータベースに保存しました")
+            
+            if saved_ids:
+                print(f"✅ {len(saved_ids)}件の発言データをデータベースに保存しました")
+                logger.info(f"Saved {len(saved_ids)} conversations successfully")
+                
+            if failed_count > 0:
+                logger.warning(f"Failed to save {failed_count} conversations")
+                
             return saved_ids
             
+        except SQLIntegrityError as e:
+            self.session.rollback()
+            logger.error(f"Integrity error while saving conversations: {e}")
+            raise IntegrityError(
+                "Data integrity constraint violated while saving conversations",
+                {"saved_count": len(saved_ids), "error": str(e)}
+            )
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            logger.error(f"Database error while saving conversations: {e}")
+            raise SaveError(
+                "Failed to save conversations to database",
+                {"saved_count": len(saved_ids), "total_count": len(speaker_and_speech_content_list), "error": str(e)}
+            )
         except Exception as e:
             self.session.rollback()
-            print(f"❌ データベース保存エラー: {e}")
-            raise
+            logger.error(f"Unexpected error while saving conversations: {e}")
+            raise SaveError(
+                "Unexpected error occurred while saving conversations",
+                {"saved_count": len(saved_ids), "error": str(e)}
+            )
         finally:
             self.session.close()
     
@@ -52,33 +99,34 @@ class ConversationRepository:
             speaker_and_speech_content: 保存する発言データ
             
         Returns:
+            保存されたレコードのID、失敗した場合はNone
+            
+        Raises:
+            SaveError: If save operation fails
+        
+        Args:
+            speaker_and_speech_content: 保存する発言データ
+            
+        Returns:
             Optional[int]: 保存されたレコードのID
         """
         # speaker_idを検索（名前の完全一致または部分一致）
         speaker_id = self._find_speaker_id(speaker_and_speech_content.speaker)
         
         # 新規レコードの挿入
-        query = text("""
-            INSERT INTO conversations (
-                minutes_id, speaker_id, speaker_name, comment, sequence_number, 
-                chapter_number, sub_chapter_number
-            )
-            VALUES (:minutes_id, :speaker_id, :speaker_name, :comment, :sequence_number, 
-                    :chapter_number, :sub_chapter_number)
-            RETURNING id
-        """)
-        
-        result = self.session.execute(query, {
-            'minutes_id': None,  # 現時点では議事録IDは未設定
-            'speaker_id': speaker_id,
-            'speaker_name': speaker_and_speech_content.speaker,
-            'comment': speaker_and_speech_content.speech_content,
-            'sequence_number': speaker_and_speech_content.speech_order,
-            'chapter_number': speaker_and_speech_content.chapter_number,
-            'sub_chapter_number': speaker_and_speech_content.sub_chapter_number
-        })
-        
-        conversation_id = result.fetchone()[0]
+        conversation_id = self.insert(
+            table='conversations',
+            data={
+                'minutes_id': None,  # 現時点では議事録IDは未設定
+                'speaker_id': speaker_id,
+                'speaker_name': speaker_and_speech_content.speaker,
+                'comment': speaker_and_speech_content.speech_content,
+                'sequence_number': speaker_and_speech_content.speech_order,
+                'chapter_number': speaker_and_speech_content.chapter_number,
+                'sub_chapter_number': speaker_and_speech_content.sub_chapter_number
+            },
+            returning='id'
+        )
         
         if speaker_id:
             print(f"➕ 新規追加: {speaker_and_speech_content.speaker} (ID: {conversation_id}, Speaker ID: {speaker_id})")
@@ -112,14 +160,13 @@ class ConversationRepository:
         従来のルールベース発言者検索（後方互換性のため）
         """
         # 完全一致を優先して検索
-        query = text("""
+        query = """
             SELECT id FROM speakers 
             WHERE name = :speaker_name
             LIMIT 1
-        """)
+        """
         
-        result = self.session.execute(query, {'speaker_name': speaker_name})
-        row = result.fetchone()
+        row = self.fetch_one(query, {'speaker_name': speaker_name})
         
         if row:
             return row[0]
@@ -129,14 +176,13 @@ class ConversationRepository:
         match = re.search(r'\(([^)]+)\)', speaker_name)
         if match:
             extracted_name = match.group(1)
-            query = text("""
+            query = """
                 SELECT id FROM speakers 
                 WHERE name = :extracted_name
                 LIMIT 1
-            """)
+            """
             
-            result = self.session.execute(query, {'extracted_name': extracted_name})
-            row = result.fetchone()
+            row = self.fetch_one(query, {'extracted_name': extracted_name})
             
             if row:
                 return row[0]
@@ -148,18 +194,17 @@ class ConversationRepository:
             return self._legacy_find_speaker_id(cleaned_name)
         
         # それでも見つからない場合は部分一致を試行
-        query = text("""
+        query = """
             SELECT id FROM speakers 
             WHERE name LIKE :speaker_pattern
             OR :speaker_name LIKE CONCAT('%', name, '%')
             LIMIT 1
-        """)
+        """
         
-        result = self.session.execute(query, {
+        row = self.fetch_one(query, {
             'speaker_pattern': f'%{speaker_name}%',
             'speaker_name': speaker_name
         })
-        row = result.fetchone()
         
         return row[0] if row else None
     
@@ -170,25 +215,18 @@ class ConversationRepository:
         Returns:
             List[dict]: Conversationレコードのリスト
         """
-        query = text("""
+        query = """
             SELECT c.id, c.minutes_id, c.speaker_id, c.speaker_name, c.comment, 
                    c.sequence_number, c.chapter_number, c.sub_chapter_number,
                    c.created_at, c.updated_at, s.name as linked_speaker_name
             FROM conversations c
             LEFT JOIN speakers s ON c.speaker_id = s.id
             ORDER BY c.sequence_number ASC
-        """)
+        """
         
-        result = self.session.execute(query)
-        columns = result.keys()
-        
-        conversations = []
-        for row in result.fetchall():
-            conversation_dict = dict(zip(columns, row))
-            conversations.append(conversation_dict)
-        
-        self.session.close()
-        return conversations
+        results = self.fetch_as_dict(query)
+        self.close()  # For backward compatibility with tests
+        return results
     
     def get_conversations_count(self) -> int:
         """
@@ -197,10 +235,8 @@ class ConversationRepository:
         Returns:
             int: レコード数
         """
-        query = text("SELECT COUNT(*) FROM conversations")
-        result = self.session.execute(query)
-        count = result.fetchone()[0]
-        self.session.close()
+        count = self.count('conversations')
+        self.close()  # For backward compatibility with tests
         return count
     
     def get_speaker_linking_stats(self) -> dict:
@@ -210,16 +246,15 @@ class ConversationRepository:
         Returns:
             dict: 紐付け統計（総数、紐付けあり、紐付けなし）
         """
-        query = text("""
+        query = """
             SELECT 
                 COUNT(*) as total_conversations,
                 COUNT(speaker_id) as linked_conversations,
                 COUNT(*) - COUNT(speaker_id) as unlinked_conversations
             FROM conversations
-        """)
+        """
         
-        result = self.session.execute(query)
-        row = result.fetchone()
+        row = self.fetch_one(query)
         
         stats = {
             'total_conversations': row[0],
@@ -227,7 +262,7 @@ class ConversationRepository:
             'unlinked_conversations': row[2]
         }
         
-        self.session.close()
+        self.close()  # For backward compatibility with tests
         return stats
     
     def update_speaker_links(self) -> int:
@@ -252,13 +287,12 @@ class ConversationRepository:
         """
         try:
             # speaker_idがNULLのレコードを取得
-            query = text("""
+            query = """
                 SELECT id, speaker_name FROM conversations 
                 WHERE speaker_id IS NULL
-            """)
+            """
             
-            result = self.session.execute(query)
-            unlinked_conversations = result.fetchall()
+            unlinked_conversations = self.fetch_all(query)
             
             updated_count = 0
             
@@ -267,19 +301,15 @@ class ConversationRepository:
                 
                 if speaker_id:
                     # speaker_idを更新
-                    update_query = text("""
-                        UPDATE conversations 
-                        SET speaker_id = :speaker_id 
-                        WHERE id = :conversation_id
-                    """)
+                    rows_affected = self.update(
+                        table='conversations',
+                        data={'speaker_id': speaker_id},
+                        where={'id': conversation_id}
+                    )
                     
-                    self.session.execute(update_query, {
-                        'speaker_id': speaker_id,
-                        'conversation_id': conversation_id
-                    })
-                    
-                    updated_count += 1
-                    print(f"🔗 Speaker紐付け更新: {speaker_name} → Speaker ID: {speaker_id}")
+                    if rows_affected > 0:
+                        updated_count += 1
+                        print(f"🔗 Speaker紐付け更新: {speaker_name} → Speaker ID: {speaker_id}")
             
             self.session.commit()
             print(f"✅ {updated_count}件のSpeaker紐付けを更新しました")

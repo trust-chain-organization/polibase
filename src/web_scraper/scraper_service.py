@@ -2,11 +2,11 @@
 import asyncio
 import json
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Any
 from datetime import datetime
 import logging
 
-from .base_scraper import MinutesData
+from .models import MinutesData, SpeakerData
 from .kaigiroku_net_scraper import KaigirokuNetScraper
 from ..utils.gcs_storage import GCSStorage
 from ..config import config
@@ -101,12 +101,9 @@ class ScraperService:
             try:
                 with open(cache_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    
-                # MinutesDataオブジェクトに変換
-                data['date'] = datetime.fromisoformat(data['date']) if data.get('date') else None
-                data['scraped_at'] = datetime.fromisoformat(data['scraped_at']) if data.get('scraped_at') else None
                 
-                return MinutesData(**data)
+                # MinutesDataオブジェクトに変換
+                return MinutesData.from_dict(data)
             except Exception as e:
                 self.logger.warning(f"Failed to load cache for {url}: {e}")
         
@@ -180,8 +177,11 @@ class ScraperService:
             lines.append("\n" + "="*50)
             lines.append("発言者一覧:\n")
             for speaker in minutes.speakers:
-                lines.append(f"【{speaker['name']}】")
-                lines.append(f"{speaker['content']}\n")
+                speaker_name = speaker.name
+                if speaker.role:
+                    speaker_name = f"{speaker.name}{speaker.role}"
+                lines.append(f"【{speaker_name}】")
+                lines.append(f"{speaker.content}\n")
         
         return "\n".join(lines)
     

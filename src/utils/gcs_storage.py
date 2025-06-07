@@ -1,10 +1,23 @@
-"""Google Cloud Storage utility for uploading scraped minutes data."""
+"""Google Cloud Storage utility for uploading scraped minutes data.
+
+Provides a type-safe interface for Google Cloud Storage operations with
+comprehensive error handling.
+"""
 import os
-from typing import Optional, Union
+from typing import Optional, Union, List
 from pathlib import Path
 import logging
-from google.cloud import storage
-from google.cloud.exceptions import GoogleCloudError
+
+try:
+    from google.cloud import storage
+    from google.cloud.exceptions import GoogleCloudError
+    from google.api_core.exceptions import NotFound, Forbidden
+    HAS_GCS = True
+except ImportError:
+    HAS_GCS = False
+    GoogleCloudError = Exception  # Dummy for type hints
+
+from ..exceptions import StorageError, UploadError, PermissionError, FileNotFoundError as PolibaseFileNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -12,23 +25,53 @@ logger = logging.getLogger(__name__)
 class GCSStorage:
     """Handle Google Cloud Storage operations for scraped minutes."""
 
-    def __init__(self, bucket_name: str, project_id: Optional[str] = None):
+    def __init__(self, bucket_name: str, project_id: Optional[str] = None) -> None:
         """Initialize GCS storage client.
         
         Args:
             bucket_name: GCS bucket name
             project_id: GCP project ID (optional, uses default if not provided)
+            
+        Raises:
+            StorageError: If GCS is not available or initialization fails
+            PermissionError: If access to bucket is denied
         """
+        if not HAS_GCS:
+            raise StorageError(
+                "Google Cloud Storage library not installed. "
+                "Install with: pip install google-cloud-storage"
+            )
+            
         self.bucket_name = bucket_name
+        self.project_id = project_id
+        
         try:
             if project_id:
                 self.client = storage.Client(project=project_id)
             else:
                 self.client = storage.Client()
+            
             self.bucket = self.client.bucket(bucket_name)
+            
+            # Verify bucket access
+            if not self.bucket.exists():
+                raise StorageError(
+                    f"Bucket '{bucket_name}' does not exist or is not accessible",
+                    {"bucket_name": bucket_name, "project_id": project_id}
+                )
+                
+        except Forbidden as e:
+            logger.error(f"Permission denied accessing bucket: {e}")
+            raise PermissionError(
+                f"Permission denied accessing bucket '{bucket_name}'",
+                {"bucket_name": bucket_name, "error": str(e)}
+            )
         except Exception as e:
             logger.error(f"Failed to initialize GCS client: {e}")
-            raise
+            raise StorageError(
+                "Failed to initialize Google Cloud Storage client",
+                {"bucket_name": bucket_name, "project_id": project_id, "error": str(e)}
+            )
 
     def upload_file(
         self, 
@@ -49,28 +92,35 @@ class GCSStorage:
         local_path = Path(local_path)
         
         if not local_path.exists():
-            raise FileNotFoundError(f"Local file not found: {local_path}")
+            raise PolibaseFileNotFoundError(
+                f"Local file not found: {local_path}",
+                {"file_path": str(local_path)}
+            )
             
         try:
             blob = self.bucket.blob(gcs_path)
             
             # Auto-detect content type if not provided
             if not content_type:
-                if local_path.suffix == '.pdf':
-                    content_type = 'application/pdf'
-                elif local_path.suffix == '.json':
-                    content_type = 'application/json'
-                elif local_path.suffix == '.txt':
-                    content_type = 'text/plain'
+                content_type = self._get_content_type(local_path.suffix)
                     
             blob.upload_from_filename(str(local_path), content_type=content_type)
             logger.info(f"Uploaded {local_path} to gs://{self.bucket_name}/{gcs_path}")
             
             return f"gs://{self.bucket_name}/{gcs_path}"
             
+        except Forbidden as e:
+            logger.error(f"Permission denied during upload: {e}")
+            raise PermissionError(
+                f"Permission denied uploading to '{gcs_path}'",
+                {"gcs_path": gcs_path, "error": str(e)}
+            )
         except GoogleCloudError as e:
             logger.error(f"GCS upload failed: {e}")
-            raise
+            raise UploadError(
+                f"Failed to upload file to GCS: {gcs_path}",
+                {"local_path": str(local_path), "gcs_path": gcs_path, "error": str(e)}
+            )
             
     def upload_content(
         self, 
@@ -101,9 +151,18 @@ class GCSStorage:
             
             return f"gs://{self.bucket_name}/{gcs_path}"
             
+        except Forbidden as e:
+            logger.error(f"Permission denied during upload: {e}")
+            raise PermissionError(
+                f"Permission denied uploading to '{gcs_path}'",
+                {"gcs_path": gcs_path, "error": str(e)}
+            )
         except GoogleCloudError as e:
             logger.error(f"GCS upload failed: {e}")
-            raise
+            raise UploadError(
+                f"Failed to upload content to GCS: {gcs_path}",
+                {"gcs_path": gcs_path, "content_size": len(content), "error": str(e)}
+            )
             
     def download_file(self, gcs_path: str, local_path: Union[str, Path]) -> None:
         """Download a file from GCS.
@@ -117,11 +176,33 @@ class GCSStorage:
         
         try:
             blob = self.bucket.blob(gcs_path)
+            
+            if not blob.exists():
+                raise PolibaseFileNotFoundError(
+                    f"File not found in GCS: {gcs_path}",
+                    {"bucket": self.bucket_name, "path": gcs_path}
+                )
+                
             blob.download_to_filename(str(local_path))
             logger.info(f"Downloaded gs://{self.bucket_name}/{gcs_path} to {local_path}")
+            
+        except NotFound:
+            raise PolibaseFileNotFoundError(
+                f"File not found in GCS: {gcs_path}",
+                {"bucket": self.bucket_name, "path": gcs_path}
+            )
+        except Forbidden as e:
+            logger.error(f"Permission denied during download: {e}")
+            raise PermissionError(
+                f"Permission denied downloading '{gcs_path}'",
+                {"gcs_path": gcs_path, "error": str(e)}
+            )
         except GoogleCloudError as e:
             logger.error(f"GCS download failed: {e}")
-            raise
+            raise StorageError(
+                f"Failed to download file from GCS: {gcs_path}",
+                {"gcs_path": gcs_path, "local_path": str(local_path), "error": str(e)}
+            )
             
     def exists(self, gcs_path: str) -> bool:
         """Check if a file exists in GCS.
@@ -135,11 +216,14 @@ class GCSStorage:
         try:
             blob = self.bucket.blob(gcs_path)
             return blob.exists()
+        except Forbidden:
+            logger.warning(f"Permission denied checking existence of: {gcs_path}")
+            return False
         except GoogleCloudError as e:
             logger.error(f"GCS exists check failed: {e}")
             return False
             
-    def list_files(self, prefix: str = "") -> list[str]:
+    def list_files(self, prefix: str = "") -> List[str]:
         """List files in GCS bucket with optional prefix.
         
         Args:
@@ -147,10 +231,45 @@ class GCSStorage:
             
         Returns:
             List of file paths in the bucket
+            
+        Raises:
+            PermissionError: If access is denied
+            StorageError: If listing fails
         """
         try:
             blobs = self.bucket.list_blobs(prefix=prefix)
             return [blob.name for blob in blobs]
+        except Forbidden as e:
+            logger.error(f"Permission denied listing files: {e}")
+            raise PermissionError(
+                f"Permission denied listing files with prefix '{prefix}'",
+                {"prefix": prefix, "error": str(e)}
+            )
         except GoogleCloudError as e:
             logger.error(f"GCS list files failed: {e}")
-            return []
+            raise StorageError(
+                f"Failed to list files in bucket",
+                {"bucket": self.bucket_name, "prefix": prefix, "error": str(e)}
+            )
+    
+    def _get_content_type(self, suffix: str) -> Optional[str]:
+        """Get content type based on file extension.
+        
+        Args:
+            suffix: File extension (e.g., '.pdf')
+            
+        Returns:
+            MIME type string or None
+        """
+        content_types = {
+            '.pdf': 'application/pdf',
+            '.json': 'application/json',
+            '.txt': 'text/plain',
+            '.html': 'text/html',
+            '.csv': 'text/csv',
+            '.xml': 'application/xml',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+        }
+        return content_types.get(suffix.lower())

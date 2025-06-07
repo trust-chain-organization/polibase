@@ -8,25 +8,28 @@ from src.database.meeting_repository import MeetingRepository
 class TestMeetingRepository:
     """Test cases for MeetingRepository"""
     
-    @patch('src.database.meeting_repository.get_db_session')
+    @patch('src.config.database.get_db_session')
     def setup_method(self, method, mock_get_db_session):
         """Set up test fixtures"""
         self.mock_session = MagicMock()
         mock_get_db_session.return_value = self.mock_session
         self.repo = MeetingRepository()
+        # Ensure the repository is using our mock session
+        self.repo._session = self.mock_session
     
     def test_get_governing_bodies(self):
         """Test getting all governing bodies"""
         # Mock data
-        mock_result = [
-            (1, '日本国', '国'),
-            (2, '東京都', '都道府県'),
-            (3, '京都市', '市町村')
+        mock_data = [
+            {"id": 1, "name": "日本国", "type": "国"},
+            {"id": 2, "name": "東京都", "type": "都道府県"},
+            {"id": 3, "name": "京都市", "type": "市町村"}
         ]
-        self.mock_session.execute.return_value = mock_result
         
-        # Execute
-        result = self.repo.get_governing_bodies()
+        # Mock fetch_as_dict to return the expected data
+        with patch.object(self.repo, 'fetch_as_dict', return_value=mock_data):
+            # Execute
+            result = self.repo.get_governing_bodies()
         
         # Assert
         assert len(result) == 3
@@ -36,14 +39,15 @@ class TestMeetingRepository:
     def test_get_conferences_by_governing_body(self):
         """Test getting conferences by governing body"""
         # Mock data
-        mock_result = [
-            (1, '本会議', '議院'),
-            (2, '予算委員会', '常任委員会')
+        mock_data = [
+            {"id": 1, "name": "本会議", "type": "議院"},
+            {"id": 2, "name": "予算委員会", "type": "常任委員会"}
         ]
-        self.mock_session.execute.return_value = mock_result
         
-        # Execute
-        result = self.repo.get_conferences_by_governing_body(1)
+        # Mock fetch_as_dict to return the expected data
+        with patch.object(self.repo, 'fetch_as_dict', return_value=mock_data):
+            # Execute
+            result = self.repo.get_conferences_by_governing_body(1)
         
         # Assert
         assert len(result) == 2
@@ -52,14 +56,17 @@ class TestMeetingRepository:
     def test_get_all_conferences(self):
         """Test getting all conferences with governing bodies"""
         # Mock data
-        mock_result = [
-            (1, '本会議', '議院', 1, '日本国', '国'),
-            (2, '市議会', '地方議会全体', 3, '京都市', '市町村')
+        mock_data = [
+            {"id": 1, "name": "本会議", "type": "議院", "governing_body_id": 1,
+             "governing_body_name": "日本国", "governing_body_type": "国"},
+            {"id": 2, "name": "市議会", "type": "地方議会全体", "governing_body_id": 3,
+             "governing_body_name": "京都市", "governing_body_type": "市町村"}
         ]
-        self.mock_session.execute.return_value = mock_result
         
-        # Execute
-        result = self.repo.get_all_conferences()
+        # Mock fetch_as_dict to return the expected data
+        with patch.object(self.repo, 'fetch_as_dict', return_value=mock_data):
+            # Execute
+            result = self.repo.get_all_conferences()
         
         # Assert
         assert len(result) == 2
@@ -139,15 +146,20 @@ class TestMeetingRepository:
     def test_get_meeting_by_id(self):
         """Test getting a meeting by ID"""
         # Mock data
-        mock_result = MagicMock()
-        mock_result.fetchone.return_value = (
-            1, 2, date(2024, 6, 1), "https://example.com/meeting.pdf",
-            "本会議", 1, "日本国"
-        )
-        self.mock_session.execute.return_value = mock_result
+        mock_data = [{
+            "id": 1,
+            "conference_id": 2,
+            "date": date(2024, 6, 1),
+            "url": "https://example.com/meeting.pdf",
+            "conference_name": "本会議",
+            "governing_body_id": 1,
+            "governing_body_name": "日本国"
+        }]
         
-        # Execute
-        meeting = self.repo.get_meeting_by_id(1)
+        # Mock fetch_as_dict to return the expected data
+        with patch.object(self.repo, 'fetch_as_dict', return_value=mock_data):
+            # Execute
+            meeting = self.repo.get_meeting_by_id(1)
         
         # Assert
         assert meeting is not None
@@ -158,14 +170,17 @@ class TestMeetingRepository:
     def test_get_meetings_with_filter(self):
         """Test getting meetings with conference filter"""
         # Mock data
-        mock_result = [
-            (1, date(2024, 6, 1), "https://example.com/1.pdf", "本会議", "日本国"),
-            (2, date(2024, 5, 15), "https://example.com/2.pdf", "本会議", "日本国")
+        mock_data = [
+            {"id": 1, "date": date(2024, 6, 1), "url": "https://example.com/1.pdf",
+             "conference_name": "本会議", "governing_body_name": "日本国"},
+            {"id": 2, "date": date(2024, 5, 15), "url": "https://example.com/2.pdf",
+             "conference_name": "本会議", "governing_body_name": "日本国"}
         ]
-        self.mock_session.execute.return_value = mock_result
         
-        # Execute
-        meetings = self.repo.get_meetings(conference_id=1)
+        # Mock fetch_as_dict to return the expected data
+        with patch.object(self.repo, 'fetch_as_dict', return_value=mock_data):
+            # Execute
+            meetings = self.repo.get_meetings(conference_id=1)
         
         # Assert
         assert len(meetings) == 2

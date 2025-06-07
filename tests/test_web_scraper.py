@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch, AsyncMock
 from datetime import datetime
 import asyncio
 
-from src.web_scraper.base_scraper import MinutesData
+from src.web_scraper.models import MinutesData, SpeakerData
 from src.web_scraper.kaigiroku_net_scraper import KaigirokuNetScraper
 from src.web_scraper.scraper_service import ScraperService
 
@@ -20,7 +20,7 @@ class TestMinutesData:
             title="令和6年第1回定例会",
             date=datetime(2024, 1, 15),
             content="議事録本文",
-            speakers=[{"name": "山田議員", "content": "発言内容"}],
+            speakers=[SpeakerData(name="山田議員", content="発言内容")],
             url="https://example.com/minutes",
             scraped_at=datetime.now()
         )
@@ -29,7 +29,7 @@ class TestMinutesData:
         assert data.schedule_id == "1"
         assert data.title == "令和6年第1回定例会"
         assert len(data.speakers) == 1
-        assert data.speakers[0]["name"] == "山田議員"
+        assert data.speakers[0].name == "山田議員"
     
     def test_minutes_data_to_dict(self):
         """Test converting MinutesData to dictionary"""
@@ -52,6 +52,25 @@ class TestMinutesData:
         assert result["pdf_url"] == "https://example.com/test.pdf"
         assert result["date"] == datetime(2024, 1, 1).isoformat()
         assert result["scraped_at"] == scraped_at.isoformat()
+    
+    def test_minutes_data_from_dict(self):
+        """Test creating MinutesData from dictionary"""
+        data_dict = {
+            "council_id": "6030",
+            "schedule_id": "1",
+            "title": "Test",
+            "date": "2024-01-01T00:00:00",
+            "content": "Content",
+            "speakers": [{"name": "山田議員", "content": "発言内容", "role": "議員"}],
+            "url": "https://example.com",
+            "scraped_at": "2024-01-01T10:00:00"
+        }
+        
+        data = MinutesData.from_dict(data_dict)
+        assert data.council_id == "6030"
+        assert len(data.speakers) == 1
+        assert data.speakers[0].name == "山田議員"
+        assert data.speakers[0].role == "議員"
 
 
 class TestKaigirokuNetScraper:
@@ -119,8 +138,8 @@ class TestKaigirokuNetScraper:
         
         speakers = await scraper.extract_speakers(html)
         assert len(speakers) >= 2
-        assert any(s["name"] == "山田太郎議員" for s in speakers)
-        assert any("佐藤花子委員" in s["name"] for s in speakers)
+        assert any(s.name == "山田太郎" for s in speakers)
+        assert any("佐藤花子" in s.name for s in speakers)
 
 
 class TestScraperService:
@@ -190,8 +209,8 @@ class TestScraperService:
             date=datetime(2024, 1, 15),
             content="これは議事録の本文です。",
             speakers=[
-                {"name": "山田議員", "content": "山田の発言"},
-                {"name": "佐藤議員", "content": "佐藤の発言"}
+                SpeakerData(name="山田議員", content="山田の発言"),
+                SpeakerData(name="佐藤議員", content="佐藤の発言")
             ],
             url="https://example.com",
             scraped_at=datetime.now()

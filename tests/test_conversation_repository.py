@@ -17,9 +17,11 @@ class TestConversationRepository(unittest.TestCase):
         self.mock_session = MagicMock()
         
         # ConversationRepositoryのインスタンスを作成し、セッションをモック化
-        with patch('src.database.conversation_repository.get_db_session') as mock_get_session:
+        with patch('src.config.database.get_db_session') as mock_get_session:
             mock_get_session.return_value = self.mock_session
             self.repository = ConversationRepository()
+            # Ensure the repository is using our mock session
+            self.repository._session = self.mock_session
 
     def create_test_speech_data(self):
         """テスト用の発言データを生成"""
@@ -242,19 +244,22 @@ class TestConversationRepository(unittest.TestCase):
         
         # _legacy_find_speaker_idの戻り値を設定
         with patch.object(self.repository, '_legacy_find_speaker_id', side_effect=[123, None]):
-            self.mock_session.execute.side_effect = [
-                mock_select_result,  # SELECT文の結果
-                MagicMock(),         # 1回目のUPDATE文
-                # 2回目のUPDATE文は実行されない（speaker_idがNoneのため）
-            ]
-            
-            # 実行
-            result = self.repository.update_speaker_links()
-            
-            # 検証
-            self.assertEqual(result, 1)  # 1件だけ更新される
-            self.mock_session.commit.assert_called_once()
-            self.mock_session.close.assert_called_once()
+            # update メソッドをモック
+            with patch.object(self.repository, 'update', return_value=1) as mock_update:
+                self.mock_session.execute.return_value = mock_select_result
+                
+                # 実行
+                result = self.repository.update_speaker_links()
+                
+                # 検証
+                self.assertEqual(result, 1)  # 1件だけ更新される
+                mock_update.assert_called_once_with(
+                    table='conversations',
+                    data={'speaker_id': 123},
+                    where={'id': 1}
+                )
+                self.mock_session.commit.assert_called_once()
+                self.mock_session.close.assert_called_once()
 
     def test_update_speaker_links_database_error(self):
         """発言者紐付け更新エラーテスト"""
