@@ -11,6 +11,7 @@ from .base_scraper import BaseScraper
 from .models import MinutesData, SpeakerData
 from .extractors import ContentExtractor, SpeakerExtractor
 from .handlers import PDFHandler, FileHandler
+from ..config.settings import get_settings
 
 
 class KaigirokuNetScraper(BaseScraper):
@@ -28,6 +29,7 @@ class KaigirokuNetScraper(BaseScraper):
     def __init__(self, headless: bool = True, download_dir: str = "data/scraped"):
         super().__init__()
         self.headless = headless
+        self.settings = get_settings()
         
         # コンポーネントの初期化
         self.content_extractor = ContentExtractor(logger=self.logger)
@@ -48,7 +50,7 @@ class KaigirokuNetScraper(BaseScraper):
                 self.logger.info(f"Loading URL: {url}")
                 
                 # ページを読み込み
-                response = await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                response = await page.goto(url, wait_until="domcontentloaded", timeout=self.settings.web_scraper_timeout * 1000)
                 if not response:
                     self.logger.error("No response from server")
                     return None
@@ -163,7 +165,7 @@ class KaigirokuNetScraper(BaseScraper):
         content_found = False
         for selector in content_selectors:
             try:
-                await page.wait_for_selector(selector, timeout=5000)
+                await page.wait_for_selector(selector, timeout=self.settings.selector_wait_timeout * 1000)
                 self.logger.info(f"Found content selector: {selector}")
                 content_found = True
                 break

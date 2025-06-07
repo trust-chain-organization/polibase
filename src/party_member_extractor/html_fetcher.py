@@ -6,6 +6,7 @@ from playwright.async_api import async_playwright, Page
 from bs4 import BeautifulSoup
 import re
 from .models import WebPageContent
+from ..config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +17,7 @@ class PartyMemberPageFetcher:
     def __init__(self):
         self.browser = None
         self.context = None
+        self.settings = get_settings()
     
     async def __aenter__(self):
         playwright = await async_playwright().start()
@@ -56,7 +58,7 @@ class PartyMemberPageFetcher:
         try:
             # 最初のページを取得
             logger.info(f"Fetching initial page: {start_url}")
-            await page.goto(start_url, wait_until='networkidle', timeout=30000)
+            await page.goto(start_url, wait_until='networkidle', timeout=self.settings.page_load_timeout * 1000)
             await asyncio.sleep(2)  # 動的コンテンツの読み込み待機
             
             current_page_num = 1
@@ -90,7 +92,7 @@ class PartyMemberPageFetcher:
                 try:
                     logger.info(f"Attempting to click next page link")
                     await next_link.click()
-                    await page.wait_for_load_state('networkidle', timeout=30000)
+                    await page.wait_for_load_state('networkidle', timeout=self.settings.page_load_timeout * 1000)
                     await asyncio.sleep(2)
                 except Exception as e:
                     logger.warning(f"Failed to navigate to next page: {e}")
@@ -161,7 +163,7 @@ class PartyMemberPageFetcher:
         page = await self.context.new_page()
         try:
             logger.info(f"Fetching page: {url}")
-            await page.goto(url, wait_until='networkidle', timeout=30000)
+            await page.goto(url, wait_until='networkidle', timeout=self.settings.page_load_timeout * 1000)
             await asyncio.sleep(2)
             
             content = await page.content()

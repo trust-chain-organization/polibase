@@ -4,6 +4,7 @@ import sys
 import asyncio
 from pathlib import Path
 from ..base import BaseCommand, with_async_execution, with_error_handling
+from ..progress import spinner, ProgressTracker
 
 
 class ScrapingCommands(BaseCommand):
@@ -47,10 +48,13 @@ class ScrapingCommands(BaseCommand):
             os.environ['GCS_BUCKET_NAME'] = gcs_bucket
         
         # サービス初期化
-        service = ScraperService(enable_gcs=upload_to_gcs)
+        with spinner("Initializing scraper service"):
+            service = ScraperService(enable_gcs=upload_to_gcs)
         
         # スクレイピング実行
-        minutes = await service.fetch_from_url(url, use_cache=not no_cache)
+        with spinner(f"Fetching minutes from: {url}") as spin:
+            minutes = await service.fetch_from_url(url, use_cache=not no_cache)
+            spin.stop("✓ Minutes fetched successfully" if minutes else "✗ Failed to fetch minutes")
         if not minutes:
             ScrapingCommands.error("Failed to scrape minutes", exit_code=0)
             return False
@@ -164,10 +168,13 @@ class ScrapingCommands(BaseCommand):
         output_path.mkdir(parents=True, exist_ok=True)
         
         # バッチ処理実行
-        results = await service.fetch_multiple(urls, max_concurrent=concurrent)
-        
         success_count = 0
-        for minutes in results:
+        
+        with ProgressTracker(len(urls), "Scraping minutes") as tracker:
+            results = await service.fetch_multiple(urls, max_concurrent=concurrent)
+            
+            for i, minutes in enumerate(results):
+                tracker.update(1, f"Processing {i+1}/{len(urls)}")
             if minutes:
                 # テキストとJSONで保存
                 base_name = f"{minutes.council_id}_{minutes.schedule_id}"

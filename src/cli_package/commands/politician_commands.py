@@ -4,6 +4,7 @@ import asyncio
 import time
 from sqlalchemy import text
 from ..base import BaseCommand, with_error_handling, with_async_execution
+from ..progress import spinner, ProgressTracker
 
 
 class PoliticianCommands(BaseCommand):
@@ -95,16 +96,18 @@ class PoliticianCommands(BaseCommand):
             total_scraped = 0
             
             # HTMLフェッチャーとエクストラクターを初期化
-            extractor = PartyMemberExtractor()
+            with spinner("Initializing extractors"):
+                extractor = PartyMemberExtractor()
             
             async with PartyMemberPageFetcher() as fetcher:
-                for party in parties:
-                    PoliticianCommands.show_progress(f"\nProcessing {party.name}...")
-                    PoliticianCommands.show_progress(f"  URL: {party.members_list_url}")
-                    
-                    # HTMLページを取得（ページネーション対応）
-                    PoliticianCommands.show_progress(f"  Fetching pages (max: {max_pages})...")
-                    pages = await fetcher.fetch_all_pages(party.members_list_url, max_pages=max_pages)
+                with ProgressTracker(len(parties), "Processing parties") as tracker:
+                    for i, party in enumerate(parties):
+                        PoliticianCommands.show_progress(f"\nProcessing {party.name}...")
+                        PoliticianCommands.show_progress(f"  URL: {party.members_list_url}")
+                        
+                        # HTMLページを取得（ページネーション対応）
+                        with spinner(f"Fetching pages from {party.name} (max: {max_pages})..."):
+                            pages = await fetcher.fetch_all_pages(party.members_list_url, max_pages=max_pages)
                     
                     if not pages:
                         PoliticianCommands.show_progress(f"  Failed to fetch pages for {party.name}")
@@ -113,8 +116,8 @@ class PoliticianCommands(BaseCommand):
                     PoliticianCommands.show_progress(f"  Fetched {len(pages)} pages")
                     
                     # LLMで議員情報を抽出
-                    PoliticianCommands.show_progress("  Extracting member information using LLM...")
-                    result = extractor.extract_from_pages(pages, party.name)
+                    with spinner(f"Extracting member information using LLM for {party.name}..."):
+                        result = extractor.extract_from_pages(pages, party.name)
                     
                     if not result or not result.members:
                         PoliticianCommands.show_progress(f"  No members found for {party.name}")
@@ -138,17 +141,18 @@ class PoliticianCommands(BaseCommand):
                             PoliticianCommands.show_progress(f"    ... and {len(result.members) - 5} more")
                     else:
                         # データベースに保存
-                        repo = PoliticianRepository()
-                        
-                        # Pydanticモデルを辞書に変換してpolitical_party_idを追加
-                        members_data = []
-                        for member in result.members:
-                            member_dict = member.model_dump()
-                            member_dict['political_party_id'] = party.id
-                            members_data.append(member_dict)
-                        
-                        stats = repo.bulk_create_politicians(members_data)
-                        repo.close()
+                        with spinner(f"Saving {len(result.members)} members to database..."):
+                            repo = PoliticianRepository()
+                            
+                            # Pydanticモデルを辞書に変換してpolitical_party_idを追加
+                            members_data = []
+                            for member in result.members:
+                                member_dict = member.model_dump()
+                                member_dict['political_party_id'] = party.id
+                                members_data.append(member_dict)
+                            
+                            stats = repo.bulk_create_politicians(members_data)
+                            repo.close()
                         
                         # 統計情報を表示
                         PoliticianCommands.show_progress(f"  Database operation results:")
@@ -157,6 +161,8 @@ class PoliticianCommands(BaseCommand):
                         PoliticianCommands.show_progress(f"    - Errors: {len(stats['errors'])}")
                         
                         total_scraped += len(stats['created']) + len(stats['updated'])
+                        
+                        tracker.update(1, f"Completed {party.name}")
             
             if not dry_run:
                 PoliticianCommands.success(f"Total politicians saved: {total_scraped}")

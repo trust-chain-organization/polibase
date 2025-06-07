@@ -67,6 +67,12 @@ class Settings:
         self.gcs_project_id: Optional[str] = os.getenv('GCS_PROJECT_ID')
         self.gcs_upload_enabled: bool = os.getenv('GCS_UPLOAD_ENABLED', 'false').lower() == 'true'
         
+        # Timeout settings (in seconds)
+        self.web_scraper_timeout: int = int(os.getenv('WEB_SCRAPER_TIMEOUT', '60'))
+        self.pdf_download_timeout: int = int(os.getenv('PDF_DOWNLOAD_TIMEOUT', '120'))
+        self.page_load_timeout: int = int(os.getenv('PAGE_LOAD_TIMEOUT', '30'))
+        self.selector_wait_timeout: int = int(os.getenv('SELECTOR_WAIT_TIMEOUT', '10'))
+        
         # Validate paths exist
         self._validate_paths()
         
