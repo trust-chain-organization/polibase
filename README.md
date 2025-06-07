@@ -101,8 +101,12 @@ docker compose exec polibase uv run python -m src.main
 
 # ローカル環境で実行
 uv run python -m src.process_minutes
+
+# GCSから議事録を取得して処理（meeting IDを指定）
+docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
 ```
 議事録PDFファイルを読み込み、発言単位に分割してデータベースに保存します。
+meeting IDを指定すると、GCSに保存された議事録テキストを自動的に取得して処理します。
 
 #### 政治家情報抽出処理（発言者抽出）
 ```bash
@@ -166,7 +170,7 @@ uv run polibase scrape-minutes "URL" --output-dir data/scraped --format txt
 # キャッシュを無視して再取得
 uv run polibase scrape-minutes "URL" --no-cache
 
-# Google Cloud Storageにアップロード
+# Google Cloud Storageにアップロード（meetingsテーブルにGCS URIを自動保存）
 uv run polibase scrape-minutes "URL" --upload-to-gcs
 uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
 
@@ -397,6 +401,7 @@ docker compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sq
 - `LLM_TEMPERATURE`: LLMの温度パラメータ（デフォルト: 0.0）
 - `GCS_BUCKET_NAME`: Google Cloud Storageバケット名
 - `GCS_UPLOAD_ENABLED`: GCS自動アップロード有効化（`true`/`false`）
+- `GCS_PROJECT_ID`: Google CloudプロジェクトID（省略時はデフォルト使用）
 
 処理時間の長いスクレイピングや大きなPDFファイルの処理でタイムアウトが発生する場合は、これらの値を調整してください。
 
@@ -427,9 +432,14 @@ polibase/
 │   │   ├── meeting_repository.py # 会議データリポジトリ
 │   │   └── ...                  # その他リポジトリ
 │   └── utils/                   # ユーティリティ関数
-│       └── gcs_storage.py       # Google Cloud Storageユーティリティ
+│       └── gcs_storage.py       # Google Cloud Storageユーティリティ（GCS URI対応）
 ├── database/                    # データベース関連
 │   ├── init.sql                # データベース初期化スクリプト
+│   ├── migrations/             # データベースマイグレーション
+│   │   ├── 001_add_url_to_meetings.sql
+│   │   ├── 002_add_members_list_url_to_political_parties.sql
+│   │   ├── 003_add_politician_details.sql
+│   │   └── 004_add_gcs_uri_to_meetings.sql  # GCS URI保存用カラム追加
 │   └── backups/                # データベースバックアップファイル
 ├── scripts/                     # 管理スクリプト
 │   ├── backup-database.sh      # データベースバックアップスクリプト
@@ -543,11 +553,19 @@ gsutil iam get gs://YOUR_BUCKET_NAME/
 
 ## 🗂️ データの流れ
 
+### 標準フロー（PDFファイルから処理）
 1. **議事録PDFの処理**: `src/process_minutes.py` - 議事録を発言単位に分割してデータベースに保存
 2. **政治家情報の抽出**: `src/extract_politicians.py` - 発言から政治家情報を抽出してデータベースに保存
 3. **発言者マッチング**: `update_speaker_links_llm.py` - LLMを活用して発言と発言者を高精度でマッチング
 4. **データベース保存**: 抽出・マッチングされた情報をPostgreSQLに保存
 5. **分析・検索**: 蓄積されたデータから政治活動を分析
+
+### Webスクレイピングフロー（GCS統合）
+1. **議事録Web取得**: `polibase scrape-minutes` - Webから議事録を取得
+2. **GCS保存**: 取得したデータをGoogle Cloud Storageに自動アップロード
+3. **URI記録**: GCS URIをmeetingsテーブルに保存
+4. **GCSから処理**: `process_minutes.py --meeting-id` でGCSから直接データを取得して処理
+5. **後続処理**: 政治家抽出、発言者マッチングなどの処理を実行
 
 ## 🚀 クイックリファレンス
 

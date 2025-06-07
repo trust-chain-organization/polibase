@@ -33,6 +33,9 @@ docker compose exec polibase uv run polibase --help
 # Process meeting minutes
 docker compose exec polibase uv run polibase process-minutes
 
+# Process minutes from GCS (using meeting ID)
+docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
+
 # Extract politicians
 docker compose exec polibase uv run polibase extract-politicians
 
@@ -45,7 +48,7 @@ docker compose exec polibase uv run polibase streamlit
 # Scrape meeting minutes from web
 docker compose exec polibase uv run polibase scrape-minutes "URL"
 
-# Scrape with Google Cloud Storage upload
+# Scrape with Google Cloud Storage upload (automatically saves GCS URIs to meetings table)
 docker compose exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs
 docker compose exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
 
@@ -66,6 +69,9 @@ docker compose exec polibase uv run polibase scrape-politicians --all-parties --
 ```bash
 # Minutes Division Processing
 docker compose exec polibase uv run python -m src.process_minutes
+
+# Minutes Division Processing from GCS
+docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
 
 # Politician Extraction Processing
 docker compose exec polibase uv run python -m src.extract_politicians
@@ -153,22 +159,35 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 
 # Reset database
 ./reset-database.sh
+
+# Apply new migrations
+docker compose exec postgres psql -U polibase_user -d polibase_db -f /docker-entrypoint-initdb.d/migrations/004_add_gcs_uri_to_meetings.sql
 ```
 
 ## Architecture
 
 ### Processing Pipeline
+
+#### Standard Flow (from PDF)
 1. **Minutes Divider** (`src/minutes_divide_processor/`): Processes PDF minutes using LangGraph state management and Gemini API to extract individual speeches
 2. **Politician Extractor** (`src/politician_extract_processor/`): Identifies politicians from extracted speeches using LangChain and Gemini
 3. **Speaker Matching** (`update_speaker_links_llm.py`): Uses hybrid rule-based + LLM matching to link conversations to speaker records
-4. **Meeting Management UI** (`src/streamlit_app.py`): Streamlit-based web interface for managing meeting URLs, dates, and political party information
-5. **Web Scraper** (`src/web_scraper/`): Extracts meeting minutes from council websites
+
+#### Web Scraping Flow (with GCS Integration)
+1. **Web Scraper** (`src/web_scraper/`): Extracts meeting minutes from council websites
    - Supports kaigiroku.net system used by many Japanese local councils
    - Uses Playwright for JavaScript-heavy sites
-6. **Party Member Extractor** (`src/party_member_extractor/`): LLM-based extraction of politician information from party member list pages
-   - Uses Gemini API to extract structured data from HTML
-   - Supports pagination for multi-page member lists
-   - Implements duplicate checking to prevent creating duplicate records
+   - Automatically uploads to GCS when `--upload-to-gcs` flag is used
+   - Saves GCS URIs to meetings table for later processing
+2. **GCS-based Processing**: Minutes Divider can fetch data directly from GCS using `--meeting-id` parameter
+3. **Subsequent Processing**: Same as standard flow (politician extraction, speaker matching)
+
+#### Additional Components
+- **Meeting Management UI** (`src/streamlit_app.py`): Streamlit-based web interface for managing meeting URLs, dates, and political party information
+- **Party Member Extractor** (`src/party_member_extractor/`): LLM-based extraction of politician information from party member list pages
+  - Uses Gemini API to extract structured data from HTML
+  - Supports pagination for multi-page member lists
+  - Implements duplicate checking to prevent creating duplicate records
 
 ### Database Design
 - **Master Data** (pre-populated via seed files):
@@ -176,10 +195,12 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
   - `conferences`: Legislative bodies and committees
   - `political_parties`: Political parties (includes `members_list_url` for web scraping)
 - **Core Tables**:
-  - `meetings`, `minutes`, `speakers`, `politicians`, `conversations`, `proposals`
+  - `meetings`: Includes `gcs_pdf_uri` and `gcs_text_uri` for GCS integration
+  - `minutes`, `speakers`, `politicians`, `conversations`, `proposals`
   - `politicians` table includes party affiliation and profile information
 - Repository pattern used for database operations (`src/database/`)
-- Migrations in `database/migrations/` for schema updates
+- Migrations in `database/migrations/` for schema updates:
+  - `004_add_gcs_uri_to_meetings.sql`: Adds GCS URI columns to meetings table
 
 ### Technology Stack
 - **LLM**: Google Gemini API (gemini-2.0-flash, gemini-1.5-flash) via LangChain
@@ -190,6 +211,8 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 - **State Management**: LangGraph for complex workflows
 - **Testing**: pytest with pytest-asyncio for async tests
 - **Cloud Storage**: Google Cloud Storage for scraped data persistence
+  - GCSStorage utility supports both upload and download operations
+  - Handles GCS URI format: `gs://bucket-name/path/to/file`
 
 ### Development Patterns
 - Docker-first development (all commands run through `docker compose exec`)
@@ -208,6 +231,10 @@ docker compose exec postgres psql -U polibase_user -d polibase_db
 - **Unified CLI**: New `polibase` command provides single entry point for all operations
 - **GCS Authentication**: Run `gcloud auth application-default login` before using GCS features
 - **GCS Structure**: Files are organized by date: `scraped/YYYY/MM/DD/{council_id}_{schedule_id}.{ext}`
+- **GCS Integration**: Web scraper automatically saves GCS URIs to meetings table when uploading
+- **GCS-based Processing**: Minutes divider can fetch text directly from GCS using meeting ID
 - **Party Member Scraping**: Before scraping, set `members_list_url` for parties via Streamlit UI's "政党管理" tab
 - **Playwright Dependencies**: Docker image includes Chromium and dependencies for web scraping
 - **Duplicate Prevention**: Politician scraper checks existing records by name + party to avoid duplicates
+- **Database Migrations**: Run migrations after pulling updates that modify database schema
+- **GCS URI Format**: Always use `gs://` format for GCS URIs, not HTTPS URLs

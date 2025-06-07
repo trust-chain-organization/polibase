@@ -66,13 +66,13 @@ class GCSStorage:
             raise PermissionError(
                 f"Permission denied accessing bucket '{bucket_name}'",
                 {"bucket_name": bucket_name, "error": str(e)},
-            )
+            ) from e
         except Exception as e:
             logger.error(f"Failed to initialize GCS client: {e}")
             raise StorageError(
                 "Failed to initialize Google Cloud Storage client",
                 {"bucket_name": bucket_name, "project_id": project_id, "error": str(e)},
-            )
+            ) from e
 
     def upload_file(
         self, local_path: str | Path, gcs_path: str, content_type: str | None = None
@@ -111,13 +111,13 @@ class GCSStorage:
             raise PermissionError(
                 f"Permission denied uploading to '{gcs_path}'",
                 {"gcs_path": gcs_path, "error": str(e)},
-            )
+            ) from e
         except GoogleCloudError as e:
             logger.error(f"GCS upload failed: {e}")
             raise UploadError(
                 f"Failed to upload file to GCS: {gcs_path}",
                 {"local_path": str(local_path), "gcs_path": gcs_path, "error": str(e)},
-            )
+            ) from e
 
     def upload_content(
         self, content: str | bytes, gcs_path: str, content_type: str | None = None
@@ -150,13 +150,13 @@ class GCSStorage:
             raise PermissionError(
                 f"Permission denied uploading to '{gcs_path}'",
                 {"gcs_path": gcs_path, "error": str(e)},
-            )
+            ) from e
         except GoogleCloudError as e:
             logger.error(f"GCS upload failed: {e}")
             raise UploadError(
                 f"Failed to upload content to GCS: {gcs_path}",
                 {"gcs_path": gcs_path, "content_size": len(content), "error": str(e)},
-            )
+            ) from e
 
     def download_file(self, gcs_path: str, local_path: str | Path) -> None:
         """Download a file from GCS.
@@ -186,19 +186,19 @@ class GCSStorage:
             raise PolibaseFileNotFoundError(
                 f"File not found in GCS: {gcs_path}",
                 {"bucket": self.bucket_name, "path": gcs_path},
-            )
+            ) from None
         except Forbidden as e:
             logger.error(f"Permission denied during download: {e}")
             raise PermissionError(
                 f"Permission denied downloading '{gcs_path}'",
                 {"gcs_path": gcs_path, "error": str(e)},
-            )
+            ) from e
         except GoogleCloudError as e:
             logger.error(f"GCS download failed: {e}")
             raise StorageError(
                 f"Failed to download file from GCS: {gcs_path}",
                 {"gcs_path": gcs_path, "local_path": str(local_path), "error": str(e)},
-            )
+            ) from e
 
     def exists(self, gcs_path: str) -> bool:
         """Check if a file exists in GCS.
@@ -240,13 +240,13 @@ class GCSStorage:
             raise PermissionError(
                 f"Permission denied listing files with prefix '{prefix}'",
                 {"prefix": prefix, "error": str(e)},
-            )
+            ) from e
         except GoogleCloudError as e:
             logger.error(f"GCS list files failed: {e}")
             raise StorageError(
                 "Failed to list files in bucket",
                 {"bucket": self.bucket_name, "prefix": prefix, "error": str(e)},
-            )
+            ) from e
 
     def _get_content_type(self, suffix: str) -> str | None:
         """Get content type based on file extension.
@@ -269,3 +269,102 @@ class GCSStorage:
             ".jpeg": "image/jpeg",
         }
         return content_types.get(suffix.lower())
+
+    def download_content(self, gcs_uri: str) -> str | None:
+        """Download content from GCS URI
+
+        Args:
+            gcs_uri: GCS URI (gs://bucket-name/path/to/file)
+
+        Returns:
+            File content as string or None if failed
+        """
+        try:
+            # Parse GCS URI
+            if not gcs_uri.startswith("gs://"):
+                logger.error(f"Invalid GCS URI format: {gcs_uri}")
+                return None
+
+            # Extract bucket and path
+            uri_parts = gcs_uri[5:].split("/", 1)
+            if len(uri_parts) != 2:
+                logger.error(f"Invalid GCS URI format: {gcs_uri}")
+                return None
+
+            bucket_name, blob_path = uri_parts
+
+            # Get bucket and blob
+            bucket = self.client.bucket(bucket_name)
+            blob = bucket.blob(blob_path)
+
+            # Check if blob exists
+            if not blob.exists():
+                logger.error(f"GCS object not found: {gcs_uri}")
+                return None
+
+            # Download content
+            content = blob.download_as_text(encoding="utf-8")
+            logger.info(f"Downloaded content from GCS: {gcs_uri}")
+            return content
+
+        except Forbidden as e:
+            logger.error(f"Permission denied downloading from GCS: {e}")
+            return None
+        except GoogleCloudError as e:
+            logger.error(f"Failed to download from GCS: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error downloading from GCS: {e}")
+            return None
+
+    def download_file_from_uri(self, gcs_uri: str, local_path: str | Path) -> bool:
+        """Download file from GCS URI to local path
+
+        Args:
+            gcs_uri: GCS URI (gs://bucket-name/path/to/file)
+            local_path: Local file path to save to
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Parse GCS URI
+            if not gcs_uri.startswith("gs://"):
+                logger.error(f"Invalid GCS URI format: {gcs_uri}")
+                return False
+
+            # Extract bucket and path
+            uri_parts = gcs_uri[5:].split("/", 1)
+            if len(uri_parts) != 2:
+                logger.error(f"Invalid GCS URI format: {gcs_uri}")
+                return False
+
+            bucket_name, blob_path = uri_parts
+
+            # Get bucket and blob
+            bucket = self.client.bucket(bucket_name)
+            blob = bucket.blob(blob_path)
+
+            # Check if blob exists
+            if not blob.exists():
+                logger.error(f"GCS object not found: {gcs_uri}")
+                return False
+
+            # Ensure parent directory exists
+            local_path = Path(local_path)
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Download file
+            blob.download_to_filename(str(local_path))
+            logger.info(f"Downloaded file from GCS: {gcs_uri} to {local_path}")
+            return True
+
+        except Forbidden as e:
+            logger.error(f"Permission denied downloading file from GCS: {e}")
+            return False
+        except GoogleCloudError as e:
+            logger.error(f"Failed to download file from GCS: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error downloading file from GCS: {e}")
+            return False
