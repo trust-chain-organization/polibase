@@ -955,7 +955,10 @@ def execute_other_processes():
     with col1:
         st.markdown("### データベース接続テスト")
         if st.button("接続テスト実行", key="test_connection"):
-            command = 'uv run python -c "from src.config.database import test_connection; test_connection()"'
+            command = (
+                "uv run python -c "
+                '"from src.config.database import test_connection; test_connection()"'
+            )
 
             with st.spinner("データベース接続をテスト中..."):
                 run_command_with_progress(command, "test_connection")

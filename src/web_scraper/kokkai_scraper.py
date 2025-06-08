@@ -72,7 +72,7 @@ class KokkaiScraper(BaseScraper):
                 else:
                     raise ScraperConnectionError(
                         f"Failed to load page after {retry_count} attempts: {url}"
-                    )
+                    ) from None
             except Exception as e:
                 logger.error(f"Unexpected error loading page: {e}")
                 raise
@@ -100,7 +100,7 @@ class KokkaiScraper(BaseScraper):
             logger.error(f"Error fetching minutes: {e}")
             raise ScraperParseError(
                 f"Failed to fetch minutes from kokkai.ndl.go.jp: {url} - {str(e)}"
-            )
+            ) from e
         finally:
             if browser:
                 await browser.close()
@@ -161,7 +161,8 @@ class KokkaiScraper(BaseScraper):
                 meeting_info["title"] = h2_text.strip()
 
                 # テキストから情報をパース
-                # 例: "第217回国会　衆議院　北朝鮮による拉致問題等に関する特別委員会　第3号　令和7年4月23日"
+                # 例: "第217回国会　衆議院　北朝鮮による拉致問題等に関する特別委員会
+                # 第3号　令和7年4月23日"
                 parts = h2_text.split("　")
                 for part in parts:
                     if "国会" in part:
@@ -221,7 +222,6 @@ class KokkaiScraper(BaseScraper):
                     cells = await row.query_selector_all("td")
                     if len(cells) >= 2:
                         # 最初のセルが発言者、二番目が内容の可能性
-                        speaker_cell = cells[0]
                         content_cell = cells[1] if len(cells) > 1 else None
 
                         if content_cell:
@@ -235,9 +235,7 @@ class KokkaiScraper(BaseScraper):
 
             # テーブルからコンテンツが取得できない場合
             if not content_parts:
-                logger.warning(
-                    "No content found in tables, trying alternative approach"
-                )
+                logger.warning("No content found in tables, trying alternative approach")
                 # 全体のテキストを取得
                 body_text = await page.inner_text("body")
                 if body_text:
@@ -246,14 +244,14 @@ class KokkaiScraper(BaseScraper):
                     for line in lines:
                         line = line.strip()
                         # 長いテキストで、ナビゲーションやヘッダーでないもの
+                        skip_words = [
+                            "シンプル表示",
+                            "ヘルプ",
+                            "検索",
+                            "ダウンロード",
+                        ]
                         if len(line) > 50 and not any(
-                            skip in line
-                            for skip in [
-                                "シンプル表示",
-                                "ヘルプ",
-                                "検索",
-                                "ダウンロード",
-                            ]
+                            skip in line for skip in skip_words
                         ):
                             content_parts.append(line)
 
@@ -283,11 +281,9 @@ class KokkaiScraper(BaseScraper):
                         if len(parts) >= 2:
                             # 数字で始まる部分をスキップ
                             name_parts = []
+                            skip_terms = ["発言者情報", "会議録情報"]
                             for part in parts:
-                                if not part[0].isdigit() and part not in [
-                                    "発言者情報",
-                                    "会議録情報",
-                                ]:
+                                if not part[0].isdigit() and part not in skip_terms:
                                     name_parts.append(part)
 
                             if name_parts:
@@ -347,9 +343,9 @@ class KokkaiScraper(BaseScraper):
         ]
 
         # 和暦対応
-        date_str = (
-            date_str.replace("令和", "R").replace("平成", "H").replace("昭和", "S")
-        )
+        date_str = date_str.replace("令和", "R")
+        date_str = date_str.replace("平成", "H")
+        date_str = date_str.replace("昭和", "S")
 
         for fmt in date_formats:
             try:
@@ -386,7 +382,8 @@ class KokkaiScraper(BaseScraper):
         if match:
             min_id = match.group(1)
             # minIdを council_id と schedule_id に分割
-            # 例: 121705253X00320250423 -> council: kokkai_121705253, schedule: X00320250423
+            # 例: 121705253X00320250423
+            # -> council: kokkai_121705253, schedule: X00320250423
             if len(min_id) > 10:
                 return f"kokkai_{min_id[:9]}", min_id[9:]
             else:

@@ -17,8 +17,8 @@ from src.minutes_divide_processor.models import (
 
 class TestMinutesDivider(unittest.TestCase):
     @patch("src.minutes_divide_processor.minutes_divider.ChatGoogleGenerativeAI")
-    def setUp(self, MockChatGoogleGenerativeAI):
-        llm_mock = MockChatGoogleGenerativeAI.return_value
+    def setUp(self, mock_chat_google_generative_ai):
+        llm_mock = mock_chat_google_generative_ai.return_value
         self.divider = MinutesDivider(llm_mock)
 
     def test_do_divide_normal(self):
