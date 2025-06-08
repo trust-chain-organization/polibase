@@ -66,7 +66,8 @@ class ChainFactory:
         try:
             prompt = self.prompt_manager.get_hub_prompt("comment_divide_prompt")
         except Exception:
-            prompt = self.prompt_manager.get_prompt("speech_divide")
+            # 国会議事録用のプロンプトを優先的に使用
+            prompt = self.prompt_manager.get_prompt("speech_divide_kokkai")
 
         llm = self.llm_service.get_structured_llm(output_schema)
 
