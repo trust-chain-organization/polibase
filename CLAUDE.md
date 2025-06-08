@@ -36,8 +36,8 @@ docker compose exec polibase uv run polibase process-minutes
 # Process minutes from GCS (using meeting ID)
 docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
 
-# Extract politicians
-docker compose exec polibase uv run polibase extract-politicians
+# Scrape politician information from party websites
+docker compose exec polibase uv run polibase scrape-politicians --all-parties
 
 # Update speaker links with LLM
 docker compose exec polibase uv run polibase update-speakers --use-llm
@@ -73,8 +73,6 @@ docker compose exec polibase uv run python -m src.process_minutes
 # Minutes Division Processing from GCS
 docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
 
-# Politician Extraction Processing
-docker compose exec polibase uv run python -m src.extract_politicians
 
 # LLM-based Speaker Matching
 docker compose exec polibase uv run python update_speaker_links_llm.py
@@ -170,7 +168,7 @@ docker compose exec postgres psql -U polibase_user -d polibase_db -f /docker-ent
 
 #### Standard Flow (from PDF)
 1. **Minutes Divider** (`src/minutes_divide_processor/`): Processes PDF minutes using LangGraph state management and Gemini API to extract individual speeches
-2. **Politician Extractor** (`src/politician_extract_processor/`): Identifies politicians from extracted speeches using LangChain and Gemini
+2. **Speaker Extraction** (`src/extract_speakers_from_minutes.py`): Extracts speaker information from conversations and creates speaker records
 3. **Speaker Matching** (`update_speaker_links_llm.py`): Uses hybrid rule-based + LLM matching to link conversations to speaker records
 
 #### Web Scraping Flow (with GCS Integration)
@@ -180,7 +178,7 @@ docker compose exec postgres psql -U polibase_user -d polibase_db -f /docker-ent
    - Automatically uploads to GCS when `--upload-to-gcs` flag is used
    - Saves GCS URIs to meetings table for later processing
 2. **GCS-based Processing**: Minutes Divider can fetch data directly from GCS using `--meeting-id` parameter
-3. **Subsequent Processing**: Same as standard flow (politician extraction, speaker matching)
+3. **Subsequent Processing**: Same as standard flow (speaker extraction, speaker matching)
 
 #### Additional Components
 - **Meeting Management UI** (`src/streamlit_app.py`): Streamlit-based web interface for managing meeting URLs, dates, and political party information
@@ -216,7 +214,7 @@ docker compose exec postgres psql -U polibase_user -d polibase_db -f /docker-ent
 
 ### Development Patterns
 - Docker-first development (all commands run through `docker compose exec`)
-- Multi-phase processing: Extract conversations → Extract politicians → Match speakers → Scrape party members
+- Multi-phase processing: Extract conversations → Extract speakers → Match speakers → Scrape party members from websites
 - Environment variables for configuration (DATABASE_URL differs between Docker/local)
 - Modular architecture with shared utilities in `src/common/`
 - Async/await pattern for web scraping operations
@@ -226,7 +224,7 @@ docker compose exec postgres psql -U polibase_user -d polibase_db -f /docker-ent
 - **API Key Required**: GOOGLE_API_KEY must be set in .env for Gemini API access
 - **Database Persistence**: Default docker-compose.yml uses volumes for persistent storage
 - **Master Data**: Governing bodies and conferences are fixed master data, not modified during operation
-- **Processing Order**: Always run process-minutes → extract-politicians → update-speakers in sequence
+- **Processing Order**: Always run process-minutes → extract-speakers → update-speakers in sequence
 - **File Naming**: Fixed typo in minutes_divider.py (was minutes_dividor.py)
 - **Unified CLI**: New `polibase` command provides single entry point for all operations
 - **GCS Authentication**: Run `gcloud auth application-default login` before using GCS features
