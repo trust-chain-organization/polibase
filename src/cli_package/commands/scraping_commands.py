@@ -144,7 +144,7 @@ class ScrapingCommands(BaseCommand):
                     meetings = repo.fetch_as_dict(
                         "SELECT id FROM meetings WHERE url = :url", {"url": url}
                     )
-                    
+
                     # 完全一致で見つからない場合、LIKE検索を試す
                     if not meetings:
                         # URLの基本部分を抽出
@@ -153,7 +153,7 @@ class ScrapingCommands(BaseCommand):
                             min_id = url.split("minId=")[1].split("&")[0]
                             meetings = repo.fetch_as_dict(
                                 "SELECT id FROM meetings WHERE url LIKE :pattern",
-                                {"pattern": f"%minId={min_id}%"}
+                                {"pattern": f"%minId={min_id}%"},
                             )
                     if meetings:
                         meeting_id = meetings[0]["id"]

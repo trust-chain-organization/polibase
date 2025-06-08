@@ -90,7 +90,7 @@ class ScraperService:
         # kaigiroku.netシステムの場合
         if "kaigiroku.net/tenant/" in url:
             return KaigirokuNetScraper()
-        
+
         # 国会会議録検索システムの場合
         if "kokkai.ndl.go.jp" in url:
             return KokkaiScraper()
@@ -208,7 +208,7 @@ class ScraperService:
         # MinutesDataからcouncil_idとschedule_idを使用
         council_id = minutes.council_id if minutes.council_id else "unknown"
         schedule_id = minutes.schedule_id if minutes.schedule_id else "unknown"
-        
+
         # 日付ベースのディレクトリ構造
         date_str = minutes.date.strftime("%Y/%m/%d") if minutes.date else "unknown_date"
 
