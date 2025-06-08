@@ -61,19 +61,19 @@ class TestPartyMemberIntegration:
         # モックの設定
         with patch(
             "src.party_member_extractor.html_fetcher.PartyMemberPageFetcher"
-        ) as MockFetcher:
+        ) as mock_fetcher:
             mock_fetcher_instance = AsyncMock()
             mock_fetcher_instance.fetch_all_pages.return_value = mock_pages
-            MockFetcher.return_value.__aenter__.return_value = mock_fetcher_instance
+            mock_fetcher.return_value.__aenter__.return_value = mock_fetcher_instance
 
             with patch(
                 "src.party_member_extractor.extractor.ChatGoogleGenerativeAI"
-            ) as MockLLM:
+            ) as mock_llm_class:
                 mock_llm = Mock()
                 mock_extraction_llm = Mock()
                 mock_extraction_llm.invoke.return_value = mock_llm_result
                 mock_llm.with_structured_output.return_value = mock_extraction_llm
-                MockLLM.return_value = mock_llm
+                mock_llm_class.return_value = mock_llm
 
                 # エクストラクター作成
                 extractor = PartyMemberExtractor()
@@ -285,7 +285,7 @@ class TestPartyMemberIntegration:
         # LLMのモック（2ページ目でエラー）
         with patch(
             "src.party_member_extractor.extractor.ChatGoogleGenerativeAI"
-        ) as MockLLM:
+        ) as mock_llm_class:
             mock_llm = Mock()
             mock_extraction_llm = Mock()
             mock_extraction_llm.invoke.side_effect = [
@@ -300,7 +300,7 @@ class TestPartyMemberIntegration:
                 ),
             ]
             mock_llm.with_structured_output.return_value = mock_extraction_llm
-            MockLLM.return_value = mock_llm
+            mock_llm_class.return_value = mock_llm
 
             extractor = PartyMemberExtractor()
             result = extractor.extract_from_pages(mock_pages, "エラーテスト党")

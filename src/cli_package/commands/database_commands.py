@@ -66,13 +66,19 @@ class DatabaseCommands(BaseCommand):
     @click.option("--minutes-id", type=int, help="特定の議事録IDのみを処理")
     @click.option("--use-llm", is_flag=True, help="LLMを使用した高度なマッチングを行う")
     @click.option(
-        "--skip-extraction", is_flag=True, help="発言者抽出をスキップ（紐付けのみ実行）"
+        "--skip-extraction",
+        is_flag=True,
+        help="発言者抽出をスキップ（紐付けのみ実行）",
     )
     @click.option(
-        "--skip-politician-link", is_flag=True, help="politician紐付けをスキップ"
+        "--skip-politician-link",
+        is_flag=True,
+        help="politician紐付けをスキップ",
     )
     @click.option(
-        "--skip-conversation-link", is_flag=True, help="conversation紐付けをスキップ"
+        "--skip-conversation-link",
+        is_flag=True,
+        help="conversation紐付けをスキップ",
     )
     @with_error_handling
     def extract_speakers(
@@ -82,7 +88,10 @@ class DatabaseCommands(BaseCommand):
         skip_politician_link: bool,
         skip_conversation_link: bool,
     ):
-        """Extract speakers from minutes and link to politicians (議事録から発言者を抽出)"""
+        """Extract speakers from minutes and link to politicians.
+
+        議事録から発言者を抽出してspeaker/politicianと紐付けます。
+        """
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
 
@@ -95,9 +104,9 @@ class DatabaseCommands(BaseCommand):
 
         # データベース接続
         engine = create_engine(DATABASE_URL)
-        SessionLocal = sessionmaker(bind=engine)
+        session_local = sessionmaker(bind=engine)
 
-        with SessionLocal() as session:
+        with session_local() as session:
             extractor = SpeakerExtractorFromMinutes(session)
 
             try:

@@ -269,7 +269,8 @@ def main() -> list[int] | None:
                         saved_ids = save_to_database(results, minutes_id=minutes_id)
                         all_saved_ids.extend(saved_ids)
                         print(
-                            f"   ✅ {len(saved_ids)}件の発言を保存しました (Minutes ID: {minutes_id})"
+                            f"   ✅ {len(saved_ids)}件の発言を保存しました "
+                            f"(Minutes ID: {minutes_id})"
                         )
                     else:
                         print("   ⚠️  発言が抽出されませんでした")

@@ -147,8 +147,7 @@ class ScrapingCommands(BaseCommand):
 
                     # 完全一致で見つからない場合、LIKE検索を試す
                     if not meetings:
-                        # URLの基本部分を抽出
-                        base_url = url.split("?")[0] if "?" in url else url
+                        # minIdがURLに含まれている場合の処理
                         if "minId=" in url:
                             min_id = url.split("minId=")[1].split("&")[0]
                             meetings = repo.fetch_as_dict(

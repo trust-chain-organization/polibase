@@ -94,7 +94,7 @@ class ConversationRepository(BaseRepository):
             raise IntegrityError(
                 "Data integrity constraint violated while saving conversations",
                 {"saved_count": len(saved_ids), "error": str(e)},
-            )
+            ) from e
         except SQLAlchemyError as e:
             self.session.rollback()
             logger.error(f"Database error while saving conversations: {e}")
@@ -105,14 +105,14 @@ class ConversationRepository(BaseRepository):
                     "total_count": len(speaker_and_speech_content_list),
                     "error": str(e),
                 },
-            )
+            ) from e
         except Exception as e:
             self.session.rollback()
             logger.error(f"Unexpected error while saving conversations: {e}")
             raise SaveError(
                 "Unexpected error occurred while saving conversations",
                 {"saved_count": len(saved_ids), "error": str(e)},
-            )
+            ) from e
         finally:
             self.session.close()
 
