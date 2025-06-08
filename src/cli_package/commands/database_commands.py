@@ -119,7 +119,7 @@ class DatabaseCommands(BaseCommand):
                 # 2. speaker-politician紐付け
                 if not skip_politician_link:
                     DatabaseCommands.show_progress("speaker-politician紐付けを開始...")
-                    extractor.link_speakers_to_politicians()
+                    extractor.link_speakers_to_politicians(use_llm=use_llm)
                     DatabaseCommands.success("speaker-politician紐付けが完了しました")
 
                 # 3. conversation-speaker紐付け

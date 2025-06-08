@@ -1097,13 +1097,25 @@ def execute_politician_processes():
 
         else:  # 発言者-政治家紐付け
             st.markdown("発言者（speakers）を政治家（politicians）に紐付けます")
-            st.info("名前の完全一致による自動紐付けを行います")
+            use_llm_politician = st.checkbox(
+                "LLMを使用する",
+                value=True,
+                key="use_llm_politician",
+                help="LLMを使用して表記ゆれや敬称の違いも考慮した高度なマッチングを行います",
+            )
+
+            if use_llm_politician:
+                st.info("LLMを使用した高度なマッチング（表記ゆれ・敬称対応）")
+            else:
+                st.info("名前の完全一致による自動紐付けを行います")
 
             if st.button(
                 "発言者-政治家紐付けを実行", key="link_speakers_to_politicians"
             ):
                 # extract-speakers コマンドで --skip-extraction と --skip-conversation-link を指定
                 command = "uv run polibase extract-speakers --skip-extraction --skip-conversation-link"
+                if use_llm_politician:
+                    command += " --use-llm"
 
                 with st.spinner("発言者-政治家紐付け処理を実行中..."):
                     run_command_with_progress(command, "link_speakers_to_politicians")

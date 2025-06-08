@@ -115,106 +115,128 @@ class SpeakerExtractorFromMinutes:
             f"発言者抽出完了 - 新規: {created_count}件, 既存: {existing_count}件"
         )
 
-    def link_speakers_to_politicians(self) -> None:
-        """speakerとpoliticianを紐付ける処理"""
+    def link_speakers_to_politicians(self, use_llm: bool = False) -> None:
+        """speakerとpoliticianを紐付ける処理
+
+        Args:
+            use_llm: LLMを使用した高度なマッチングを行うかどうか
+        """
         logger.info("speaker-politician紐付け処理開始")
 
-        # is_politician=Falseのspeakerを取得
-        query = "SELECT * FROM speakers WHERE is_politician = FALSE"
-        speakers = self.speaker_repo.fetch_as_dict(query)
-        logger.info(f"未紐付けのspeaker: {len(speakers)}件")
+        if use_llm:
+            # LLMを使用した高度なマッチング
+            from src.database.politician_matching_service import (
+                PoliticianMatchingService,
+            )
+            from src.services.llm_service import LLMService
 
-        linked_count = 0
+            llm_service = LLMService()
+            llm = llm_service.llm
+            matching_service = PoliticianMatchingService(llm)
 
-        for speaker in speakers:
-            # 名前でpoliticianを検索
-            politicians = self.politician_repo.find_by_name(speaker["name"])
+            stats = matching_service.batch_link_speakers_to_politicians()
+            logger.info(
+                f"LLMマッチング完了 - 成功: {stats['successfully_matched']}件, "
+                f"失敗: {stats['failed_matches']}件"
+            )
+        else:
+            # 従来のルールベースマッチング
+            # is_politician=Falseのspeakerを取得
+            query = "SELECT * FROM speakers WHERE is_politician = FALSE"
+            speakers = self.speaker_repo.fetch_as_dict(query)
+            logger.info(f"未紐付けのspeaker: {len(speakers)}件")
 
-            if len(politicians) == 1:
-                # 1件だけ見つかった場合は自動的に紐付け
-                politician = politicians[0]
-                # speakerを更新
-                update_query = """
-                    UPDATE speakers
-                    SET is_politician = TRUE,
-                        political_party_name = :party_name
-                    WHERE id = :id
-                """
-                # politicianが辞書の場合とオブジェクトの場合の両方に対応
-                if isinstance(politician, dict):
-                    politician_id = politician.get("id")
-                    party_name = politician.get("political_party_name")
-                else:
-                    politician_id = politician.id
-                    party_name = (
-                        politician.political_party.name
-                        if hasattr(politician, "political_party")
-                        and politician.political_party
-                        else None
+            linked_count = 0
+
+            for speaker in speakers:
+                # 名前でpoliticianを検索
+                politicians = self.politician_repo.find_by_name(speaker["name"])
+
+                if len(politicians) == 1:
+                    # 1件だけ見つかった場合は自動的に紐付け
+                    politician = politicians[0]
+                    # speakerを更新
+                    update_query = """
+                        UPDATE speakers
+                        SET is_politician = TRUE,
+                            political_party_name = :party_name
+                        WHERE id = :id
+                    """
+                    # politicianが辞書の場合とオブジェクトの場合の両方に対応
+                    if isinstance(politician, dict):
+                        politician_id = politician.get("id")
+                        party_name = politician.get("political_party_name")
+                    else:
+                        politician_id = politician.id
+                        party_name = (
+                            politician.political_party.name
+                            if hasattr(politician, "political_party")
+                            and politician.political_party
+                            else None
+                        )
+
+                    self.speaker_repo.execute(
+                        update_query,
+                        {
+                            "id": speaker["id"],
+                            "party_name": party_name,
+                        },
                     )
+                    logger.info(
+                        f"自動紐付け: {speaker['name']} -> 政治家ID: {politician_id}"
+                    )
+                    linked_count += 1
 
-                self.speaker_repo.execute(
-                    update_query,
-                    {
-                        "id": speaker["id"],
-                        "party_name": party_name,
-                    },
-                )
-                logger.info(
-                    f"自動紐付け: {speaker['name']} -> 政治家ID: {politician_id}"
-                )
-                linked_count += 1
-
-            elif len(politicians) > 1:
-                # 複数見つかった場合は政党名で絞り込み
-                if speaker.get("political_party_name"):
-                    matched_politicians = []
-                    for p in politicians:
-                        if isinstance(p, dict):
-                            if (
-                                p.get("political_party_name")
-                                == speaker["political_party_name"]
-                            ):
-                                matched_politicians.append(p)
+                elif len(politicians) > 1:
+                    # 複数見つかった場合は政党名で絞り込み
+                    if speaker.get("political_party_name"):
+                        matched_politicians = []
+                        for p in politicians:
+                            if isinstance(p, dict):
+                                if (
+                                    p.get("political_party_name")
+                                    == speaker["political_party_name"]
+                                ):
+                                    matched_politicians.append(p)
+                            else:
+                                if (
+                                    p.political_party
+                                    and p.political_party.name
+                                    == speaker["political_party_name"]
+                                ):
+                                    matched_politicians.append(p)
+                        if len(matched_politicians) == 1:
+                            politician = matched_politicians[0]
+                            # speakerを更新
+                            update_query = "UPDATE speakers SET is_politician = TRUE WHERE id = :id"
+                            self.speaker_repo.execute(
+                                update_query, {"id": speaker["id"]}
+                            )
+                            # politicianが辞書の場合とオブジェクトの場合の両方に対応
+                            politician_id = (
+                                politician.get("id")
+                                if isinstance(politician, dict)
+                                else politician.id
+                            )
+                            logger.info(
+                                f"政党名で絞り込み紐付け: {speaker['name']} "
+                                f"({speaker['political_party_name']}) -> "
+                                f"政治家ID: {politician_id}"
+                            )
+                            linked_count += 1
                         else:
-                            if (
-                                p.political_party
-                                and p.political_party.name
-                                == speaker["political_party_name"]
-                            ):
-                                matched_politicians.append(p)
-                    if len(matched_politicians) == 1:
-                        politician = matched_politicians[0]
-                        # speakerを更新
-                        update_query = (
-                            "UPDATE speakers SET is_politician = TRUE WHERE id = :id"
-                        )
-                        self.speaker_repo.execute(update_query, {"id": speaker["id"]})
-                        # politicianが辞書の場合とオブジェクトの場合の両方に対応
-                        politician_id = (
-                            politician.get("id")
-                            if isinstance(politician, dict)
-                            else politician.id
-                        )
-                        logger.info(
-                            f"政党名で絞り込み紐付け: {speaker['name']} "
-                            f"({speaker['political_party_name']}) -> "
-                            f"政治家ID: {politician_id}"
-                        )
-                        linked_count += 1
+                            logger.warning(
+                                f"複数の政治家候補が存在: {speaker['name']} "
+                                f"({len(politicians)}件)"
+                            )
                     else:
                         logger.warning(
-                            f"複数の政治家候補が存在: {speaker['name']} "
+                            f"政党名が不明で複数の政治家候補が存在: {speaker['name']} "
                             f"({len(politicians)}件)"
                         )
-                else:
-                    logger.warning(
-                        f"政党名が不明で複数の政治家候補が存在: {speaker['name']} "
-                        f"({len(politicians)}件)"
-                    )
 
-        self.session.commit()
-        logger.info(f"speaker-politician紐付け完了: {linked_count}件")
+            self.session.commit()
+            logger.info(f"speaker-politician紐付け完了: {linked_count}件")
 
     def update_conversation_speaker_links(self, use_llm: bool = False) -> None:
         """conversationテーブルのspeaker_idを更新"""
@@ -355,7 +377,7 @@ def main():
 
             # 2. speaker-politician紐付け
             if not args.skip_politician_link:
-                extractor.link_speakers_to_politicians()
+                extractor.link_speakers_to_politicians(use_llm=args.use_llm)
 
             # 3. conversation-speaker紐付け
             if not args.skip_conversation_link:
