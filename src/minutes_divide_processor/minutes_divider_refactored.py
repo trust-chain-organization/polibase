@@ -115,8 +115,7 @@ class MinutesDivider:
             # キーワードが見つからない場合はスキップ
             if start_index == -1:
                 logger.warning(
-                    f"キーワード '{keyword}' が議事録に見つかりません。"
-                    "スキップします。"
+                    f"キーワード '{keyword}' が議事録に見つかりません。スキップします。"
                 )
                 skipped_keywords.append(keyword)
                 i += 1

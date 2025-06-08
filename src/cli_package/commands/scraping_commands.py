@@ -278,7 +278,7 @@ class ScrapingCommands(BaseCommand):
             results = await service.fetch_multiple(urls, max_concurrent=concurrent)
 
             for i, minutes in enumerate(results):
-                tracker.update(1, f"Processing {i+1}/{len(urls)}")
+                tracker.update(1, f"Processing {i + 1}/{len(urls)}")
                 if minutes:
                     # テキストとJSONで保存
                     base_name = f"{minutes.council_id}_{minutes.schedule_id}"

@@ -13,7 +13,6 @@ from ..progress import ProgressTracker, spinner
 class PoliticianCommands(BaseCommand):
     """Commands for processing politician data"""
 
-
     @staticmethod
     @click.command()
     @click.option("--party-id", type=int, help="Specific party ID to scrape")
@@ -88,6 +87,7 @@ class PoliticianCommands(BaseCommand):
 
             # Streamlitから実行される場合は確認をスキップ
             import os
+
             if os.environ.get("STREAMLIT_RUNNING") != "true":
                 if not PoliticianCommands.confirm("\nDo you want to continue?"):
                     return

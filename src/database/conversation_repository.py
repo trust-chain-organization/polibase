@@ -67,7 +67,7 @@ class ConversationRepository(BaseRepository):
                     if conversation_id:
                         saved_ids.append(conversation_id)
                 except Exception as e:
-                    logger.warning(f"Failed to save conversation {i+1}: {e}")
+                    logger.warning(f"Failed to save conversation {i + 1}: {e}")
                     failed_count += 1
                     # Continue with other conversations
 
