@@ -110,15 +110,13 @@ class MinutesProcessAgent:
         memory_id = state.section_string_list_memory_id
         section_string_list = self._get_from_memory("section_string_list", memory_id)
         if state.index - 1 < len(section_string_list.section_string_list):
-            if state.index - 1 in [0, 1, 2, 3]:
-                # 発言者と発言内容に分割する
-                speaker_and_speech_content_list = (
-                    self.minutes_divider.speech_divide_run(
-                        section_string_list.section_string_list[state.index - 1]
-                    )
+            # すべてのセクションを処理する（0, 1, 2, 3の制限を削除）
+            # 発言者と発言内容に分割する
+            speaker_and_speech_content_list = (
+                self.minutes_divider.speech_divide_run(
+                    section_string_list.section_string_list[state.index - 1]
                 )
-            else:
-                speaker_and_speech_content_list = None
+            )
         else:
             print(
                 f"Warning: Index {state.index - 1} is out of range "
@@ -143,26 +141,24 @@ class MinutesProcessAgent:
                 "Skipping this section."
             )
             updated_speaker_and_speech_content_list = divided_speech_list
+            memory = {
+                "divided_speech_list": updated_speaker_and_speech_content_list
+            }
+            memory_id = self._put_to_memory(
+                namespace="divided_speech_list", memory=memory
+            )
         else:
-            if state.index - 1 in [0, 1, 2, 3]:
-                updated_speaker_and_speech_content_list = (
-                    divided_speech_list
-                    + speaker_and_speech_content_list.speaker_and_speech_content_list
-                )
-                memory = {
-                    "divided_speech_list": updated_speaker_and_speech_content_list
-                }
-                memory_id = self._put_to_memory(
-                    namespace="divided_speech_list", memory=memory
-                )
-            else:
-                updated_speaker_and_speech_content_list = divided_speech_list
-                memory = {
-                    "divided_speech_list": updated_speaker_and_speech_content_list
-                }
-                memory_id = self._put_to_memory(
-                    namespace="divided_speech_list", memory=memory
-                )
+            # すべてのセクションの結果を追加
+            updated_speaker_and_speech_content_list = (
+                divided_speech_list
+                + speaker_and_speech_content_list.speaker_and_speech_content_list
+            )
+            memory = {
+                "divided_speech_list": updated_speaker_and_speech_content_list
+            }
+            memory_id = self._put_to_memory(
+                namespace="divided_speech_list", memory=memory
+            )
         incremented_index = state.index + 1
         print(f"incremented_speech_divide_index: {incremented_index}")
         return {"divided_speech_list_memory_id": memory_id, "index": incremented_index}
