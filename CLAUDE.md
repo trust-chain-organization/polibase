@@ -59,6 +59,9 @@ docker compose exec polibase uv run polibase batch-scrape --tenant osaka
 # Batch scrape with GCS upload
 docker compose exec polibase uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
 
+# Extract speakers from meeting minutes
+docker compose exec polibase uv run polibase extract-speakers
+
 # Scrape politician information from party websites
 docker compose exec polibase uv run polibase scrape-politicians --all-parties
 docker compose exec polibase uv run polibase scrape-politicians --party-id 5
@@ -164,12 +167,37 @@ docker compose exec postgres psql -U polibase_user -d polibase_db -f /docker-ent
 
 ## Architecture
 
+### System Design Principles
+
+Polibase follows these core design principles:
+
+1. **Politician Information from Party Websites**
+   - Politicians data is obtained from political party websites
+   - Regular updates to maintain current information
+   - Structured extraction of names, positions, districts, etc.
+
+2. **Speakers and Speech Content from Meeting Minutes**
+   - Speaker names and their statements are extracted from meeting minutes
+   - Maintains conversation context and sequence
+   - Stores as structured data in `conversations` and `speakers` tables
+
+3. **Speaker-Politician Matching via LLM**
+   - Uses LLM to handle name variations and honorifics
+   - Hybrid approach combining rule-based and LLM matching
+   - High-accuracy linking between `speakers` and `politicians`
+
+4. **Data Input through Streamlit UI**
+   - Party member list URLs managed through web interface
+   - Meeting minutes URLs registered and managed
+   - User-friendly interface for all data entry
+
 ### Processing Pipeline
 
 #### Standard Flow (from PDF)
 1. **Minutes Divider** (`src/minutes_divide_processor/`): Processes PDF minutes using LangGraph state management and Gemini API to extract individual speeches
 2. **Speaker Extraction** (`src/extract_speakers_from_minutes.py`): Extracts speaker information from conversations and creates speaker records
 3. **Speaker Matching** (`update_speaker_links_llm.py`): Uses hybrid rule-based + LLM matching to link conversations to speaker records
+4. **Politician Data Collection** (`polibase scrape-politicians`): Fetches latest politician information from party websites
 
 #### Web Scraping Flow (with GCS Integration)
 1. **Web Scraper** (`src/web_scraper/`): Extracts meeting minutes from council websites

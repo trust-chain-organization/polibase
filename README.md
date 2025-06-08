@@ -63,6 +63,27 @@ uv sync
 
 ## 🏃 使用方法
 
+### システムデザイン
+
+Polibaseは以下の設計原則に基づいて構築されています：
+
+1. **政治家の情報は政党のWebサイトから取得**
+   - 各政党の公式サイトから最新の議員情報を定期的に取得
+   - 名前、所属、役職、選挙区などの情報を構造化して保存
+
+2. **発言者と発言内容は議事録から抽出**
+   - 議事録PDFやWebページから発言者名と発言内容を自動抽出
+   - 発言順序や文脈を保持したまま構造化データとして保存
+
+3. **発言者と政治家はLLMを利用して紐付け**
+   - 表記揺れや敬称の違いに対応する高精度マッチング
+   - ルールベース + LLMベースのハイブリッドアプローチ
+
+4. **データ入力はStreamlit UIを通じて**
+   - 政党の議員一覧URLの設定
+   - 議事録URLの登録と管理
+   - 直感的なWebインターフェースで操作
+
 ### 統一CLIコマンド
 
 新しく統一されたCLIインターフェースが利用可能です：
@@ -74,8 +95,8 @@ docker compose exec polibase uv run polibase --help
 # 議事録を処理（発言を抽出）
 docker compose exec polibase uv run polibase process-minutes
 
-# 政治家情報を抽出
-docker compose exec polibase uv run polibase extract-politicians
+# 議事録から発言者情報を抽出
+docker compose exec polibase uv run polibase extract-speakers
 
 # 発言者をマッチング（LLM使用）
 docker compose exec polibase uv run polibase update-speakers --use-llm
@@ -108,17 +129,15 @@ docker compose exec polibase uv run python -m src.process_minutes --meeting-id 1
 議事録PDFファイルを読み込み、発言単位に分割してデータベースに保存します。
 meeting IDを指定すると、GCSに保存された議事録テキストを自動的に取得して処理します。
 
-#### 政治家情報抽出処理（発言者抽出）
+#### 発言者抽出処理
 ```bash
-# Docker環境で実行（新しいファイル名でも実行可能）
-docker compose exec polibase uv run python -m src.extract_politicians
-# または従来のコマンド
-docker compose exec polibase uv run python -m src.main2
+# Docker環境で実行
+docker compose exec polibase uv run python -m src.extract_speakers_from_minutes
 
 # ローカル環境で実行
-uv run python -m src.extract_politicians
+uv run python -m src.extract_speakers_from_minutes
 ```
-議事録から政治家（発言者）の情報を抽出してデータベースに保存します。
+議事録から発言者の情報を抽出してspeakersテーブルに保存します。
 
 #### 会議管理Web UI
 ```bash
@@ -413,7 +432,7 @@ polibase/
 │   ├── cli.py                   # 統一CLIエントリーポイント
 │   ├── streamlit_app.py         # 会議管理Web UI
 │   ├── process_minutes.py       # 議事録分割処理
-│   ├── extract_politicians.py   # 政治家抽出処理
+│   ├── extract_speakers_from_minutes.py   # 発言者抽出処理
 │   ├── config/                   # 設定ファイル
 │   │   ├── database.py          # データベース接続設定
 │   │   ├── config.py            # アプリケーション設定
@@ -555,10 +574,11 @@ gsutil iam get gs://YOUR_BUCKET_NAME/
 
 ### 標準フロー（PDFファイルから処理）
 1. **議事録PDFの処理**: `src/process_minutes.py` - 議事録を発言単位に分割してデータベースに保存
-2. **政治家情報の抽出**: `src/extract_politicians.py` - 発言から政治家情報を抽出してデータベースに保存
+2. **発言者情報の抽出**: `src/extract_speakers_from_minutes.py` - 発言から発言者情報を抽出してspeakersテーブルに保存
 3. **発言者マッチング**: `update_speaker_links_llm.py` - LLMを活用して発言と発言者を高精度でマッチング
-4. **データベース保存**: 抽出・マッチングされた情報をPostgreSQLに保存
-5. **分析・検索**: 蓄積されたデータから政治活動を分析
+4. **政治家情報の取得**: `polibase scrape-politicians` - 政党のWebサイトから最新の政治家情報を取得
+5. **データベース保存**: 抽出・マッチングされた情報をPostgreSQLに保存
+6. **分析・検索**: 蓄積されたデータから政治活動を分析
 
 ### Webスクレイピングフロー（GCS統合）
 1. **議事録Web取得**: `polibase scrape-minutes` - Webから議事録を取得
@@ -589,12 +609,13 @@ docker compose logs -f    # ログ確認
 
 # 🏃 アプリケーション実行（新しいCLI）
 docker compose exec polibase uv run polibase process-minutes      # 議事録分割
-docker compose exec polibase uv run polibase extract-politicians  # 政治家抽出
+docker compose exec polibase uv run polibase extract-speakers      # 発言者抽出
 docker compose exec polibase uv run polibase update-speakers --use-llm  # LLM発言者マッチング
+docker compose exec polibase uv run polibase scrape-politicians --all-parties  # 政治家情報取得
 
 # 🏃 アプリケーション実行（従来の方法）
 docker compose exec polibase uv run python -m src.process_minutes  # 議事録分割（発言抽出）
-docker compose exec polibase uv run python -m src.extract_politicians  # 政治家抽出（発言者抽出）
+docker compose exec polibase uv run python -m src.extract_speakers_from_minutes  # 発言者抽出
 docker compose exec polibase uv run python update_speaker_links_llm.py  # LLM発言者マッチング
 docker compose exec polibase uv run pytest              # テスト実行
 
