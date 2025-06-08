@@ -239,7 +239,8 @@ class TestConversationRepository(unittest.TestCase):
         self.assertEqual(result[0]["id"], 1)
         self.assertEqual(result[0]["speaker_id"], 123)
         self.assertEqual(result[1]["speaker_id"], None)
-        self.mock_session.close.assert_called_once()
+        # close()は呼ばれないはず
+        self.mock_session.close.assert_not_called()
 
     def test_get_conversations_count(self):
         """発言データ件数取得テスト"""
@@ -252,7 +253,8 @@ class TestConversationRepository(unittest.TestCase):
 
         # 検証
         self.assertEqual(result, 25)
-        self.mock_session.close.assert_called_once()
+        # close()は呼ばれないはず
+        self.mock_session.close.assert_not_called()
 
     def test_get_speaker_linking_stats(self):
         """発言者紐付け統計取得テスト"""
@@ -274,7 +276,8 @@ class TestConversationRepository(unittest.TestCase):
             "unlinked_conversations": 25,
         }
         self.assertEqual(result, expected_stats)
-        self.mock_session.close.assert_called_once()
+        # close()は呼ばれないはず
+        self.mock_session.close.assert_not_called()
 
     def test_update_speaker_links_success(self):
         """発言者紐付け更新成功テスト"""
