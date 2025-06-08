@@ -62,8 +62,14 @@ class SpeakerExtractorFromMinutes:
         # 発言者名を抽出（重複を除く）
         unique_speaker_names: set[str] = set()
         for conv in conversations:
-            if conv.speaker_name:
-                unique_speaker_names.add(conv.speaker_name)
+            # convが辞書の場合とオブジェクトの場合の両方に対応
+            speaker_name = (
+                conv.get("speaker_name")
+                if isinstance(conv, dict)
+                else getattr(conv, "speaker_name", None)
+            )
+            if speaker_name:
+                unique_speaker_names.add(speaker_name)
 
         logger.info(f"ユニークな発言者名: {len(unique_speaker_names)}件")
 
@@ -80,9 +86,12 @@ class SpeakerExtractorFromMinutes:
             existing_speaker = existing_speakers[0] if existing_speakers else None
 
             if existing_speaker:
-                logger.debug(
-                    f"既存の発言者: {speaker_name} (ID: {existing_speaker.id})"
+                speaker_id = (
+                    existing_speaker.get("id")
+                    if isinstance(existing_speaker, dict)
+                    else existing_speaker.id
                 )
+                logger.debug(f"既存の発言者: {speaker_name} (ID: {speaker_id})")
                 existing_count += 1
             else:
                 # 新規作成
@@ -131,31 +140,49 @@ class SpeakerExtractorFromMinutes:
                         political_party_name = :party_name
                     WHERE id = :id
                 """
+                # politicianが辞書の場合とオブジェクトの場合の両方に対応
+                if isinstance(politician, dict):
+                    politician_id = politician.get("id")
+                    party_name = politician.get("political_party_name")
+                else:
+                    politician_id = politician.id
+                    party_name = (
+                        politician.political_party.name
+                        if hasattr(politician, "political_party")
+                        and politician.political_party
+                        else None
+                    )
+
                 self.speaker_repo.execute(
                     update_query,
                     {
                         "id": speaker["id"],
-                        "party_name": (
-                            politician.political_party.name
-                            if politician.political_party
-                            else None
-                        ),
+                        "party_name": party_name,
                     },
                 )
                 logger.info(
-                    f"自動紐付け: {speaker['name']} -> 政治家ID: {politician.id}"
+                    f"自動紐付け: {speaker['name']} -> 政治家ID: {politician_id}"
                 )
                 linked_count += 1
 
             elif len(politicians) > 1:
                 # 複数見つかった場合は政党名で絞り込み
                 if speaker.get("political_party_name"):
-                    matched_politicians = [
-                        p
-                        for p in politicians
-                        if p.political_party
-                        and p.political_party.name == speaker["political_party_name"]
-                    ]
+                    matched_politicians = []
+                    for p in politicians:
+                        if isinstance(p, dict):
+                            if (
+                                p.get("political_party_name")
+                                == speaker["political_party_name"]
+                            ):
+                                matched_politicians.append(p)
+                        else:
+                            if (
+                                p.political_party
+                                and p.political_party.name
+                                == speaker["political_party_name"]
+                            ):
+                                matched_politicians.append(p)
                     if len(matched_politicians) == 1:
                         politician = matched_politicians[0]
                         # speakerを更新
@@ -163,10 +190,16 @@ class SpeakerExtractorFromMinutes:
                             "UPDATE speakers SET is_politician = TRUE WHERE id = :id"
                         )
                         self.speaker_repo.execute(update_query, {"id": speaker["id"]})
+                        # politicianが辞書の場合とオブジェクトの場合の両方に対応
+                        politician_id = (
+                            politician.get("id")
+                            if isinstance(politician, dict)
+                            else politician.id
+                        )
                         logger.info(
                             f"政党名で絞り込み紐付け: {speaker['name']} "
                             f"({speaker['political_party_name']}) -> "
-                            f"政治家ID: {politician.id}"
+                            f"政治家ID: {politician_id}"
                         )
                         linked_count += 1
                     else:
@@ -198,7 +231,12 @@ class SpeakerExtractorFromMinutes:
             logger.info(f"LLMを使用して{len(unlinked_conversations)}件の発言を処理")
 
             for conversation in unlinked_conversations:
-                speaker_name = conversation.speaker_name
+                # conversationが辞書の場合とオブジェクトの場合の両方に対応
+                speaker_name = (
+                    conversation.get("speaker_name")
+                    if isinstance(conversation, dict)
+                    else getattr(conversation, "speaker_name", None)
+                )
                 if not speaker_name:
                     continue
 
@@ -216,7 +254,20 @@ class SpeakerExtractorFromMinutes:
                     matched_speaker = speakers[0] if speakers else None
 
                 if matched_speaker:
-                    conversation.speaker_id = matched_speaker["id"]
+                    # conversationオブジェクトへのspeaker_id設定
+                    conversation_id = (
+                        conversation.get("id")
+                        if isinstance(conversation, dict)
+                        else conversation.id
+                    )
+                    update_query = (
+                        "UPDATE conversations SET speaker_id = :speaker_id "
+                        "WHERE id = :id"
+                    )
+                    self.conversation_repo.execute_query(
+                        update_query,
+                        {"speaker_id": matched_speaker["id"], "id": conversation_id},
+                    )
                     logger.debug(
                         f"LLMマッチング成功: '{speaker_name}' -> "
                         f"Speaker ID: {matched_speaker['id']}"
@@ -233,13 +284,30 @@ class SpeakerExtractorFromMinutes:
 
             linked_count = 0
             for conv in conversations:
-                if conv.speaker_name:
+                # convが辞書の場合とオブジェクトの場合の両方に対応
+                speaker_name = (
+                    conv.get("speaker_name")
+                    if isinstance(conv, dict)
+                    else getattr(conv, "speaker_name", None)
+                )
+                if speaker_name:
                     query = "SELECT id FROM speakers WHERE name = :name LIMIT 1"
                     speakers = self.speaker_repo.fetch_as_dict(
-                        query, {"name": conv.speaker_name}
+                        query, {"name": speaker_name}
                     )
                     if speakers:
-                        conv.speaker_id = speakers[0]["id"]
+                        # conversationのIDを取得してUPDATEクエリで更新
+                        conversation_id = (
+                            conv.get("id") if isinstance(conv, dict) else conv.id
+                        )
+                        update_query = (
+                            "UPDATE conversations SET speaker_id = :speaker_id "
+                            "WHERE id = :id"
+                        )
+                        self.conversation_repo.execute_query(
+                            update_query,
+                            {"speaker_id": speakers[0]["id"], "id": conversation_id},
+                        )
                         linked_count += 1
 
             logger.info(f"単純マッチング完了: {linked_count}件")

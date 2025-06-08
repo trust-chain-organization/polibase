@@ -50,6 +50,7 @@ def save_to_database(
         logger.warning("No conversations to save")
         return []
 
+    conversation_repo = None
     try:
         conversation_repo = ConversationRepository()
         saved_ids = conversation_repo.save_speaker_and_speech_content_list(
@@ -63,6 +64,9 @@ def save_to_database(
             "Failed to save conversations to database",
             {"count": len(speaker_and_speech_content_list), "error": str(e)},
         ) from e
+    finally:
+        if conversation_repo:
+            conversation_repo.close()
 
 
 def display_database_status() -> None:
@@ -72,6 +76,7 @@ def display_database_status() -> None:
     Raises:
         DatabaseError: If database query fails
     """
+    conversation_repo = None
     try:
         conversation_repo = ConversationRepository()
         count = conversation_repo.get_conversations_count()
@@ -99,6 +104,9 @@ def display_database_status() -> None:
         raise DatabaseError(
             "Failed to retrieve database status", {"error": str(e)}
         ) from e
+    finally:
+        if conversation_repo:
+            conversation_repo.close()
 
 
 def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:

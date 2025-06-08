@@ -1,7 +1,6 @@
 """Streamlit app for managing meetings"""
 
 import subprocess
-import threading
 from datetime import date, datetime
 
 import pandas as pd
@@ -615,41 +614,74 @@ def execute_processes():
 
 def run_command_with_progress(command, process_name):
     """コマンドをバックグラウンドで実行し、進捗を管理"""
+    # セッション状態の初期化を確認
+    if "process_status" not in st.session_state:
+        st.session_state.process_status = {}
+    if "process_output" not in st.session_state:
+        st.session_state.process_output = {}
+
     st.session_state.process_status[process_name] = "running"
     st.session_state.process_output[process_name] = []
 
-    def run_subprocess():
-        try:
-            # Docker compose経由でコマンドを実行
-            full_command = f"docker compose exec -T polibase {command}"
-            process = subprocess.Popen(
-                full_command,
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-            )
+    # プレースホルダーを作成して、後で更新できるようにする
+    status_placeholder = st.empty()
+    output_placeholder = st.empty()
 
-            # 出力をリアルタイムで収集
-            for line in iter(process.stdout.readline, ""):
-                if line:
-                    st.session_state.process_output[process_name].append(line.strip())
+    # コンテナ内で直接コマンドを実行
+    try:
+        # プロセスを開始
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
 
-            process.wait()
+        # 出力を収集するリスト
+        output_lines = []
 
-            if process.returncode == 0:
-                st.session_state.process_status[process_name] = "completed"
-            else:
-                st.session_state.process_status[process_name] = "failed"
+        # 出力をリアルタイムで収集
+        with status_placeholder.container():
+            st.info("🔄 処理実行中...")
 
-        except Exception as e:
-            st.session_state.process_status[process_name] = "error"
-            st.session_state.process_output[process_name].append(f"エラー: {str(e)}")
+        for line in iter(process.stdout.readline, ""):
+            if line:
+                output_lines.append(line.strip())
+                # 出力をリアルタイムで更新
+                with output_placeholder.container():
+                    with st.expander("実行ログ", expanded=True):
+                        # 最新の10行のみ表示
+                        recent_lines = output_lines[-10:]
+                        st.code("\n".join(recent_lines), language="text")
 
-    # バックグラウンドスレッドで実行
-    thread = threading.Thread(target=run_subprocess)
-    thread.start()
+        process.wait()
+
+        # 結果をセッション状態に保存
+        st.session_state.process_output[process_name] = output_lines
+
+        if process.returncode == 0:
+            st.session_state.process_status[process_name] = "completed"
+            with status_placeholder.container():
+                st.success("✅ 処理が完了しました")
+        else:
+            st.session_state.process_status[process_name] = "failed"
+            with status_placeholder.container():
+                st.error("❌ 処理が失敗しました")
+
+        # 最終的な出力を表示（全ログを表示）
+        with output_placeholder.container():
+            with st.expander("実行ログ", expanded=False):
+                st.code("\n".join(output_lines), language="text")
+
+    except Exception as e:
+        st.session_state.process_status[process_name] = "error"
+        st.session_state.process_output[process_name] = [f"エラー: {str(e)}"]
+        with status_placeholder.container():
+            st.error("❌ エラーが発生しました")
+        with output_placeholder.container():
+            st.code(f"エラー: {str(e)}", language="text")
 
 
 def execute_minutes_processes():
@@ -662,12 +694,62 @@ def execute_minutes_processes():
         st.markdown("### 議事録分割処理")
         st.markdown("PDFから議事録を読み込み、発言ごとに分割します")
 
-        meeting_id = st.number_input(
-            "会議ID（GCSから処理する場合）",
-            min_value=1,
-            step=1,
-            help="会議IDを指定するとGCSから議事録を取得して処理します",
-        )
+        # 会議情報の表示用にリポジトリを作成
+        repo = MeetingRepository()
+
+        # すべての会議を取得してセレクトボックスの選択肢を作成
+        all_meetings = repo.get_meetings()
+
+        if not all_meetings:
+            st.warning("登録されている会議がありません")
+            meeting_id = None
+        else:
+            # 会議を日付順（新しい順）にソート
+            all_meetings.sort(key=lambda x: x["date"], reverse=True)
+
+            # セレクトボックスの選択肢を作成
+            meeting_options = ["なし（全体処理）"] + [
+                (
+                    f"ID:{m['id']} - {m['date'].strftime('%Y/%m/%d')} "
+                    f"{m['governing_body_name']} {m['conference_name']}"
+                )
+                for m in all_meetings
+            ]
+
+            selected_meeting = st.selectbox(
+                "処理する会議を選択（GCSから処理する場合）",
+                meeting_options,
+                help="会議を選択するとGCSから議事録を取得して処理します",
+            )
+
+            # 選択された会議のIDを取得
+            if selected_meeting == "なし（全体処理）":
+                meeting_id = None
+            else:
+                # "ID:123 - ..." の形式からIDを抽出
+                meeting_id = int(selected_meeting.split(" - ")[0].replace("ID:", ""))
+
+                # 選択された会議の詳細情報を表示
+                selected_meeting_info = next(
+                    m for m in all_meetings if m["id"] == meeting_id
+                )
+                meeting_date_str = selected_meeting_info["date"].strftime(
+                    "%Y年%m月%d日"
+                )
+                meeting_url = (
+                    selected_meeting_info["url"]
+                    if selected_meeting_info["url"]
+                    else "URLなし"
+                )
+                st.info(
+                    f"**選択された会議の詳細:**\n"
+                    f"- 開催主体: {selected_meeting_info['governing_body_name']}\n"
+                    f"- 会議体: {selected_meeting_info['conference_name']}\n"
+                    f"- 開催日: {meeting_date_str}\n"
+                    f"- URL: {meeting_url}"
+                )
+
+        repo.close()
 
         if st.button("議事録分割を実行", key="process_minutes"):
             command = "uv run polibase process-minutes"
@@ -676,28 +758,138 @@ def execute_minutes_processes():
                     f"uv run python -m src.process_minutes --meeting-id {meeting_id}"
                 )
 
-            with st.spinner("議事録分割処理を実行中..."):
-                run_command_with_progress(command, "process_minutes")
+            run_command_with_progress(command, "process_minutes")
 
-        # 進捗表示
-        if "process_minutes" in st.session_state.process_status:
-            status = st.session_state.process_status["process_minutes"]
-            if status == "running":
-                st.info("🔄 処理実行中...")
-            elif status == "completed":
-                st.success("✅ 処理が完了しました")
-            elif status == "failed":
-                st.error("❌ 処理が失敗しました")
-            elif status == "error":
-                st.error("❌ エラーが発生しました")
+            # 処理完了後、作成されたレコードを表示
+            if (
+                "process_minutes" in st.session_state.process_status
+                and st.session_state.process_status["process_minutes"] == "completed"
+            ):
+                # データベースから処理結果を取得
+                engine = get_db_engine()
+                with engine.connect() as conn:
+                    if meeting_id:
+                        # 特定の会議の議事録を取得
+                        result = conn.execute(
+                            text("""
+                            SELECT m.id, m.url, m.created_at,
+                                   mt.url as meeting_url, mt.date as meeting_date,
+                                   gb.name as governing_body_name,
+                                   conf.name as conference_name,
+                                   COUNT(c.id) as conversation_count
+                            FROM minutes m
+                            LEFT JOIN conversations c ON m.id = c.minutes_id
+                            LEFT JOIN meetings mt ON m.meeting_id = mt.id
+                            LEFT JOIN conferences conf ON mt.conference_id = conf.id
+                            LEFT JOIN governing_bodies gb
+                                ON conf.governing_body_id = gb.id
+                            WHERE m.meeting_id = :meeting_id
+                            GROUP BY m.id, m.url, m.created_at, mt.url, mt.date,
+                                     gb.name, conf.name
+                            ORDER BY m.created_at DESC
+                            LIMIT 10
+                        """),
+                            {"meeting_id": meeting_id},
+                        )
+                    else:
+                        # 最新の議事録を取得
+                        result = conn.execute(
+                            text("""
+                            SELECT m.id, m.url, m.created_at,
+                                   mt.url as meeting_url, mt.date as meeting_date,
+                                   gb.name as governing_body_name,
+                                   conf.name as conference_name,
+                                   COUNT(c.id) as conversation_count
+                            FROM minutes m
+                            LEFT JOIN conversations c ON m.id = c.minutes_id
+                            LEFT JOIN meetings mt ON m.meeting_id = mt.id
+                            LEFT JOIN conferences conf ON mt.conference_id = conf.id
+                            LEFT JOIN governing_bodies gb
+                                ON conf.governing_body_id = gb.id
+                            WHERE m.created_at >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
+                            GROUP BY m.id, m.url, m.created_at, mt.url, mt.date,
+                                     gb.name, conf.name
+                            ORDER BY m.created_at DESC
+                            LIMIT 10
+                        """)
+                        )
 
-            # 出力表示
-            if "process_minutes" in st.session_state.process_output:
-                with st.expander("実行ログ", expanded=False):
-                    output = "\n".join(
-                        st.session_state.process_output["process_minutes"]
-                    )
-                    st.code(output, language="text")
+                    minutes_records = result.fetchall()
+
+                    if minutes_records:
+                        st.success(
+                            f"✅ {len(minutes_records)}件の議事録が作成されました"
+                        )
+
+                        # 作成されたレコードの詳細を表示
+                        with st.expander("作成されたレコード詳細", expanded=True):
+                            for record in minutes_records:
+                                # タイトルを生成（会議情報から）
+                                title = (
+                                    f"{record.governing_body_name} "
+                                    f"{record.conference_name}"
+                                )
+                                if record.meeting_date:
+                                    date_str = record.meeting_date.strftime(
+                                        "%Y年%m月%d日"
+                                    )
+                                    title += f" ({date_str})"
+
+                                created_at_str = record.created_at.strftime(
+                                    "%Y-%m-%d %H:%M:%S"
+                                )
+                                st.markdown(f"""
+                                **議事録ID: {record.id}**
+                                - 会議: {title}
+                                - 発言数: {record.conversation_count}件
+                                - 議事録URL: {record.url if record.url else "未設定"}
+                                - 作成日時: {created_at_str}
+                                """)
+
+                                # この議事録に含まれる発言（conversations）を取得
+                                if record.conversation_count > 0:
+                                    conv_result = conn.execute(
+                                        text("""
+                                        SELECT c.id, c.speaker_name, c.comment,
+                                               c.speaker_id,
+                                               s.name as linked_speaker_name
+                                        FROM conversations c
+                                        LEFT JOIN speakers s ON c.speaker_id = s.id
+                                        WHERE c.minutes_id = :minutes_id
+                                        ORDER BY c.id
+                                        LIMIT 5
+                                    """),
+                                        {"minutes_id": record.id},
+                                    )
+
+                                    conversations = conv_result.fetchall()
+
+                                    st.markdown("**含まれる発言（最初の5件）:**")
+                                    for conv in conversations:
+                                        speaker_info = f"発言者: {conv.speaker_name}"
+                                        if conv.speaker_id:
+                                            speaker_info += (
+                                                f" → 紐付け済み: "
+                                                f"{conv.linked_speaker_name}"
+                                            )
+
+                                        # 発言内容を短く表示（最初の100文字）
+                                        content_preview = (
+                                            conv.comment[:100] + "..."
+                                            if len(conv.comment) > 100
+                                            else conv.comment
+                                        )
+
+                                        st.markdown(f"""
+                                        - **ID: {conv.id}** - {speaker_info}
+                                          - 内容: {content_preview}
+                                        """)
+
+                                    if record.conversation_count > 5:
+                                        remaining = record.conversation_count - 5
+                                        st.markdown(f"*...他{remaining}件の発言*")
+
+                                st.divider()
 
     with col2:
         st.markdown("### 発言者抽出処理")
@@ -706,28 +898,79 @@ def execute_minutes_processes():
         if st.button("発言者抽出を実行", key="extract_speakers"):
             command = "uv run python -m src.extract_speakers_from_minutes"
 
-            with st.spinner("発言者抽出処理を実行中..."):
-                run_command_with_progress(command, "extract_speakers")
+            run_command_with_progress(command, "extract_speakers")
 
-        # 進捗表示
-        if "extract_speakers" in st.session_state.process_status:
-            status = st.session_state.process_status["extract_speakers"]
-            if status == "running":
-                st.info("🔄 処理実行中...")
-            elif status == "completed":
-                st.success("✅ 処理が完了しました")
-            elif status == "failed":
-                st.error("❌ 処理が失敗しました")
-            elif status == "error":
-                st.error("❌ エラーが発生しました")
-
-            # 出力表示
-            if "extract_speakers" in st.session_state.process_output:
-                with st.expander("実行ログ", expanded=False):
-                    output = "\n".join(
-                        st.session_state.process_output["extract_speakers"]
+            # 処理完了後、作成されたレコードを表示
+            if (
+                "extract_speakers" in st.session_state.process_status
+                and st.session_state.process_status["extract_speakers"] == "completed"
+            ):
+                # データベースから処理結果を取得
+                engine = get_db_engine()
+                with engine.connect() as conn:
+                    # 最新作成されたspeakersを取得
+                    speakers_result = conn.execute(
+                        text("""
+                        SELECT s.id, s.name, s.type, s.is_politician,
+                               s.political_party_name, s.created_at,
+                               COUNT(c.id) as conversation_count
+                        FROM speakers s
+                        LEFT JOIN conversations c ON s.id = c.speaker_id
+                        WHERE s.created_at >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
+                        GROUP BY s.id, s.name, s.type, s.is_politician,
+                                 s.political_party_name, s.created_at
+                        ORDER BY s.created_at DESC
+                        LIMIT 20
+                    """)
                     )
-                    st.code(output, language="text")
+
+                    speakers_records = speakers_result.fetchall()
+
+                    # 紐付けられた発言数を取得
+                    linked_result = conn.execute(
+                        text("""
+                        SELECT COUNT(*) as count
+                        FROM conversations
+                        WHERE speaker_id IS NOT NULL
+                        AND updated_at >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
+                    """)
+                    )
+                    linked_count = linked_result.fetchone().count
+
+                    if speakers_records or linked_count > 0:
+                        st.success("✅ 発言者抽出処理が完了しました")
+
+                        # 作成されたレコードの詳細を表示
+                        with st.expander("処理結果詳細", expanded=True):
+                            col1, col2 = st.columns(2)
+
+                            with col1:
+                                st.metric(
+                                    "新規作成された発言者", f"{len(speakers_records)}人"
+                                )
+                            with col2:
+                                st.metric("紐付けられた発言数", f"{linked_count}件")
+
+                            if speakers_records:
+                                st.markdown("#### 新規作成された発言者")
+                                for speaker in speakers_records:
+                                    politician_badge = (
+                                        "✅ 政治家"
+                                        if speaker.is_politician
+                                        else "❌ 非政治家"
+                                    )
+                                    party_info = (
+                                        f" ({speaker.political_party_name})"
+                                        if speaker.political_party_name
+                                        else ""
+                                    )
+
+                                    st.markdown(f"""
+                                    **{speaker.name}{party_info}** {politician_badge}
+                                    - ID: {speaker.id}
+                                    - タイプ: {speaker.type}
+                                    - 紐付け発言数: {speaker.conversation_count}件
+                                    """)
 
 
 def execute_politician_processes():
