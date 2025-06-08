@@ -629,6 +629,11 @@ def run_command_with_progress(command, process_name):
 
     # コンテナ内で直接コマンドを実行
     try:
+        # Streamlitから実行されていることを示す環境変数を設定
+        import os
+        env = os.environ.copy()
+        env["STREAMLIT_RUNNING"] = "true"
+        
         # プロセスを開始
         process = subprocess.Popen(
             command,
@@ -637,6 +642,7 @@ def run_command_with_progress(command, process_name):
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
+            env=env,
         )
 
         # 出力を収集するリスト
@@ -980,14 +986,61 @@ def execute_politician_processes():
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### 政治家抽出処理")
-        st.markdown("議事録から政治家を抽出します")
+        st.markdown("### 政治家情報取得処理")
+        st.markdown("政党のWebサイトから政治家情報を取得します")
+        
+        # データベースから政党リストを取得
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            parties_result = conn.execute(text("""
+                SELECT id, name, members_list_url
+                FROM political_parties
+                WHERE members_list_url IS NOT NULL
+                ORDER BY name
+            """))
+            parties = parties_result.fetchall()
+        
+        if not parties:
+            st.warning("議員一覧URLが設定されている政党がありません。政党管理タブでURLを設定してください。")
+        else:
+            # 政党選択オプション
+            party_options = ["すべての政党"] + [f"{party.name} (ID: {party.id})" for party in parties]
+            selected_party = st.selectbox("取得対象の政党を選択", party_options)
+            
+            # 選択された政党の情報を表示
+            if selected_party != "すべての政党":
+                # 選択された政党の情報を取得
+                party_id = int(selected_party.split("ID: ")[1].rstrip(")"))
+                selected_party_info = next(p for p in parties if p.id == party_id)
+                st.info(f"**取得元URL:** {selected_party_info.members_list_url}")
+            else:
+                st.info(f"**対象政党数:** {len(parties)}党")
+                with st.expander("対象政党一覧", expanded=False):
+                    for party in parties:
+                        st.markdown(f"- **{party.name}**: {party.members_list_url}")
+            
+            # ドライラン（実際には保存しない）オプション
+            dry_run = st.checkbox("ドライラン（実際には保存しない）", value=False, help="データを実際に保存せず、取得できる情報を確認します")
+            
+            if st.button("政治家情報取得を実行", key="extract_politicians"):
+                # Playwrightの依存関係とブラウザをインストール
+                install_command = "uv run playwright install-deps && uv run playwright install chromium"
+                
+                # スクレイピングコマンドを構築
+                if selected_party == "すべての政党":
+                    scrape_command = "uv run polibase scrape-politicians --all-parties"
+                else:
+                    # "党名 (ID: 123)" の形式からIDを抽出
+                    party_id = int(selected_party.split("ID: ")[1].rstrip(")"))
+                    scrape_command = f"uv run polibase scrape-politicians --party-id {party_id}"
+                
+                if dry_run:
+                    scrape_command += " --dry-run"
+                
+                command = f"{install_command} && {scrape_command}"
 
-        if st.button("政治家抽出を実行", key="extract_politicians"):
-            command = "uv run polibase extract-politicians"
-
-            with st.spinner("政治家抽出処理を実行中..."):
-                run_command_with_progress(command, "extract_politicians")
+                with st.spinner("政治家情報取得処理を実行中..."):
+                    run_command_with_progress(command, "extract_politicians")
 
         # 進捗表示
         if "extract_politicians" in st.session_state.process_status:

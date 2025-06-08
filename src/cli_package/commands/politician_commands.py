@@ -13,31 +13,6 @@ from ..progress import ProgressTracker, spinner
 class PoliticianCommands(BaseCommand):
     """Commands for processing politician data"""
 
-    @staticmethod
-    @click.command()
-    @click.option(
-        "--pdf",
-        default="data/minutes.pdf",
-        help="Path to the PDF file containing meeting minutes",
-    )
-    @click.option(
-        "--output",
-        default="data/output/politician_output.csv",
-        help="Output CSV file path",
-    )
-    @with_error_handling
-    def extract_politicians(pdf, output):
-        """Extract politician information from minutes (政治家抽出処理)
-
-        This command processes meeting minutes to identify and extract
-        information about politicians who spoke during the meetings.
-        """
-        from src.extract_politicians import main
-
-        PoliticianCommands.show_progress(f"Extracting politicians from: {pdf}")
-        PoliticianCommands.show_progress(f"Output will be saved to: {output}")
-        main()
-        PoliticianCommands.success("Politician extraction completed")
 
     @staticmethod
     @click.command()
@@ -111,8 +86,11 @@ class PoliticianCommands(BaseCommand):
                     f"  - {party.name}: {party.members_list_url}"
                 )
 
-            if not PoliticianCommands.confirm("\nDo you want to continue?"):
-                return
+            # Streamlitから実行される場合は確認をスキップ
+            import os
+            if os.environ.get("STREAMLIT_RUNNING") != "true":
+                if not PoliticianCommands.confirm("\nDo you want to continue?"):
+                    return
 
             # スクレイピング実行
             total_scraped = 0
@@ -242,6 +220,5 @@ class PoliticianCommands(BaseCommand):
 def get_politician_commands():
     """Get all politician-related commands"""
     return [
-        PoliticianCommands.extract_politicians,
         PoliticianCommands.scrape_politicians,
     ]
