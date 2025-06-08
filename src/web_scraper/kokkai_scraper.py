@@ -235,7 +235,9 @@ class KokkaiScraper(BaseScraper):
 
             # テーブルからコンテンツが取得できない場合
             if not content_parts:
-                logger.warning("No content found in tables, trying alternative approach")
+                logger.warning(
+                    "No content found in tables, trying alternative approach"
+                )
                 # 全体のテキストを取得
                 body_text = await page.inner_text("body")
                 if body_text:

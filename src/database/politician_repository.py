@@ -191,4 +191,17 @@ class PoliticianRepository(BaseRepository):
             logger.error(f"Error updating politician: {e}")
             return False
 
+    def find_by_name(self, name: str) -> list[dict]:
+        """名前で政治家を検索"""
+        query = """
+            SELECT p.id, p.name, p.political_party_id, p.position,
+                   p.prefecture, p.electoral_district, p.profile_url,
+                   pp.name as political_party_name
+            FROM politicians p
+            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
+            WHERE p.name = :name
+            ORDER BY p.id
+        """
+        return self.fetch_as_dict(query, {"name": name})
+
     # close() method is inherited from BaseRepository

@@ -256,7 +256,6 @@ class ConversationRepository(BaseRepository):
         """
 
         results = self.fetch_as_dict(query)
-        self.close()  # For backward compatibility with tests
         return results
 
     def get_conversations_count(self) -> int:
@@ -267,7 +266,6 @@ class ConversationRepository(BaseRepository):
             int: レコード数
         """
         count = self.count("conversations", where={})
-        self.close()  # For backward compatibility with tests
         return count
 
     def get_speaker_linking_stats(self) -> dict:
@@ -293,7 +291,6 @@ class ConversationRepository(BaseRepository):
             "unlinked_conversations": row[2],
         }
 
-        self.close()  # For backward compatibility with tests
         return stats
 
     def get_conversations_by_minutes_id(self, minutes_id: int) -> list[dict]:
