@@ -76,7 +76,7 @@ class TestConversationRepository(unittest.TestCase):
 
         # _save_conversationでエラーを発生させる
         with patch.object(
-            self.repository, "_save_conversation", side_effect=Exception("DB Error")
+            self.repository, "_save_conversation", side_effect=RuntimeError("DB Error")
         ):
             # エラーが発生することを検証
             with self.assertRaises(SaveError):
@@ -305,11 +305,11 @@ class TestConversationRepository(unittest.TestCase):
 
     def test_update_speaker_links_database_error(self):
         """発言者紐付け更新エラーテスト"""
-        # SELECTでエラーが発生
-        self.mock_session.execute.side_effect = Exception("DB Error")
+        # SELECTでエラーが発生（具体的な例外型を使用）
+        self.mock_session.execute.side_effect = RuntimeError("DB Error")
 
         # エラーが発生することを検証
-        with self.assertRaises(SaveError):
+        with self.assertRaises(RuntimeError):
             self.repository.update_speaker_links()
 
         # ロールバックが呼ばれることを検証
