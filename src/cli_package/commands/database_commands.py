@@ -1,7 +1,6 @@
 """CLI commands for database operations"""
 
 import subprocess
-from typing import Optional
 
 import click
 
@@ -62,17 +61,22 @@ class DatabaseCommands(BaseCommand):
         else:
             DatabaseCommands.show_progress("Database reset cancelled.")
 
-
     @staticmethod
     @click.command()
     @click.option("--minutes-id", type=int, help="特定の議事録IDのみを処理")
     @click.option("--use-llm", is_flag=True, help="LLMを使用した高度なマッチングを行う")
-    @click.option("--skip-extraction", is_flag=True, help="発言者抽出をスキップ（紐付けのみ実行）")
-    @click.option("--skip-politician-link", is_flag=True, help="politician紐付けをスキップ")
-    @click.option("--skip-conversation-link", is_flag=True, help="conversation紐付けをスキップ")
+    @click.option(
+        "--skip-extraction", is_flag=True, help="発言者抽出をスキップ（紐付けのみ実行）"
+    )
+    @click.option(
+        "--skip-politician-link", is_flag=True, help="politician紐付けをスキップ"
+    )
+    @click.option(
+        "--skip-conversation-link", is_flag=True, help="conversation紐付けをスキップ"
+    )
     @with_error_handling
     def extract_speakers(
-        minutes_id: Optional[int],
+        minutes_id: int | None,
         use_llm: bool,
         skip_extraction: bool,
         skip_politician_link: bool,
@@ -81,39 +85,44 @@ class DatabaseCommands(BaseCommand):
         """Extract speakers from minutes and link to politicians (議事録から発言者を抽出)"""
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
+
         from src.config.database import DATABASE_URL
         from src.extract_speakers_from_minutes import SpeakerExtractorFromMinutes
-        
-        DatabaseCommands.show_progress("議事録から発言者を抽出してspeaker/politicianと紐付けます")
-        
+
+        DatabaseCommands.show_progress(
+            "議事録から発言者を抽出してspeaker/politicianと紐付けます"
+        )
+
         # データベース接続
         engine = create_engine(DATABASE_URL)
         SessionLocal = sessionmaker(bind=engine)
-        
+
         with SessionLocal() as session:
             extractor = SpeakerExtractorFromMinutes(session)
-            
+
             try:
                 # 1. 発言者抽出
                 if not skip_extraction:
                     DatabaseCommands.show_progress("発言者抽出を開始...")
                     extractor.extract_speakers_from_minutes(minutes_id)
                     DatabaseCommands.success("発言者抽出が完了しました")
-                
+
                 # 2. speaker-politician紐付け
                 if not skip_politician_link:
                     DatabaseCommands.show_progress("speaker-politician紐付けを開始...")
                     extractor.link_speakers_to_politicians()
                     DatabaseCommands.success("speaker-politician紐付けが完了しました")
-                
+
                 # 3. conversation-speaker紐付け
                 if not skip_conversation_link:
-                    DatabaseCommands.show_progress("conversation-speaker紐付けを開始...")
+                    DatabaseCommands.show_progress(
+                        "conversation-speaker紐付けを開始..."
+                    )
                     extractor.update_conversation_speaker_links(use_llm=use_llm)
                     DatabaseCommands.success("conversation-speaker紐付けが完了しました")
-                    
+
                 DatabaseCommands.success("全処理が完了しました！")
-                
+
             except Exception as e:
                 DatabaseCommands.error(f"エラー: {e}")
                 session.rollback()

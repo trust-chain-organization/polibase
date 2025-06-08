@@ -1,6 +1,8 @@
 """Streamlit app for managing meetings"""
 
-from datetime import date
+import subprocess
+import threading
+from datetime import date, datetime
 
 import pandas as pd
 import streamlit as st
@@ -22,6 +24,10 @@ if "edit_mode" not in st.session_state:
     st.session_state.edit_mode = False
 if "edit_meeting_id" not in st.session_state:
     st.session_state.edit_meeting_id = None
+if "process_status" not in st.session_state:
+    st.session_state.process_status = {}
+if "process_output" not in st.session_state:
+    st.session_state.process_output = {}
 
 
 def main():
@@ -29,8 +35,8 @@ def main():
     st.markdown("議事録の会議情報（URL、日付）を管理します")
 
     # タブ作成
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(
-        ["会議一覧", "新規会議登録", "会議編集", "政党管理", "会議体管理"]
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+        ["会議一覧", "新規会議登録", "会議編集", "政党管理", "会議体管理", "処理実行"]
     )
 
     with tab1:
@@ -47,6 +53,9 @@ def main():
 
     with tab5:
         manage_conferences()
+
+    with tab6:
+        execute_processes()
 
 
 def show_meetings_list():
@@ -581,6 +590,443 @@ def manage_conferences():
                         )
 
     conf_repo.close()
+
+
+def execute_processes():
+    """処理実行タブ"""
+    st.header("処理実行")
+    st.markdown("各種処理をWebUIから実行できます")
+
+    # 処理カテゴリ選択
+    process_category = st.selectbox(
+        "処理カテゴリを選択",
+        ["議事録処理", "政治家情報抽出", "スクレイピング", "その他"],
+    )
+
+    if process_category == "議事録処理":
+        execute_minutes_processes()
+    elif process_category == "政治家情報抽出":
+        execute_politician_processes()
+    elif process_category == "スクレイピング":
+        execute_scraping_processes()
+    else:
+        execute_other_processes()
+
+
+def run_command_with_progress(command, process_name):
+    """コマンドをバックグラウンドで実行し、進捗を管理"""
+    st.session_state.process_status[process_name] = "running"
+    st.session_state.process_output[process_name] = []
+
+    def run_subprocess():
+        try:
+            # Docker compose経由でコマンドを実行
+            full_command = f"docker compose exec -T polibase {command}"
+            process = subprocess.Popen(
+                full_command,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+
+            # 出力をリアルタイムで収集
+            for line in iter(process.stdout.readline, ""):
+                if line:
+                    st.session_state.process_output[process_name].append(line.strip())
+
+            process.wait()
+
+            if process.returncode == 0:
+                st.session_state.process_status[process_name] = "completed"
+            else:
+                st.session_state.process_status[process_name] = "failed"
+
+        except Exception as e:
+            st.session_state.process_status[process_name] = "error"
+            st.session_state.process_output[process_name].append(f"エラー: {str(e)}")
+
+    # バックグラウンドスレッドで実行
+    thread = threading.Thread(target=run_subprocess)
+    thread.start()
+
+
+def execute_minutes_processes():
+    """議事録処理の実行"""
+    st.subheader("議事録処理")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### 議事録分割処理")
+        st.markdown("PDFから議事録を読み込み、発言ごとに分割します")
+
+        meeting_id = st.number_input(
+            "会議ID（GCSから処理する場合）",
+            min_value=1,
+            step=1,
+            help="会議IDを指定するとGCSから議事録を取得して処理します",
+        )
+
+        if st.button("議事録分割を実行", key="process_minutes"):
+            command = "uv run polibase process-minutes"
+            if meeting_id:
+                command = (
+                    f"uv run python -m src.process_minutes --meeting-id {meeting_id}"
+                )
+
+            with st.spinner("議事録分割処理を実行中..."):
+                run_command_with_progress(command, "process_minutes")
+
+        # 進捗表示
+        if "process_minutes" in st.session_state.process_status:
+            status = st.session_state.process_status["process_minutes"]
+            if status == "running":
+                st.info("🔄 処理実行中...")
+            elif status == "completed":
+                st.success("✅ 処理が完了しました")
+            elif status == "failed":
+                st.error("❌ 処理が失敗しました")
+            elif status == "error":
+                st.error("❌ エラーが発生しました")
+
+            # 出力表示
+            if "process_minutes" in st.session_state.process_output:
+                with st.expander("実行ログ", expanded=False):
+                    output = "\n".join(
+                        st.session_state.process_output["process_minutes"]
+                    )
+                    st.code(output, language="text")
+
+    with col2:
+        st.markdown("### 発言者抽出処理")
+        st.markdown("議事録から発言者を抽出し、speaker/politicianと紐付けます")
+
+        if st.button("発言者抽出を実行", key="extract_speakers"):
+            command = "uv run python -m src.extract_speakers_from_minutes"
+
+            with st.spinner("発言者抽出処理を実行中..."):
+                run_command_with_progress(command, "extract_speakers")
+
+        # 進捗表示
+        if "extract_speakers" in st.session_state.process_status:
+            status = st.session_state.process_status["extract_speakers"]
+            if status == "running":
+                st.info("🔄 処理実行中...")
+            elif status == "completed":
+                st.success("✅ 処理が完了しました")
+            elif status == "failed":
+                st.error("❌ 処理が失敗しました")
+            elif status == "error":
+                st.error("❌ エラーが発生しました")
+
+            # 出力表示
+            if "extract_speakers" in st.session_state.process_output:
+                with st.expander("実行ログ", expanded=False):
+                    output = "\n".join(
+                        st.session_state.process_output["extract_speakers"]
+                    )
+                    st.code(output, language="text")
+
+
+def execute_politician_processes():
+    """政治家情報抽出処理の実行"""
+    st.subheader("政治家情報抽出")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### 政治家抽出処理")
+        st.markdown("議事録から政治家を抽出します")
+
+        if st.button("政治家抽出を実行", key="extract_politicians"):
+            command = "uv run polibase extract-politicians"
+
+            with st.spinner("政治家抽出処理を実行中..."):
+                run_command_with_progress(command, "extract_politicians")
+
+        # 進捗表示
+        if "extract_politicians" in st.session_state.process_status:
+            status = st.session_state.process_status["extract_politicians"]
+            if status == "running":
+                st.info("🔄 処理実行中...")
+            elif status == "completed":
+                st.success("✅ 処理が完了しました")
+            elif status == "failed":
+                st.error("❌ 処理が失敗しました")
+            elif status == "error":
+                st.error("❌ エラーが発生しました")
+
+            # 出力表示
+            if "extract_politicians" in st.session_state.process_output:
+                with st.expander("実行ログ", expanded=False):
+                    output = "\n".join(
+                        st.session_state.process_output["extract_politicians"]
+                    )
+                    st.code(output, language="text")
+
+    with col2:
+        st.markdown("### スピーカー紐付け処理")
+        st.markdown("LLMを使用して発言者と政治家を紐付けます")
+
+        use_llm = st.checkbox("LLMを使用する", value=True)
+
+        if st.button("スピーカー紐付けを実行", key="update_speakers"):
+            command = "uv run polibase update-speakers"
+            if use_llm:
+                command += " --use-llm"
+
+            with st.spinner("スピーカー紐付け処理を実行中..."):
+                run_command_with_progress(command, "update_speakers")
+
+        # 進捗表示
+        if "update_speakers" in st.session_state.process_status:
+            status = st.session_state.process_status["update_speakers"]
+            if status == "running":
+                st.info("🔄 処理実行中...")
+            elif status == "completed":
+                st.success("✅ 処理が完了しました")
+            elif status == "failed":
+                st.error("❌ 処理が失敗しました")
+            elif status == "error":
+                st.error("❌ エラーが発生しました")
+
+            # 出力表示
+            if "update_speakers" in st.session_state.process_output:
+                with st.expander("実行ログ", expanded=False):
+                    output = "\n".join(
+                        st.session_state.process_output["update_speakers"]
+                    )
+                    st.code(output, language="text")
+
+
+def execute_scraping_processes():
+    """スクレイピング処理の実行"""
+    st.subheader("スクレイピング処理")
+
+    # 議事録スクレイピング
+    st.markdown("### 議事録スクレイピング")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        scrape_url = st.text_input(
+            "議事録URL",
+            placeholder="https://example.com/minutes.html",
+            help="スクレイピングする議事録のURL",
+        )
+
+        upload_to_gcs = st.checkbox("GCSにアップロード", value=False)
+        gcs_bucket = ""
+        if upload_to_gcs:
+            gcs_bucket = st.text_input(
+                "GCSバケット名（オプション）",
+                placeholder="my-bucket",
+                help="空欄の場合は環境変数のGCS_BUCKET_NAMEを使用",
+            )
+
+    with col2:
+        if st.button(
+            "議事録をスクレイピング", key="scrape_minutes", disabled=not scrape_url
+        ):
+            command = f"uv run polibase scrape-minutes '{scrape_url}'"
+            if upload_to_gcs:
+                command += " --upload-to-gcs"
+                if gcs_bucket:
+                    command += f" --gcs-bucket {gcs_bucket}"
+
+            with st.spinner("議事録をスクレイピング中..."):
+                run_command_with_progress(command, "scrape_minutes")
+
+        # 進捗表示
+        if "scrape_minutes" in st.session_state.process_status:
+            status = st.session_state.process_status["scrape_minutes"]
+            if status == "running":
+                st.info("🔄 処理実行中...")
+            elif status == "completed":
+                st.success("✅ 処理が完了しました")
+            elif status == "failed":
+                st.error("❌ 処理が失敗しました")
+            elif status == "error":
+                st.error("❌ エラーが発生しました")
+
+            # 出力表示
+            if "scrape_minutes" in st.session_state.process_output:
+                with st.expander("実行ログ", expanded=False):
+                    output = "\n".join(
+                        st.session_state.process_output["scrape_minutes"]
+                    )
+                    st.code(output, language="text")
+
+    # バッチスクレイピング
+    st.markdown("### バッチスクレイピング")
+    st.markdown("kaigiroku.netから複数の議事録を一括取得")
+
+    col3, col4 = st.columns(2)
+
+    with col3:
+        tenant = st.selectbox("自治体を選択", ["kyoto", "osaka"])
+        batch_upload_to_gcs = st.checkbox(
+            "GCSにアップロード", value=False, key="batch_gcs"
+        )
+
+    with col4:
+        if st.button("バッチスクレイピングを実行", key="batch_scrape"):
+            command = f"uv run polibase batch-scrape --tenant {tenant}"
+            if batch_upload_to_gcs:
+                command += " --upload-to-gcs"
+
+            with st.spinner(f"{tenant}の議事録を一括取得中..."):
+                run_command_with_progress(command, "batch_scrape")
+
+        # 進捗表示
+        if "batch_scrape" in st.session_state.process_status:
+            status = st.session_state.process_status["batch_scrape"]
+            if status == "running":
+                st.info("🔄 処理実行中...")
+            elif status == "completed":
+                st.success("✅ 処理が完了しました")
+            elif status == "failed":
+                st.error("❌ 処理が失敗しました")
+            elif status == "error":
+                st.error("❌ エラーが発生しました")
+
+            # 出力表示
+            if "batch_scrape" in st.session_state.process_output:
+                with st.expander("実行ログ", expanded=False):
+                    output = "\n".join(st.session_state.process_output["batch_scrape"])
+                    st.code(output, language="text")
+
+    # 政治家情報スクレイピング
+    st.markdown("### 政治家情報スクレイピング")
+    st.markdown("政党ウェブサイトから議員情報を取得")
+
+    col5, col6 = st.columns(2)
+
+    with col5:
+        scrape_all_parties = st.checkbox("すべての政党から取得", value=True)
+        party_id = None
+        if not scrape_all_parties:
+            party_id = st.number_input("政党ID", min_value=1, step=1)
+
+        dry_run = st.checkbox("ドライラン（実際には登録しない）", value=False)
+
+    with col6:
+        if st.button("政治家情報をスクレイピング", key="scrape_politicians"):
+            command = "uv run polibase scrape-politicians"
+            if scrape_all_parties:
+                command += " --all-parties"
+            elif party_id:
+                command += f" --party-id {party_id}"
+            if dry_run:
+                command += " --dry-run"
+
+            with st.spinner("政治家情報をスクレイピング中..."):
+                run_command_with_progress(command, "scrape_politicians")
+
+        # 進捗表示
+        if "scrape_politicians" in st.session_state.process_status:
+            status = st.session_state.process_status["scrape_politicians"]
+            if status == "running":
+                st.info("🔄 処理実行中...")
+            elif status == "completed":
+                st.success("✅ 処理が完了しました")
+            elif status == "failed":
+                st.error("❌ 処理が失敗しました")
+            elif status == "error":
+                st.error("❌ エラーが発生しました")
+
+            # 出力表示
+            if "scrape_politicians" in st.session_state.process_output:
+                with st.expander("実行ログ", expanded=False):
+                    output = "\n".join(
+                        st.session_state.process_output["scrape_politicians"]
+                    )
+                    st.code(output, language="text")
+
+
+def execute_other_processes():
+    """その他の処理の実行"""
+    st.subheader("その他の処理")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### データベース接続テスト")
+        if st.button("接続テスト実行", key="test_connection"):
+            command = 'uv run python -c "from src.config.database import test_connection; test_connection()"'
+
+            with st.spinner("データベース接続をテスト中..."):
+                run_command_with_progress(command, "test_connection")
+
+        # 進捗表示
+        if "test_connection" in st.session_state.process_status:
+            status = st.session_state.process_status["test_connection"]
+            if status == "running":
+                st.info("🔄 処理実行中...")
+            elif status == "completed":
+                st.success("✅ 処理が完了しました")
+            elif status == "failed":
+                st.error("❌ 処理が失敗しました")
+            elif status == "error":
+                st.error("❌ エラーが発生しました")
+
+            # 出力表示
+            if "test_connection" in st.session_state.process_output:
+                with st.expander("実行ログ", expanded=False):
+                    output = "\n".join(
+                        st.session_state.process_output["test_connection"]
+                    )
+                    st.code(output, language="text")
+
+    with col2:
+        st.markdown("### コマンドヘルプ")
+        if st.button("ヘルプ表示", key="show_help"):
+            command = "uv run polibase --help"
+
+            with st.spinner("ヘルプを取得中..."):
+                run_command_with_progress(command, "show_help")
+
+        # 進捗表示
+        if "show_help" in st.session_state.process_status:
+            status = st.session_state.process_status["show_help"]
+            if status == "running":
+                st.info("🔄 処理実行中...")
+            elif status == "completed":
+                st.success("✅ 処理が完了しました")
+            elif status == "failed":
+                st.error("❌ 処理が失敗しました")
+            elif status == "error":
+                st.error("❌ エラーが発生しました")
+
+            # 出力表示
+            if "show_help" in st.session_state.process_output:
+                with st.expander("実行ログ", expanded=True):
+                    output = "\n".join(st.session_state.process_output["show_help"])
+                    st.code(output, language="text")
+
+    # 処理ステータス一覧
+    st.markdown("### 実行中の処理")
+    if st.session_state.process_status:
+        status_df = pd.DataFrame(
+            [
+                {
+                    "処理名": name,
+                    "状態": status,
+                    "最終更新": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                }
+                for name, status in st.session_state.process_status.items()
+            ]
+        )
+        st.dataframe(status_df, use_container_width=True)
+
+        if st.button("ステータスをクリア"):
+            st.session_state.process_status = {}
+            st.session_state.process_output = {}
+            st.rerun()
+    else:
+        st.info("実行中の処理はありません")
 
 
 if __name__ == "__main__":

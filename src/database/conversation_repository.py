@@ -27,8 +27,9 @@ class ConversationRepository(BaseRepository):
         self.speaker_matching_service = speaker_matching_service
 
     def save_speaker_and_speech_content_list(
-        self, speaker_and_speech_content_list: list[SpeakerAndSpeechContent],
-        minutes_id: int | None = None
+        self,
+        speaker_and_speech_content_list: list[SpeakerAndSpeechContent],
+        minutes_id: int | None = None,
     ) -> list[int]:
         """
         SpeakerAndSpeechContentのリストをConversationsテーブルに保存する
@@ -116,8 +117,9 @@ class ConversationRepository(BaseRepository):
             self.session.close()
 
     def _save_conversation(
-        self, speaker_and_speech_content: SpeakerAndSpeechContent,
-        minutes_id: int | None = None
+        self,
+        speaker_and_speech_content: SpeakerAndSpeechContent,
+        minutes_id: int | None = None,
     ) -> int | None:
         """
         個別のSpeakerAndSpeechContentをConversationsテーブルに保存する
@@ -313,7 +315,7 @@ class ConversationRepository(BaseRepository):
             WHERE c.minutes_id = :minutes_id
             ORDER BY c.sequence_number ASC
         """
-        
+
         results = self.fetch_as_dict(query, {"minutes_id": minutes_id})
         return results
 
@@ -332,7 +334,7 @@ class ConversationRepository(BaseRepository):
             WHERE c.speaker_id IS NULL
             ORDER BY c.minutes_id, c.sequence_number ASC
         """
-        
+
         results = self.fetch_as_dict(query)
         return results
 

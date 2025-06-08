@@ -126,7 +126,7 @@ class SpeakerExtractorFromMinutes:
                 politician = politicians[0]
                 # speakerを更新
                 update_query = """
-                    UPDATE speakers 
+                    UPDATE speakers
                     SET is_politician = TRUE,
                         political_party_name = :party_name
                     WHERE id = :id
@@ -159,7 +159,9 @@ class SpeakerExtractorFromMinutes:
                     if len(matched_politicians) == 1:
                         politician = matched_politicians[0]
                         # speakerを更新
-                        update_query = "UPDATE speakers SET is_politician = TRUE WHERE id = :id"
+                        update_query = (
+                            "UPDATE speakers SET is_politician = TRUE WHERE id = :id"
+                        )
                         self.speaker_repo.execute(update_query, {"id": speaker["id"]})
                         logger.info(
                             f"政党名で絞り込み紐付け: {speaker['name']} "
@@ -204,7 +206,7 @@ class SpeakerExtractorFromMinutes:
                 matching_service = SpeakerMatchingService(llm)
                 match_result = matching_service.find_best_match(speaker_name)
                 matched_speaker = None
-                
+
                 if match_result.matched and match_result.speaker_id:
                     # Get speaker details
                     query = "SELECT * FROM speakers WHERE id = :id"
