@@ -68,25 +68,26 @@ def main():
         print("✅ 全ての会話が既に紐付け済みです。")
         return
 
-    # ユーザー確認
-    print(
-        f"\n❓ {stats['unlinked_conversations']}件の未紐付け会話を"
-        "LLMでマッチング処理しますか？"
-    )
-    print(
-        "   注意: この処理にはGoogle Gemini APIが使用され、"
-        "料金が発生する可能性があります。"
-    )
+    # ユーザー確認（Streamlitから実行される場合はスキップ）
+    if os.environ.get("STREAMLIT_RUNNING") != "true":
+        print(
+            f"\n❓ {stats['unlinked_conversations']}件の未紐付け会話を"
+            "LLMでマッチング処理しますか？"
+        )
+        print(
+            "   注意: この処理にはGoogle Gemini APIが使用され、"
+            "料金が発生する可能性があります。"
+        )
 
-    while True:
-        user_input = input("続行しますか？ (y/n): ").lower().strip()
-        if user_input in ["y", "yes"]:
-            break
-        elif user_input in ["n", "no"]:
-            print("処理を中止しました。")
-            return
-        else:
-            print("yまたはnで回答してください。")
+        while True:
+            user_input = input("続行しますか？ (y/n): ").lower().strip()
+            if user_input in ["y", "yes"]:
+                break
+            elif user_input in ["n", "no"]:
+                print("処理を中止しました。")
+                return
+            else:
+                print("yまたはnで回答してください。")
 
     # LLMベースのマッチング実行
     print("\n🚀 LLMベースマッチング処理を開始...")

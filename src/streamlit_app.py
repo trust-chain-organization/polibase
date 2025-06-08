@@ -219,8 +219,7 @@ def add_new_meeting():
             all_conferences = repo.get_all_conferences()
             if not all_conferences:
                 st.error(
-                    "会議体が登録されていません。"
-                    "先にマスターデータを登録してください。"
+                    "会議体が登録されていません。先にマスターデータを登録してください。"
                 )
                 repo.close()
                 return
@@ -295,7 +294,7 @@ def edit_meeting():
 
     if not st.session_state.edit_mode or not st.session_state.edit_meeting_id:
         st.info(
-            "編集する会議を選択してください" "（会議一覧タブから編集ボタンをクリック）"
+            "編集する会議を選択してください（会議一覧タブから編集ボタンをクリック）"
         )
         return
 
@@ -480,7 +479,7 @@ def manage_conferences():
             governing_bodies = conf_repo.get_governing_bodies()
             if not governing_bodies:
                 st.error(
-                    "開催主体が登録されていません。" "先に開催主体を登録してください。"
+                    "開催主体が登録されていません。先に開催主体を登録してください。"
                 )
             else:
                 gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
@@ -574,8 +573,7 @@ def manage_conferences():
             with col2:
                 st.markdown("#### 削除")
                 st.warning(
-                    "⚠️ 会議体を削除すると、"
-                    "関連するデータも削除される可能性があります"
+                    "⚠️ 会議体を削除すると、関連するデータも削除される可能性があります"
                 )
 
                 if st.button("🗑️ この会議体を削除", type="secondary"):
@@ -631,9 +629,10 @@ def run_command_with_progress(command, process_name):
     try:
         # Streamlitから実行されていることを示す環境変数を設定
         import os
+
         env = os.environ.copy()
         env["STREAMLIT_RUNNING"] = "true"
-        
+
         # プロセスを開始
         process = subprocess.Popen(
             command,
@@ -988,25 +987,31 @@ def execute_politician_processes():
     with col1:
         st.markdown("### 政治家情報取得処理")
         st.markdown("政党のWebサイトから政治家情報を取得します")
-        
+
         # データベースから政党リストを取得
         engine = get_db_engine()
         with engine.connect() as conn:
-            parties_result = conn.execute(text("""
+            parties_result = conn.execute(
+                text("""
                 SELECT id, name, members_list_url
                 FROM political_parties
                 WHERE members_list_url IS NOT NULL
                 ORDER BY name
-            """))
+            """)
+            )
             parties = parties_result.fetchall()
-        
+
         if not parties:
-            st.warning("議員一覧URLが設定されている政党がありません。政党管理タブでURLを設定してください。")
+            st.warning(
+                "議員一覧URLが設定されている政党がありません。政党管理タブでURLを設定してください。"
+            )
         else:
             # 政党選択オプション
-            party_options = ["すべての政党"] + [f"{party.name} (ID: {party.id})" for party in parties]
+            party_options = ["すべての政党"] + [
+                f"{party.name} (ID: {party.id})" for party in parties
+            ]
             selected_party = st.selectbox("取得対象の政党を選択", party_options)
-            
+
             # 選択された政党の情報を表示
             if selected_party != "すべての政党":
                 # 選択された政党の情報を取得
@@ -1018,25 +1023,31 @@ def execute_politician_processes():
                 with st.expander("対象政党一覧", expanded=False):
                     for party in parties:
                         st.markdown(f"- **{party.name}**: {party.members_list_url}")
-            
+
             # ドライラン（実際には保存しない）オプション
-            dry_run = st.checkbox("ドライラン（実際には保存しない）", value=False, help="データを実際に保存せず、取得できる情報を確認します")
-            
+            dry_run = st.checkbox(
+                "ドライラン（実際には保存しない）",
+                value=False,
+                help="データを実際に保存せず、取得できる情報を確認します",
+            )
+
             if st.button("政治家情報取得を実行", key="extract_politicians"):
                 # Playwrightの依存関係とブラウザをインストール
                 install_command = "uv run playwright install-deps && uv run playwright install chromium"
-                
+
                 # スクレイピングコマンドを構築
                 if selected_party == "すべての政党":
                     scrape_command = "uv run polibase scrape-politicians --all-parties"
                 else:
                     # "党名 (ID: 123)" の形式からIDを抽出
                     party_id = int(selected_party.split("ID: ")[1].rstrip(")"))
-                    scrape_command = f"uv run polibase scrape-politicians --party-id {party_id}"
-                
+                    scrape_command = (
+                        f"uv run polibase scrape-politicians --party-id {party_id}"
+                    )
+
                 if dry_run:
                     scrape_command += " --dry-run"
-                
+
                 command = f"{install_command} && {scrape_command}"
 
                 with st.spinner("政治家情報取得処理を実行中..."):
@@ -1063,22 +1074,49 @@ def execute_politician_processes():
                     st.code(output, language="text")
 
     with col2:
-        st.markdown("### スピーカー紐付け処理")
-        st.markdown("LLMを使用して発言者と政治家を紐付けます")
+        st.markdown("### 紐付け処理")
 
-        use_llm = st.checkbox("LLMを使用する", value=True)
+        # 処理タイプの選択
+        link_type = st.radio(
+            "紐付け処理の種類",
+            ["発言-発言者紐付け", "発言者-政治家紐付け"],
+            help="どの紐付け処理を実行するか選択してください",
+        )
 
-        if st.button("スピーカー紐付けを実行", key="update_speakers"):
-            command = "uv run polibase update-speakers"
-            if use_llm:
-                command += " --use-llm"
+        if link_type == "発言-発言者紐付け":
+            st.markdown("議事録の発言を発言者（speakers）に紐付けます")
+            use_llm = st.checkbox("LLMを使用する", value=True)
 
-            with st.spinner("スピーカー紐付け処理を実行中..."):
-                run_command_with_progress(command, "update_speakers")
+            if st.button("発言-発言者紐付けを実行", key="update_speakers"):
+                command = "uv run polibase update-speakers"
+                if use_llm:
+                    command += " --use-llm"
 
-        # 進捗表示
-        if "update_speakers" in st.session_state.process_status:
-            status = st.session_state.process_status["update_speakers"]
+                with st.spinner("発言-発言者紐付け処理を実行中..."):
+                    run_command_with_progress(command, "update_speakers")
+
+        else:  # 発言者-政治家紐付け
+            st.markdown("発言者（speakers）を政治家（politicians）に紐付けます")
+            st.info("名前の完全一致による自動紐付けを行います")
+
+            if st.button(
+                "発言者-政治家紐付けを実行", key="link_speakers_to_politicians"
+            ):
+                # extract-speakers コマンドで --skip-extraction と --skip-conversation-link を指定
+                command = "uv run polibase extract-speakers --skip-extraction --skip-conversation-link"
+
+                with st.spinner("発言者-政治家紐付け処理を実行中..."):
+                    run_command_with_progress(command, "link_speakers_to_politicians")
+
+        # 進捗表示 - 選択された処理タイプに応じて表示
+        process_key = (
+            "update_speakers"
+            if link_type == "発言-発言者紐付け"
+            else "link_speakers_to_politicians"
+        )
+
+        if process_key in st.session_state.process_status:
+            status = st.session_state.process_status[process_key]
             if status == "running":
                 st.info("🔄 処理実行中...")
             elif status == "completed":
@@ -1089,11 +1127,9 @@ def execute_politician_processes():
                 st.error("❌ エラーが発生しました")
 
             # 出力表示
-            if "update_speakers" in st.session_state.process_output:
+            if process_key in st.session_state.process_output:
                 with st.expander("実行ログ", expanded=False):
-                    output = "\n".join(
-                        st.session_state.process_output["update_speakers"]
-                    )
+                    output = "\n".join(st.session_state.process_output[process_key])
                     st.code(output, language="text")
 
 
