@@ -41,7 +41,7 @@ def setup_environment() -> None:
         logger.error(f"Failed to setup environment: {e}")
         raise ConfigurationError(
             "Failed to setup application environment", {"error": str(e)}
-        )
+        ) from e
 
 
 def load_pdf_text(file_path: str = "data/minutes.pdf") -> str:
@@ -86,7 +86,7 @@ def load_pdf_text(file_path: str = "data/minutes.pdf") -> str:
         raise PDFProcessingError(
             f"Failed to process PDF file: {file_path}",
             {"file_path": file_path, "error": str(e)},
-        )
+        ) from e
 
 
 def validate_database_connection() -> bool:

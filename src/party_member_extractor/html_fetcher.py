@@ -147,7 +147,7 @@ class PartyMemberPageFetcher:
 
                     if not is_disabled:
                         return element
-            except:
+            except Exception:
                 continue
 
         # 数字のページネーション（現在のページ番号の次）
@@ -166,7 +166,7 @@ class PartyMemberPageFetcher:
                     next_link = await page.query_selector(f'a:has-text("{next_num}")')
                     if next_link and await next_link.is_visible():
                         return next_link
-        except:
+        except Exception:
             pass
 
         return None
