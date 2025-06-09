@@ -110,6 +110,23 @@ Table PoliticianAffiliations {
   note: '議員の議会所属情報'
 }
 
+Table ExtractedConferenceMembers {
+  id int [pk, increment]
+  conference_id int [ref: > Conferences.id, not null] // どの会議体のメンバーか
+  extracted_name varchar [not null] // Webページから抽出された議員名
+  extracted_role varchar // 抽出された役職（議長、副議長、委員長など）
+  extracted_party_name varchar // 抽出された所属政党名
+  source_url varchar [not null] // 抽出元のURL
+  extracted_at timestamp [not null] // 抽出日時
+  // マッチング結果
+  matched_politician_id int [ref: > Politicians.id] // マッチングされた政治家ID
+  matching_confidence decimal // マッチングの信頼度（0-1）
+  matching_status varchar // pending, matched, no_match, needs_review
+  matched_at timestamp // マッチング実行日時
+  additional_info text // その他の抽出情報
+  note: '議会メンバー情報の抽出結果を保存する中間テーブル'
+}
+
 Table ProposalMeetingOccurrences {
   id int [pk, increment]
   proposal_id int [ref: > Proposals.id, not null] // どの議案か
