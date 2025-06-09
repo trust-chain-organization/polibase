@@ -44,8 +44,14 @@ class ConferenceMemberExtractor:
         self, html_content: str, conference_name: str
     ) -> list[ExtractedMember]:
         """LLMを使用してHTMLから議員情報を抽出"""
+        from pydantic import BaseModel, Field
+        
+        # リストを扱うためのラッパークラス
+        class ExtractedMemberList(BaseModel):
+            members: list[ExtractedMember] = Field(description="抽出された議員リスト")
+        
         # パーサーの設定
-        parser = PydanticOutputParser(pydantic_object=list[ExtractedMember])
+        parser = PydanticOutputParser(pydantic_object=ExtractedMemberList)
 
         # プロンプトテンプレート
         prompt = PromptTemplate(
@@ -82,10 +88,10 @@ HTMLコンテンツ:
             if len(html_content) > max_length:
                 html_content = html_content[:max_length] + "..."
 
-            members = chain.invoke(
+            result = chain.invoke(
                 {"html_content": html_content, "conference_name": conference_name}
             )
-            return members
+            return result.members
         except Exception as e:
             logger.error(f"Error extracting members with LLM: {e}")
             return []
