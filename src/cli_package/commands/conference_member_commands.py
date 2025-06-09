@@ -7,7 +7,7 @@ from datetime import date
 import click
 
 from src.cli_package.base import BaseCommand
-from src.cli_package.progress import ProgressBar
+from src.cli_package.progress import ProgressTracker
 from src.conference_member_extractor.extractor import ConferenceMemberExtractor
 from src.conference_member_extractor.matching_service import (
     ConferenceMemberMatchingService,
@@ -103,12 +103,9 @@ class ConferenceMemberCommands(BaseCommand):
         total_extracted = 0
         total_saved = 0
 
-        with ProgressBar(total=len(conferences)) as progress:
+        with ProgressTracker(total_steps=len(conferences), description="抽出中") as progress:
             for conf in conferences:
-                progress.update_task(
-                    description=f"抽出中: {conf['name']}",
-                    advance=0
-                )
+                progress.set_description(f"抽出中: {conf['name']}")
 
                 # 既存データの処理
                 if force:
@@ -146,7 +143,7 @@ class ConferenceMemberCommands(BaseCommand):
                     ConferenceMemberCommands.echo_error(f"  ❌ エラー: {conf['name']} - {str(e)}")
                     logger.exception(f"Error processing conference {conf['id']}")
 
-                progress.update_task(advance=1)
+                progress.update(1)
 
         # 最終結果
         ConferenceMemberCommands.echo_info("\n=== 抽出完了 ===")
@@ -183,12 +180,11 @@ class ConferenceMemberCommands(BaseCommand):
         # 処理実行
         ConferenceMemberCommands.echo_info("LLMを使用して政治家データとマッチングします...")
         
-        with ProgressBar() as progress:
-            task = progress.add_task("マッチング処理中...", total=None)
+        with ProgressTracker(total_steps=1, description="マッチング処理中...") as progress:
             
             results = matching_service.process_pending_members(conference_id)
             
-            progress.update(task, completed=True)
+            progress.update(1)
 
         # 結果表示
         ConferenceMemberCommands.echo_info("\n=== マッチング完了 ===")
@@ -231,14 +227,13 @@ class ConferenceMemberCommands(BaseCommand):
         matching_service = ConferenceMemberMatchingService()
 
         # 処理実行
-        with ProgressBar() as progress:
-            task = progress.add_task("所属情報作成中...", total=None)
+        with ProgressTracker(total_steps=1, description="所属情報作成中...") as progress:
             
             results = matching_service.create_affiliations_from_matched(
                 conference_id, start_date
             )
             
-            progress.update(task, completed=True)
+            progress.update(1)
 
         # 結果表示
         ConferenceMemberCommands.echo_info("\n=== 所属情報作成完了 ===")
