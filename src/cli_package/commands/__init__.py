@@ -1,5 +1,6 @@
 """CLI commands package"""
 
+from .conference_member_commands import get_conference_member_commands
 from .database_commands import get_database_commands
 from .minutes_commands import get_minutes_commands
 from .politician_commands import get_politician_commands
@@ -12,4 +13,5 @@ __all__ = [
     "get_politician_commands",
     "get_ui_commands",
     "get_database_commands",
+    "get_conference_member_commands",
 ]
