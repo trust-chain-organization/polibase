@@ -4,7 +4,7 @@ FROM python:3.13-slim
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     curl \
-    # Playwright用の依存関係（公式の完全なリスト）
+    # Playwright用の依存関係
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
@@ -25,13 +25,16 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libcairo2 \
     libasound2 \
-    # 追加の依存関係
     libglib2.0-0 \
-    libgobject-2.0-0 \
-    libgio-2.0-0 \
     libexpat1 \
+    libxtst6 \
+    libxss1 \
+    fonts-liberation \
+    libappindicator3-1 \
+    libnss3-dev \
+    libgdk-pixbuf2.0-0 \
     libgtk-3-0 \
-    libgdk-pixbuf-2.0-0 \
+    libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
 
 # 作業ディレクトリを設定
