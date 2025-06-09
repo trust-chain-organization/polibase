@@ -40,6 +40,7 @@ class ConferenceRepository:
                 c.name,
                 c.type,
                 c.governing_body_id,
+                c.members_introduction_url,
                 gb.name as governing_body_name,
                 gb.type as governing_body_type
             FROM conferences c
@@ -56,6 +57,7 @@ class ConferenceRepository:
                     "name": row.name,
                     "type": row.type,
                     "governing_body_id": row.governing_body_id,
+                    "members_introduction_url": row.members_introduction_url,
                     "governing_body_name": row.governing_body_name,
                     "governing_body_type": row.governing_body_type,
                 }
@@ -74,6 +76,7 @@ class ConferenceRepository:
                 c.name,
                 c.type,
                 c.governing_body_id,
+                c.members_introduction_url,
                 gb.name as governing_body_name,
                 gb.type as governing_body_type
             FROM conferences c
@@ -90,6 +93,7 @@ class ConferenceRepository:
                 "name": row.name,
                 "type": row.type,
                 "governing_body_id": row.governing_body_id,
+                "members_introduction_url": row.members_introduction_url,
                 "governing_body_name": row.governing_body_name,
                 "governing_body_type": row.governing_body_type,
             }
@@ -107,6 +111,7 @@ class ConferenceRepository:
                 c.name,
                 c.type,
                 c.governing_body_id,
+                c.members_introduction_url,
                 gb.name as governing_body_name,
                 gb.type as governing_body_type
             FROM conferences c
@@ -126,6 +131,7 @@ class ConferenceRepository:
                     "name": row.name,
                     "type": row.type,
                     "governing_body_id": row.governing_body_id,
+                    "members_introduction_url": row.members_introduction_url,
                     "governing_body_name": row.governing_body_name,
                     "governing_body_type": row.governing_body_type,
                 }
@@ -187,6 +193,37 @@ class ConferenceRepository:
         except Exception as e:
             self.connection.rollback()
             logger.error(f"Error updating conference: {e}")
+            return False
+
+    def update_conference_members_url(
+        self, conference_id: int, members_introduction_url: str | None
+    ) -> bool:
+        """会議体の議員紹介URLを更新"""
+        if not self.connection:
+            self.connection = self.engine.connect()
+
+        try:
+            query = text("""
+                UPDATE conferences
+                SET members_introduction_url = :members_introduction_url, 
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :conference_id
+            """)
+
+            self.connection.execute(
+                query, {
+                    "conference_id": conference_id, 
+                    "members_introduction_url": members_introduction_url
+                }
+            )
+
+            self.connection.commit()
+            logger.info(f"Updated members URL for conference ID: {conference_id}")
+            return True
+
+        except Exception as e:
+            self.connection.rollback()
+            logger.error(f"Error updating conference members URL: {e}")
             return False
 
     def delete_conference(self, conference_id: int) -> bool:
