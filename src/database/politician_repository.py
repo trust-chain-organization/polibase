@@ -204,4 +204,31 @@ class PoliticianRepository(BaseRepository):
         """
         return self.fetch_as_dict(query, {"name": name})
 
+    def search_by_name(self, name: str) -> list[dict]:
+        """名前で政治家を検索（部分一致も含む）"""
+        query = """
+            SELECT 
+                p.id,
+                p.name,
+                p.position,
+                p.prefecture,
+                p.electoral_district,
+                p.profile_url,
+                p.party_position,
+                p.political_party_id,
+                pp.name as party_name
+            FROM politicians p
+            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
+            WHERE p.name = :exact_name 
+               OR p.name LIKE :partial_name
+            ORDER BY 
+                CASE WHEN p.name = :exact_name THEN 0 ELSE 1 END,
+                p.id
+        """
+        params = {
+            "exact_name": name,
+            "partial_name": f"%{name}%"
+        }
+        return self.fetch_as_dict(query, params)
+
     # close() method is inherited from BaseRepository
