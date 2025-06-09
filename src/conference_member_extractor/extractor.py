@@ -80,7 +80,7 @@ HTMLコンテンツ:
         )
 
         # LLMチェーンの実行
-        chain = prompt | self.llm_service.get_llm() | parser
+        chain = prompt | self.llm_service.llm | parser
 
         try:
             # HTMLが長すぎる場合は切り詰める

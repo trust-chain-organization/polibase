@@ -125,7 +125,7 @@ class ConferenceMemberMatchingService:
         )
 
         try:
-            response = self.llm_service.get_llm().invoke(prompt)
+            response = self.llm_service.llm.invoke(prompt)
             content = response.content.strip()
             
             # レスポンスをパース
