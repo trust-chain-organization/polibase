@@ -66,6 +66,22 @@ docker compose exec polibase uv run polibase extract-speakers
 docker compose exec polibase uv run polibase scrape-politicians --all-parties
 docker compose exec polibase uv run polibase scrape-politicians --party-id 5
 docker compose exec polibase uv run polibase scrape-politicians --all-parties --dry-run
+
+# Conference member extraction (3-step process)
+# Step 1: Extract members from conference URLs
+docker compose exec polibase uv run polibase extract-conference-members --conference-id 185
+docker compose exec polibase uv run polibase extract-conference-members --force  # Re-extract all
+
+# Step 2: Match extracted members with existing politicians
+docker compose exec polibase uv run polibase match-conference-members --conference-id 185
+docker compose exec polibase uv run polibase match-conference-members  # Process all pending
+
+# Step 3: Create politician affiliations from matched data
+docker compose exec polibase uv run polibase create-affiliations --conference-id 185
+docker compose exec polibase uv run polibase create-affiliations --start-date 2024-01-01
+
+# Check extraction and matching status
+docker compose exec polibase uv run polibase member-status --conference-id 185
 ```
 
 #### Direct Module Execution (Legacy)
@@ -186,9 +202,16 @@ Polibase follows these core design principles:
    - Hybrid approach combining rule-based and LLM matching
    - High-accuracy linking between `speakers` and `politicians`
 
-4. **Data Input through Streamlit UI**
+4. **Conference Member Extraction with Staged Processing**
+   - Extract conference members from members_introduction_url in stages
+   - Staging table (`extracted_conference_members`) for intermediate data
+   - LLM-based fuzzy matching with confidence scores
+   - Manual review capability before creating final affiliations
+
+5. **Data Input through Streamlit UI**
    - Party member list URLs managed through web interface
    - Meeting minutes URLs registered and managed
+   - Conference members introduction URLs managed
    - User-friendly interface for all data entry
 
 ### Processing Pipeline
@@ -208,12 +231,27 @@ Polibase follows these core design principles:
 2. **GCS-based Processing**: Minutes Divider can fetch data directly from GCS using `--meeting-id` parameter
 3. **Subsequent Processing**: Same as standard flow (speaker extraction, speaker matching)
 
+#### Conference Member Extraction Flow (Staged Processing)
+1. **Extract Conference Members** (`extract-conference-members`): Scrapes member information from conference URLs
+   - Uses Playwright + LLM to extract member names, roles, and party affiliations
+   - Saves to staging table `extracted_conference_members` with status 'pending'
+2. **Match with Politicians** (`match-conference-members`): LLM-based fuzzy matching
+   - Searches existing politicians by name and party
+   - Uses LLM to handle name variations and determine best match
+   - Updates matching status: matched (≥0.7), needs_review (0.5-0.7), no_match (<0.5)
+3. **Create Affiliations** (`create-affiliations`): Creates final politician-conference relationships
+   - Only processes 'matched' status records
+   - Creates entries in `politician_affiliations` with roles
+
 #### Additional Components
 - **Meeting Management UI** (`src/streamlit_app.py`): Streamlit-based web interface for managing meeting URLs, dates, and political party information
 - **Party Member Extractor** (`src/party_member_extractor/`): LLM-based extraction of politician information from party member list pages
   - Uses Gemini API to extract structured data from HTML
   - Supports pagination for multi-page member lists
   - Implements duplicate checking to prevent creating duplicate records
+- **Conference Member Extractor** (`src/conference_member_extractor/`): Staged extraction and matching of conference members
+  - Staging table for intermediate data review
+  - Confidence-based matching with manual review capability
 
 ### Database Design
 - **Master Data** (pre-populated via seed files):
@@ -224,9 +262,14 @@ Polibase follows these core design principles:
   - `meetings`: Includes `gcs_pdf_uri` and `gcs_text_uri` for GCS integration
   - `minutes`, `speakers`, `politicians`, `conversations`, `proposals`
   - `politicians` table includes party affiliation and profile information
+  - `politician_affiliations`: Conference memberships with roles
+  - `extracted_conference_members`: Staging table for member extraction
 - Repository pattern used for database operations (`src/database/`)
 - Migrations in `database/migrations/` for schema updates:
   - `004_add_gcs_uri_to_meetings.sql`: Adds GCS URI columns to meetings table
+  - `005_add_members_introduction_url_to_conferences.sql`: Adds member URL to conferences
+  - `006_add_role_to_politician_affiliations.sql`: Adds role column for positions
+  - `007_create_extracted_conference_members_table.sql`: Creates staging table
 
 ### Technology Stack
 - **LLM**: Google Gemini API (gemini-2.0-flash, gemini-1.5-flash) via LangChain

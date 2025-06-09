@@ -79,9 +79,15 @@ Polibaseは以下の設計原則に基づいて構築されています：
    - 表記揺れや敬称の違いに対応する高精度マッチング
    - ルールベース + LLMベースのハイブリッドアプローチ
 
-4. **データ入力はStreamlit UIを通じて**
+4. **会議体の所属議員情報は段階的に抽出・マッチング**
+   - 議会の議員紹介ページから情報を自動抽出
+   - 中間ステージングテーブルで確認・修正が可能
+   - LLMによる高精度な既存政治家とのマッチング
+
+5. **データ入力はStreamlit UIを通じて**
    - 政党の議員一覧URLの設定
    - 議事録URLの登録と管理
+   - 会議体の議員紹介URLの設定
    - 直感的なWebインターフェースで操作
 
 ### 統一CLIコマンド
@@ -109,6 +115,19 @@ docker compose exec polibase uv run polibase streamlit
 
 # 政党議員情報を取得（Web スクレイピング）
 docker compose exec polibase uv run polibase scrape-politicians --all-parties
+
+# 会議体所属議員の抽出・マッチング（3段階処理）
+# ステップ1: 議員情報を抽出
+docker compose exec polibase uv run polibase extract-conference-members --conference-id 185
+
+# ステップ2: 既存政治家とマッチング
+docker compose exec polibase uv run polibase match-conference-members --conference-id 185
+
+# ステップ3: 所属情報を作成
+docker compose exec polibase uv run polibase create-affiliations --conference-id 185
+
+# 処理状況を確認
+docker compose exec polibase uv run polibase member-status
 ```
 
 ### アプリケーションの実行（従来の方法）
@@ -243,6 +262,53 @@ docker compose exec polibase uv run polibase scrape-politicians --all-parties --
   - 神戸市（tenant/kobe）
   - その他多数の自治体
 - 今後、独自システムを使用する自治体にも対応予定
+
+#### 会議体所属議員の抽出・マッチング（3段階処理）
+
+議会や委員会に所属する議員情報を段階的に抽出・マッチングする機能です。
+
+```bash
+# ステップ1: 議員情報の抽出
+docker compose exec polibase uv run polibase extract-conference-members --conference-id 185
+# または全会議体を処理
+docker compose exec polibase uv run polibase extract-conference-members
+
+# ステップ2: 既存政治家とのマッチング
+docker compose exec polibase uv run polibase match-conference-members --conference-id 185
+
+# ステップ3: 所属情報の作成
+docker compose exec polibase uv run polibase create-affiliations --conference-id 185
+docker compose exec polibase uv run polibase create-affiliations --start-date 2024-01-01
+
+# 処理状況の確認
+docker compose exec polibase uv run polibase member-status --conference-id 185
+```
+
+**処理フロー:**
+1. **抽出（Extract）**: 会議体の議員紹介URLから議員名、役職、所属政党を抽出
+   - Playwright + LLMでWebページを解析
+   - `extracted_conference_members`テーブルに保存（ステータス: pending）
+
+2. **マッチング（Match）**: 抽出した議員を既存の政治家データとマッチング
+   - LLMによるfuzzyマッチング（表記揺れ対応）
+   - 信頼度スコアを計算：
+     - 0.7以上: 自動マッチング（matched）
+     - 0.5-0.7: 要確認（needs_review）
+     - 0.5未満: 該当なし（no_match）
+
+3. **作成（Create）**: マッチング済みデータから正式な所属情報を作成
+   - `politician_affiliations`テーブルに保存
+   - 役職（議長、副議長、委員長など）も記録
+
+**事前準備:**
+1. Streamlit UIの「会議体管理」→「議員紹介URL管理」タブでURLを設定
+2. 政治家マスタデータが登録されていることを確認
+
+**特徴:**
+- 各段階で処理を中断・再開可能
+- 中間データを確認してから次の段階へ進める
+- エラーが発生しても部分的な再処理が可能
+- 信頼度に基づく柔軟なマッチング
 
 ### テストの実行
 ```bash
