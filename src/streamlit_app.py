@@ -443,7 +443,7 @@ def manage_conferences():
     conf_repo = ConferenceRepository()
 
     # サブタブを作成
-    conf_tab1, conf_tab2, conf_tab3 = st.tabs(["会議体一覧", "新規登録", "編集・削除"])
+    conf_tab1, conf_tab2, conf_tab3, conf_tab4 = st.tabs(["会議体一覧", "新規登録", "編集・削除", "議員紹介URL管理"])
 
     with conf_tab1:
         # 会議体一覧
@@ -585,6 +585,77 @@ def manage_conferences():
                             "会議体を削除できませんでした"
                             "（関連する会議が存在する可能性があります）"
                         )
+
+    with conf_tab4:
+        # 議員紹介URL管理
+        st.subheader("議員紹介URL管理")
+        st.markdown("各会議体の議員が紹介されているページURLを管理します")
+
+        conferences = conf_repo.get_all_conferences()
+        if not conferences:
+            st.info("会議体が登録されていません")
+        else:
+            # 開催主体でグループ化して表示
+            gb_groups = {}
+            for conf in conferences:
+                gb_name = conf["governing_body_name"]
+                if gb_name not in gb_groups:
+                    gb_groups[gb_name] = []
+                gb_groups[gb_name].append(conf)
+
+            # 開催主体ごとに表示
+            for gb_name, conf_list in sorted(gb_groups.items()):
+                with st.expander(f"📂 {gb_name}", expanded=True):
+                    for conf in conf_list:
+                        st.markdown(f"#### {conf['name']}")
+                        
+                        with st.form(f"members_url_form_{conf['id']}"):
+                            current_url = conf.get("members_introduction_url", "") or ""
+                            new_url = st.text_input(
+                                "議員紹介ページURL",
+                                value=current_url,
+                                placeholder="https://example.com/members",
+                                help="この会議体に所属する議員が紹介されているWebページのURL",
+                                key=f"members_url_input_{conf['id']}"
+                            )
+
+                            submitted = st.form_submit_button("更新")
+
+                            if submitted:
+                                if conf_repo.update_conference_members_url(
+                                    conference_id=conf["id"],
+                                    members_introduction_url=new_url if new_url else None
+                                ):
+                                    st.success(f"{conf['name']}の議員紹介URLを更新しました")
+                                    st.rerun()
+                                else:
+                                    st.error("URLの更新に失敗しました")
+
+                        # 現在のURL表示
+                        if conf.get("members_introduction_url"):
+                            st.markdown(
+                                f"現在のURL: [{conf['members_introduction_url']}]"
+                                f"({conf['members_introduction_url']})"
+                            )
+                        else:
+                            st.markdown("現在のURL: 未設定")
+                        
+                        st.divider()
+
+            # 一括確認セクション
+            with st.expander("登録済みURL一覧", expanded=False):
+                df_data = []
+                for conf in conferences:
+                    df_data.append(
+                        {
+                            "開催主体": conf["governing_body_name"],
+                            "会議体名": conf["name"],
+                            "議員紹介URL": conf.get("members_introduction_url") or "未設定",
+                        }
+                    )
+
+                df = pd.DataFrame(df_data)
+                st.dataframe(df, use_container_width=True)
 
     conf_repo.close()
 

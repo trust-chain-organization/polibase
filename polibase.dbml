@@ -13,6 +13,7 @@ Table Conferences {
   Name varchar [not null]
   type varchar // 例: "国会全体", "議院", "地方議会全体", "常任委員会"
   governing_body_id int [ref: > GoverningBodies.id, not null] // どの開催主体に属するか
+  members_introduction_url varchar // その議会に所属する議員が紹介されているURL
   note: '会議体 (議会や委員会など)'
 }
 
