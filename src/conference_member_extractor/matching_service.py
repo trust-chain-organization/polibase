@@ -1,7 +1,7 @@
 """Service for matching extracted conference members with politicians"""
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 
 from langchain_core.prompts import PromptTemplate
 
@@ -291,6 +291,29 @@ class ConferenceMemberMatchingService:
 
         for member in matched_members:
             try:
+                # 既存のアクティブな所属情報を確認
+                repo = self.affiliation_repo
+                existing_affiliations = (
+                    repo.get_active_affiliations_by_politician_and_conference(
+                        politician_id=member["matched_politician_id"],
+                        conference_id=member["conference_id"],
+                    )
+                )
+
+                # 既存のアクティブな所属がある場合は、
+                # 新しい所属の開始日の前日で終了させる
+                for existing in existing_affiliations:
+                    if existing["start_date"] < start_date:
+                        # 前日で終了
+                        end_date = start_date - timedelta(days=1)
+                        self.affiliation_repo.end_affiliation(
+                            affiliation_id=existing["id"], end_date=end_date
+                        )
+                        logger.info(
+                            f"Ended existing affiliation {existing['id']} for "
+                            f"politician {member['politician_name']} on {end_date}"
+                        )
+
                 # 所属情報をUPSERT
                 affiliation_id = self.affiliation_repo.upsert_affiliation(
                     politician_id=member["matched_politician_id"],
