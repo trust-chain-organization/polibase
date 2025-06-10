@@ -7,7 +7,7 @@ from .exceptions import (
     PDFDownloadError,
     PDFExtractionError,
     ScraperConnectionError,
-    ScraperException,
+    ScraperError,
     ScraperParseError,
     ScraperTimeoutError,
 )
@@ -25,7 +25,7 @@ __all__ = [
     "KaigirokuNetScraper",
     "ScraperService",
     # Exceptions
-    "ScraperException",
+    "ScraperError",
     "ScraperConnectionError",
     "ScraperParseError",
     "ScraperTimeoutError",

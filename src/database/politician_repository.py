@@ -213,7 +213,7 @@ class PoliticianRepository(BaseRepository):
             FROM politicians p
             LEFT JOIN political_parties pp ON p.political_party_id = pp.id
             WHERE p.name = :name OR p.name LIKE :partial_name
-            ORDER BY 
+            ORDER BY
                 CASE WHEN p.name = :name THEN 0 ELSE 1 END,
                 p.name
         """

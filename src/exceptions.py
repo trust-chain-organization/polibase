@@ -7,7 +7,7 @@ This module defines domain-specific exceptions for different parts of the applic
 from typing import Any
 
 
-class PolibaseException(Exception):
+class PolibaseError(Exception):
     """Base exception for all Polibase errors"""
 
     def __init__(self, message: str, details: dict[str, Any] | None = None):
@@ -22,7 +22,7 @@ class PolibaseException(Exception):
 
 
 # Configuration Exceptions
-class ConfigurationError(PolibaseException):
+class ConfigurationError(PolibaseError):
     """Raised when there's a configuration error"""
 
     pass
@@ -41,7 +41,7 @@ class InvalidConfigError(ConfigurationError):
 
 
 # Database Exceptions
-class DatabaseError(PolibaseException):
+class DatabaseError(PolibaseError):
     """Base exception for database-related errors"""
 
     pass
@@ -90,7 +90,7 @@ class DuplicateRecordError(DatabaseError):
 
 
 # Processing Exceptions
-class ProcessingError(PolibaseException):
+class ProcessingError(PolibaseError):
     """Base exception for processing errors"""
 
     pass
@@ -115,7 +115,7 @@ class ParsingError(ProcessingError):
 
 
 # LLM/AI Exceptions
-class LLMError(PolibaseException):
+class LLMError(PolibaseError):
     """Base exception for LLM-related errors"""
 
     pass
@@ -146,7 +146,7 @@ class ResponseParsingError(LLMError):
 
 
 # Web Scraping Exceptions
-class ScrapingError(PolibaseException):
+class ScrapingError(PolibaseError):
     """Base exception for web scraping errors"""
 
     pass
@@ -189,7 +189,7 @@ class DownloadError(ScrapingError):
 
 
 # Storage Exceptions
-class StorageError(PolibaseException):
+class StorageError(PolibaseError):
     """Base exception for storage-related errors"""
 
     pass
@@ -214,7 +214,7 @@ class PermissionError(StorageError):
 
 
 # Validation Exceptions
-class ValidationError(PolibaseException):
+class ValidationError(PolibaseError):
     """Base exception for validation errors"""
 
     pass
@@ -240,7 +240,7 @@ class SchemaValidationError(ValidationError):
 
 
 # Repository Exceptions
-class RepositoryError(PolibaseException):
+class RepositoryError(PolibaseError):
     """Base exception for repository errors"""
 
     pass

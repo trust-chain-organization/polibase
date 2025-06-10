@@ -66,10 +66,14 @@ def extract_text_from_pdf(file_content: bytes) -> str:
 
     except pdfium.PdfiumError as e:
         logger.error(f"PDF processing error: {e}")
-        raise PDFProcessingError("Failed to process PDF document", {"error": str(e)})
+        raise PDFProcessingError(
+            "Failed to process PDF document", {"error": str(e)}
+        ) from e
     except Exception as e:
         logger.error(f"Unexpected error during text extraction: {e}")
-        raise TextExtractionError("Failed to extract text from PDF", {"error": str(e)})
+        raise TextExtractionError(
+            "Failed to extract text from PDF", {"error": str(e)}
+        ) from e
     finally:
         if pdf_document:
             pdf_document.close()
@@ -112,4 +116,4 @@ def extract_text_from_file(file_path: str) -> str:
         logger.error(f"Failed to read file: {e}")
         raise TextExtractionError(
             f"Failed to extract text from file: {file_path}", {"error": str(e)}
-        )
+        ) from e

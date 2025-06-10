@@ -63,7 +63,7 @@ class Settings:
             raise InvalidConfigError(
                 "Invalid LLM_TEMPERATURE configuration",
                 {"value": os.getenv("LLM_TEMPERATURE"), "error": str(e)},
-            )
+            ) from e
 
         # GCS Configuration
         self.gcs_bucket_name: str = os.getenv(
@@ -120,7 +120,7 @@ class Settings:
             raise InvalidConfigError(
                 f"Invalid output directory: {self.output_dir}",
                 {"path": self.output_dir, "error": str(e)},
-            )
+            ) from e
 
     def get_database_url(self) -> str:
         """Get the appropriate database URL based on environment
@@ -214,4 +214,4 @@ def reload_settings() -> Settings:
         return settings
     except Exception as e:
         logger.error(f"Failed to reload settings: {e}")
-        raise ConfigurationError("Failed to reload settings", {"error": str(e)})
+        raise ConfigurationError("Failed to reload settings", {"error": str(e)}) from e
