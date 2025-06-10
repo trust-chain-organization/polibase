@@ -2,7 +2,6 @@
 
 import logging
 from datetime import date
-from typing import Optional
 
 from langchain_core.prompts import PromptTemplate
 
@@ -27,42 +26,44 @@ class ConferenceMemberMatchingService:
         self.affiliation_repo = PoliticianAffiliationRepository()
         self.llm_service = LLMService()
 
-    def find_politician_candidates(self, extracted_name: str, party_name: Optional[str]) -> list[dict]:
+    def find_politician_candidates(
+        self, extracted_name: str, party_name: str | None
+    ) -> list[dict]:
         """候補となる政治家を検索"""
         # 名前で検索（部分一致も含む）
         candidates = self.politician_repo.search_by_name(extracted_name)
-        
+
         # 完全一致を優先
         exact_matches = [c for c in candidates if c["name"] == extracted_name]
         if exact_matches:
             # 政党名も一致する候補を最優先
             if party_name:
                 party_matches = [
-                    c for c in exact_matches 
-                    if c.get("party_name") == party_name
+                    c for c in exact_matches if c.get("party_name") == party_name
                 ]
                 if party_matches:
                     return party_matches
             return exact_matches
-        
+
         # 部分一致の候補を返す
         return candidates[:5]  # 最大5候補
 
     def match_with_llm(
-        self, 
-        extracted_member: dict, 
-        candidates: list[dict]
-    ) -> tuple[Optional[int], float]:
+        self, extracted_member: dict, candidates: list[dict]
+    ) -> tuple[int | None, float]:
         """LLMを使用して最適な政治家をマッチング"""
-        
+
         if not candidates:
             return None, 0.0
-        
+
         # 1候補のみの場合は政党名が一致すれば高信頼度でマッチ
         if len(candidates) == 1:
             candidate = candidates[0]
-            if (extracted_member.get("extracted_party_name") and 
-                candidate.get("party_name") == extracted_member["extracted_party_name"]):
+            if (
+                extracted_member.get("extracted_party_name")
+                and candidate.get("party_name")
+                == extracted_member["extracted_party_name"]
+            ):
                 return candidate["id"], 0.95
             else:
                 return candidate["id"], 0.85
@@ -112,7 +113,7 @@ class ConferenceMemberMatchingService:
                 additional_info.append(candidate["position"])
             if candidate.get("prefecture"):
                 additional_info.append(candidate["prefecture"])
-            
+
             info_str = f" - {', '.join(additional_info)}" if additional_info else ""
             candidates_text += f"{i}. {candidate['name']} {party_info}{info_str}\n"
 
@@ -127,35 +128,38 @@ class ConferenceMemberMatchingService:
         try:
             response = self.llm_service.llm.invoke(prompt)
             content = response.content.strip()
-            
+
             # レスポンスをパース
             lines = content.split("\n")
             selected_num = 0
             confidence = 0.0
-            
+
             for line in lines:
                 if line.startswith("番号:"):
                     try:
                         selected_num = int(line.split(":")[1].strip())
-                    except:
+                    except (ValueError, IndexError):
                         pass
                 elif line.startswith("信頼度:"):
                     try:
                         confidence = float(line.split(":")[1].strip())
-                    except:
+                    except (ValueError, IndexError):
                         pass
-            
+
             if 1 <= selected_num <= len(candidates):
                 selected_politician_id = candidates[selected_num - 1]["id"]
                 logger.info(
                     f"LLM matched '{extracted_member['extracted_name']}' to "
-                    f"politician ID {selected_politician_id} with confidence {confidence}"
+                    f"politician ID {selected_politician_id} "
+                    f"with confidence {confidence}"
                 )
                 return selected_politician_id, confidence
             else:
-                logger.info(f"LLM found no match for '{extracted_member['extracted_name']}'")
+                logger.info(
+                    f"LLM found no match for '{extracted_member['extracted_name']}'"
+                )
                 return None, 0.0
-                
+
         except Exception as e:
             logger.error(f"Error in LLM matching: {e}")
             return None, 0.0
@@ -186,8 +190,10 @@ class ConferenceMemberMatchingService:
                     matching_status="no_match",
                 )
                 result["status"] = "no_match"
-                logger.info(f"No candidates found for '{extracted_member['extracted_name']}'")
-                
+                logger.info(
+                    f"No candidates found for '{extracted_member['extracted_name']}'"
+                )
+
             else:
                 # LLMでマッチング
                 politician_id, confidence = self.match_with_llm(
@@ -205,7 +211,7 @@ class ConferenceMemberMatchingService:
                     result["status"] = "matched"
                     result["politician_id"] = politician_id
                     result["confidence"] = confidence
-                    
+
                 elif politician_id and confidence >= 0.5:
                     # 要確認
                     self.extracted_repo.update_matching_result(
@@ -217,7 +223,7 @@ class ConferenceMemberMatchingService:
                     result["status"] = "needs_review"
                     result["politician_id"] = politician_id
                     result["confidence"] = confidence
-                    
+
                 else:
                     # マッチング失敗
                     self.extracted_repo.update_matching_result(
@@ -235,11 +241,11 @@ class ConferenceMemberMatchingService:
 
         return result
 
-    def process_pending_members(self, conference_id: Optional[int] = None) -> dict:
+    def process_pending_members(self, conference_id: int | None = None) -> dict:
         """未処理の抽出メンバーを処理"""
         # 未処理メンバーを取得
         pending_members = self.extracted_repo.get_pending_members(conference_id)
-        
+
         results = {
             "total": len(pending_members),
             "matched": 0,
@@ -252,7 +258,7 @@ class ConferenceMemberMatchingService:
 
         for member in pending_members:
             result = self.process_extracted_member(member)
-            
+
             if result["status"] == "matched":
                 results["matched"] += 1
             elif result["status"] == "no_match":
@@ -265,16 +271,15 @@ class ConferenceMemberMatchingService:
         return results
 
     def create_affiliations_from_matched(
-        self, conference_id: Optional[int] = None, 
-        start_date: Optional[date] = None
+        self, conference_id: int | None = None, start_date: date | None = None
     ) -> dict:
         """マッチング済みメンバーから所属情報を作成"""
         # マッチング済みメンバーを取得
         matched_members = self.extracted_repo.get_matched_members(conference_id)
-        
+
         if not start_date:
             start_date = date.today()
-        
+
         results = {
             "total": len(matched_members),
             "created": 0,
@@ -293,7 +298,7 @@ class ConferenceMemberMatchingService:
                     start_date=start_date,
                     role=member.get("extracted_role"),
                 )
-                
+
                 if affiliation_id:
                     results["created"] += 1
                     logger.info(
@@ -302,7 +307,7 @@ class ConferenceMemberMatchingService:
                     )
                 else:
                     results["failed"] += 1
-                    
+
             except Exception as e:
                 logger.error(
                     f"Error creating affiliation for member {member['id']}: {e}"

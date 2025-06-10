@@ -66,14 +66,14 @@ def display_repository_status(
         raise RepositoryError(
             f"Repository for '{table_name}' does not implement required interface",
             {"error": str(e)},
-        )
+        ) from e
     except Exception as e:
         logger.error(f"Failed to display repository status: {e}")
         print(f"❌ データベース状態確認エラー: {e}")
         raise RepositoryError(
             f"Failed to get status for {table_name}",
             {"table_name": table_name, "error": str(e)},
-        )
+        ) from e
 
 
 def _display_record_summary(record: dict[str, Any], index: int) -> None:
@@ -131,7 +131,7 @@ def save_data_with_logging(
         raise DatabaseError(
             f"Failed to save {data_type} data",
             {"data_type": data_type, "error": str(e)},
-        )
+        ) from e
 
 
 def batch_save_with_logging(
@@ -201,4 +201,4 @@ def batch_save_with_logging(
                 "saved_count": len(all_saved_ids),
                 "error": str(e),
             },
-        )
+        ) from e

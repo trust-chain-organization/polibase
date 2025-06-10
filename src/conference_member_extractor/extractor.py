@@ -1,8 +1,6 @@
 """Conference member extractor that saves to staging table"""
 
-import asyncio
 import logging
-from typing import Optional
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -45,11 +43,11 @@ class ConferenceMemberExtractor:
     ) -> list[ExtractedMember]:
         """LLMを使用してHTMLから議員情報を抽出"""
         from pydantic import BaseModel, Field
-        
+
         # リストを扱うためのラッパークラス
         class ExtractedMemberList(BaseModel):
             members: list[ExtractedMember] = Field(description="抽出された議員リスト")
-        
+
         # パーサーの設定
         parser = PydanticOutputParser(pydantic_object=ExtractedMemberList)
 

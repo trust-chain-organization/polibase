@@ -184,7 +184,7 @@ class KaigirokuNetScraper(BaseScraper):
                 self.logger.info(f"Found content selector: {selector}")
                 content_found = True
                 break
-            except:
+            except Exception:
                 continue
 
         if not content_found:
@@ -230,7 +230,7 @@ class KaigirokuNetScraper(BaseScraper):
                         ):
                             await asyncio.sleep(1)
                             return await frame.content()
-                    except:
+                    except Exception:
                         continue
 
             return None

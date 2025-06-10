@@ -2,7 +2,6 @@
 
 import logging
 from datetime import date
-from typing import Optional
 
 from sqlalchemy import text
 
@@ -36,9 +35,9 @@ class PoliticianAffiliationRepository:
         politician_id: int,
         conference_id: int,
         start_date: date,
-        end_date: Optional[date] = None,
-        role: Optional[str] = None,
-    ) -> Optional[int]:
+        end_date: date | None = None,
+        role: str | None = None,
+    ) -> int | None:
         """新しい所属情報を作成"""
         if not self.connection:
             self.connection = self.engine.connect()
@@ -52,7 +51,7 @@ class PoliticianAffiliationRepository:
                 AND start_date = :start_date
                 AND (end_date IS NULL OR end_date = :end_date)
             """)
-            
+
             result = self.connection.execute(
                 check_query,
                 {
@@ -62,7 +61,7 @@ class PoliticianAffiliationRepository:
                     "end_date": end_date,
                 },
             )
-            
+
             if result.fetchone():
                 logger.warning(
                     f"Affiliation already exists for politician {politician_id} "
@@ -72,7 +71,7 @@ class PoliticianAffiliationRepository:
 
             # 新規作成
             insert_query = text("""
-                INSERT INTO politician_affiliations 
+                INSERT INTO politician_affiliations
                 (politician_id, conference_id, start_date, end_date, role)
                 VALUES (:politician_id, :conference_id, :start_date, :end_date, :role)
                 RETURNING id
@@ -130,7 +129,7 @@ class PoliticianAffiliationRepository:
             self.connection = self.engine.connect()
 
         query = text("""
-            SELECT 
+            SELECT
                 pa.id,
                 pa.politician_id,
                 pa.conference_id,
@@ -171,7 +170,7 @@ class PoliticianAffiliationRepository:
             self.connection = self.engine.connect()
 
         query = text("""
-            SELECT 
+            SELECT
                 pa.id,
                 pa.politician_id,
                 pa.conference_id,
@@ -256,8 +255,8 @@ class PoliticianAffiliationRepository:
         politician_id: int,
         conference_id: int,
         start_date: date,
-        end_date: Optional[date] = None,
-        role: Optional[str] = None,
+        end_date: date | None = None,
+        role: str | None = None,
     ) -> int:
         """所属情報をUPSERT（存在すれば更新、なければ作成）"""
         if not self.connection:
@@ -271,7 +270,7 @@ class PoliticianAffiliationRepository:
                 AND conference_id = :conference_id
                 AND start_date = :start_date
             """)
-            
+
             result = self.connection.execute(
                 check_query,
                 {
@@ -280,19 +279,19 @@ class PoliticianAffiliationRepository:
                     "start_date": start_date,
                 },
             )
-            
+
             existing = result.fetchone()
-            
+
             if existing:
                 # 更新
                 update_query = text("""
                     UPDATE politician_affiliations
-                    SET end_date = :end_date, 
+                    SET end_date = :end_date,
                         role = :role,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = :id
                 """)
-                
+
                 self.connection.execute(
                     update_query,
                     {

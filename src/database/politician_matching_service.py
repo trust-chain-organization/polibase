@@ -3,7 +3,6 @@ LLMを活用した発言者と政治家の高精度マッチングサービス
 """
 
 import re
-from typing import List, Dict, Optional
 
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -18,13 +17,11 @@ class PoliticianMatch(BaseModel):
     """政治家マッチング結果のデータモデル"""
 
     matched: bool = Field(description="マッチングが成功したかどうか")
-    politician_id: Optional[int] = Field(
-        description="マッチした政治家のID", default=None
-    )
-    politician_name: Optional[str] = Field(
+    politician_id: int | None = Field(description="マッチした政治家のID", default=None)
+    politician_name: str | None = Field(
         description="マッチした政治家の名前", default=None
     )
-    political_party_name: Optional[str] = Field(
+    political_party_name: str | None = Field(
         description="マッチした政治家の所属政党", default=None
     )
     confidence: float = Field(description="マッチングの信頼度 (0.0-1.0)", default=0.0)
@@ -92,8 +89,8 @@ class PoliticianMatchingService:
     def find_best_match(
         self,
         speaker_name: str,
-        speaker_type: Optional[str] = None,
-        speaker_party: Optional[str] = None,
+        speaker_type: str | None = None,
+        speaker_party: str | None = None,
     ) -> PoliticianMatch:
         """
         発言者に最適な政治家マッチを見つける
@@ -159,7 +156,7 @@ class PoliticianMatchingService:
             # エラー時はルールベースの結果を返す
             return rule_based_match
 
-    def _get_available_politicians(self) -> List[Dict]:
+    def _get_available_politicians(self) -> list[dict]:
         """利用可能な政治家リストを取得"""
         query = text("""
             SELECT p.id, p.name, p.position, p.prefecture,
@@ -188,8 +185,8 @@ class PoliticianMatchingService:
     def _rule_based_matching(
         self,
         speaker_name: str,
-        speaker_party: Optional[str],
-        available_politicians: List[Dict],
+        speaker_party: str | None,
+        available_politicians: list[dict],
     ) -> PoliticianMatch:
         """従来のルールベースマッチング"""
 
@@ -243,10 +240,10 @@ class PoliticianMatchingService:
     def _filter_candidates(
         self,
         speaker_name: str,
-        speaker_party: Optional[str],
-        available_politicians: List[Dict],
+        speaker_party: str | None,
+        available_politicians: list[dict],
         max_candidates: int = 20,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """候補を絞り込む（LLMの処理効率向上のため）"""
         candidates = []
 
@@ -293,7 +290,7 @@ class PoliticianMatchingService:
         # 最大候補数に制限
         return candidates[:max_candidates]
 
-    def _format_politicians_for_llm(self, politicians: List[Dict]) -> str:
+    def _format_politicians_for_llm(self, politicians: list[dict]) -> str:
         """政治家リストをLLM用にフォーマット"""
         formatted = []
         for p in politicians:
@@ -309,7 +306,7 @@ class PoliticianMatchingService:
             formatted.append(info)
         return "\n".join(formatted)
 
-    def batch_link_speakers_to_politicians(self) -> Dict[str, int]:
+    def batch_link_speakers_to_politicians(self) -> dict[str, int]:
         """
         未紐付けの発言者を一括で政治家とマッチング
 
@@ -352,7 +349,8 @@ class PoliticianMatchingService:
                     update_query = text("""
                         UPDATE speakers
                         SET is_politician = TRUE,
-                            political_party_name = COALESCE(:party_name, political_party_name)
+                            political_party_name = COALESCE(:party_name,
+                                                           political_party_name)
                         WHERE id = :speaker_id
                     """)
 
@@ -372,7 +370,8 @@ class PoliticianMatchingService:
                     confidence_emoji = "🟢" if match_result.confidence >= 0.9 else "🟡"
                     print(
                         f"  {confidence_emoji} マッチ成功: {speaker_name} → "
-                        f"{match_result.politician_name} ({match_result.political_party_name}) "
+                        f"{match_result.politician_name} "
+                        f"({match_result.political_party_name}) "
                         f"(信頼度: {match_result.confidence:.2f})"
                     )
                 else:

@@ -55,7 +55,7 @@ def get_db_engine() -> Engine:
             raise ConnectionError(
                 "Failed to create database engine",
                 {"url": DATABASE_URL.split("@")[0] + "@***", "error": str(e)},
-            )
+            ) from e
 
     return _engine
 
@@ -71,10 +71,12 @@ def get_db_session() -> Session:
     """
     try:
         engine = get_db_engine()
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        return SessionLocal()
+        session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        return session_local()
     except SQLAlchemyError as e:
-        raise ConnectionError("Failed to create database session", {"error": str(e)})
+        raise ConnectionError(
+            "Failed to create database session", {"error": str(e)}
+        ) from e
 
 
 @contextmanager
@@ -94,7 +96,7 @@ def get_db_session_context() -> Generator[Session]:
     except SQLAlchemyError as e:
         session.rollback()
         logger.error(f"Database error occurred: {e}")
-        raise DatabaseError("Database operation failed", {"error": str(e)})
+        raise DatabaseError("Database operation failed", {"error": str(e)}) from e
     except Exception as e:
         session.rollback()
         logger.error(f"Unexpected error during database operation: {e}")

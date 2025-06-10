@@ -112,10 +112,8 @@ class MinutesProcessAgent:
         if state.index - 1 < len(section_string_list.section_string_list):
             # すべてのセクションを処理する（0, 1, 2, 3の制限を削除）
             # 発言者と発言内容に分割する
-            speaker_and_speech_content_list = (
-                self.minutes_divider.speech_divide_run(
-                    section_string_list.section_string_list[state.index - 1]
-                )
+            speaker_and_speech_content_list = self.minutes_divider.speech_divide_run(
+                section_string_list.section_string_list[state.index - 1]
             )
         else:
             print(
@@ -141,9 +139,7 @@ class MinutesProcessAgent:
                 "Skipping this section."
             )
             updated_speaker_and_speech_content_list = divided_speech_list
-            memory = {
-                "divided_speech_list": updated_speaker_and_speech_content_list
-            }
+            memory = {"divided_speech_list": updated_speaker_and_speech_content_list}
             memory_id = self._put_to_memory(
                 namespace="divided_speech_list", memory=memory
             )
@@ -153,9 +149,7 @@ class MinutesProcessAgent:
                 divided_speech_list
                 + speaker_and_speech_content_list.speaker_and_speech_content_list
             )
-            memory = {
-                "divided_speech_list": updated_speaker_and_speech_content_list
-            }
+            memory = {"divided_speech_list": updated_speaker_and_speech_content_list}
             memory_id = self._put_to_memory(
                 namespace="divided_speech_list", memory=memory
             )

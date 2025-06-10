@@ -1,49 +1,49 @@
 """Web scraper custom exceptions"""
 
 
-class ScraperException(Exception):
+class ScraperError(Exception):
     """Base exception for web scraper"""
 
     pass
 
 
-class ScraperConnectionError(ScraperException):
+class ScraperConnectionError(ScraperError):
     """Raised when connection to the website fails"""
 
     pass
 
 
-class ScraperParseError(ScraperException):
+class ScraperParseError(ScraperError):
     """Raised when parsing content fails"""
 
     pass
 
 
-class ScraperTimeoutError(ScraperException):
+class ScraperTimeoutError(ScraperError):
     """Raised when scraping operation times out"""
 
     pass
 
 
-class PDFDownloadError(ScraperException):
+class PDFDownloadError(ScraperError):
     """Raised when PDF download fails"""
 
     pass
 
 
-class PDFExtractionError(ScraperException):
+class PDFExtractionError(ScraperError):
     """Raised when PDF text extraction fails"""
 
     pass
 
 
-class CacheError(ScraperException):
+class CacheError(ScraperError):
     """Raised when cache operations fail"""
 
     pass
 
 
-class GCSUploadError(ScraperException):
+class GCSUploadError(ScraperError):
     """Raised when GCS upload fails"""
 
     pass

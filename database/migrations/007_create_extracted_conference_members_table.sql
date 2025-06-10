@@ -7,16 +7,16 @@ CREATE TABLE extracted_conference_members (
     extracted_party_name VARCHAR(255),
     source_url VARCHAR(500) NOT NULL,
     extracted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Matching results
     matched_politician_id INTEGER REFERENCES politicians(id),
     matching_confidence DECIMAL(3,2), -- 0.00 to 1.00
     matching_status VARCHAR(50) DEFAULT 'pending', -- pending, matched, no_match, needs_review
     matched_at TIMESTAMP,
-    
+
     -- Additional extracted data
     additional_info TEXT,
-    
+
     -- Timestamps
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

@@ -8,7 +8,9 @@ settings = get_settings()
 
 if settings.gcs_upload_enabled and settings.gcs_bucket_name:
     gcs = GCSStorage(settings.gcs_bucket_name)
-    content = gcs.download_content("gs://polibase-scraped-minutes/scraped/2025/04/23/unknown_unknown.txt")
+    content = gcs.download_content(
+        "gs://polibase-scraped-minutes/scraped/2025/04/23/unknown_unknown.txt"
+    )
     if content:
         # 最初の2000文字と最後の2000文字を表示
         print("=== 冒頭部分 ===")

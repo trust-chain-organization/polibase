@@ -208,7 +208,10 @@ class SpeakerExtractorFromMinutes:
                         if len(matched_politicians) == 1:
                             politician = matched_politicians[0]
                             # speakerを更新
-                            update_query = "UPDATE speakers SET is_politician = TRUE WHERE id = :id"
+                            update_query = (
+                                "UPDATE speakers SET is_politician = TRUE "
+                                "WHERE id = :id"
+                            )
                             self.speaker_repo.execute(
                                 update_query, {"id": speaker["id"]}
                             )

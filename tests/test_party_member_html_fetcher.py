@@ -4,6 +4,7 @@ import warnings
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import pytest_asyncio
 
 from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
 
@@ -16,7 +17,7 @@ warnings.filterwarnings(
 class TestPartyMemberPageFetcher:
     """PartyMemberPageFetcherのテストクラス"""
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def mock_playwright(self):
         """Playwrightのモック"""
         with patch("src.party_member_extractor.html_fetcher.async_playwright") as mock:
@@ -46,7 +47,7 @@ class TestPartyMemberPageFetcher:
                 "context": mock_context,
             }
 
-    @pytest.fixture
+    @pytest_asyncio.fixture
     async def fetcher(self, mock_playwright):
         """フェッチャーのフィクスチャ"""
         fetcher = PartyMemberPageFetcher()

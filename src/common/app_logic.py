@@ -112,7 +112,9 @@ def validate_database_connection() -> bool:
         return True
     except Exception as e:
         logger.error(f"Database connection test error: {e}")
-        raise DatabaseError("Failed to test database connection", {"error": str(e)})
+        raise DatabaseError(
+            "Failed to test database connection", {"error": str(e)}
+        ) from e
 
 
 def run_main_process(
@@ -189,7 +191,7 @@ def run_main_process(
         raise ProcessingError(
             f"{process_name} processing failed",
             {"process_name": process_name, "error": str(e)},
-        )
+        ) from e
 
 
 def print_completion_message(result_data: Any, process_name: str = "処理") -> None:

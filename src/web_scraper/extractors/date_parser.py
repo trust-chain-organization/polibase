@@ -77,7 +77,7 @@ class DateParser:
         # ISO形式の日付も試す
         try:
             return datetime.fromisoformat(date_str.strip())
-        except:
+        except (ValueError, AttributeError):
             pass
 
         self.logger.debug(f"Failed to parse date: {date_str}")
