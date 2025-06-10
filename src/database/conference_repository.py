@@ -205,16 +205,17 @@ class ConferenceRepository:
         try:
             query = text("""
                 UPDATE conferences
-                SET members_introduction_url = :members_introduction_url, 
+                SET members_introduction_url = :members_introduction_url,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = :conference_id
             """)
 
             self.connection.execute(
-                query, {
-                    "conference_id": conference_id, 
-                    "members_introduction_url": members_introduction_url
-                }
+                query,
+                {
+                    "conference_id": conference_id,
+                    "members_introduction_url": members_introduction_url,
+                },
             )
 
             self.connection.commit()

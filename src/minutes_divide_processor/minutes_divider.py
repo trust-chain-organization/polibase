@@ -212,19 +212,22 @@ class MinutesDivider:
     ) -> SpeakerAndSpeechContentList:
         # 国会議事録向けのプロンプトを使用
         from langchain_core.prompts import ChatPromptTemplate
+
         from ..services.prompt_manager import PromptManager
-        
+
         prompt_manager = PromptManager()
         prompt_text = prompt_manager.PROMPTS.get("speech_divide_kokkai")
         prompt_template = ChatPromptTemplate.from_template(prompt_text)
-        
+
         runnable_prompt = (
             prompt_template | self.speaker_and_speech_content_formatted_llm
         )
         chain = {"section_string": RunnablePassthrough()} | runnable_prompt
         result = chain.invoke(
             {
-                "section_string": section_string.section_string,  # section_stringオブジェクトから文字列を抽出
+                "section_string": (
+                    section_string.section_string
+                ),  # section_stringオブジェクトから文字列を抽出
             }
         )
         if result is None:

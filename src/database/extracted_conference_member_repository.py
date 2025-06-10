@@ -1,8 +1,6 @@
 """Repository for managing extracted conference member data"""
 
 import logging
-from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import text
 
@@ -36,21 +34,21 @@ class ExtractedConferenceMemberRepository:
         conference_id: int,
         extracted_name: str,
         source_url: str,
-        extracted_role: Optional[str] = None,
-        extracted_party_name: Optional[str] = None,
-        additional_info: Optional[str] = None,
-    ) -> Optional[int]:
+        extracted_role: str | None = None,
+        extracted_party_name: str | None = None,
+        additional_info: str | None = None,
+    ) -> int | None:
         """抽出されたメンバー情報を作成"""
         if not self.connection:
             self.connection = self.engine.connect()
 
         try:
             query = text("""
-                INSERT INTO extracted_conference_members 
-                (conference_id, extracted_name, extracted_role, extracted_party_name, 
+                INSERT INTO extracted_conference_members
+                (conference_id, extracted_name, extracted_role, extracted_party_name,
                  source_url, additional_info, extracted_at)
-                VALUES (:conference_id, :extracted_name, :extracted_role, 
-                        :extracted_party_name, :source_url, :additional_info, 
+                VALUES (:conference_id, :extracted_name, :extracted_role,
+                        :extracted_party_name, :source_url, :additional_info,
                         CURRENT_TIMESTAMP)
                 RETURNING id
             """)
@@ -77,13 +75,13 @@ class ExtractedConferenceMemberRepository:
             logger.error(f"Error creating extracted member: {e}")
             return None
 
-    def get_pending_members(self, conference_id: Optional[int] = None) -> list[dict]:
+    def get_pending_members(self, conference_id: int | None = None) -> list[dict]:
         """未処理のメンバー情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
 
         query = text("""
-            SELECT 
+            SELECT
                 ecm.id,
                 ecm.conference_id,
                 ecm.extracted_name,
@@ -112,7 +110,7 @@ class ExtractedConferenceMemberRepository:
             params = {}
 
         result = self.connection.execute(text(query_str), params)
-        
+
         members = []
         for row in result:
             members.append(
@@ -129,14 +127,14 @@ class ExtractedConferenceMemberRepository:
                     "governing_body_name": row.governing_body_name,
                 }
             )
-        
+
         return members
 
     def update_matching_result(
         self,
         member_id: int,
-        matched_politician_id: Optional[int],
-        matching_confidence: Optional[float],
+        matched_politician_id: int | None,
+        matching_confidence: float | None,
         matching_status: str,
     ) -> bool:
         """マッチング結果を更新"""
@@ -173,13 +171,13 @@ class ExtractedConferenceMemberRepository:
             logger.error(f"Error updating matching result: {e}")
             return False
 
-    def get_matched_members(self, conference_id: Optional[int] = None) -> list[dict]:
+    def get_matched_members(self, conference_id: int | None = None) -> list[dict]:
         """マッチング済みのメンバー情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
 
         query = text("""
-            SELECT 
+            SELECT
                 ecm.id,
                 ecm.conference_id,
                 ecm.extracted_name,
@@ -211,7 +209,7 @@ class ExtractedConferenceMemberRepository:
             params = {}
 
         result = self.connection.execute(text(query_str), params)
-        
+
         members = []
         for row in result:
             members.append(
@@ -230,7 +228,7 @@ class ExtractedConferenceMemberRepository:
                     "conference_name": row.conference_name,
                 }
             )
-        
+
         return members
 
     def delete_extracted_members(self, conference_id: int) -> int:
@@ -246,9 +244,12 @@ class ExtractedConferenceMemberRepository:
 
             result = self.connection.execute(query, {"conference_id": conference_id})
             self.connection.commit()
-            
+
             deleted_count = result.rowcount
-            logger.info(f"Deleted {deleted_count} extracted members for conference {conference_id}")
+            logger.info(
+                f"Deleted {deleted_count} extracted members "
+                f"for conference {conference_id}"
+            )
             return deleted_count
 
         except Exception as e:
@@ -262,7 +263,7 @@ class ExtractedConferenceMemberRepository:
             self.connection = self.engine.connect()
 
         query = text("""
-            SELECT 
+            SELECT
                 matching_status,
                 COUNT(*) as count
             FROM extracted_conference_members
@@ -270,7 +271,7 @@ class ExtractedConferenceMemberRepository:
         """)
 
         result = self.connection.execute(query)
-        
+
         summary = {
             "pending": 0,
             "matched": 0,
@@ -278,10 +279,10 @@ class ExtractedConferenceMemberRepository:
             "needs_review": 0,
             "total": 0,
         }
-        
+
         for row in result:
             if row.matching_status in summary:
                 summary[row.matching_status] = row.count
             summary["total"] += row.count
-        
+
         return summary
