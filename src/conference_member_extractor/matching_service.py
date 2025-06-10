@@ -300,11 +300,14 @@ class ConferenceMemberMatchingService:
                     )
                 )
 
-                # 既存のアクティブな所属がある場合は、
-                # 新しい所属の開始日の前日で終了させる
+                # 既存のアクティブな所属がある場合の処理
+                # 基本方針：
+                # - 新しい開始日より前の所属は、新開始日の前日で終了
+                # - 同じ開始日の所属はupsertで更新される
+                # - 新しい開始日より後の所属は保持（将来の予定として）
                 for existing in existing_affiliations:
                     if existing["start_date"] < start_date:
-                        # 前日で終了
+                        # 既存の所属が新しい開始日より前の場合、前日で終了
                         end_date = start_date - timedelta(days=1)
                         self.affiliation_repo.end_affiliation(
                             affiliation_id=existing["id"], end_date=end_date
