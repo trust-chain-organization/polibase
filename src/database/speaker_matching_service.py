@@ -46,11 +46,13 @@ class SpeakerMatchingService:
 {available_speakers}
 
 # マッチング基準
-1. 完全一致を最優先
-2. 括弧内の名前との一致（例: "委員長(平山たかお)" → "平山たかお"）
-3. 記号除去後の一致（例: "◆委員(下村あきら)" → "委員(下村あきら)"）
-4. 部分一致や音韻的類似性
-5. 漢字の異なる読みや表記ゆれ
+1. 【会議体所属議員】とマークされた発言者を優先的に考慮
+2. 完全一致を最優先
+3. 括弧内の名前との一致（例: "委員長(平山たかお)" → "平山たかお"）
+4. 記号除去後の一致（例: "◆委員(下村あきら)" → "委員(下村あきら)"）
+5. 部分一致や音韻的類似性
+6. 漢字の異なる読みや表記ゆれ
+7. 役職が記載されている場合は、その役職との整合性も考慮
 
 # 出力形式
 以下のJSON形式で回答してください：
@@ -63,6 +65,8 @@ class SpeakerMatchingService:
 }}
 
 # 重要な注意事項
+- 【会議体所属議員】とマークされた候補者は、その会議体のメンバーとして
+  登録されているため、優先的にマッチングしてください
 - 確実性が低い場合は matched: false を返してください
 - confidence は 0.8 以上の場合のみマッチとして扱ってください
 - 複数の候補がある場合は最も確からしいものを選んでください
@@ -71,12 +75,19 @@ class SpeakerMatchingService:
         self.output_parser = JsonOutputParser(pydantic_object=SpeakerMatch)
         self.chain = self.prompt | self.llm | self.output_parser
 
-    def find_best_match(self, speaker_name: str) -> SpeakerMatch:
+    def find_best_match(
+        self,
+        speaker_name: str,
+        meeting_date: str | None = None,
+        conference_id: int | None = None,
+    ) -> SpeakerMatch:
         """
         発言者名に最適なマッチを見つける
 
         Args:
             speaker_name: マッチングする発言者名
+            meeting_date: 会議開催日（YYYY-MM-DD形式）
+            conference_id: 会議体ID
 
         Returns:
             SpeakerMatch: マッチング結果
@@ -89,6 +100,24 @@ class SpeakerMatchingService:
                 matched=False, confidence=0.0, reason="利用可能な発言者リストが空です"
             )
 
+        # PoliticianAffiliationsを考慮した発言者リストを取得
+        if meeting_date and conference_id:
+            affiliated_speakers = self._get_affiliated_speakers(
+                meeting_date, conference_id
+            )
+            # アフィリエーション情報を既存のスピーカーリストに追加
+            speaker_dict = {s["id"]: s for s in available_speakers}
+            for affiliated in affiliated_speakers:
+                if affiliated["speaker_id"] in speaker_dict:
+                    speaker_dict[affiliated["speaker_id"]]["is_affiliated"] = True
+                    speaker_dict[affiliated["speaker_id"]]["politician_id"] = (
+                        affiliated["politician_id"]
+                    )
+                    speaker_dict[affiliated["speaker_id"]]["role"] = affiliated.get(
+                        "role"
+                    )
+            available_speakers = list(speaker_dict.values())
+
         # まず従来のルールベースマッチングを試行
         rule_based_match = self._rule_based_matching(speaker_name, available_speakers)
         if rule_based_match.matched and rule_based_match.confidence >= 0.9:
@@ -96,7 +125,7 @@ class SpeakerMatchingService:
 
         # LLMによる高度なマッチング
         try:
-            # 候補を絞り込み（パフォーマンス向上のため）
+            # 候補を絞り込み（アフィリエーション情報を優先）
             filtered_speakers = self._filter_candidates(
                 speaker_name, available_speakers
             )
@@ -139,6 +168,53 @@ class SpeakerMatchingService:
             speakers.append({"id": row[0], "name": row[1]})
 
         return speakers
+
+    def _get_affiliated_speakers(
+        self, meeting_date: str, conference_id: int
+    ) -> list[dict]:
+        """
+        指定された会議日と会議体IDに基づいて、その時点でアクティブな所属を持つ発言者を取得
+
+        Args:
+            meeting_date: 会議開催日（YYYY-MM-DD形式）
+            conference_id: 会議体ID
+
+        Returns:
+            List[dict]: アフィリエーション情報を含む発言者リスト
+        """
+        query = text("""
+            SELECT DISTINCT
+                s.id as speaker_id,
+                s.name as speaker_name,
+                p.id as politician_id,
+                p.name as politician_name,
+                pa.role as role
+            FROM politician_affiliations pa
+            JOIN politicians p ON pa.politician_id = p.id
+            JOIN speakers s ON p.speaker_id = s.id
+            WHERE pa.conference_id = :conference_id
+                AND pa.start_date <= CAST(:meeting_date AS date)
+                AND (pa.end_date IS NULL OR pa.end_date >= CAST(:meeting_date AS date))
+            ORDER BY s.name
+        """)
+
+        result = self.session.execute(
+            query, {"conference_id": conference_id, "meeting_date": meeting_date}
+        )
+
+        affiliated_speakers = []
+        for row in result.fetchall():
+            affiliated_speakers.append(
+                {
+                    "speaker_id": row[0],
+                    "speaker_name": row[1],
+                    "politician_id": row[2],
+                    "politician_name": row[3],
+                    "role": row[4],
+                }
+            )
+
+        return affiliated_speakers
 
     def _rule_based_matching(
         self, speaker_name: str, available_speakers: list[dict]
@@ -211,6 +287,10 @@ class SpeakerMatchingService:
         for speaker in available_speakers:
             score = 0
 
+            # アフィリエーション優先ボーナス
+            if speaker.get("is_affiliated"):
+                score += 10  # 会議体に所属している議員を優先
+
             # 部分一致スコア
             if speaker["name"] in speaker_name or speaker_name in speaker["name"]:
                 score += 3
@@ -247,7 +327,12 @@ class SpeakerMatchingService:
         """発言者リストをLLM用にフォーマット"""
         formatted = []
         for speaker in speakers:
-            formatted.append(f"ID: {speaker['id']}, 名前: {speaker['name']}")
+            info = f"ID: {speaker['id']}, 名前: {speaker['name']}"
+            if speaker.get("is_affiliated"):
+                info += " 【会議体所属議員】"
+                if speaker.get("role"):
+                    info += f" 役職: {speaker['role']}"
+            formatted.append(info)
         return "\n".join(formatted)
 
     def batch_update_speaker_links(self) -> dict[str, int]:
@@ -258,11 +343,20 @@ class SpeakerMatchingService:
             Dict[str, int]: 更新統計
         """
         try:
-            # speaker_idがNULLのレコードを取得
+            # speaker_idがNULLのレコードを会議情報と共に取得
             query = text("""
-                SELECT id, speaker_name FROM conversations
-                WHERE speaker_id IS NULL
-                ORDER BY id
+                SELECT
+                    c.id as conversation_id,
+                    c.speaker_name,
+                    m.date as meeting_date,
+                    conf.id as conference_id,
+                    conf.name as conference_name
+                FROM conversations c
+                LEFT JOIN minutes min ON c.minutes_id = min.id
+                LEFT JOIN meetings m ON min.meeting_id = m.id
+                LEFT JOIN conferences conf ON m.conference_id = conf.id
+                WHERE c.speaker_id IS NULL
+                ORDER BY c.id
             """)
 
             result = self.session.execute(query)
@@ -273,12 +367,24 @@ class SpeakerMatchingService:
                 "successfully_matched": 0,
                 "high_confidence_matches": 0,
                 "failed_matches": 0,
+                "with_affiliation_info": 0,
             }
 
-            for conversation_id, speaker_name in unlinked_conversations:
-                print(f"🔍 マッチング処理中: {speaker_name}")
+            for row in unlinked_conversations:
+                conversation_id = row[0]
+                speaker_name = row[1]
+                meeting_date = row[2].strftime("%Y-%m-%d") if row[2] else None
+                conference_id = row[3]
+                conference_name = row[4]
 
-                match_result = self.find_best_match(speaker_name)
+                print(f"🔍 マッチング処理中: {speaker_name}")
+                if meeting_date and conference_id:
+                    print(f"   📅 会議日: {meeting_date}, 会議体: {conference_name}")
+                    stats["with_affiliation_info"] += 1
+
+                match_result = self.find_best_match(
+                    speaker_name, meeting_date, conference_id
+                )
 
                 if match_result.matched and match_result.speaker_id:
                     # speaker_idを更新
@@ -318,6 +424,9 @@ class SpeakerMatchingService:
             print(f"   - マッチ成功: {stats['successfully_matched']}件")
             print(f"   - 高信頼度マッチ: {stats['high_confidence_matches']}件")
             print(f"   - マッチ失敗: {stats['failed_matches']}件")
+            print(
+                f"   - アフィリエーション情報あり: {stats['with_affiliation_info']}件"
+            )
 
             return stats
 
