@@ -140,6 +140,23 @@ class TestConferenceMemberMatchingService:
         assert politician_id == 100
         assert confidence == 0.95
 
+    def test_match_with_llm_single_candidate_no_party_match(self, service):
+        """Test LLM matching with single candidate but no party match"""
+        # Setup
+        member = {
+            "id": 1,
+            "extracted_name": "山田太郎",
+            "extracted_party_name": "立憲民主党",
+        }
+        candidates = [{"id": 100, "name": "山田太郎", "party_name": "自民党"}]
+
+        # Execute
+        politician_id, confidence = service.match_with_llm(member, candidates)
+
+        # Assert - should still match but with lower confidence
+        assert politician_id == 100
+        assert confidence == 0.85
+
     def test_match_with_llm_multiple_candidates(self, service, mock_llm_service):
         """Test LLM matching with multiple candidates"""
         # Setup
@@ -169,10 +186,13 @@ class TestConferenceMemberMatchingService:
         assert confidence == 0.85
 
     def test_match_with_llm_no_match(self, service, mock_llm_service):
-        """Test LLM matching with no match"""
-        # Setup
+        """Test LLM matching with no match - multiple candidates case"""
+        # Setup - use multiple candidates to trigger LLM usage
         member = {"id": 1, "extracted_name": "不明な議員", "extracted_party_name": None}
-        candidates = [{"id": 100, "name": "山田太郎", "party_name": "自民党"}]
+        candidates = [
+            {"id": 100, "name": "山田太郎", "party_name": "自民党"},
+            {"id": 101, "name": "山田花子", "party_name": "立憲民主党"},
+        ]
 
         # Mock LLM response with no match
         mock_response = Mock()
@@ -323,9 +343,12 @@ class TestConferenceMemberMatchingService:
 
     def test_match_with_llm_error_handling(self, service, mock_llm_service):
         """Test handling of LLM errors"""
-        # Setup
+        # Setup - use multiple candidates to trigger LLM usage
         member = {"id": 1, "extracted_name": "山田議員", "extracted_party_name": None}
-        candidates = [{"id": 100, "name": "山田太郎", "party_name": "自民党"}]
+        candidates = [
+            {"id": 100, "name": "山田太郎", "party_name": "自民党"},
+            {"id": 101, "name": "山田次郎", "party_name": "立憲民主党"},
+        ]
 
         # Mock LLM error
         mock_llm_service.llm.invoke.side_effect = Exception("LLM Error")
