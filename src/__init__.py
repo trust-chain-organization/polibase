@@ -26,7 +26,7 @@ from .exceptions import (
     ParsingError,
     PDFProcessingError,
     PermissionError,
-    PolibaseException,
+    PolibaseError,
     ProcessingError,
     QueryError,
     RecordNotFoundError,
@@ -46,7 +46,7 @@ from .exceptions import (
 
 __all__ = [
     # Base exception
-    "PolibaseException",
+    "PolibaseError",
     # Configuration
     "ConfigurationError",
     "MissingConfigError",
