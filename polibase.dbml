@@ -5,6 +5,8 @@ Table GoverningBodies {
   id int [pk, increment] // 自動採番される主キー
   Name varchar [not null]
   type varchar // 例: "国", "都道府県", "市町村"
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '開催主体'
 }
 
@@ -14,6 +16,8 @@ Table Conferences {
   type varchar // 例: "国会全体", "議院", "地方議会全体", "常任委員会"
   governing_body_id int [ref: > GoverningBodies.id, not null] // どの開催主体に属するか
   members_introduction_url varchar // その議会に所属する議員が紹介されているURL
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '会議体 (議会や委員会など)'
 }
 
@@ -22,6 +26,10 @@ Table Meetings {
   conference_id int [ref: > Conferences.id, not null] // どの会議体による開催か
   date date // 開催日
   url varchar // 会議関連のURLまたは議事録PDFのURL
+  gcs_pdf_uri varchar(512) // Google Cloud Storage URI for the PDF file
+  gcs_text_uri varchar(512) // Google Cloud Storage URI for the extracted text file
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '会議 (具体的な開催インスタンス)'
 }
 
@@ -29,6 +37,8 @@ Table Minutes {
   id int [pk, increment]
   url varchar // 議事録PDFなどのURL
   meeting_id int [ref: > Meetings.id, not null] // どの会議の議事録か
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '議事録'
 }
 
@@ -36,13 +46,20 @@ Table Speakers {
   id int [pk, increment]
   name varchar [not null] // 発言者名
   type varchar // 例: "政治家", "参考人", "議長", "政府職員"
+  political_party_name varchar // 所属政党名（政治家の場合）
+  position varchar // 役職・肩書き
+  is_politician boolean [default: false] // 政治家かどうか
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '発言者'
 }
 
 Table PoliticalParties {
   id int [pk, increment]
   name varchar [not null, unique] // 政党名 (重複なし)
-  // political_party_n... は name と同義と判断し、name に統一
+  members_list_url text // 議員一覧ページのURL
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '政党'
 }
 
@@ -50,7 +67,13 @@ Table Politicians {
   id int [pk, increment] // 政治家固有のID
   name varchar [not null] // 政治家名
   political_party_id int [ref: > PoliticalParties.id] // 現在の主要所属政党 (履歴はPartyMembershipHistoryで管理)
-  speaker_id int [ref: > Speakers.id, unique, not null] // 各政治家は一意の発言者でもある (1対1関係)
+  speaker_id int [ref: > Speakers.id, unique] // 各政治家は一意の発言者でもある (1対1関係) - nullable
+  position text // 役職（衆議院議員、参議院議員など）
+  prefecture varchar(10) // 都道府県
+  electoral_district text // 選挙区
+  profile_url text // プロフィールページURL
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '政治家'
 }
 
@@ -59,6 +82,8 @@ Table Pledges {
   politician_id int [ref: > Politicians.id, not null] // どの政治家の公約か
   title varchar [not null] // 公約のタイトル
   content text // 公約の詳細内容
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '公約'
 }
 
@@ -68,26 +93,31 @@ Table PartyMembershipHistory {
   political_party_id int [ref: > PoliticalParties.id, not null] // どの政党に所属していたか
   start_date date [not null] // 所属開始日
   end_date date // 所属終了日 (現所属の場合はNULL)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '政治家の政党所属履歴'
 }
 
 Table Conversations {
   id int [pk, increment]
-  minutes_id int [ref: > Minutes.id, not null] // どの議事録の発言か
-  speaker_id int [ref: > Speakers.id, not null] // どの発言者の発言か
+  minutes_id int [ref: > Minutes.id] // どの議事録の発言か (nullable)
+  speaker_id int [ref: > Speakers.id] // どの発言者の発言か (nullable)
+  speaker_name varchar // 元の発言者名（名前の完全一致ができない場合のための保管用）
   comment text [not null] // 発言内容
   sequence_number int [not null] // 議事録内の発言順序
+  chapter_number int // 分割した文字列を前から順に割り振った番号
+  sub_chapter_number int // 再分割した場合の文字列番号
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '発言'
-
-  indexes {
-    (minutes_id, sequence_number) [unique] // 同一議事録内での発言順序は一意
-  }
 }
 
 Table Proposals {
   id int [pk, increment]
   content text [not null] // 議案内容
   status varchar // 例: "審議中", "可決", "否決"
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '議案'
 }
 
@@ -96,7 +126,9 @@ Table ProposalJudges {
   proposal_id int [ref: > Proposals.id, not null] // どの議案に対する賛否か
   politician_id int [ref: > Politicians.id, not null] // どの政治家の賛否か
   politician_party_id int [ref: > PoliticalParties.id] // 票決時の所属政党
-  approve varchar // 例: "賛成", "反対", "棄権", "欠席" (または boolean型)
+  approve varchar // 例: "賛成", "反対", "棄権", "欠席"
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '議案への賛否情報 (誰が議案に賛成したか)'
 }
 
@@ -106,24 +138,28 @@ Table PoliticianAffiliations {
   conference_id int [ref: > Conferences.id, not null] // どの会議体（議会・委員会）に所属しているか
   start_date date [not null] // 所属開始日
   end_date date // 所属終了日 (現所属の場合はNULL)
-  // role varchar // 役職 (例: '議員', '議長') などを追加可能
+  role varchar(100) // 会議体での役職（議長、副議長、委員長、副委員長、理事、委員など）
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '議員の議会所属情報'
 }
 
 Table ExtractedConferenceMembers {
   id int [pk, increment]
   conference_id int [ref: > Conferences.id, not null] // どの会議体のメンバーか
-  extracted_name varchar [not null] // Webページから抽出された議員名
-  extracted_role varchar // 抽出された役職（議長、副議長、委員長など）
-  extracted_party_name varchar // 抽出された所属政党名
-  source_url varchar [not null] // 抽出元のURL
-  extracted_at timestamp [not null] // 抽出日時
+  extracted_name varchar(255) [not null] // Webページから抽出された議員名
+  extracted_role varchar(100) // 抽出された役職（議長、副議長、委員長など）
+  extracted_party_name varchar(255) // 抽出された所属政党名
+  source_url varchar(500) [not null] // 抽出元のURL
+  extracted_at timestamp [not null, default: `now()`] // 抽出日時
   // マッチング結果
   matched_politician_id int [ref: > Politicians.id] // マッチングされた政治家ID
-  matching_confidence decimal // マッチングの信頼度（0-1）
-  matching_status varchar // pending, matched, no_match, needs_review
+  matching_confidence decimal(3,2) // マッチングの信頼度（0.00 to 1.00）
+  matching_status varchar(50) [default: 'pending'] // pending, matched, no_match, needs_review
   matched_at timestamp // マッチング実行日時
   additional_info text // その他の抽出情報
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
   note: '議会メンバー情報の抽出結果を保存する中間テーブル'
 }
 
@@ -132,5 +168,7 @@ Table ProposalMeetingOccurrences {
   proposal_id int [ref: > Proposals.id, not null] // どの議案か
   meeting_id int [ref: > Meetings.id, not null] // どの会議で扱われたか
   occurrence_type varchar // 例: "提出", "審議", "委員会採決", "本会議採決"
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
   note: '議案と会議の紐付け情報（議案の会議経過）'
 }
