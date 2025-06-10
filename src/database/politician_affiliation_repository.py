@@ -164,6 +164,47 @@ class PoliticianAffiliationRepository:
 
         return affiliations
 
+    def get_active_affiliations_by_politician_and_conference(
+        self, politician_id: int, conference_id: int
+    ) -> list[dict]:
+        """政治家IDと会議体IDでアクティブな所属情報を取得"""
+        if not self.connection:
+            self.connection = self.engine.connect()
+
+        query = text("""
+            SELECT
+                pa.id,
+                pa.politician_id,
+                pa.conference_id,
+                pa.start_date,
+                pa.end_date,
+                pa.role
+            FROM politician_affiliations pa
+            WHERE pa.politician_id = :politician_id
+            AND pa.conference_id = :conference_id
+            AND pa.end_date IS NULL
+            ORDER BY pa.start_date DESC
+        """)
+
+        result = self.connection.execute(
+            query, {"politician_id": politician_id, "conference_id": conference_id}
+        )
+
+        affiliations = []
+        for row in result:
+            affiliations.append(
+                {
+                    "id": row.id,
+                    "politician_id": row.politician_id,
+                    "conference_id": row.conference_id,
+                    "start_date": row.start_date,
+                    "end_date": row.end_date,
+                    "role": row.role,
+                }
+            )
+
+        return affiliations
+
     def get_affiliations_by_politician(self, politician_id: int) -> list[dict]:
         """政治家IDで所属情報を取得"""
         if not self.connection:
