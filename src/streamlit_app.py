@@ -443,7 +443,9 @@ def manage_conferences():
     conf_repo = ConferenceRepository()
 
     # サブタブを作成
-    conf_tab1, conf_tab2, conf_tab3, conf_tab4 = st.tabs(["会議体一覧", "新規登録", "編集・削除", "議員紹介URL管理"])
+    conf_tab1, conf_tab2, conf_tab3, conf_tab4 = st.tabs(
+        ["会議体一覧", "新規登録", "編集・削除", "議員紹介URL管理"]
+    )
 
     with conf_tab1:
         # 会議体一覧
@@ -608,7 +610,7 @@ def manage_conferences():
                 with st.expander(f"📂 {gb_name}", expanded=True):
                     for conf in conf_list:
                         st.markdown(f"#### {conf['name']}")
-                        
+
                         with st.form(f"members_url_form_{conf['id']}"):
                             current_url = conf.get("members_introduction_url", "") or ""
                             new_url = st.text_input(
@@ -616,7 +618,7 @@ def manage_conferences():
                                 value=current_url,
                                 placeholder="https://example.com/members",
                                 help="この会議体に所属する議員が紹介されているWebページのURL",
-                                key=f"members_url_input_{conf['id']}"
+                                key=f"members_url_input_{conf['id']}",
                             )
 
                             submitted = st.form_submit_button("更新")
@@ -624,9 +626,13 @@ def manage_conferences():
                             if submitted:
                                 if conf_repo.update_conference_members_url(
                                     conference_id=conf["id"],
-                                    members_introduction_url=new_url if new_url else None
+                                    members_introduction_url=new_url
+                                    if new_url
+                                    else None,
                                 ):
-                                    st.success(f"{conf['name']}の議員紹介URLを更新しました")
+                                    st.success(
+                                        f"{conf['name']}の議員紹介URLを更新しました"
+                                    )
                                     st.rerun()
                                 else:
                                     st.error("URLの更新に失敗しました")
@@ -639,7 +645,7 @@ def manage_conferences():
                             )
                         else:
                             st.markdown("現在のURL: 未設定")
-                        
+
                         st.divider()
 
             # 一括確認セクション
@@ -650,7 +656,8 @@ def manage_conferences():
                         {
                             "開催主体": conf["governing_body_name"],
                             "会議体名": conf["name"],
-                            "議員紹介URL": conf.get("members_introduction_url") or "未設定",
+                            "議員紹介URL": conf.get("members_introduction_url")
+                            or "未設定",
                         }
                     )
 
@@ -668,13 +675,21 @@ def execute_processes():
     # 処理カテゴリ選択
     process_category = st.selectbox(
         "処理カテゴリを選択",
-        ["議事録処理", "政治家情報抽出", "スクレイピング", "その他"],
+        [
+            "議事録処理",
+            "政治家情報抽出",
+            "会議体メンバー管理",
+            "スクレイピング",
+            "その他",
+        ],
     )
 
     if process_category == "議事録処理":
         execute_minutes_processes()
     elif process_category == "政治家情報抽出":
         execute_politician_processes()
+    elif process_category == "会議体メンバー管理":
+        execute_conference_member_processes()
     elif process_category == "スクレイピング":
         execute_scraping_processes()
     else:
@@ -1104,7 +1119,10 @@ def execute_politician_processes():
 
             if st.button("政治家情報取得を実行", key="extract_politicians"):
                 # Playwrightの依存関係とブラウザをインストール
-                install_command = "uv run playwright install-deps && uv run playwright install chromium"
+                install_command = (
+                    "uv run playwright install-deps && "
+                    "uv run playwright install chromium"
+                )
 
                 # スクレイピングコマンドを構築
                 if selected_party == "すべての政党":
@@ -1183,8 +1201,12 @@ def execute_politician_processes():
             if st.button(
                 "発言者-政治家紐付けを実行", key="link_speakers_to_politicians"
             ):
-                # extract-speakers コマンドで --skip-extraction と --skip-conversation-link を指定
-                command = "uv run polibase extract-speakers --skip-extraction --skip-conversation-link"
+                # extract-speakers で --skip-extraction と
+                # --skip-conversation-link を指定
+                command = (
+                    "uv run polibase extract-speakers "
+                    "--skip-extraction --skip-conversation-link"
+                )
                 if use_llm_politician:
                     command += " --use-llm"
 
@@ -1214,6 +1236,359 @@ def execute_politician_processes():
                 with st.expander("実行ログ", expanded=False):
                     output = "\n".join(st.session_state.process_output[process_key])
                     st.code(output, language="text")
+
+
+def execute_conference_member_processes():
+    """会議体メンバー管理処理の実行"""
+    st.subheader("会議体メンバー管理")
+    st.markdown("会議体の議員メンバー情報を抽出・マッチング・管理します")
+
+    # 会議体選択
+    conf_repo = ConferenceRepository()
+
+    # members_introduction_urlが設定されている会議体のみ取得
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        conf_result = conn.execute(
+            text("""
+                SELECT c.id, c.name, c.members_introduction_url,
+                       gb.name as governing_body_name,
+                       COUNT(ecm.id) as extracted_count,
+                       COUNT(CASE WHEN ecm.matching_status = 'matched' THEN 1 END)
+                            as matched_count,
+                       COUNT(CASE WHEN ecm.matching_status = 'pending' THEN 1 END)
+                            as pending_count,
+                       COUNT(CASE WHEN ecm.matching_status = 'needs_review' THEN 1 END)
+                            as needs_review_count,
+                       COUNT(CASE WHEN ecm.matching_status = 'no_match' THEN 1 END)
+                            as no_match_count
+                FROM conferences c
+                JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                LEFT JOIN extracted_conference_members ecm
+                    ON c.id = ecm.conference_id
+                WHERE c.members_introduction_url IS NOT NULL
+                GROUP BY c.id, c.name, c.members_introduction_url,
+                         gb.name
+                ORDER BY gb.name, c.name
+            """)
+        )
+        conferences = conf_result.fetchall()
+
+    if not conferences:
+        st.warning("議員紹介URLが設定されている会議体がありません。")
+        st.info("会議体管理タブの「議員紹介URL管理」から設定してください。")
+        conf_repo.close()
+        return
+
+    # 会議体選択
+    conference_options = []
+    conf_map = {}
+    for conf in conferences:
+        status_str = f"（抽出: {conf.extracted_count}人"
+        if conf.matched_count > 0:
+            status_str += f", マッチ: {conf.matched_count}人"
+        if conf.pending_count > 0:
+            status_str += f", 未処理: {conf.pending_count}人"
+        status_str += "）"
+
+        display_name = f"{conf.governing_body_name} - {conf.name} {status_str}"
+        conference_options.append(display_name)
+        conf_map[display_name] = conf
+
+    selected_conf_display = st.selectbox(
+        "処理対象の会議体を選択",
+        conference_options,
+        help="議員紹介URLが設定されている会議体のみ表示されます",
+    )
+
+    selected_conf = conf_map[selected_conf_display]
+    conference_id = selected_conf.id
+
+    # 選択された会議体の情報を表示
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        st.info(
+            f"**会議体情報:**\n"
+            f"- 開催主体: {selected_conf.governing_body_name}\n"
+            f"- 会議体名: {selected_conf.name}\n"
+            f"- 議員紹介URL: {selected_conf.members_introduction_url}"
+        )
+
+    with col2:
+        # ステータスメトリクス
+        if selected_conf.extracted_count > 0:
+            st.metric("抽出済み", f"{selected_conf.extracted_count}人")
+            progress = selected_conf.matched_count / selected_conf.extracted_count
+            st.progress(progress, text=f"マッチ率: {progress * 100:.0f}%")
+
+    # 処理ボタン
+    st.markdown("### 処理実行")
+
+    # 3ステップを個別に実行
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("#### ステップ1: 議員抽出")
+        st.markdown("WebページからLLMで議員情報を抽出")
+
+        force_extract = st.checkbox(
+            "既存データを削除して再抽出",
+            value=False,
+            key="force_extract",
+            help="既に抽出済みのデータがある場合、削除してから再度抽出します",
+        )
+
+        if st.button("🔍 議員情報を抽出", key="extract_members", type="primary"):
+            command = (
+                f"uv run polibase extract-conference-members "
+                f"--conference-id {conference_id}"
+            )
+            if force_extract:
+                command += " --force"
+
+            with st.spinner("議員情報を抽出中..."):
+                run_command_with_progress(command, "extract_members")
+
+    with col2:
+        st.markdown("#### ステップ2: マッチング")
+        st.markdown("抽出データを既存政治家とLLMマッチング")
+
+        if selected_conf.pending_count == 0 and selected_conf.extracted_count > 0:
+            st.info("✅ 全員マッチング済み")
+        else:
+            if st.button("🔗 政治家とマッチング", key="match_members", type="primary"):
+                command = (
+                    f"uv run polibase match-conference-members "
+                    f"--conference-id {conference_id}"
+                )
+
+                with st.spinner("政治家とマッチング中..."):
+                    run_command_with_progress(command, "match_members")
+
+    with col3:
+        st.markdown("#### ステップ3: 所属作成")
+        st.markdown("マッチング結果から所属情報を作成")
+
+        # 開始日の選択
+        start_date = st.date_input(
+            "所属開始日",
+            value=date.today(),
+            key="affiliation_start_date",
+            help="政治家と会議体の所属関係の開始日",
+        )
+
+        if selected_conf.matched_count == 0:
+            st.warning("マッチング済みデータなし")
+        else:
+            if st.button(
+                f"📋 所属情報を作成 ({selected_conf.matched_count}人)",
+                key="create_affiliations",
+                type="primary",
+            ):
+                command = (
+                    f"uv run polibase create-affiliations "
+                    f"--conference-id {conference_id} "
+                    f"--start-date {start_date.strftime('%Y-%m-%d')}"
+                )
+
+                with st.spinner("所属情報を作成中..."):
+                    run_command_with_progress(command, "create_affiliations")
+
+    # 一括実行オプション
+    st.markdown("### 一括実行")
+    with st.expander("3ステップを一括実行", expanded=False):
+        st.warning("⚠️ この操作は既存データを上書きする可能性があります")
+
+        batch_force = st.checkbox("強制的に再抽出", value=False, key="batch_force")
+        batch_start_date = st.date_input(
+            "所属開始日", value=date.today(), key="batch_start_date"
+        )
+
+        if st.button("🚀 全ステップを一括実行", key="batch_execute", type="secondary"):
+            # 3つのコマンドを順番に実行
+            commands = [
+                (
+                    f"uv run polibase extract-conference-members "
+                    f"--conference-id {conference_id}"
+                    + (" --force" if batch_force else "")
+                ),
+                (
+                    f"uv run polibase match-conference-members "
+                    f"--conference-id {conference_id}"
+                ),
+                (
+                    f"uv run polibase create-affiliations "
+                    f"--conference-id {conference_id} "
+                    f"--start-date {batch_start_date.strftime('%Y-%m-%d')}"
+                ),
+            ]
+
+            full_command = " && ".join(commands)
+
+            with st.spinner("全ステップを実行中..."):
+                run_command_with_progress(full_command, "batch_conference_members")
+
+    # ステータス確認
+    st.markdown("### 処理状況確認")
+    if st.button("📊 最新の状況を確認", key="check_status"):
+        command = f"uv run polibase member-status --conference-id {conference_id}"
+
+        with st.spinner("状況を確認中..."):
+            run_command_with_progress(command, "member_status")
+
+    # 進捗表示（全プロセス）
+    process_keys = [
+        "extract_members",
+        "match_members",
+        "create_affiliations",
+        "batch_conference_members",
+        "member_status",
+    ]
+
+    for process_key in process_keys:
+        if process_key in st.session_state.process_status:
+            status = st.session_state.process_status[process_key]
+
+            # プロセス名の表示名を設定
+            display_names = {
+                "extract_members": "議員情報抽出",
+                "match_members": "政治家マッチング",
+                "create_affiliations": "所属情報作成",
+                "batch_conference_members": "一括処理",
+                "member_status": "状況確認",
+            }
+
+            process_display_name = display_names.get(process_key, process_key)
+
+            # ステータス表示
+            if status == "running":
+                st.info(f"🔄 {process_display_name}を実行中...")
+            elif status == "completed":
+                st.success(f"✅ {process_display_name}が完了しました")
+
+                # 処理結果のサマリーを表示（出力から抽出）
+                if process_key in st.session_state.process_output:
+                    output_lines = st.session_state.process_output[process_key]
+
+                    # 結果サマリーを抽出
+                    if process_key == "extract_members":
+                        for line in output_lines:
+                            if "抽出総数:" in line or "保存総数:" in line:
+                                st.info(line.strip())
+                    elif process_key == "match_members":
+                        for line in output_lines:
+                            if "処理総数:" in line or "マッチ成功:" in line:
+                                st.info(line.strip())
+                    elif process_key == "create_affiliations":
+                        for line in output_lines:
+                            if "処理総数:" in line or "作成/更新:" in line:
+                                st.info(line.strip())
+
+            elif status == "failed":
+                st.error(f"❌ {process_display_name}が失敗しました")
+            elif status == "error":
+                st.error(f"❌ {process_display_name}でエラーが発生しました")
+
+            # 出力表示
+            if process_key in st.session_state.process_output:
+                with st.expander(f"{process_display_name}の実行ログ", expanded=False):
+                    output = "\n".join(st.session_state.process_output[process_key])
+                    st.code(output, language="text")
+
+    # 抽出済みデータの詳細表示
+    with st.expander("抽出済みメンバー詳細", expanded=False):
+        # 抽出済みメンバーを取得
+        with engine.connect() as conn:
+            members_result = conn.execute(
+                text("""
+                    SELECT ecm.*, p.name as politician_name
+                    FROM extracted_conference_members ecm
+                    LEFT JOIN politicians p ON ecm.matched_politician_id = p.id
+                    WHERE ecm.conference_id = :conference_id
+                    ORDER BY
+                        CASE ecm.matching_status
+                            WHEN 'matched' THEN 1
+                            WHEN 'needs_review' THEN 2
+                            WHEN 'pending' THEN 3
+                            WHEN 'no_match' THEN 4
+                        END,
+                        ecm.extracted_name
+                """),
+                {"conference_id": conference_id},
+            )
+
+            members = members_result.fetchall()
+
+            if members:
+                # ステータス別にグループ化して表示
+                status_groups = {
+                    "matched": [],
+                    "needs_review": [],
+                    "pending": [],
+                    "no_match": [],
+                }
+
+                for member in members:
+                    status_groups[member.matching_status].append(member)
+
+                # マッチ済み
+                if status_groups["matched"]:
+                    st.markdown("#### ✅ マッチ済み")
+                    for member in status_groups["matched"]:
+                        confidence_text = (
+                            f"（信頼度: {member.matching_confidence:.0%}）"
+                            if member.matching_confidence
+                            else ""
+                        )
+                        role = member.extracted_role or "委員"
+                        st.success(
+                            f"{member.extracted_name} ({role}) "
+                            f"→ {member.politician_name} {confidence_text}"
+                        )
+
+                # 要確認
+                if status_groups["needs_review"]:
+                    st.markdown("#### ⚠️ 要確認")
+                    for member in status_groups["needs_review"]:
+                        confidence_text = (
+                            f"（信頼度: {member.matching_confidence:.0%}）"
+                            if member.matching_confidence
+                            else ""
+                        )
+                        role = member.extracted_role or "委員"
+                        st.warning(
+                            f"{member.extracted_name} ({role}) "
+                            f"→ {member.politician_name} {confidence_text}"
+                        )
+
+                # 未処理
+                if status_groups["pending"]:
+                    st.markdown("#### 📋 未処理")
+                    for member in status_groups["pending"]:
+                        party_text = (
+                            f"（{member.extracted_party_name}）"
+                            if member.extracted_party_name
+                            else ""
+                        )
+                        role = member.extracted_role or "委員"
+                        st.info(f"{member.extracted_name} ({role}) {party_text}")
+
+                # 該当なし
+                if status_groups["no_match"]:
+                    st.markdown("#### ❌ 該当なし")
+                    for member in status_groups["no_match"]:
+                        party_text = (
+                            f"（{member.extracted_party_name}）"
+                            if member.extracted_party_name
+                            else ""
+                        )
+                        role = member.extracted_role or "委員"
+                        st.error(f"{member.extracted_name} ({role}) {party_text}")
+            else:
+                st.info("抽出されたメンバーはありません")
+
+    conf_repo.close()
 
 
 def execute_scraping_processes():

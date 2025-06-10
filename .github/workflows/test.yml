@@ -66,23 +66,37 @@ jobs:
             fi
           done
 
-      - name: Run tests
+      - name: Run tests with coverage
         env:
           CI: true
         run: |
-          uv run pytest tests/ -v --tb=short
+          uv run pytest tests/ -v --tb=short --cov=src --cov-report=html --cov-report=term --cov-report=xml
 
-      - name: Run specific Streamlit tests
-        env:
-          CI: true
-        run: |
-          uv run pytest tests/test_streamlit_app.py tests/test_meeting_repository.py -v
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
 
-      - name: Check code style (optional)
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Check code formatting
         run: |
-          # Add linting commands here if needed
-          # uv run ruff check src/
-          echo "Code style check placeholder"
+          uv run ruff format --check src/ tests/
+
+      - name: Check code style
+        run: |
+          uv run ruff check src/ tests/
+
+      - name: Run type checking
+        run: |
+          uv run pyright src/ || true  # Allow failures for now
 
   integration-test:
     runs-on: ubuntu-latest
