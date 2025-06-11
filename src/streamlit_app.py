@@ -162,48 +162,52 @@ def add_new_meeting():
 
     repo = MeetingRepository()
 
-    with st.form("new_meeting_form"):
-        selected_conf = None
+    # 開催主体選択（フォームの外）
+    governing_bodies = repo.get_governing_bodies()
+    if not governing_bodies:
+        st.error("開催主体が登録されていません。先にマスターデータを登録してください。")
+        repo.close()
+        return
 
-        # 開催主体を選択
-        governing_bodies = repo.get_governing_bodies()
-        if not governing_bodies:
-            st.error(
-                "開催主体が登録されていません。先にマスターデータを登録してください。"
-            )
+    gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
+    gb_selected = st.selectbox("開催主体を選択", gb_options, key="new_meeting_gb")
+
+    # 選択されたgoverning_bodyを取得
+    selected_gb = None
+    for gb in governing_bodies:
+        if f"{gb['name']} ({gb['type']})" == gb_selected:
+            selected_gb = gb
+            break
+
+    # 会議体選択（選択された開催主体に紐づくもののみ表示）
+    conferences = []
+    if selected_gb:
+        conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
+        if not conferences:
+            st.error("選択された開催主体に会議体が登録されていません")
             repo.close()
             return
 
-        gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
-        gb_selected = st.selectbox("開催主体を選択", gb_options)
+    conf_options = []
+    for conf in conferences:
+        conf_display = f"{conf['name']}"
+        if conf.get("type"):
+            conf_display += f" ({conf['type']})"
+        conf_options.append(conf_display)
 
-        # 選択されたgoverning_bodyを取得
-        selected_gb = None
-        for gb in governing_bodies:
-            if f"{gb['name']} ({gb['type']})" == gb_selected:
-                selected_gb = gb
-                break
+    conf_selected = st.selectbox("会議体を選択", conf_options, key="new_meeting_conf")
 
-        # 会議体選択（選択された開催主体に紐づくもののみ表示）
-        if selected_gb:
-            conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
-            if conferences:
-                conf_options = []
-                for conf in conferences:
-                    conf_display = f"{conf['name']}"
-                    if conf.get("type"):
-                        conf_display += f" ({conf['type']})"
-                    conf_options.append(conf_display)
+    # 選択されたconferenceを取得
+    selected_conf = None
+    for i, conf in enumerate(conferences):
+        if conf_options[i] == conf_selected:
+            selected_conf = conf
+            break
 
-                conf_selected = st.selectbox("会議体を選択", conf_options)
-
-                # 選択されたconferenceを取得
-                for i, conf in enumerate(conferences):
-                    if conf_options[i] == conf_selected:
-                        selected_conf = conf
-                        break
-            else:
-                st.error("選択された開催主体に会議体が登録されていません")
+    # フォーム部分
+    with st.form("new_meeting_form"):
+        # 選択された内容を表示（読み取り専用）
+        st.info(f"開催主体: {gb_selected} / 会議体: {conf_selected}")
 
         # 日付入力
         meeting_date = st.date_input("開催日", value=date.today())
