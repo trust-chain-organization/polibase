@@ -25,25 +25,62 @@ class DatabaseCommands(BaseCommand):
     @click.command()
     @click.argument("action", type=click.Choice(["backup", "restore", "list"]))
     @click.argument("filename", required=False)
+    @click.option("--gcs/--no-gcs", default=True, help="GCSを使用する/しない")
     @with_error_handling
-    def database(action, filename):
+    def database(action, filename, gcs):
         """Database management commands (データベース管理)
 
         Actions:
-        - backup: Create a new backup
-        - restore: Restore from a backup file
-        - list: List available backups
+        - backup: Create a new backup (local and optionally GCS)
+        - restore: Restore from a backup file (local or GCS)
+        - list: List available backups (local and GCS)
+
+        Examples:
+        - polibase database backup                     # Backup to local and GCS
+        - polibase database backup --no-gcs            # Backup to local only
+        - polibase database restore backup.sql         # Restore from local file
+        - polibase database restore gs://bucket/x.sql  # Restore from GCS
+        - polibase database list                       # List all backups
         """
+        import sys
+        from pathlib import Path
+
+        # Use new GCS-enabled backup script
+        script_path = (
+            Path(__file__).parent.parent.parent.parent
+            / "scripts"
+            / "backup-database-gcs.py"
+        )
+
         if action == "backup":
             DatabaseCommands.show_progress("Creating database backup...")
-            subprocess.run(["./backup-database.sh", "backup"])
+            args = [sys.executable, str(script_path), "backup"]
+            if not gcs:
+                args.append("--no-gcs")
+            result = subprocess.run(args)
+            if result.returncode == 0:
+                DatabaseCommands.success("Backup completed successfully!")
+            else:
+                DatabaseCommands.error("Backup failed")
+
         elif action == "restore":
             if not filename:
                 DatabaseCommands.error("Error: filename required for restore")
+                return
             DatabaseCommands.show_progress(f"Restoring from backup: {filename}")
-            subprocess.run(["./backup-database.sh", "restore", filename])
+            result = subprocess.run(
+                [sys.executable, str(script_path), "restore", filename]
+            )
+            if result.returncode == 0:
+                DatabaseCommands.success("Restore completed successfully!")
+            else:
+                DatabaseCommands.error("Restore failed")
+
         elif action == "list":
-            subprocess.run(["./backup-database.sh", "list"])
+            args = [sys.executable, str(script_path), "list"]
+            if not gcs:
+                args.append("--no-gcs")
+            subprocess.run(args)
 
     @staticmethod
     @click.command()

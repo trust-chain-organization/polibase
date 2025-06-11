@@ -170,7 +170,15 @@ docker compose exec polibase uv run pre-commit autoupdate
 # Access PostgreSQL
 docker compose exec postgres psql -U polibase_user -d polibase_db
 
-# Backup/Restore
+# Backup/Restore (with GCS support)
+docker compose exec polibase uv run polibase database backup               # Backup to local and GCS
+docker compose exec polibase uv run polibase database backup --no-gcs      # Backup to local only
+docker compose exec polibase uv run polibase database restore backup.sql   # Restore from local
+docker compose exec polibase uv run polibase database restore gs://bucket/backup.sql  # Restore from GCS
+docker compose exec polibase uv run polibase database list                 # List all backups
+docker compose exec polibase uv run polibase database list --no-gcs        # List local backups only
+
+# Legacy backup scripts (local only)
 ./backup-database.sh backup
 ./backup-database.sh restore database/backups/[filename]
 
