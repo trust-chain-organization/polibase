@@ -94,6 +94,53 @@ class TestConferenceMemberExtractor:
                 # Assert
                 assert len(result) == 0
 
+    def test_extract_members_with_multiple_conferences(
+        self, extractor, mock_llm_service
+    ):
+        """Test extraction when HTML contains multiple conferences"""
+        # Mock HTML content with multiple committees
+        html_content = """
+        <html>
+            <body>
+                <h2>総務消防委員会</h2>
+                <ul>
+                    <li>山田太郎（委員長）- 自民党</li>
+                    <li>田中花子（副委員長）- 立憲民主党</li>
+                </ul>
+
+                <h2>環境福祉委員会</h2>
+                <ul>
+                    <li>佐藤次郎（委員長）- 公明党</li>
+                    <li>鈴木三郎（副委員長）- 共産党</li>
+                </ul>
+
+                <h2>まちづくり委員会</h2>
+                <ul>
+                    <li>高橋四郎（委員長）- 維新の会</li>
+                    <li>渡辺五郎（副委員長）- 無所属</li>
+                </ul>
+            </body>
+        </html>
+        """
+
+        # Mock LLM response - should only return members from 環境福祉委員会
+        members = [
+            ExtractedMember(name="佐藤次郎", role="委員長", party_name="公明党"),
+            ExtractedMember(name="鈴木三郎", role="副委員長", party_name="共産党"),
+        ]
+
+        # Directly mock the method
+        with patch.object(extractor, "extract_members_with_llm", return_value=members):
+            # Execute - request specifically for 環境福祉委員会
+            result = extractor.extract_members_with_llm(html_content, "環境福祉委員会")
+
+            # Assert - should only get members from the requested committee
+            assert len(result) == 2
+            assert result[0].name == "佐藤次郎"
+            assert result[0].role == "委員長"
+            assert result[1].name == "鈴木三郎"
+            assert result[1].role == "副委員長"
+
     def test_extract_members_with_llm_error(self, extractor, mock_llm_service):
         """Test extraction error handling"""
         # Directly mock the method to simulate error behavior
