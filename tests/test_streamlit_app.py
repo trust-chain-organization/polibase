@@ -111,7 +111,6 @@ class TestStreamlitAppComponents:
         mock_repo.get_governing_bodies.return_value = []
 
         # Mock streamlit
-        mock_st.radio.return_value = "開催主体から選択"
         mock_form = MagicMock()
         mock_st.form.return_value.__enter__ = MagicMock(return_value=mock_form)
         mock_st.form.return_value.__exit__ = MagicMock(return_value=None)
@@ -140,21 +139,24 @@ class TestStreamlitAppComponents:
                     mock_repo.get_conferences_by_governing_body.return_value = [
                         {"id": 1, "name": "本会議", "type": "議院"}
                     ]
-                    mock_repo.get_all_conferences.return_value = []
+                    mock_repo.get_all_conferences.return_value = [
+                        {
+                            "id": 1,
+                            "name": "本会議",
+                            "type": "議院",
+                            "governing_body_name": "日本国",
+                        }
+                    ]
 
                     # Mock pandas DataFrame for expander
                     mock_df = MagicMock()
                     mock_df.__getitem__ = MagicMock(side_effect=lambda key: mock_df)
-                    mock_df.columns = [
-                        "開催主体",
-                        "開催主体種別",
-                        "会議体名",
-                        "会議体種別",
-                    ]
+                    mock_df.unique.return_value = ["日本国"]
+                    mock_df.copy.return_value = mock_df
+                    mock_df.columns = ["会議体名", "会議体種別"]
                     mock_pd.DataFrame.return_value = mock_df
 
                     # Mock streamlit components
-                    mock_st.radio.return_value = "開催主体から選択"
                     mock_st.selectbox.side_effect = ["日本国 (国)", "本会議"]
                     mock_st.form_submit_button.return_value = False  # No submission
 
@@ -171,7 +173,6 @@ class TestStreamlitAppComponents:
 
                     # Verify form components were created
                     mock_st.form.assert_called_once_with("new_meeting_form")
-                    mock_st.radio.assert_called_once()
                     assert (
                         mock_st.selectbox.call_count >= 2
                     )  # At least governing body and conference
@@ -189,8 +190,9 @@ class TestStreamlitAppComponents:
                     mock_repo_class.return_value = mock_repo
                     mock_repo.get_governing_bodies.return_value = []
 
-                    # Mock streamlit
-                    mock_st.radio.return_value = "開催主体から選択"
+                    # Mock streamlit form
+                    mock_st.form.return_value.__enter__ = MagicMock()
+                    mock_st.form.return_value.__exit__ = MagicMock()
 
                     # Import and call function
                     from src.streamlit_app import add_new_meeting
