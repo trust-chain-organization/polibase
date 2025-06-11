@@ -435,18 +435,47 @@ docker compose up -d
 
 ### データのバックアップ・リストア
 
+Polibaseは、ローカルとGoogle Cloud Storage（GCS）の両方にデータベースバックアップを保存できます。
+
+**GCS連携の設定（オプション）**:
+- GCSを使用する場合は、事前に以下の設定が必要です：
+  1. `gcloud auth application-default login`で認証
+  2. `.env`ファイルで`GCS_BUCKET_NAME`と`GCS_UPLOAD_ENABLED=true`を設定
+- GCSが設定されていない場合は、自動的にローカルのみのバックアップになります
+
 #### バックアップ作成
 ```bash
-# データベース全体をバックアップ
-./backup-database.sh backup
+# ローカルとGCSの両方にバックアップ（デフォルト）
+docker compose exec polibase uv run polibase database backup
 
-# バックアップファイル一覧を確認
+# ローカルのみにバックアップ
+docker compose exec polibase uv run polibase database backup --no-gcs
+
+# 従来のスクリプトを使用（ローカルのみ）
+./backup-database.sh backup
+```
+
+#### バックアップ一覧の確認
+```bash
+# ローカルとGCSのバックアップを表示
+docker compose exec polibase uv run polibase database list
+
+# ローカルのバックアップのみ表示
+docker compose exec polibase uv run polibase database list --no-gcs
+
+# 従来のスクリプトを使用
 ./backup-database.sh list
 ```
 
 #### リストア実行
 ```bash
-# バックアップからリストア
+# ローカルファイルからリストア
+docker compose exec polibase uv run polibase database restore database/backups/polibase_backup_20241230_123456.sql
+
+# GCSからリストア
+docker compose exec polibase uv run polibase database restore gs://polibase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
+
+# 従来のスクリプトを使用（ローカルのみ）
 ./backup-database.sh restore database/backups/polibase_backup_20240529_123456.sql
 ```
 
