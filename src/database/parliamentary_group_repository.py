@@ -52,6 +52,7 @@ class ParliamentaryGroupRepository(BaseRepository):
             },
         )
         row = result.fetchone()
+        self.commit()  # トランザクションをコミット
         return self._row_to_dict(row, result.keys())
 
     def get_parliamentary_group_by_id(self, group_id: int) -> dict | None:
@@ -172,11 +173,18 @@ class ParliamentaryGroupRepository(BaseRepository):
         WHERE id = :group_id
         """
         self.execute_query(query, params)
+        self.commit()
         return True
 
 
 class ParliamentaryGroupMembershipRepository(BaseRepository):
     """議員団所属履歴のリポジトリ"""
+
+    def _row_to_dict(self, row, columns) -> dict:
+        """Rowオブジェクトを辞書に変換する"""
+        if row is None:
+            return {}
+        return dict(zip(columns, row, strict=False))
 
     def add_membership(
         self,
@@ -216,6 +224,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
             },
         )
         row = result.fetchone()
+        self.commit()
         return self._row_to_dict(row, result.keys())
 
     def get_current_members(self, parliamentary_group_id: int) -> list[dict]:
@@ -321,6 +330,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
                 "end_date": end_date,
             },
         )
+        self.commit()
         return True
 
     def get_group_members_at_date(
