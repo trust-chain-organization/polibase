@@ -10,6 +10,10 @@ from sqlalchemy import text
 from src.config.database import get_db_engine
 from src.database.conference_repository import ConferenceRepository
 from src.database.meeting_repository import MeetingRepository
+from src.database.parliamentary_group_repository import (
+    ParliamentaryGroupMembershipRepository,
+    ParliamentaryGroupRepository,
+)
 
 # ページ設定
 st.set_page_config(page_title="Polibase - 会議管理", page_icon="🏛️", layout="wide")
@@ -34,8 +38,16 @@ def main():
     st.markdown("議事録の会議情報（URL、日付）を管理します")
 
     # タブ作成
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
-        ["会議一覧", "新規会議登録", "会議編集", "政党管理", "会議体管理", "処理実行"]
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+        [
+            "会議一覧",
+            "新規会議登録",
+            "会議編集",
+            "政党管理",
+            "会議体管理",
+            "議員団管理",
+            "処理実行",
+        ]
     )
 
     with tab1:
@@ -54,6 +66,9 @@ def main():
         manage_conferences()
 
     with tab6:
+        manage_parliamentary_groups()
+
+    with tab7:
         execute_processes()
 
 
@@ -1864,6 +1879,239 @@ def execute_other_processes():
             st.rerun()
     else:
         st.info("実行中の処理はありません")
+
+
+def manage_parliamentary_groups():
+    """議員団管理（CRUD）"""
+    st.header("議員団管理")
+    st.markdown("議員団（会派）の情報を管理します")
+
+    # サブタブの作成
+    group_tab1, group_tab2, group_tab3 = st.tabs(
+        ["議員団一覧", "新規登録", "編集・削除"]
+    )
+
+    pg_repo = ParliamentaryGroupRepository()
+    conf_repo = ConferenceRepository()
+
+    with group_tab1:
+        # 議員団一覧
+        st.subheader("議員団一覧")
+
+        # 会議体でフィルタリング
+        conferences = conf_repo.get_all_conferences()
+        conf_options = ["すべて"] + [
+            f"{c['governing_body_name']} - {c['name']}" for c in conferences
+        ]
+        conf_map = {
+            f"{c['governing_body_name']} - {c['name']}": c["id"] for c in conferences
+        }
+
+        selected_conf_filter = st.selectbox(
+            "会議体でフィルタ", conf_options, key="conf_filter"
+        )
+
+        # 議員団取得
+        if selected_conf_filter == "すべて":
+            groups = pg_repo.search_parliamentary_groups()
+        else:
+            conf_id = conf_map[selected_conf_filter]
+            groups = pg_repo.get_parliamentary_groups_by_conference(
+                conf_id, active_only=False
+            )
+
+        if groups:
+            # データフレームで表示
+            df_data = []
+            for group in groups:
+                # 会議体名を取得
+                conf = next(
+                    (c for c in conferences if c["id"] == group["conference_id"]), None
+                )
+                conf_name = (
+                    f"{conf['governing_body_name']} - {conf['name']}"
+                    if conf
+                    else "不明"
+                )
+
+                df_data.append(
+                    {
+                        "ID": group["id"],
+                        "議員団名": group["name"],
+                        "会議体": conf_name,
+                        "URL": group.get("url", "") or "未設定",
+                        "説明": group.get("description", "") or "",
+                        "状態": "活動中" if group.get("is_active", True) else "非活動",
+                        "作成日": group["created_at"],
+                    }
+                )
+
+            df = pd.DataFrame(df_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # メンバー数の表示
+            st.markdown("### メンバー数")
+            pgm_repo = ParliamentaryGroupMembershipRepository()
+            member_counts = []
+            for group in groups:
+                current_members = pgm_repo.get_current_members(group["id"])
+                member_counts.append(
+                    {
+                        "議員団名": group["name"],
+                        "現在のメンバー数": len(current_members),
+                    }
+                )
+
+            member_df = pd.DataFrame(member_counts)
+            st.dataframe(member_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("議員団が登録されていません")
+
+    with group_tab2:
+        # 新規登録
+        st.subheader("議員団の新規登録")
+
+        with st.form("new_parliamentary_group_form"):
+            # 会議体選択
+            conferences = conf_repo.get_all_conferences()
+            if not conferences:
+                st.error("会議体が登録されていません。先に会議体を登録してください。")
+                st.stop()
+
+            conf_options = [
+                f"{c['governing_body_name']} - {c['name']}" for c in conferences
+            ]
+            conf_map = {
+                f"{c['governing_body_name']} - {c['name']}": c["id"]
+                for c in conferences
+            }
+
+            selected_conf = st.selectbox("所属会議体", conf_options)
+            conf_id = conf_map[selected_conf]
+
+            # 議員団情報入力
+            group_name = st.text_input("議員団名", placeholder="例: 自民党市議団")
+            group_url = st.text_input(
+                "議員団URL（任意）",
+                placeholder="https://example.com/parliamentary-group",
+                help="議員団の公式ページやプロフィールページのURL",
+            )
+            group_description = st.text_area(
+                "説明（任意）", placeholder="議員団の説明や特徴を入力"
+            )
+            is_active = st.checkbox("活動中", value=True)
+
+            submitted = st.form_submit_button("登録")
+
+            if submitted:
+                if not group_name:
+                    st.error("議員団名を入力してください")
+                else:
+                    result = pg_repo.create_parliamentary_group(
+                        name=group_name,
+                        conference_id=conf_id,
+                        url=group_url if group_url else None,
+                        description=group_description if group_description else None,
+                        is_active=is_active,
+                    )
+                    if result:
+                        st.success(f"議員団を登録しました (ID: {result['id']})")
+                        st.rerun()
+                    else:
+                        st.error(
+                            "議員団の登録に失敗しました"
+                            "（同じ名前の議員団が既に存在する可能性があります）"
+                        )
+
+    with group_tab3:
+        # 編集・削除
+        st.subheader("議員団の編集・削除")
+
+        groups = pg_repo.search_parliamentary_groups()
+        if not groups:
+            st.info("編集する議員団がありません")
+        else:
+            # 議員団選択
+            conferences = conf_repo.get_all_conferences()
+            group_options = []
+            group_map = {}
+            for group in groups:
+                conf = next(
+                    (c for c in conferences if c["id"] == group["conference_id"]), None
+                )
+                conf_name = conf["name"] if conf else "不明"
+                display_name = f"{group['name']} ({conf_name})"
+                group_options.append(display_name)
+                group_map[display_name] = group
+
+            selected_group_display = st.selectbox("編集する議員団を選択", group_options)
+            selected_group = group_map[selected_group_display]
+
+            # 編集フォーム
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("#### 編集")
+                with st.form("edit_parliamentary_group_form"):
+                    new_name = st.text_input("議員団名", value=selected_group["name"])
+                    new_url = st.text_input(
+                        "議員団URL", value=selected_group.get("url", "") or ""
+                    )
+                    new_description = st.text_area(
+                        "説明", value=selected_group.get("description", "") or ""
+                    )
+                    new_is_active = st.checkbox(
+                        "活動中", value=selected_group.get("is_active", True)
+                    )
+
+                    submitted = st.form_submit_button("更新")
+
+                    if submitted:
+                        if not new_name:
+                            st.error("議員団名を入力してください")
+                        else:
+                            if pg_repo.update_parliamentary_group(
+                                group_id=selected_group["id"],
+                                name=new_name,
+                                url=new_url if new_url else None,
+                                description=new_description
+                                if new_description
+                                else None,
+                                is_active=new_is_active,
+                            ):
+                                st.success("議員団を更新しました")
+                                st.rerun()
+                            else:
+                                st.error("議員団の更新に失敗しました")
+
+            with col2:
+                st.markdown("#### メンバー情報")
+                pgm_repo = ParliamentaryGroupMembershipRepository()
+                current_members = pgm_repo.get_current_members(selected_group["id"])
+
+                if current_members:
+                    st.write(f"現在のメンバー数: {len(current_members)}名")
+                    member_names = [m["politician_name"] for m in current_members]
+                    st.write("メンバー: " + ", ".join(member_names[:5]))
+                    if len(member_names) > 5:
+                        st.write(f"... 他 {len(member_names) - 5}名")
+                else:
+                    st.write("メンバーなし")
+
+                st.markdown("#### 削除")
+                st.warning("⚠️ 議員団を削除すると、所属履歴も削除されます")
+
+                # 削除は活動中でない議員団のみ可能
+                if selected_group.get("is_active", True):
+                    st.info(
+                        "活動中の議員団は削除できません。先に非活動にしてください。"
+                    )
+                elif current_members:
+                    st.info("メンバーがいる議員団は削除できません。")
+                else:
+                    if st.button("🗑️ この議員団を削除", type="secondary"):
+                        # Note: 削除機能は未実装のため、将来的に実装予定
+                        st.error("削除機能は現在実装されていません")
 
 
 if __name__ == "__main__":
