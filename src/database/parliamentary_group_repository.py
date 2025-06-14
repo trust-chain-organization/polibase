@@ -45,7 +45,8 @@ class ParliamentaryGroupRepository(BaseRepository):
                 "is_active": is_active,
             },
         )
-        return dict(result[0]) if result else {}
+        row = result.fetchone()
+        return dict(row) if row else {}
 
     def get_parliamentary_group_by_id(self, group_id: int) -> dict | None:
         """IDで議員団を取得する
@@ -63,7 +64,8 @@ class ParliamentaryGroupRepository(BaseRepository):
         WHERE pg.id = :group_id
         """
         result = self.execute_query(query, {"group_id": group_id})
-        return dict(result[0]) if result else None
+        row = result.fetchone()
+        return dict(row) if row else None
 
     def get_parliamentary_groups_by_conference(
         self, conference_id: int, active_only: bool = True
@@ -86,7 +88,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         query += " ORDER BY name"
 
         result = self.execute_query(query, {"conference_id": conference_id})
-        return [dict(row) for row in result]
+        return [dict(row) for row in result.fetchall()]
 
     def search_parliamentary_groups(
         self, name: str | None = None, conference_id: int | None = None
@@ -114,7 +116,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         query += " ORDER BY name"
 
         result = self.execute_query(query, params)
-        return [dict(row) for row in result]
+        return [dict(row) for row in result.fetchall()]
 
     def update_parliamentary_group(
         self,
@@ -207,7 +209,8 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
                 "role": role,
             },
         )
-        return dict(result[0]) if result else {}
+        row = result.fetchone()
+        return dict(row) if row else {}
 
     def get_current_members(self, parliamentary_group_id: int) -> list[dict]:
         """議員団の現在のメンバーを取得する
@@ -228,7 +231,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         ORDER BY pgm.start_date DESC, p.name
         """
         result = self.execute_query(query, {"group_id": parliamentary_group_id})
-        return [dict(row) for row in result]
+        return [dict(row) for row in result.fetchall()]
 
     def get_member_history(
         self, parliamentary_group_id: int, include_past: bool = True
@@ -255,7 +258,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         query += " ORDER BY pgm.start_date DESC, pgm.end_date DESC NULLS FIRST, p.name"
 
         result = self.execute_query(query, {"group_id": parliamentary_group_id})
-        return [dict(row) for row in result]
+        return [dict(row) for row in result.fetchall()]
 
     def get_politician_groups(
         self, politician_id: int, current_only: bool = True
@@ -282,7 +285,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         query += " ORDER BY pgm.start_date DESC"
 
         result = self.execute_query(query, {"politician_id": politician_id})
-        return [dict(row) for row in result]
+        return [dict(row) for row in result.fetchall()]
 
     def end_membership(
         self, politician_id: int, parliamentary_group_id: int, end_date: date
@@ -339,4 +342,4 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         result = self.execute_query(
             query, {"group_id": parliamentary_group_id, "target_date": target_date}
         )
-        return [dict(row) for row in result]
+        return [dict(row) for row in result.fetchall()]
