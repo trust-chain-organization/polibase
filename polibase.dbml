@@ -178,6 +178,7 @@ Table ParliamentaryGroups {
   id int [pk, increment]
   name varchar(255) [not null] // 議員団名
   conference_id int [ref: > Conferences.id, not null] // 所属する会議体ID
+  url varchar(500) // 議員団の公式URL
   description text // 議員団の説明
   is_active boolean [default: true] // 現在活動中かどうか
   created_at timestamp [default: `now()`]

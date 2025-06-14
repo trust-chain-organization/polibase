@@ -3,6 +3,7 @@ CREATE TABLE parliamentary_groups (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     conference_id INT NOT NULL REFERENCES conferences(id),
+    url VARCHAR(500),
     description TEXT,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -61,6 +62,7 @@ CREATE TRIGGER update_parliamentary_group_memberships_updated_at BEFORE UPDATE
 COMMENT ON TABLE parliamentary_groups IS '議員団（会派）';
 COMMENT ON COLUMN parliamentary_groups.name IS '議員団名';
 COMMENT ON COLUMN parliamentary_groups.conference_id IS '所属する会議体ID';
+COMMENT ON COLUMN parliamentary_groups.url IS '議員団の公式URL';
 COMMENT ON COLUMN parliamentary_groups.description IS '議員団の説明';
 COMMENT ON COLUMN parliamentary_groups.is_active IS '現在活動中かどうか';
 

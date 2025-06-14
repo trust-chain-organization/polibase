@@ -12,6 +12,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         self,
         name: str,
         conference_id: int,
+        url: str | None = None,
         description: str | None = None,
         is_active: bool = True,
     ) -> dict:
@@ -20,6 +21,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         Args:
             name: 議員団名
             conference_id: 所属する会議体ID
+            url: 議員団の公式URL
             description: 議員団の説明
             is_active: 現在活動中かどうか
 
@@ -27,9 +29,10 @@ class ParliamentaryGroupRepository(BaseRepository):
             作成された議員団の情報
         """
         query = """
-        INSERT INTO parliamentary_groups (name, conference_id, description, is_active)
-        VALUES (:name, :conference_id, :description, :is_active)
-        RETURNING id, name, conference_id, description, is_active, created_at,
+        INSERT INTO parliamentary_groups
+            (name, conference_id, url, description, is_active)
+        VALUES (:name, :conference_id, :url, :description, :is_active)
+        RETURNING id, name, conference_id, url, description, is_active, created_at,
                   updated_at
         """
         result = self.execute_query(
@@ -37,6 +40,7 @@ class ParliamentaryGroupRepository(BaseRepository):
             {
                 "name": name,
                 "conference_id": conference_id,
+                "url": url,
                 "description": description,
                 "is_active": is_active,
             },
@@ -116,6 +120,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         self,
         group_id: int,
         name: str | None = None,
+        url: str | None = None,
         description: str | None = None,
         is_active: bool | None = None,
     ) -> bool:
@@ -124,6 +129,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         Args:
             group_id: 議員団ID
             name: 議員団名
+            url: 議員団の公式URL
             description: 議員団の説明
             is_active: 現在活動中かどうか
 
@@ -136,6 +142,10 @@ class ParliamentaryGroupRepository(BaseRepository):
         if name is not None:
             updates.append("name = :name")
             params["name"] = name
+
+        if url is not None:
+            updates.append("url = :url")
+            params["url"] = url
 
         if description is not None:
             updates.append("description = :description")
