@@ -126,6 +126,7 @@ Table ProposalJudges {
   proposal_id int [ref: > Proposals.id, not null] // どの議案に対する賛否か
   politician_id int [ref: > Politicians.id, not null] // どの政治家の賛否か
   politician_party_id int [ref: > PoliticalParties.id] // 票決時の所属政党
+  parliamentary_group_id int [ref: > ParliamentaryGroups.id] // 賛否投票時の所属議員団
   approve varchar // 例: "賛成", "反対", "棄権", "欠席"
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
@@ -171,4 +172,28 @@ Table ProposalMeetingOccurrences {
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   note: '議案と会議の紐付け情報（議案の会議経過）'
+}
+
+Table ParliamentaryGroups {
+  id int [pk, increment]
+  name varchar(255) [not null] // 議員団名
+  conference_id int [ref: > Conferences.id, not null] // 所属する会議体ID
+  url varchar(500) // 議員団の公式URL
+  description text // 議員団の説明
+  is_active boolean [default: true] // 現在活動中かどうか
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  note: '議員団（会派）'
+}
+
+Table ParliamentaryGroupMemberships {
+  id int [pk, increment]
+  politician_id int [ref: > Politicians.id, not null] // 政治家ID
+  parliamentary_group_id int [ref: > ParliamentaryGroups.id, not null] // 議員団ID
+  start_date date [not null] // 所属開始日
+  end_date date // 所属終了日（現在所属中の場合はNULL）
+  role varchar(100) // 議員団内での役職（団長、幹事長、政調会長など）
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  note: '議員団所属履歴'
 }

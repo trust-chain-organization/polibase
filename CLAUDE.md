@@ -210,13 +210,18 @@ Polibase follows these core design principles:
    - Hybrid approach combining rule-based and LLM matching
    - High-accuracy linking between `speakers` and `politicians`
 
-4. **Conference Member Extraction with Staged Processing**
+4. **Parliamentary Groups (議員団) Management**
+   - Parliamentary groups represent voting blocs within conferences
+   - Tracks group membership history with roles (団長, 幹事長, etc.)
+   - Links proposals voting to both individual politicians and their groups
+
+5. **Conference Member Extraction with Staged Processing**
    - Extract conference members from members_introduction_url in stages
    - Staging table (`extracted_conference_members`) for intermediate data
    - LLM-based fuzzy matching with confidence scores
    - Manual review capability before creating final affiliations
 
-5. **Data Input through Streamlit UI**
+6. **Data Input through Streamlit UI**
    - Party member list URLs managed through web interface
    - Meeting minutes URLs registered and managed
    - Conference members introduction URLs managed
@@ -272,12 +277,15 @@ Polibase follows these core design principles:
   - `politicians` table includes party affiliation and profile information
   - `politician_affiliations`: Conference memberships with roles
   - `extracted_conference_members`: Staging table for member extraction
+  - `parliamentary_groups`: Parliamentary groups (議員団/会派) within conferences
+  - `parliamentary_group_memberships`: Tracks politician membership in groups over time
 - Repository pattern used for database operations (`src/database/`)
 - Migrations in `database/migrations/` for schema updates:
   - `004_add_gcs_uri_to_meetings.sql`: Adds GCS URI columns to meetings table
   - `005_add_members_introduction_url_to_conferences.sql`: Adds member URL to conferences
   - `006_add_role_to_politician_affiliations.sql`: Adds role column for positions
   - `007_create_extracted_conference_members_table.sql`: Creates staging table
+  - `008_create_parliamentary_groups_tables.sql`: Creates parliamentary groups and membership tables
 
 ### Technology Stack
 - **LLM**: Google Gemini API (gemini-2.0-flash, gemini-1.5-flash) via LangChain
