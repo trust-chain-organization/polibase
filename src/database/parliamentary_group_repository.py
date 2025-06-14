@@ -95,7 +95,9 @@ class ParliamentaryGroupRepository(BaseRepository):
         query += " ORDER BY name"
 
         result = self.execute_query(query, {"conference_id": conference_id})
-        return [dict(row) for row in result.fetchall()]
+        rows = result.fetchall()
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in rows]
 
     def search_parliamentary_groups(
         self, name: str | None = None, conference_id: int | None = None
@@ -123,7 +125,9 @@ class ParliamentaryGroupRepository(BaseRepository):
         query += " ORDER BY name"
 
         result = self.execute_query(query, params)
-        return [dict(row) for row in result.fetchall()]
+        rows = result.fetchall()
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in rows]
 
     def update_parliamentary_group(
         self,
@@ -246,7 +250,9 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         ORDER BY pgm.start_date DESC, p.name
         """
         result = self.execute_query(query, {"group_id": parliamentary_group_id})
-        return [dict(row) for row in result.fetchall()]
+        rows = result.fetchall()
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in rows]
 
     def get_member_history(
         self, parliamentary_group_id: int, include_past: bool = True
@@ -273,7 +279,9 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         query += " ORDER BY pgm.start_date DESC, pgm.end_date DESC NULLS FIRST, p.name"
 
         result = self.execute_query(query, {"group_id": parliamentary_group_id})
-        return [dict(row) for row in result.fetchall()]
+        rows = result.fetchall()
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in rows]
 
     def get_politician_groups(
         self, politician_id: int, current_only: bool = True
@@ -300,7 +308,9 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         query += " ORDER BY pgm.start_date DESC"
 
         result = self.execute_query(query, {"politician_id": politician_id})
-        return [dict(row) for row in result.fetchall()]
+        rows = result.fetchall()
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in rows]
 
     def end_membership(
         self, politician_id: int, parliamentary_group_id: int, end_date: date
@@ -358,4 +368,6 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         result = self.execute_query(
             query, {"group_id": parliamentary_group_id, "target_date": target_date}
         )
-        return [dict(row) for row in result.fetchall()]
+        rows = result.fetchall()
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in rows]
