@@ -197,3 +197,22 @@ Table ParliamentaryGroupMemberships {
   updated_at timestamp [default: `now()`]
   note: '議員団所属履歴'
 }
+
+Table ExtractedParliamentaryGroupMembers {
+  id int [pk, increment]
+  parliamentary_group_id int [ref: > ParliamentaryGroups.id, not null] // どの議員団のメンバーか
+  extracted_name varchar(255) [not null] // URLから抽出された議員名
+  extracted_role varchar(100) // 団長、幹事長など
+  extracted_party_name varchar(100) // 政党名（抽出できれば）
+  extracted_electoral_district varchar(100) // 選挙区（抽出できれば）
+  extracted_profile_url varchar(500) // プロフィールページURL（抽出できれば）
+  matched_politician_id int [ref: > Politicians.id] // マッチングされた政治家ID
+  matching_status varchar(20) [default: 'pending'] // pending, matched, needs_review, no_match
+  matching_confidence decimal(3,2) // 0.00 - 1.00
+  matching_notes text // マッチング時のメモ
+  extraction_date date [not null, default: `now()`]
+  source_url varchar(500)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  note: '議員団メンバー抽出結果を保存するステージングテーブル'
+}

@@ -2174,7 +2174,7 @@ def manage_parliamentary_groups():
                     try:
                         import asyncio
 
-                        from src.parliamentary_group_extractor import membership_service
+                        from parliamentary_group_extractor import membership_service
 
                         # サービスを初期化
                         service = (

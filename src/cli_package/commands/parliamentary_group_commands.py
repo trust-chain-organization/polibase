@@ -1,37 +1,30 @@
-"""議員団関連のCLIコマンド"""
+"""Parliamentary Group commands for CLI"""
 
 import asyncio
-import logging
+from datetime import datetime
 
 import click
 from rich.console import Console
-from rich.table import Table
 
+from src.database.extracted_parliamentary_group_member_repository import (
+    ExtractedParliamentaryGroupMemberRepository,
+)
 from src.database.parliamentary_group_repository import (
-    ParliamentaryGroupMembershipRepository,
     ParliamentaryGroupRepository,
 )
 from src.parliamentary_group_extractor.membership_service import (
     ParliamentaryGroupMembershipService,
 )
 
-logger = logging.getLogger(__name__)
 console = Console()
 
 
-def get_parliamentary_group_commands() -> list[click.Command]:
-    """議員団関連のコマンドを返す"""
-    return [
-        extract_group_members,
-        list_parliamentary_groups,
-    ]
-
-
+# ステップ1: 議員団メンバー抽出
 @click.command()
 @click.option(
     "--group-id",
     type=int,
-    help="特定の議員団IDのメンバーを抽出",
+    help="特定の議員団のメンバーを抽出",
 )
 @click.option(
     "--all-groups",
@@ -39,15 +32,12 @@ def get_parliamentary_group_commands() -> list[click.Command]:
     help="URLが設定されている全議員団のメンバーを抽出",
 )
 @click.option(
-    "--dry-run",
+    "--force",
     is_flag=True,
-    default=True,
-    help="実際にはメンバーシップを作成しない",
+    help="既存の抽出データを削除して再抽出",
 )
-def extract_group_members(
-    group_id: int | None, all_groups: bool, dry_run: bool
-) -> None:
-    """議員団URLからメンバーを抽出"""
+def extract_group_members(group_id: int | None, all_groups: bool, force: bool) -> None:
+    """議員団URLからメンバーを抽出（ステップ1）"""
     if not group_id and not all_groups:
         console.print(
             "[red]エラー: --group-id または --all-groups を指定してください[/red]"
@@ -71,107 +61,210 @@ def extract_group_members(
             console.print("[yellow]URLが設定されている議員団がありません[/yellow]")
             return
 
-    # 実行確認
-    if dry_run:
-        console.print("[yellow]ドライランモードで実行します[/yellow]")
-    else:
-        console.print("[red]実際にメンバーシップを作成します[/red]")
+    console.print("[bold]ステップ1: 議員団メンバー抽出[/bold]")
+    if force:
+        console.print("[yellow]既存データを削除して再抽出します[/yellow]")
+    console.print()
 
-    # 各議員団を処理
-    total_extracted = 0
-    total_matched = 0
-    total_created = 0
+    # 総計
+    total_results = {
+        "extracted_count": 0,
+        "saved_count": 0,
+        "errors": [],
+    }
 
     for group in groups:
-        console.print(f"\n[bold]{group['name']}[/bold] を処理中...")
+        console.print(f"[bold]{group['name']}[/bold] を処理中...")
         console.print(f"URL: {group['url']}")
 
         try:
-            result = asyncio.run(
-                service.extract_and_create_memberships(group["id"], dry_run=dry_run)
-            )
+            result = asyncio.run(service.extract_members(group["id"], force=force))
 
-            # 結果を表示
+            # 結果表示
             console.print(f"  抽出: {result['extracted_count']}名")
-            console.print(f"  マッチング: {result['matched_count']}名")
-            if not dry_run:
-                console.print(f"  作成: {result['created_count']}名")
+            console.print(f"  保存: {result['saved_count']}名")
 
-            total_extracted += result["extracted_count"]
-            total_matched += result["matched_count"]
-            total_created += result["created_count"]
-
-            # エラーがあれば表示
             if result["errors"]:
-                console.print("  [red]エラー:[/red]")
+                console.print("  エラー:")
                 for error in result["errors"]:
                     console.print(f"    - {error}")
 
-        except Exception as e:
-            console.print(f"  [red]処理エラー: {e}[/red]")
-            logger.error(f"Error processing group {group['id']}: {e}", exc_info=True)
+            # 総計更新
+            total_results["extracted_count"] += result["extracted_count"]
+            total_results["saved_count"] += result["saved_count"]
+            total_results["errors"].extend(result["errors"])
 
-    # 総計を表示
-    console.print("\n[bold]処理結果総計:[/bold]")
-    console.print(f"  抽出総数: {total_extracted}名")
-    console.print(f"  マッチング総数: {total_matched}名")
-    if not dry_run:
-        console.print(f"  作成総数: {total_created}名")
+            console.print()
+
+        except Exception as e:
+            console.print(f"[red]エラー: {e}[/red]")
+            total_results["errors"].append(f"{group['name']}: {str(e)}")
+
+    # 総計表示
+    console.print("[bold]処理結果総計:[/bold]")
+    console.print(f"  抽出総数: {total_results['extracted_count']}名")
+    console.print(f"  保存総数: {total_results['saved_count']}名")
+
+    pg_repo.close()
+
+
+# ステップ2: メンバーマッチング
+@click.command()
+@click.option(
+    "--group-id",
+    type=int,
+    help="特定の議員団のメンバーをマッチング",
+)
+def match_group_members(group_id: int | None) -> None:
+    """抽出済みメンバーを既存の政治家とマッチング（ステップ2）"""
+    service = ParliamentaryGroupMembershipService()
+
+    console.print("[bold]ステップ2: メンバーマッチング[/bold]")
+    console.print()
+
+    try:
+        result = asyncio.run(service.match_members(group_id))
+
+        # 結果表示
+        console.print("[bold]処理結果:[/bold]")
+        console.print(f"  処理総数: {result['processed_count']}名")
+        console.print(f"  マッチ成功: {result['matched_count']}名")
+        console.print(f"  要確認: {result['needs_review_count']}名")
+        console.print(f"  マッチなし: {result['no_match_count']}名")
+
+        if result["errors"]:
+            console.print("\n[red]エラー:[/red]")
+            for error in result["errors"]:
+                console.print(f"  - {error}")
+
+    except Exception as e:
+        console.print(f"[red]エラー: {e}[/red]")
+
+
+# ステップ3: メンバーシップ作成
+@click.command()
+@click.option(
+    "--group-id",
+    type=int,
+    required=True,
+    help="議員団ID",
+)
+@click.option(
+    "--start-date",
+    type=click.DateTime(formats=["%Y-%m-%d"]),
+    help="所属開始日 (YYYY-MM-DD)",
+)
+def create_group_memberships(group_id: int, start_date: datetime | None) -> None:
+    """マッチング済みメンバーからメンバーシップを作成（ステップ3）"""
+    service = ParliamentaryGroupMembershipService()
+    pg_repo = ParliamentaryGroupRepository()
+
+    # 議員団情報を取得
+    group = pg_repo.get_parliamentary_group_by_id(group_id)
+    if not group:
+        console.print(f"[red]議員団ID {group_id} が見つかりません[/red]")
+        return
+
+    console.print("[bold]ステップ3: メンバーシップ作成[/bold]")
+    console.print(f"議員団: {group['name']}")
+    console.print()
+
+    try:
+        result = asyncio.run(
+            service.create_memberships_from_matched(
+                group_id, start_date=start_date.date() if start_date else None
+            )
+        )
+
+        # 結果表示
+        console.print("[bold]処理結果:[/bold]")
+        console.print(f"  処理総数: {result['processed_count']}名")
+        console.print(f"  作成: {result['created_count']}名")
+        console.print(f"  更新: {result['updated_count']}名")
+        console.print(f"  スキップ: {result['skipped_count']}名")
+
+        if result["errors"]:
+            console.print("\n[red]エラー:[/red]")
+            for error in result["errors"]:
+                console.print(f"  - {error}")
+
+    except Exception as e:
+        console.print(f"[red]エラー: {e}[/red]")
+
+    pg_repo.close()
+
+
+# 議員団抽出状況確認
+@click.command()
+@click.option(
+    "--group-id",
+    type=int,
+    help="特定の議員団の状況を表示",
+)
+def group_member_status(group_id: int | None) -> None:
+    """議員団メンバー抽出状況を確認"""
+    pg_repo = ParliamentaryGroupRepository()
+    extracted_repo = ExtractedParliamentaryGroupMemberRepository()
+
+    if group_id:
+        groups = [pg_repo.get_parliamentary_group_by_id(group_id)]
+        if not groups[0]:
+            console.print(f"[red]議員団ID {group_id} が見つかりません[/red]")
+            return
+    else:
+        groups = pg_repo.search_parliamentary_groups()
+        groups = [g for g in groups if g.get("url")]
+
+    console.print("[bold]議員団メンバー抽出状況[/bold]")
+    console.print()
+
+    for group in groups:
+        summary = extracted_repo.get_extraction_summary(group["id"])
+
+        console.print(f"[bold]{group['name']}[/bold]")
+        console.print(f"  URL: {group.get('url', '未設定')}")
+
+        if summary.get("total_count", 0) > 0:
+            console.print(f"  抽出済み: {summary['total_count']}名")
+            console.print(f"    - 未処理: {summary.get('pending_count', 0)}名")
+            console.print(f"    - マッチ済み: {summary.get('matched_count', 0)}名")
+            console.print(f"    - 要確認: {summary.get('needs_review_count', 0)}名")
+            console.print(f"    - マッチなし: {summary.get('no_match_count', 0)}名")
+        else:
+            console.print("  [dim]未抽出[/dim]")
+
+        console.print()
+
+    pg_repo.close()
+    extracted_repo.close()
 
 
 @click.command()
-@click.option(
-    "--conference-id",
-    type=int,
-    help="特定の会議体の議員団のみ表示",
-)
-@click.option(
-    "--with-members",
-    is_flag=True,
-    help="現在のメンバー数も表示",
-)
-def list_parliamentary_groups(conference_id: int | None, with_members: bool) -> None:
+def list_parliamentary_groups() -> None:
     """議員団一覧を表示"""
     pg_repo = ParliamentaryGroupRepository()
-    pgm_repo = ParliamentaryGroupMembershipRepository()
 
-    # 議員団を取得
-    if conference_id:
-        groups = pg_repo.get_parliamentary_groups_by_conference(
-            conference_id, active_only=False
-        )
-    else:
-        groups = pg_repo.search_parliamentary_groups()
-
+    groups = pg_repo.search_parliamentary_groups()
     if not groups:
-        console.print("[yellow]議員団が見つかりません[/yellow]")
+        console.print("[yellow]議員団が登録されていません[/yellow]")
         return
 
-    # テーブルを作成
-    table = Table(title="議員団一覧", show_header=True, header_style="bold magenta")
-    table.add_column("ID", style="dim", width=6)
-    table.add_column("議員団名", style="cyan", width=30)
-    table.add_column("会議体", width=20)
-    table.add_column("URL", width=40)
-    table.add_column("状態", width=8)
-    if with_members:
-        table.add_column("メンバー数", justify="right", width=10)
-
-    # 各議員団の情報を表示
+    console.print("[bold]議員団一覧[/bold]")
     for group in groups:
-        row = [
-            str(group["id"]),
-            group["name"],
-            group.get("conference_name", ""),
-            group.get("url", "") or "未設定",
-            "活動中" if group.get("is_active", True) else "非活動",
-        ]
+        status = "✓" if group.get("is_active") else "×"
+        console.print(f"{status} [{group['id']}] {group['name']}")
+        if group.get("url"):
+            console.print(f"   URL: {group['url']}")
 
-        if with_members:
-            members = pgm_repo.get_current_members(group["id"])
-            row.append(str(len(members)))
+    pg_repo.close()
 
-        table.add_row(*row)
 
-    console.print(table)
-    console.print(f"\n合計: {len(groups)}議員団")
+def get_parliamentary_group_commands() -> list[click.Command]:
+    """Get all parliamentary group commands"""
+    return [
+        extract_group_members,
+        match_group_members,
+        create_group_memberships,
+        group_member_status,
+        list_parliamentary_groups,
+    ]
