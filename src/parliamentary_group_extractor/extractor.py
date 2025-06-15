@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from src.party_member_extractor.html_fetcher import HTMLFetcher
+from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
 from src.party_member_extractor.models import WebPageContent
 
 from .models import ParliamentaryGroupMemberList
@@ -28,7 +28,6 @@ class ParliamentaryGroupMemberExtractor:
         self.extraction_llm = self.llm.with_structured_output(
             ParliamentaryGroupMemberList
         )
-        self.html_fetcher = HTMLFetcher()
 
     async def extract_from_url(
         self, url: str, parliamentary_group_name: str
@@ -37,9 +36,10 @@ class ParliamentaryGroupMemberExtractor:
         logger.info(f"Extracting parliamentary group members from: {url}")
 
         # HTMLコンテンツを取得
-        page_content = await self.html_fetcher.fetch_page(url)
+        async with PartyMemberPageFetcher() as fetcher:
+            pages = await fetcher.fetch_all_pages(url, max_pages=1)
 
-        if not page_content:
+        if not pages:
             logger.error(f"Failed to fetch content from {url}")
             return ParliamentaryGroupMemberList(
                 members=[],
@@ -48,8 +48,8 @@ class ParliamentaryGroupMemberExtractor:
                 source_url=url,
             )
 
-        # メンバー情報を抽出
-        return self._extract_members(page_content, parliamentary_group_name)
+        # 最初のページからメンバー情報を抽出
+        return self._extract_members(pages[0], parliamentary_group_name)
 
     def _extract_members(
         self, page_content: WebPageContent, parliamentary_group_name: str
