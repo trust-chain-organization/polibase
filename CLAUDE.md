@@ -82,6 +82,15 @@ docker compose exec polibase uv run polibase create-affiliations --start-date 20
 
 # Check extraction and matching status
 docker compose exec polibase uv run polibase member-status --conference-id 185
+
+# Parliamentary group member extraction
+# Extract members from parliamentary group URLs
+docker compose exec polibase uv run polibase extract-group-members --group-id 1
+docker compose exec polibase uv run polibase extract-group-members --all-groups --dry-run
+
+# List parliamentary groups
+docker compose exec polibase uv run polibase list-parliamentary-groups
+docker compose exec polibase uv run polibase list-parliamentary-groups --with-members
 ```
 
 #### Direct Module Execution (Legacy)

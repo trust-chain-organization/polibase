@@ -1,5 +1,6 @@
 """Streamlit app for managing meetings"""
 
+import logging
 import subprocess
 from datetime import date, datetime
 
@@ -14,6 +15,8 @@ from src.database.parliamentary_group_repository import (
     ParliamentaryGroupMembershipRepository,
     ParliamentaryGroupRepository,
 )
+
+logger = logging.getLogger(__name__)
 
 # ページ設定
 st.set_page_config(page_title="Polibase - 会議管理", page_icon="🏛️", layout="wide")
@@ -1887,8 +1890,8 @@ def manage_parliamentary_groups():
     st.markdown("議員団（会派）の情報を管理します")
 
     # サブタブの作成
-    group_tab1, group_tab2, group_tab3 = st.tabs(
-        ["議員団一覧", "新規登録", "編集・削除"]
+    group_tab1, group_tab2, group_tab3, group_tab4 = st.tabs(
+        ["議員団一覧", "新規登録", "編集・削除", "メンバー抽出"]
     )
 
     pg_repo = ParliamentaryGroupRepository()
@@ -2112,6 +2115,110 @@ def manage_parliamentary_groups():
                     if st.button("🗑️ この議員団を削除", type="secondary"):
                         # Note: 削除機能は未実装のため、将来的に実装予定
                         st.error("削除機能は現在実装されていません")
+
+    with group_tab4:
+        # メンバー抽出
+        st.subheader("議員団メンバー自動抽出")
+        st.markdown(
+            "議員団のURLから所属議員を自動的に抽出し、メンバーシップを作成します"
+        )
+
+        # URLが設定されている議員団のみ表示
+        groups_with_url = [
+            g for g in pg_repo.search_parliamentary_groups() if g.get("url")
+        ]
+
+        if not groups_with_url:
+            st.info(
+                "URLが設定されている議員団がありません。先にURLを設定してください。"
+            )
+        else:
+            # 議員団選択
+            conferences = conf_repo.get_all_conferences()
+            group_options = []
+            group_map = {}
+            for group in groups_with_url:
+                conf = next(
+                    (c for c in conferences if c["id"] == group["conference_id"]), None
+                )
+                conf_name = conf["name"] if conf else "不明"
+                display_name = f"{group['name']} ({conf_name})"
+                group_options.append(display_name)
+                group_map[display_name] = group
+
+            selected_group_display = st.selectbox(
+                "メンバーを抽出する議員団を選択", group_options
+            )
+            selected_group = group_map[selected_group_display]
+
+            # 現在のメンバー数を表示
+            pgm_repo = ParliamentaryGroupMembershipRepository()
+            current_members = pgm_repo.get_current_members(selected_group["id"])
+            st.info(f"現在のメンバー数: {len(current_members)}名")
+
+            # URLを表示
+            st.markdown(f"**抽出元URL**: {selected_group['url']}")
+
+            # 実行オプション
+            col1, col2 = st.columns(2)
+            with col1:
+                dry_run = st.checkbox(
+                    "ドライラン（実際には保存しない）",
+                    value=True,
+                    help="チェックを外すと実際にメンバーシップが作成されます",
+                )
+
+            # 実行ボタン
+            if st.button("🔍 メンバー抽出を実行", type="primary"):
+                with st.spinner("URLからメンバー情報を抽出中..."):
+                    try:
+                        import asyncio
+
+                        from src.parliamentary_group_extractor.membership_service import (
+                            ParliamentaryGroupMembershipService,
+                        )
+
+                        # サービスを初期化
+                        service = ParliamentaryGroupMembershipService()
+
+                        # 非同期処理を実行
+                        result = asyncio.run(
+                            service.extract_and_create_memberships(
+                                selected_group["id"], dry_run=dry_run
+                            )
+                        )
+
+                        # 結果を表示
+                        st.success("抽出が完了しました！")
+
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("抽出されたメンバー数", result["extracted_count"])
+                        with col2:
+                            st.metric("マッチング成功数", result["matched_count"])
+                        with col3:
+                            if not dry_run:
+                                st.metric(
+                                    "作成されたメンバーシップ数",
+                                    result["created_count"],
+                                )
+
+                        # エラーがあれば表示
+                        if result["errors"]:
+                            st.warning("以下のエラーが発生しました：")
+                            for error in result["errors"]:
+                                st.write(f"- {error}")
+
+                        # ドライランの場合は注意を表示
+                        if dry_run:
+                            st.info(
+                                "これはドライランです。実際にメンバーシップを作成するには、"
+                                "「ドライラン」のチェックを外して再実行してください。"
+                            )
+
+                    except Exception as e:
+                        st.error(f"エラーが発生しました: {str(e)}")
+                        logger.error(f"Member extraction error: {e}", exc_info=True)
 
 
 if __name__ == "__main__":
