@@ -2,12 +2,13 @@
 """システムヘルスチェック"""
 
 import os
+import shutil
 import subprocess
 from datetime import datetime
 
-import psutil
+from sqlalchemy import text
 
-from src.config.database import get_connection
+from src.config.database import get_db_engine
 
 
 def check_database_health():
@@ -17,18 +18,19 @@ def check_database_health():
     print("=" * 60)
 
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-
+        engine = get_db_engine()
+        with engine.connect() as conn:
             # 接続数
-            cursor.execute("""
+            result = conn.execute(
+                text("""
                 SELECT count(*) as total,
                        count(*) FILTER (WHERE state = 'active') as active,
                        count(*) FILTER (WHERE state = 'idle') as idle
                 FROM pg_stat_activity
                 WHERE datname = 'polibase_db'
             """)
-            total, active, idle = cursor.fetchone()
+            )
+            total, active, idle = result.fetchone()
 
             print("\n接続状態:")
             print(f"  総接続数: {total}")
@@ -36,7 +38,8 @@ def check_database_health():
             print(f"  アイドル: {idle}")
 
             # 長時間実行クエリ
-            cursor.execute("""
+            result = conn.execute(
+                text("""
                 SELECT pid, usename,
                        age(clock_timestamp(), query_start) as runtime,
                        substr(query, 1, 60) as query_snippet
@@ -46,21 +49,24 @@ def check_database_health():
                 ORDER BY runtime DESC
                 LIMIT 5
             """)
+            )
 
-            long_queries = cursor.fetchall()
+            long_queries = result.fetchall()
             if long_queries:
                 print("\n長時間実行クエリ:")
                 for pid, user, runtime, query in long_queries:
                     print(f"  PID {pid} ({user}): {runtime} - {query}...")
 
             # デッドロック
-            cursor.execute("""
+            result = conn.execute(
+                text("""
                 SELECT count(*)
                 FROM pg_stat_database
                 WHERE datname = 'polibase_db'
                   AND deadlocks > 0
             """)
-            deadlock_count = cursor.fetchone()[0]
+            )
+            deadlock_count = result.fetchone()[0]
 
             if deadlock_count > 0:
                 print(f"\n⚠️  デッドロック検出: {deadlock_count}件")
@@ -79,6 +85,11 @@ def check_docker_health():
     print(f"\n{'=' * 60}")
     print("Dockerコンテナヘルスチェック")
     print("=" * 60)
+
+    # Dockerコンテナ内で実行されている場合はスキップ
+    if os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER"):
+        print("✓ Dockerコンテナ内で実行中")
+        return True
 
     try:
         # docker compose ps の実行
@@ -130,33 +141,43 @@ def check_disk_space():
     print("ディスク容量チェック")
     print("=" * 60)
 
-    # プロジェクトディレクトリのディスク使用状況
-    disk_usage = psutil.disk_usage(".")
+    # shutil.disk_usage を使用してディスク使用状況を取得
+    try:
+        disk_usage = shutil.disk_usage(".")
 
-    print("\nプロジェクトディレクトリ:")
-    print(f"  総容量: {disk_usage.total / (1024**3):.1f} GB")
-    print(f"  使用量: {disk_usage.used / (1024**3):.1f} GB")
-    print(f"  空き容量: {disk_usage.free / (1024**3):.1f} GB")
-    print(f"  使用率: {disk_usage.percent:.1f}%")
+        total_gb = disk_usage.total / (1024**3)
+        used_gb = disk_usage.used / (1024**3)
+        free_gb = disk_usage.free / (1024**3)
+        usage_percent = (disk_usage.used / disk_usage.total) * 100
 
-    if disk_usage.percent > 90:
-        print("\n⚠️  警告: ディスク使用率が90%を超えています")
+        print("\nプロジェクトディレクトリ:")
+        print(f"  総容量: {total_gb:.1f} GB")
+        print(f"  使用量: {used_gb:.1f} GB")
+        print(f"  空き容量: {free_gb:.1f} GB")
+        print(f"  使用率: {usage_percent:.1f}%")
+
+        if usage_percent > 90:
+            print("\n⚠️  警告: ディスク使用率が90%を超えています")
+            return False
+        elif usage_percent > 80:
+            print("\n⚠️  注意: ディスク使用率が80%を超えています")
+        else:
+            print("\n✓ ディスク容量: 十分な空きがあります")
+
+        # 主要ディレクトリのサイズ
+        print("\n主要ディレクトリサイズ:")
+        directories = ["data", "database/backups", ".git"]
+
+        for dir_name in directories:
+            if os.path.exists(dir_name):
+                size = get_directory_size(dir_name)
+                print(f"  {dir_name}: {size / (1024**2):.1f} MB")
+
+        return True
+
+    except Exception as e:
+        print(f"✗ ディスク容量の取得に失敗: {e}")
         return False
-    elif disk_usage.percent > 80:
-        print("\n⚠️  注意: ディスク使用率が80%を超えています")
-    else:
-        print("\n✓ ディスク容量: 十分な空きがあります")
-
-    # 主要ディレクトリのサイズ
-    print("\n主要ディレクトリサイズ:")
-    directories = ["data", "database/backups", ".git"]
-
-    for dir_name in directories:
-        if os.path.exists(dir_name):
-            size = get_directory_size(dir_name)
-            print(f"  {dir_name}: {size / (1024**2):.1f} MB")
-
-    return True
 
 
 def get_directory_size(path):
