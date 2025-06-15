@@ -2174,12 +2174,12 @@ def manage_parliamentary_groups():
                     try:
                         import asyncio
 
-                        from src.parliamentary_group_extractor.membership_service import (
-                            ParliamentaryGroupMembershipService,
-                        )
+                        from src.parliamentary_group_extractor import membership_service
 
                         # サービスを初期化
-                        service = ParliamentaryGroupMembershipService()
+                        service = (
+                            membership_service.ParliamentaryGroupMembershipService()
+                        )
 
                         # 非同期処理を実行
                         result = asyncio.run(
