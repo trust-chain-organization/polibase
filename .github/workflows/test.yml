@@ -70,7 +70,7 @@ jobs:
         env:
           CI: true
         run: |
-          uv run pytest tests/ -v --tb=short --cov=src --cov-report=html --cov-report=term --cov-report=xml
+          uv run pytest tests/ -v --tb=short --cov=src --cov-report=html --cov-report=term --cov-report=xml --ignore=tests/integration
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
@@ -170,3 +170,9 @@ jobs:
       - name: Test Streamlit app startup
         run: |
           timeout 10s uv run polibase streamlit --help || true
+
+      - name: Run integration tests
+        env:
+          CI: true
+        run: |
+          uv run pytest tests/integration/ -v --tb=short
