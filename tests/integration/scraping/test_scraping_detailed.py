@@ -6,7 +6,7 @@ import os
 import time
 from datetime import datetime
 
-from src.config.database import get_connection
+from src.config.database import get_db_engine
 from src.utils.gcs_storage import GCSStorage
 from src.web_scraper.kaigiroku_net_scraper import KaigirokuNetScraper
 from src.web_scraper.kokkai_scraper import KokkaiScraper
@@ -174,11 +174,12 @@ def test_performance_metrics():
     print("=" * 60)
 
     # 最近のスクレイピング実績
-    with get_connection() as conn:
-        cursor = conn.cursor()
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        from sqlalchemy import text
 
         # 日別の統計
-        cursor.execute("""
+        query = text("""
             SELECT
                 DATE(created_at) as date,
                 COUNT(*) as total_count,
@@ -194,18 +195,19 @@ def test_performance_metrics():
             ORDER BY date DESC
         """)
 
-        daily_stats = cursor.fetchall()
+        result = conn.execute(query)
+        daily_stats = result.fetchall()
 
         print("\n過去7日間の統計:")
-        for date, total, pdf, text, success_rate in daily_stats:
+        for date, total, pdf, text_count, success_rate in daily_stats:
             print(f"\n{date}:")
             print(f"  総数: {total}")
             print(f"  PDF: {pdf}")
-            print(f"  テキスト: {text}")
+            print(f"  テキスト: {text_count}")
             print(f"  成功率: {success_rate * 100:.1f}%")
 
         # ソース別の統計
-        cursor.execute("""
+        query = text("""
             SELECT
                 CASE
                     WHEN url LIKE '%kaigiroku.net%' THEN 'kaigiroku.net'
@@ -219,7 +221,8 @@ def test_performance_metrics():
             ORDER BY count DESC
         """)
 
-        source_stats = cursor.fetchall()
+        result = conn.execute(query)
+        source_stats = result.fetchall()
 
         print("\nソース別統計（過去30日）:")
         for source, count in source_stats:

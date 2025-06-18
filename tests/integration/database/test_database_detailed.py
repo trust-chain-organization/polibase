@@ -5,7 +5,9 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-from src.config.database import get_connection
+from sqlalchemy import text
+
+from src.config.database import get_db_engine
 
 
 def test_connection():
@@ -15,16 +17,16 @@ def test_connection():
     print("=" * 60)
 
     try:
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT version()")
-            version = cursor.fetchone()[0]
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT version()"))
+            version = result.fetchone()[0]
             print("✓ 接続成功")
             print(f"PostgreSQL バージョン: {version}")
 
             # 現在のデータベース情報
-            cursor.execute("SELECT current_database(), current_user")
-            db_name, user = cursor.fetchone()
+            result = conn.execute(text("SELECT current_database(), current_user"))
+            db_name, user = result.fetchone()
             print(f"データベース: {db_name}")
             print(f"ユーザー: {user}")
 
@@ -40,41 +42,40 @@ def test_table_structure():
     print("テーブル構造の確認")
     print("=" * 60)
 
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
+    engine = get_db_engine()
+    with engine.connect() as conn:
         # テーブル一覧
-        cursor.execute("""
+        query = text("""
             SELECT tablename
             FROM pg_tables
             WHERE schemaname = 'public'
             ORDER BY tablename
         """)
-        tables = [row[0] for row in cursor.fetchall()]
+        result = conn.execute(query)
+        tables = [row[0] for row in result.fetchall()]
 
         print(f"\nテーブル数: {len(tables)}")
 
         # 各テーブルの情報
         for table in tables:
-            cursor.execute(
-                """
+            query = text("""
                 SELECT
                     column_name,
                     data_type,
                     is_nullable,
                     column_default
                 FROM information_schema.columns
-                WHERE table_name = %s
+                WHERE table_name = :table_name
                 ORDER BY ordinal_position
-            """,
-                (table,),
-            )
+            """)
 
-            columns = cursor.fetchall()
+            result = conn.execute(query, {"table_name": table})
+            columns = result.fetchall()
 
             # レコード数
-            cursor.execute(f"SELECT COUNT(*) FROM {table}")
-            count = cursor.fetchone()[0]
+            count_query = text(f"SELECT COUNT(*) FROM {table}")
+            result = conn.execute(count_query)
+            count = result.fetchone()[0]
 
             print(f"\n{table} ({count:,} records):")
             for col_name, data_type, nullable, _default in columns[
@@ -92,19 +93,19 @@ def test_data_statistics():
     print("データ統計")
     print("=" * 60)
 
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
+    engine = get_db_engine()
+    with engine.connect() as conn:
         # 主要テーブルの統計
 
         # 政治家統計
-        cursor.execute("""
+        query = text("""
             SELECT COUNT(*) as total,
                    COUNT(DISTINCT political_party_id) as parties,
                    COUNT(DISTINCT prefecture) as prefectures
             FROM politicians
         """)
-        pol_total, pol_parties, pol_prefectures = cursor.fetchone()
+        result = conn.execute(query)
+        pol_total, pol_parties, pol_prefectures = result.fetchone()
 
         print("\n政治家データ:")
         print(f"  総数: {pol_total:,}名")
@@ -112,14 +113,15 @@ def test_data_statistics():
         print(f"  都道府県数: {pol_prefectures}")
 
         # 会議統計
-        cursor.execute("""
+        query = text("""
             SELECT COUNT(*) as total,
                    MIN(date) as oldest,
                    MAX(date) as newest,
                    COUNT(DISTINCT conference_id) as conferences
             FROM meetings
         """)
-        meet_total, oldest, newest, conferences = cursor.fetchone()
+        result = conn.execute(query)
+        meet_total, oldest, newest, conferences = result.fetchone()
 
         print("\n会議データ:")
         print(f"  総数: {meet_total:,}件")
@@ -128,13 +130,14 @@ def test_data_statistics():
             print(f"  会議体数: {conferences}")
 
         # 発言統計
-        cursor.execute("""
+        query = text("""
             SELECT COUNT(*) as total,
                    COUNT(DISTINCT meeting_id) as meetings,
                    COUNT(DISTINCT speaker_id) as speakers
             FROM conversations
         """)
-        conv_total, conv_meetings, conv_speakers = cursor.fetchone()
+        result = conn.execute(query)
+        conv_total, conv_meetings, conv_speakers = result.fetchone()
 
         print("\n発言データ:")
         print(f"  総数: {conv_total:,}件")
@@ -142,7 +145,7 @@ def test_data_statistics():
         print(f"  発言者数: {conv_speakers}")
 
         # データ成長率（過去30日）
-        cursor.execute("""
+        query = text("""
             SELECT
                 DATE(created_at) as date,
                 COUNT(*) as count
@@ -152,7 +155,8 @@ def test_data_statistics():
             ORDER BY date
         """)
 
-        growth_data = cursor.fetchall()
+        result = conn.execute(query)
+        growth_data = result.fetchall()
         if growth_data:
             print("\n過去30日のデータ増加:")
             total_new = sum(row[1] for row in growth_data)
@@ -235,32 +239,33 @@ def test_migration_status():
     migration_files = sorted(migrations_dir.glob("*.sql"))
     print(f"\nマイグレーションファイル数: {len(migration_files)}")
 
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
+    engine = get_db_engine()
+    with engine.connect() as conn:
         for migration_file in migration_files:
             filename = migration_file.name
 
             # マイグレーションが適用されているかの簡易チェック
             # （実際にはマイグレーション管理テーブルが必要）
             if "create_parliamentary_groups" in filename:
-                cursor.execute("""
+                query = text("""
                     SELECT EXISTS (
                         SELECT 1 FROM information_schema.tables
                         WHERE table_name = 'parliamentary_groups'
                     )
                 """)
-                exists = cursor.fetchone()[0]
+                result = conn.execute(query)
+                exists = result.fetchone()[0]
                 status = "✓" if exists else "✗"
             elif "add_gcs_uri" in filename:
-                cursor.execute("""
+                query = text("""
                     SELECT EXISTS (
                         SELECT 1 FROM information_schema.columns
                         WHERE table_name = 'meetings'
                         AND column_name = 'gcs_pdf_uri'
                     )
                 """)
-                exists = cursor.fetchone()[0]
+                result = conn.execute(query)
+                exists = result.fetchone()[0]
                 status = "✓" if exists else "✗"
             else:
                 status = "?"
@@ -274,16 +279,15 @@ def test_data_integrity():
     print("データ整合性チェック")
     print("=" * 60)
 
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
+    engine = get_db_engine()
+    with engine.connect() as conn:
         integrity_issues = []
 
         # 1. 孤立レコードのチェック
         print("\n1. 孤立レコードチェック:")
 
         # speaker_idが存在しない会話
-        cursor.execute("""
+        query = text("""
             SELECT COUNT(*)
             FROM conversations c
             WHERE c.speaker_id IS NOT NULL
@@ -292,7 +296,8 @@ def test_data_integrity():
                   WHERE s.id = c.speaker_id
               )
         """)
-        orphaned_conversations = cursor.fetchone()[0]
+        result = conn.execute(query)
+        orphaned_conversations = result.fetchone()[0]
 
         if orphaned_conversations > 0:
             print(f"  ✗ 孤立した会話: {orphaned_conversations}件")
@@ -311,12 +316,13 @@ def test_data_integrity():
         ]
 
         for table, column in null_checks:
-            cursor.execute(f"""
+            query = text(f"""
                 SELECT COUNT(*)
                 FROM {table}
                 WHERE {column} IS NULL
             """)
-            null_count = cursor.fetchone()[0]
+            result = conn.execute(query)
+            null_count = result.fetchone()[0]
 
             if null_count > 0:
                 print(f"  ✗ {table}.{column}: {null_count}件のNULL")
@@ -327,13 +333,14 @@ def test_data_integrity():
         # 3. 日付の妥当性チェック
         print("\n3. 日付妥当性チェック:")
 
-        cursor.execute("""
+        query = text("""
             SELECT COUNT(*)
             FROM meetings
             WHERE date > CURRENT_DATE + INTERVAL '1 year'
                OR date < '1900-01-01'
         """)
-        invalid_dates = cursor.fetchone()[0]
+        result = conn.execute(query)
+        invalid_dates = result.fetchone()[0]
 
         if invalid_dates > 0:
             print(f"  ✗ 無効な日付: {invalid_dates}件")
@@ -355,21 +362,21 @@ def test_performance_metrics():
     print("パフォーマンスメトリクス")
     print("=" * 60)
 
-    with get_connection() as conn:
-        cursor = conn.cursor()
-
+    engine = get_db_engine()
+    with engine.connect() as conn:
         # データベースサイズ
-        cursor.execute("""
+        query = text("""
             SELECT
                 pg_database_size('polibase_db') as total_size,
                 pg_size_pretty(pg_database_size('polibase_db')) as pretty_size
         """)
-        total_size, pretty_size = cursor.fetchone()
+        result = conn.execute(query)
+        total_size, pretty_size = result.fetchone()
 
         print(f"\nデータベースサイズ: {pretty_size}")
 
         # テーブル別サイズ
-        cursor.execute("""
+        query = text("""
             SELECT
                 schemaname,
                 tablename,
@@ -382,14 +389,15 @@ def test_performance_metrics():
             ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
             LIMIT 5
         """)
+        result = conn.execute(query)
 
         print("\nテーブルサイズ（上位5件）:")
-        for _schema, table, size, bytes in cursor.fetchall():
-            percentage = bytes / total_size * 100 if total_size > 0 else 0
+        for _schema, table, size, bytes_size in result.fetchall():
+            percentage = bytes_size / total_size * 100 if total_size > 0 else 0
             print(f"  {table}: {size} ({percentage:.1f}%)")
 
         # インデックス使用状況
-        cursor.execute("""
+        query = text("""
             SELECT
                 schemaname,
                 tablename,
@@ -403,8 +411,9 @@ def test_performance_metrics():
             LIMIT 5
         """)
 
+        result = conn.execute(query)
         print("\nインデックス使用状況（上位5件）:")
-        indexes = cursor.fetchall()
+        indexes = result.fetchall()
         for _schema, table, index, scans, _read, _fetch in indexes:
             print(f"  {index} ({table}): {scans:,} scans")
 

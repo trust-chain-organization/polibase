@@ -4,10 +4,10 @@
 import asyncio
 from datetime import date
 
-from src.conference_member_extractor.membership_service import (
-    ConferenceMembershipService,
+from src.conference_member_extractor.matching_service import (
+    ConferenceMemberMatchingService,
 )
-from src.config.database import get_connection
+from src.config.database import get_db_engine
 from src.database.conference_repository import ConferenceRepository
 from src.database.extracted_conference_member_repository import (
     ExtractedConferenceMemberRepository,
@@ -20,7 +20,7 @@ def test_conference_urls():
     print("会議体URL設定の確認")
     print("=" * 60)
 
-    conference_repo = ConferenceRepository(get_connection())
+    conference_repo = ConferenceRepository()
 
     # URL設定済みの会議体を取得
     conferences_with_url = conference_repo.get_conferences_with_member_url()
@@ -44,9 +44,9 @@ def test_extraction_process(conference_id: int):
     print(f"メンバー抽出テスト - Conference ID: {conference_id}")
     print("=" * 60)
 
-    service = ConferenceMembershipService()
-    conference_repo = ConferenceRepository(get_connection())
-    extracted_repo = ExtractedConferenceMemberRepository(get_connection())
+    service = ConferenceMemberMatchingService()
+    conference_repo = ConferenceRepository()
+    extracted_repo = ExtractedConferenceMemberRepository()
 
     # 会議体情報を取得
     conference = conference_repo.get_by_id(conference_id)
@@ -102,8 +102,8 @@ def test_matching_process(conference_id: int):
     print(f"マッチングテスト - Conference ID: {conference_id}")
     print("=" * 60)
 
-    service = ConferenceMembershipService()
-    extracted_repo = ExtractedConferenceMemberRepository(get_connection())
+    service = ConferenceMemberMatchingService()
+    extracted_repo = ExtractedConferenceMemberRepository()
 
     # 未処理のメンバーを確認
     pending_members = extracted_repo.get_pending_members(conference_id)
@@ -166,8 +166,8 @@ def test_affiliation_creation(conference_id: int):
     print(f"所属作成テスト - Conference ID: {conference_id}")
     print("=" * 60)
 
-    service = ConferenceMembershipService()
-    extracted_repo = ExtractedConferenceMemberRepository(get_connection())
+    service = ConferenceMemberMatchingService()
+    extracted_repo = ExtractedConferenceMemberRepository()
 
     # マッチング済みメンバーを確認
     matched_members = extracted_repo.get_matched_members(conference_id)
@@ -189,22 +189,24 @@ def test_affiliation_creation(conference_id: int):
         print(f"✓ 所属作成完了: {created_count}件")
 
         # 作成された所属を確認
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            from sqlalchemy import text
+
+            query = text("""
                 SELECT p.name, pa.role, pa.start_date
                 FROM politician_affiliations pa
                 JOIN politicians p ON pa.politician_id = p.id
-                WHERE pa.conference_id = %s
-                  AND pa.start_date = %s
+                WHERE pa.conference_id = :conference_id
+                  AND pa.start_date = :start_date
                 ORDER BY pa.role, p.name
                 LIMIT 10
-            """,
-                (conference_id, start_date),
-            )
+            """)
 
-            affiliations = cursor.fetchall()
+            result = conn.execute(
+                query, {"conference_id": conference_id, "start_date": start_date}
+            )
+            affiliations = result.fetchall()
 
             if affiliations:
                 print("\n作成された所属（最初の10件）:")
@@ -224,12 +226,14 @@ def test_matching_accuracy():
     print("マッチング精度分析")
     print("=" * 60)
 
-    extracted_repo = ExtractedConferenceMemberRepository(get_connection())
+    extracted_repo = ExtractedConferenceMemberRepository()
 
     # 全体のマッチング統計
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        from sqlalchemy import text
+
+        query = text("""
             SELECT
                 matching_status,
                 COUNT(*) as count,
@@ -242,7 +246,8 @@ def test_matching_accuracy():
             ORDER BY matching_status
         """)
 
-        stats = cursor.fetchall()
+        result = conn.execute(query)
+        stats = result.fetchall()
 
     print("\n全体統計:")
     total_count = 0
@@ -261,9 +266,11 @@ def test_matching_accuracy():
 
     # 信頼度の分布
     print("\n信頼度分布:")
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        from sqlalchemy import text
+
+        query = text("""
             SELECT
                 CASE
                     WHEN matching_confidence >= 0.9 THEN '0.9-1.0'
@@ -280,7 +287,8 @@ def test_matching_accuracy():
             ORDER BY confidence_range DESC
         """)
 
-        distribution = cursor.fetchall()
+        result = conn.execute(query)
+        distribution = result.fetchall()
 
         for range_str, count in distribution:
             bar = "█" * int(count / 10) or "▏"

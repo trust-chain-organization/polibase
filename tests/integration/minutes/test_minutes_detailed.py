@@ -3,7 +3,6 @@
 
 import asyncio
 
-from src.config.database import get_connection
 from src.database.conversation_repository import ConversationRepository
 from src.database.meeting_repository import MeetingRepository
 from src.database.speaker_repository import SpeakerRepository
@@ -16,9 +15,9 @@ def test_minutes_processing():
     print("議事録処理機能 詳細テスト")
     print("=" * 60)
 
-    meeting_repo = MeetingRepository(get_connection())
-    conversation_repo = ConversationRepository(get_connection())
-    SpeakerRepository(get_connection())
+    meeting_repo = MeetingRepository()
+    conversation_repo = ConversationRepository()
+    SpeakerRepository()
 
     # 1. テスト対象のミーティングを取得
     print("\n1. GCS URIを持つミーティングを取得")
@@ -116,8 +115,8 @@ def test_speaker_extraction():
     print("発言者抽出機能 詳細テスト")
     print("=" * 60)
 
-    conversation_repo = ConversationRepository(get_connection())
-    speaker_repo = SpeakerRepository(get_connection())
+    conversation_repo = ConversationRepository()
+    speaker_repo = SpeakerRepository()
 
     # speaker_idがNULLの発言を取得
     print("\n1. 未処理の発言を取得")
@@ -180,7 +179,7 @@ def test_speaker_matching():
     print("発言者マッチング機能 詳細テスト")
     print("=" * 60)
 
-    speaker_repo = SpeakerRepository(get_connection())
+    speaker_repo = SpeakerRepository()
 
     # 未マッチングのspeakerを取得
     print("\n1. 未マッチングの発言者を取得")

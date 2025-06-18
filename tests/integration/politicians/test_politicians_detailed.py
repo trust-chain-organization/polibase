@@ -4,10 +4,10 @@
 import asyncio
 import time
 
-from src.config.database import get_connection
+from src.config.database import get_db_engine
 from src.database.politician_repository import PoliticianRepository
 from src.party_member_extractor.extractor import PartyMemberExtractor
-from src.party_member_extractor.html_fetcher import HTMLFetcher
+from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
 
 
 def test_party_urls():
@@ -16,14 +16,17 @@ def test_party_urls():
     print("政党URL設定の確認")
     print("=" * 60)
 
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        from sqlalchemy import text
+
+        query = text("""
             SELECT id, name, members_list_url
             FROM political_parties
             ORDER BY id
         """)
-        parties = cursor.fetchall()
+        result = conn.execute(query)
+        parties = result.fetchall()
 
     print(f"\n設定済み政党数: {len([p for p in parties if p[2]])}/{len(parties)}")
     print("\n詳細:")
@@ -44,7 +47,7 @@ def test_html_fetching(party_id: int, url: str):
     print(f"HTML取得テスト - Party ID: {party_id}")
     print("=" * 60)
 
-    fetcher = HTMLFetcher()
+    fetcher = PartyMemberPageFetcher()
 
     try:
         print(f"URL: {url}")
@@ -118,7 +121,7 @@ def test_duplicate_checking(party_id: int, politicians: list):
     print("重複チェックテスト")
     print("=" * 60)
 
-    politician_repo = PoliticianRepository(get_connection())
+    politician_repo = PoliticianRepository()
 
     new_count = 0
     existing_count = 0
@@ -156,12 +159,14 @@ def test_performance_metrics():
     print("パフォーマンス測定")
     print("=" * 60)
 
-    PoliticianRepository(get_connection())
+    PoliticianRepository()
 
     # 各政党の議員数
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        from sqlalchemy import text
+
+        query = text("""
             SELECT pp.name, COUNT(p.id) as count,
                    MIN(p.created_at) as first_added,
                    MAX(p.created_at) as last_added
@@ -171,7 +176,8 @@ def test_performance_metrics():
             HAVING COUNT(p.id) > 0
             ORDER BY count DESC
         """)
-        party_stats = cursor.fetchall()
+        result = conn.execute(query)
+        party_stats = result.fetchall()
 
     print("\n政党別議員数:")
     total_politicians = 0
@@ -185,12 +191,15 @@ def test_performance_metrics():
     print(f"\n合計: {total_politicians}名")
 
     # データベースサイズ
-    with get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
+    engine = get_db_engine()
+    with engine.connect() as conn:
+        from sqlalchemy import text
+
+        query = text("""
             SELECT pg_size_pretty(pg_total_relation_size('politicians'))
         """)
-        size = cursor.fetchone()[0]
+        result = conn.execute(query)
+        size = result.fetchone()[0]
 
     print(f"\npoliticiansテーブルサイズ: {size}")
 
