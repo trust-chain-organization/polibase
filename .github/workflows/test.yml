@@ -70,7 +70,10 @@ jobs:
         env:
           CI: true
         run: |
-          uv run pytest tests/ -v --tb=short --cov=src --cov-report=html --cov-report=term --cov-report=xml --ignore=tests/integration
+          # Explicitly list test files to exclude integration tests
+          uv run pytest -v --tb=short --cov=src --cov-report=html --cov-report=term --cov-report=xml \
+            tests/test_*.py \
+            tests/docs/
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
