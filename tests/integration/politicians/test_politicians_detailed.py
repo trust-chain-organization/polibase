@@ -41,7 +41,7 @@ def test_party_urls():
     return [p for p in parties if p[2]]
 
 
-def test_html_fetching(party_id: int, url: str):
+def _test_html_fetching(party_id: int, url: str):
     """HTML取得のテスト"""
     print(f"\n{'=' * 60}")
     print(f"HTML取得テスト - Party ID: {party_id}")
@@ -77,7 +77,7 @@ def test_html_fetching(party_id: int, url: str):
         return None
 
 
-def test_politician_extraction(party_id: int, html_content: str):
+def _test_politician_extraction(party_id: int, html_content: str):
     """政治家情報抽出のテスト"""
     print(f"\n{'=' * 60}")
     print(f"政治家情報抽出テスト - Party ID: {party_id}")
@@ -115,7 +115,7 @@ def test_politician_extraction(party_id: int, html_content: str):
         return []
 
 
-def test_duplicate_checking(party_id: int, politicians: list):
+def _test_duplicate_checking(party_id: int, politicians: list):
     """重複チェックのテスト"""
     print(f"\n{'=' * 60}")
     print("重複チェックテスト")
@@ -234,17 +234,17 @@ def run_full_test(party_id: int = None):
         print("#" * 80)
 
         # 2. HTML取得
-        html_content = test_html_fetching(party_id, url)
+        html_content = _test_html_fetching(party_id, url)
         if not html_content:
             continue
 
         # 3. 政治家抽出
-        politicians = test_politician_extraction(party_id, html_content)
+        politicians = _test_politician_extraction(party_id, html_content)
         if not politicians:
             continue
 
         # 4. 重複チェック
-        new_count, existing_count = test_duplicate_checking(party_id, politicians)
+        new_count, existing_count = _test_duplicate_checking(party_id, politicians)
 
     # 5. パフォーマンス測定
     test_performance_metrics()

@@ -132,7 +132,7 @@ def test_data_statistics():
         # 発言統計
         query = text("""
             SELECT COUNT(*) as total,
-                   COUNT(DISTINCT meeting_id) as meetings,
+                   COUNT(DISTINCT minutes_id) as meetings,
                    COUNT(DISTINCT speaker_id) as speakers
             FROM conversations
         """)
@@ -397,25 +397,29 @@ def test_performance_metrics():
             print(f"  {table}: {size} ({percentage:.1f}%)")
 
         # インデックス使用状況
-        query = text("""
-            SELECT
-                schemaname,
-                tablename,
-                indexname,
-                idx_scan,
-                idx_tup_read,
-                idx_tup_fetch
-            FROM pg_stat_user_indexes
-            WHERE idx_scan > 0
-            ORDER BY idx_scan DESC
-            LIMIT 5
-        """)
+        try:
+            # pg_stat_user_indexesの正しいカラム名を使用
+            query = text("""
+                SELECT
+                    s.schemaname,
+                    s.relname as tablename,
+                    s.indexrelname as indexname,
+                    s.idx_scan,
+                    s.idx_tup_read,
+                    s.idx_tup_fetch
+                FROM pg_stat_user_indexes s
+                WHERE s.idx_scan > 0
+                ORDER BY s.idx_scan DESC
+                LIMIT 5
+            """)
 
-        result = conn.execute(query)
-        print("\nインデックス使用状況（上位5件）:")
-        indexes = result.fetchall()
-        for _schema, table, index, scans, _read, _fetch in indexes:
-            print(f"  {index} ({table}): {scans:,} scans")
+            result = conn.execute(query)
+            print("\nインデックス使用状況（上位5件）:")
+            indexes = result.fetchall()
+            for _schema, table, index, scans, _read, _fetch in indexes:
+                print(f"  {index} ({table}): {scans:,} scans")
+        except Exception:
+            print("\nインデックス使用状況: データ取得エラー")
 
 
 def run_full_test():

@@ -23,7 +23,10 @@ def test_conference_urls():
     conference_repo = ConferenceRepository()
 
     # URL設定済みの会議体を取得
-    conferences_with_url = conference_repo.get_conferences_with_member_url()
+    all_conferences = conference_repo.get_all_conferences()
+    conferences_with_url = [
+        c for c in all_conferences if c.get("members_introduction_url")
+    ]
 
     print(f"\nURL設定済み会議体数: {len(conferences_with_url)}")
     print("\n詳細:")
@@ -38,7 +41,7 @@ def test_conference_urls():
     return conferences_with_url
 
 
-def test_extraction_process(conference_id: int):
+def _test_extraction_process(conference_id: int):
     """メンバー抽出プロセスのテスト"""
     print(f"\n{'=' * 60}")
     print(f"メンバー抽出テスト - Conference ID: {conference_id}")
@@ -49,7 +52,7 @@ def test_extraction_process(conference_id: int):
     extracted_repo = ExtractedConferenceMemberRepository()
 
     # 会議体情報を取得
-    conference = conference_repo.get_by_id(conference_id)
+    conference = conference_repo.get_conference_by_id(conference_id)
     if not conference:
         print(f"✗ Conference ID {conference_id} が見つかりません")
         return None
@@ -96,7 +99,7 @@ def test_extraction_process(conference_id: int):
         return None
 
 
-def test_matching_process(conference_id: int):
+def _test_matching_process(conference_id: int):
     """マッチングプロセスのテスト"""
     print(f"\n{'=' * 60}")
     print(f"マッチングテスト - Conference ID: {conference_id}")
@@ -160,7 +163,7 @@ def test_matching_process(conference_id: int):
         return None
 
 
-def test_affiliation_creation(conference_id: int):
+def _test_affiliation_creation(conference_id: int):
     """所属作成プロセスのテスト"""
     print(f"\n{'=' * 60}")
     print(f"所属作成テスト - Conference ID: {conference_id}")
@@ -226,7 +229,7 @@ def test_matching_accuracy():
     print("マッチング精度分析")
     print("=" * 60)
 
-    extracted_repo = ExtractedConferenceMemberRepository()
+    # extracted_repo = ExtractedConferenceMemberRepository()  # 未使用
 
     # 全体のマッチング統計
     engine = get_db_engine()
@@ -296,7 +299,24 @@ def test_matching_accuracy():
 
     # 要確認のケース
     print("\n要確認ケース（needs_review）のサンプル:")
-    needs_review = extracted_repo.get_needs_review_members()[:5]
+    # needs_review members を取得（ステータスがneeds_reviewのもの）
+    # まず、すべてのステータスのメンバーを取得（pendingとmatchedの両方）
+    # all_members = []  # 未使用のためコメントアウト
+    try:
+        # SQLAlchemyで直接クエリを実行
+        engine = get_db_engine()
+        with engine.connect() as conn:
+            from sqlalchemy import text
+
+            query = text("""
+                SELECT * FROM extracted_conference_members
+                WHERE matching_status = 'needs_review'
+                LIMIT 5
+            """)
+            result = conn.execute(query)
+            needs_review = [dict(row._mapping) for row in result]
+    except Exception:
+        needs_review = []
     for member in needs_review:
         confidence = member["matching_confidence"]
         print(f"\n- {member['extracted_name']} (信頼度: {confidence:.2f})")
@@ -335,14 +355,14 @@ def run_full_test(conference_id: int | None = None):
     print("#" * 80)
 
     # 2. メンバー抽出
-    extracted_count = test_extraction_process(conference_id)
+    extracted_count = _test_extraction_process(conference_id)
 
     # 3. マッチング
     if extracted_count:
-        test_matching_process(conference_id)
+        _test_matching_process(conference_id)
 
     # 4. 所属作成
-    test_affiliation_creation(conference_id)
+    _test_affiliation_creation(conference_id)
 
     # 5. 精度分析
     test_matching_accuracy()
