@@ -110,7 +110,7 @@ class ParliamentaryGroupMembershipService:
         # 名前で検索（部分一致）
         query = """
         SELECT DISTINCT p.id, p.name, p.political_party_id, pp.name as party_name,
-               p.district, p.profile
+               p.electoral_district, p.profile_url
         FROM politicians p
         LEFT JOIN political_parties pp ON p.political_party_id = pp.id
         LEFT JOIN politician_affiliations pa ON p.id = pa.politician_id
@@ -141,8 +141,8 @@ class ParliamentaryGroupMembershipService:
                     "name": row.name,
                     "political_party_id": row.political_party_id,
                     "party_name": row.party_name,
-                    "district": row.district,
-                    "profile": row.profile,
+                    "district": row.electoral_district,
+                    "profile": row.profile_url,
                 }
                 for row in rows
             ]
