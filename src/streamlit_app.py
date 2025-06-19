@@ -1887,8 +1887,8 @@ def manage_parliamentary_groups():
     st.markdown("議員団（会派）の情報を管理します")
 
     # サブタブの作成
-    group_tab1, group_tab2, group_tab3 = st.tabs(
-        ["議員団一覧", "新規登録", "編集・削除"]
+    group_tab1, group_tab2, group_tab3, group_tab4 = st.tabs(
+        ["議員団一覧", "新規登録", "編集・削除", "メンバー抽出"]
     )
 
     pg_repo = ParliamentaryGroupRepository()
@@ -2112,6 +2112,237 @@ def manage_parliamentary_groups():
                     if st.button("🗑️ この議員団を削除", type="secondary"):
                         # Note: 削除機能は未実装のため、将来的に実装予定
                         st.error("削除機能は現在実装されていません")
+
+    with group_tab4:
+        # メンバー抽出
+        st.subheader("議員団メンバーの抽出")
+        st.markdown(
+            "議員団のURLから所属議員を自動的に抽出し、メンバーシップを作成します"
+        )
+
+        # URLが設定されている議員団を取得
+        groups_with_url = [
+            g for g in pg_repo.search_parliamentary_groups() if g.get("url")
+        ]
+
+        if not groups_with_url:
+            st.info(
+                "URLが設定されている議員団がありません。先に議員団のURLを設定してください。"
+            )
+        else:
+            # 議員団選択
+            conferences = conf_repo.get_all_conferences()
+            group_options = []
+            group_map = {}
+            for group in groups_with_url:
+                conf = next(
+                    (c for c in conferences if c["id"] == group["conference_id"]), None
+                )
+                conf_name = (
+                    f"{conf['governing_body_name']} - {conf['name']}"
+                    if conf
+                    else "不明"
+                )
+                display_name = f"{group['name']} ({conf_name})"
+                group_options.append(display_name)
+                group_map[display_name] = group
+
+            selected_group_display = st.selectbox(
+                "抽出対象の議員団を選択", group_options, key="extract_group_select"
+            )
+            selected_group = group_map[selected_group_display]
+
+            # 現在のメンバー数を表示
+            pgm_repo = ParliamentaryGroupMembershipRepository()
+            current_members = pgm_repo.get_current_members(selected_group["id"])
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.info(f"**議員団URL:** {selected_group['url']}")
+            with col2:
+                st.info(f"**現在のメンバー数:** {len(current_members)}名")
+
+            # 抽出設定
+            st.markdown("### 抽出設定")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                confidence_threshold = st.slider(
+                    "マッチング信頼度の閾値",
+                    min_value=0.5,
+                    max_value=1.0,
+                    value=0.7,
+                    step=0.05,
+                    help="この値以上の信頼度でマッチングされた政治家のみメンバーシップを作成します",
+                )
+
+            with col2:
+                start_date = st.date_input(
+                    "所属開始日",
+                    value=date.today(),
+                    help="作成されるメンバーシップの所属開始日",
+                )
+
+            dry_run = st.checkbox(
+                "ドライラン（実際にはメンバーシップを作成しない）",
+                value=True,
+                help="チェックすると、抽出結果の確認のみ行い、実際のメンバーシップは作成しません",
+            )
+
+            # 実行ボタン
+            if st.button("🔍 メンバー抽出を実行", type="primary"):
+                with st.spinner("メンバー情報を抽出中..."):
+                    try:
+                        from src.parliamentary_group_member_extractor import (
+                            ParliamentaryGroupMemberExtractor,
+                            ParliamentaryGroupMembershipService,
+                        )
+
+                        # 抽出器とサービスの初期化
+                        extractor = ParliamentaryGroupMemberExtractor()
+                        service = ParliamentaryGroupMembershipService()
+
+                        # メンバー情報を抽出
+                        extraction_result = extractor.extract_members_sync(
+                            selected_group["id"], selected_group["url"]
+                        )
+
+                        if extraction_result.error:
+                            st.error(f"抽出エラー: {extraction_result.error}")
+                        elif not extraction_result.extracted_members:
+                            st.warning(
+                                "メンバーが抽出されませんでした。URLまたはページ構造を確認してください。"
+                            )
+                        else:
+                            st.success(
+                                f"✅ {len(extraction_result.extracted_members)}名の"
+                                "メンバーを抽出しました"
+                            )
+
+                            # 抽出されたメンバーを表示
+                            st.markdown("### 抽出されたメンバー")
+                            member_data = []
+                            for member in extraction_result.extracted_members:
+                                member_data.append(
+                                    {
+                                        "名前": member.name,
+                                        "役職": member.role or "-",
+                                        "政党": member.party_name or "-",
+                                        "選挙区": member.district or "-",
+                                        "その他": member.additional_info or "-",
+                                    }
+                                )
+
+                            member_df = pd.DataFrame(member_data)
+                            st.dataframe(
+                                member_df, use_container_width=True, hide_index=True
+                            )
+
+                            # 政治家とマッチング
+                            with st.spinner("既存の政治家データとマッチング中..."):
+                                import asyncio
+
+                                matching_results = asyncio.run(
+                                    service.match_politicians(
+                                        extraction_result.extracted_members,
+                                        conference_id=selected_group["conference_id"],
+                                    )
+                                )
+
+                            # マッチング結果を表示
+                            st.markdown("### マッチング結果")
+
+                            matched_count = sum(
+                                1
+                                for r in matching_results
+                                if r.politician_id is not None
+                            )
+                            st.info(
+                                f"マッチング成功: "
+                                f"{matched_count}/{len(matching_results)}名"
+                            )
+
+                            # マッチング詳細を表示
+                            match_data = []
+                            for result in matching_results:
+                                match_data.append(
+                                    {
+                                        "抽出名": result.extracted_member.name,
+                                        "役職": result.extracted_member.role or "-",
+                                        "マッチした政治家": result.politician_name
+                                        or "マッチなし",
+                                        "信頼度": f"{result.confidence_score:.2f}"
+                                        if result.politician_id
+                                        else "-",
+                                        "理由": result.matching_reason,
+                                    }
+                                )
+
+                            match_df = pd.DataFrame(match_data)
+                            st.dataframe(
+                                match_df, use_container_width=True, hide_index=True
+                            )
+
+                            # メンバーシップ作成
+                            if not dry_run and matched_count > 0:
+                                if st.button("📝 メンバーシップを作成", type="primary"):
+                                    with st.spinner("メンバーシップを作成中..."):
+                                        creation_result = service.create_memberships(
+                                            parliamentary_group_id=selected_group["id"],
+                                            matching_results=matching_results,
+                                            start_date=start_date,
+                                            confidence_threshold=confidence_threshold,
+                                            dry_run=False,
+                                        )
+
+                                        st.success(
+                                            f"✅ {creation_result.created_count}件の"
+                                            "メンバーシップを作成しました"
+                                        )
+
+                                        if creation_result.errors:
+                                            st.warning("一部エラーが発生しました:")
+                                            for error in creation_result.errors:
+                                                st.write(f"- {error}")
+                            else:
+                                # ドライランまたはマッチなしの場合の作成予定を表示
+                                creation_result = service.create_memberships(
+                                    parliamentary_group_id=selected_group["id"],
+                                    matching_results=matching_results,
+                                    start_date=start_date,
+                                    confidence_threshold=confidence_threshold,
+                                    dry_run=True,
+                                )
+
+                                st.markdown("### 作成予定のメンバーシップ")
+                                st.write(
+                                    f"- 作成予定: {creation_result.created_count}件"
+                                )
+                                st.write(
+                                    f"- スキップ（既存）: "
+                                    f"{creation_result.skipped_count}件"
+                                )
+
+                                if creation_result.errors:
+                                    st.write("- エラー:")
+                                    for error in creation_result.errors[:5]:
+                                        st.write(f"  - {error}")
+                                    if len(creation_result.errors) > 5:
+                                        st.write(
+                                            f"  ... 他 "
+                                            f"{len(creation_result.errors) - 5}件"
+                                        )
+
+                                if not dry_run and creation_result.created_count > 0:
+                                    st.info(
+                                        "ドライランを解除して再実行すると、実際にメンバーシップが作成されます。"
+                                    )
+
+                    except Exception as e:
+                        st.error(f"処理中にエラーが発生しました: {str(e)}")
+                        import traceback
+
+                        st.text(traceback.format_exc())
 
 
 if __name__ == "__main__":
