@@ -170,7 +170,7 @@ HTMLコンテンツ（構造の参考用）:
             async with PartyMemberPageFetcher() as fetcher:
                 pages = await fetcher.fetch_all_pages(url, max_pages=1)
                 if pages:
-                    return pages[0].html
+                    return pages[0].html_content  # html → html_content に修正
                 return None
         except Exception as e:
             print(f"Error fetching HTML: {e}")
