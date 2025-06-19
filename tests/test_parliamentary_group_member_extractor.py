@@ -1,7 +1,7 @@
 """議員団メンバー抽出器のテスト"""
 
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -20,7 +20,9 @@ class TestParliamentaryGroupMemberExtractor:
     @pytest.fixture
     def extractor(self):
         """抽出器のフィクスチャ"""
-        return ParliamentaryGroupMemberExtractor()
+        # LLMServiceをモックして注入
+        mock_llm_service = MagicMock()
+        return ParliamentaryGroupMemberExtractor(llm_service=mock_llm_service)
 
     @pytest.fixture
     def sample_html(self):
@@ -143,7 +145,18 @@ class TestParliamentaryGroupMembershipService:
     @pytest.fixture
     def service(self):
         """サービスのフィクスチャ"""
-        return ParliamentaryGroupMembershipService()
+        # 依存関係をすべてモック
+        mock_llm_service = MagicMock()
+        mock_politician_repo = MagicMock()
+        mock_group_repo = MagicMock()
+        mock_membership_repo = MagicMock()
+
+        return ParliamentaryGroupMembershipService(
+            llm_service=mock_llm_service,
+            politician_repo=mock_politician_repo,
+            group_repo=mock_group_repo,
+            membership_repo=mock_membership_repo,
+        )
 
     @pytest.fixture
     def extracted_members(self):
