@@ -129,7 +129,10 @@ class ParliamentaryGroupMembershipService:
             query += " AND pp.name LIKE :party_pattern"
             params["party_pattern"] = f"%{party_name}%"
 
-        with self.politician_repo.session_factory() as session:
+        # PoliticianRepositoryは直接クエリ実行メソッドを持たないため、
+        # 新しいセッションを作成して実行
+        session = get_db_session()
+        try:
             result = session.execute(text(query), params)
             rows = result.fetchall()
             candidates = [
@@ -143,6 +146,8 @@ class ParliamentaryGroupMembershipService:
                 }
                 for row in rows
             ]
+        finally:
+            session.close()
 
         return candidates
 
