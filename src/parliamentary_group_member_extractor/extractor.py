@@ -13,6 +13,7 @@ from langchain_core.prompts import PromptTemplate
 
 from src.parliamentary_group_member_extractor.models import (
     ExtractedMember,
+    ExtractedMemberList,
     MemberExtractionResult,
 )
 from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
@@ -97,13 +98,13 @@ class ParliamentaryGroupMemberExtractor:
             抽出された議員リスト
         """
         # 出力パーサーの設定
-        output_parser = PydanticOutputParser(pydantic_object=list[ExtractedMember])
+        output_parser = PydanticOutputParser(pydantic_object=ExtractedMemberList)
 
         # プロンプトテンプレートの作成
         prompt = PromptTemplate(
             template="""以下のWebページから議員団に所属する議員の情報を抽出してください。
 
-抽出する情報:
+membersフィールドに議員のリストを格納してください。各議員について以下の情報を抽出:
 - name: 議員の氏名（必須）
 - role: 議員団内での役職（団長、幹事長、政調会長など）
 - party_name: 所属政党名（議員団名とは異なる場合）
@@ -146,9 +147,9 @@ HTMLコンテンツ（構造の参考用）:
                 }
             )
 
-            # resultがlist[ExtractedMember]であることを確認
-            if isinstance(result, list):
-                return result
+            # resultがExtractedMemberListであることを確認し、membersを返す
+            if isinstance(result, ExtractedMemberList):
+                return result.members
             else:
                 return []
 

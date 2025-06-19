@@ -15,6 +15,14 @@ class ExtractedMember(BaseModel):
     additional_info: str | None = Field(default=None, description="その他の情報")
 
 
+class ExtractedMemberList(BaseModel):
+    """抽出された議員団メンバーのリスト"""
+
+    members: list[ExtractedMember] = Field(
+        description="抽出された議員団メンバーのリスト"
+    )
+
+
 class MemberExtractionResult(BaseModel):
     """議員団メンバー抽出結果"""
 

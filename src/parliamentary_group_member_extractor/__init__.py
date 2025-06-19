@@ -3,6 +3,7 @@
 from .extractor import ParliamentaryGroupMemberExtractor
 from .models import (
     ExtractedMember,
+    ExtractedMemberList,
     MatchingResult,
     MemberExtractionResult,
     MembershipCreationResult,
@@ -13,6 +14,7 @@ __all__ = [
     "ParliamentaryGroupMemberExtractor",
     "ParliamentaryGroupMembershipService",
     "ExtractedMember",
+    "ExtractedMemberList",
     "MatchingResult",
     "MemberExtractionResult",
     "MembershipCreationResult",
