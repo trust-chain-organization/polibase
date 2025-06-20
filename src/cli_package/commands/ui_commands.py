@@ -59,7 +59,9 @@ class UICommands(BaseCommand):
     @click.option("--host", default="0.0.0.0", help="Host address")
     @with_error_handling
     def monitoring(port, host):
-        """Launch monitoring dashboard for data coverage visualization (データカバレッジ監視ダッシュボード)
+        """Launch monitoring dashboard for data coverage visualization.
+
+        データカバレッジ監視ダッシュボード
 
         This command starts a monitoring dashboard where you can:
         - View overall data coverage metrics
