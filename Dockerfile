@@ -65,6 +65,10 @@ COPY database/ database/
 COPY scripts/ scripts/
 COPY backup-database.sh test-setup.sh reset-database.sh ./
 
+# Docker内でのuv実行用ラッパーを設定
+RUN chmod +x scripts/docker-uv-wrapper.sh
+RUN ln -sf /app/scripts/docker-uv-wrapper.sh /usr/local/bin/uv-wrapper
+
 # コンテナ起動時に実行するコマンド
 CMD ["/bin/bash"]
 # CMD ["poetry", "run", "python", "main.py"]
