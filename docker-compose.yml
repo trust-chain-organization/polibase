@@ -17,6 +17,24 @@ services:
     depends_on:
       - postgres
 
+  polibase-monitoring:
+    build: .
+    volumes:
+      - .:/app
+      - ~/.config/gcloud:/root/.config/gcloud # GCP認証情報をマウント
+    environment:
+      - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
+      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+      - GOOGLE_CLOUD_PROJECT=trust-chain-828ad
+    ports:
+      - "8502:8502" # 監視用Streamlitポート
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+    command: ["uv", "run", "streamlit", "run", "src/monitoring_app.py", "--server.port=8502", "--server.address=0.0.0.0"]
+
   postgres:
     image: postgres:15-alpine
     environment:
@@ -31,6 +49,7 @@ services:
       - ./database/seed_governing_bodies.sql:/docker-entrypoint-initdb.d/seed_governing_bodies.sql:ro
       - ./database/seed_political_parties.sql:/docker-entrypoint-initdb.d/seed_political_parties.sql:ro
       - ./database/seed_conferences.sql:/docker-entrypoint-initdb.d/seed_conferences.sql:ro
+      - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db"]
       interval: 10s

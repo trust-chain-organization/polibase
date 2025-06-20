@@ -45,6 +45,9 @@ docker compose exec polibase uv run polibase update-speakers --use-llm
 # Launch meeting management web UI
 docker compose exec polibase uv run polibase streamlit
 
+# Launch monitoring dashboard for data coverage visualization
+docker compose exec polibase uv run polibase monitoring
+
 # Scrape meeting minutes from web
 docker compose exec polibase uv run polibase scrape-minutes "URL"
 
