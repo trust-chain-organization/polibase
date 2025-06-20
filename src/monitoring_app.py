@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 
-from src.config.database import get_db_engine
 from src.database.monitoring_repository import MonitoringRepository
 
 # ページ設定
@@ -44,9 +43,8 @@ def main():
     # データ更新時刻
     st.sidebar.markdown(f"最終更新: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
-    # リポジトリ初期化
-    engine = get_db_engine()
-    repo = MonitoringRepository(engine)
+    # リポジトリ初期化（デフォルトでセッションベース）
+    repo = MonitoringRepository()
     
     # タブ作成
     tab1, tab2, tab3, tab4 = st.tabs([
