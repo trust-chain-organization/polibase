@@ -95,6 +95,12 @@ Polibaseは以下の設計原則に基づいて構築されています：
    - 会議体の議員紹介URLの設定
    - 直感的なWebインターフェースで操作
 
+7. **データカバレッジを監視ダッシュボードで可視化**
+   - 全国の議会・議事録データの入力状況を一覧表示
+   - 議会別・都道府県別・政党別のカバレッジ率を視覚化
+   - 時系列でのデータ入力推移を分析
+   - データ充実度の低い領域を特定して効率的な作業が可能
+
 ### 統一CLIコマンド
 
 新しく統一されたCLIインターフェースが利用可能です：
@@ -117,6 +123,9 @@ docker compose exec polibase uv run polibase test-connection
 
 # 会議管理Web UIを起動
 docker compose exec polibase uv run polibase streamlit
+
+# データカバレッジ監視ダッシュボードを起動
+docker compose exec polibase uv run polibase monitoring
 
 # 政党議員情報を取得（Web スクレイピング）
 docker compose exec polibase uv run polibase scrape-politicians --all-parties
@@ -182,6 +191,25 @@ Webブラウザで会議情報（URL、日付）と政党情報を管理でき�
 - 新規会議の登録（開催主体、会議体、日付、URL）
 - 既存会議の編集・削除
 - 政党管理（議員一覧ページURLの設定）
+
+#### データカバレッジ監視ダッシュボード
+```bash
+# Docker環境で実行（専用ポートで起動）
+docker compose exec polibase uv run polibase monitoring
+
+# カスタムポートで起動
+docker compose exec polibase uv run polibase monitoring --port 8503
+
+# Docker Composeで専用コンテナとして起動（推奨）
+docker compose up -d polibase-monitoring
+```
+データ入力の進捗状況を可視化する監視ダッシュボードを提供します：
+- **全体概要**: 議会数、会議数、議事録数、政治家数などの主要メトリクス
+- **議会別カバレッジ**: 各議会のデータ入力率をヒートマップで表示
+- **時系列分析**: データ入力の推移を時系列グラフで確認
+- **詳細分析**: 政党別、都道府県別、委員会タイプ別の充実度
+
+アクセスURL: http://localhost:8502 （Docker Compose使用時）
 
 #### LLMベース発言者マッチング処理
 ```bash
