@@ -281,6 +281,84 @@ class MonitoringRepository(BaseRepository):
         result = self.fetch_all(query)
         return pd.DataFrame(result)
 
+    def get_prefecture_detailed_coverage(self) -> pd.DataFrame:
+        """都道府県別の詳細カバレッジ情報を取得（地図表示用）"""
+        query = """
+            WITH prefecture_stats AS (
+                SELECT
+                    gb.name as prefecture_name,
+                    gb.id as governing_body_id,
+
+                    -- 議会統計
+                    COUNT(DISTINCT c.id) as conference_count,
+
+                    -- 会議統計
+                    COUNT(DISTINCT m.id) as meetings_count,
+                    COUNT(DISTINCT CASE WHEN EXISTS
+                        (SELECT 1 FROM minutes WHERE meeting_id = m.id)
+                        THEN m.id END) as processed_meetings_count,
+
+                    -- 議事録統計
+                    COUNT(DISTINCT min.id) as minutes_count,
+
+                    -- 議員統計（都道府県に属する議会の議員）
+                    COUNT(DISTINCT pa.politician_id) as politicians_count,
+
+                    -- 議員団統計
+                    COUNT(DISTINCT pg.id) as groups_count
+
+                FROM governing_bodies gb
+                LEFT JOIN conferences c ON gb.id = c.governing_body_id
+                LEFT JOIN meetings m ON c.id = m.conference_id
+                LEFT JOIN minutes min ON m.id = min.meeting_id
+                LEFT JOIN politician_affiliations pa ON c.id = pa.conference_id
+                    AND pa.end_date IS NULL  -- 現職のみ
+                LEFT JOIN parliamentary_groups pg ON c.id = pg.conference_id
+                    AND pg.end_date IS NULL  -- 現在の議員団のみ
+                WHERE gb.type = '都道府県'
+                GROUP BY gb.id, gb.name
+            )
+            SELECT
+                prefecture_name,
+                conference_count,
+                meetings_count,
+                processed_meetings_count,
+                minutes_count,
+                politicians_count,
+                groups_count,
+
+                -- 総合充実度の計算（各指標の平均）
+                CASE
+                    WHEN meetings_count > 0 THEN
+                        ROUND(
+                            (
+                                -- 会議処理率
+                                (100.0 * processed_meetings_count / meetings_count) +
+                                -- 議会あたり議員数（最大50人で正規化）
+                                LEAST(100.0,
+                                    CASE WHEN conference_count > 0
+                                    THEN 100.0 * politicians_count /
+                                        (conference_count * 50)
+                                    ELSE 0 END
+                                ) +
+                                -- 議会あたり議員団数（最大10団体で正規化）
+                                LEAST(100.0,
+                                    CASE WHEN conference_count > 0
+                                    THEN 100.0 * groups_count / (conference_count * 10)
+                                    ELSE 0 END
+                                )
+                            ) / 3.0, 1
+                        )
+                    ELSE 0
+                END as total_value
+
+            FROM prefecture_stats
+            ORDER BY total_value DESC, meetings_count DESC
+        """
+
+        result = self.fetch_all(query)
+        return pd.DataFrame(result)
+
     def get_prefecture_coverage(self) -> pd.DataFrame:
         """都道府県別カバレッジを取得"""
         query = """
