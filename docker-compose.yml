@@ -5,7 +5,6 @@ services:
       - .:/app
       - ~/.config/gcloud:/root/.config/gcloud # GCP認証情報をマウント
     environment:
-      - UV_SYSTEM_PYTHON=1 # Dockerコンテナ内では仮想環境を使わない
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
@@ -24,7 +23,6 @@ services:
       - .:/app
       - ~/.config/gcloud:/root/.config/gcloud # GCP認証情報をマウント
     environment:
-      - UV_SYSTEM_PYTHON=1 # Dockerコンテナ内では仮想環境を使わない
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
@@ -39,7 +37,6 @@ services:
       [
         "uv",
         "run",
-        "--no-project",
         "streamlit",
         "run",
         "src/monitoring_app.py",

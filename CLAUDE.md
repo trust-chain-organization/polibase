@@ -28,85 +28,85 @@ gcloud auth application-default login  # Authenticate for GCS access
 #### Using the Unified CLI (Recommended)
 ```bash
 # Show all available commands
-docker compose exec polibase uv run --no-project polibase --help
+docker compose exec polibase uv run polibase --help
 
 # Process meeting minutes
-docker compose exec polibase uv run --no-project polibase process-minutes
+docker compose exec polibase uv run polibase process-minutes
 
 # Process minutes from GCS (using meeting ID)
-docker compose exec polibase uv run --no-project python -m src.process_minutes --meeting-id 123
+docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
 
 # Scrape politician information from party websites
-docker compose exec polibase uv run --no-project polibase scrape-politicians --all-parties
+docker compose exec polibase uv run polibase scrape-politicians --all-parties
 
 # Update speaker links with LLM
-docker compose exec polibase uv run --no-project polibase update-speakers --use-llm
+docker compose exec polibase uv run polibase update-speakers --use-llm
 
 # Launch meeting management web UI
-docker compose exec polibase uv run --no-project polibase streamlit
+docker compose exec polibase uv run polibase streamlit
 
 # Launch monitoring dashboard for data coverage visualization
-docker compose exec polibase uv run --no-project polibase monitoring
+docker compose exec polibase uv run polibase monitoring
 
 # Scrape meeting minutes from web
-docker compose exec polibase uv run --no-project polibase scrape-minutes "URL"
+docker compose exec polibase uv run polibase scrape-minutes "URL"
 
 # Scrape with Google Cloud Storage upload (automatically saves GCS URIs to meetings table)
-docker compose exec polibase uv run --no-project polibase scrape-minutes "URL" --upload-to-gcs
-docker compose exec polibase uv run --no-project polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
+docker compose exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs
+docker compose exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
 
 # Batch scrape multiple minutes from kaigiroku.net
-docker compose exec polibase uv run --no-project polibase batch-scrape --tenant kyoto
-docker compose exec polibase uv run --no-project polibase batch-scrape --tenant osaka
+docker compose exec polibase uv run polibase batch-scrape --tenant kyoto
+docker compose exec polibase uv run polibase batch-scrape --tenant osaka
 
 # Batch scrape with GCS upload
-docker compose exec polibase uv run --no-project polibase batch-scrape --tenant kyoto --upload-to-gcs
+docker compose exec polibase uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
 
 # Extract speakers from meeting minutes
-docker compose exec polibase uv run --no-project polibase extract-speakers
+docker compose exec polibase uv run polibase extract-speakers
 
 # Scrape politician information from party websites
-docker compose exec polibase uv run --no-project polibase scrape-politicians --all-parties
-docker compose exec polibase uv run --no-project polibase scrape-politicians --party-id 5
-docker compose exec polibase uv run --no-project polibase scrape-politicians --all-parties --dry-run
+docker compose exec polibase uv run polibase scrape-politicians --all-parties
+docker compose exec polibase uv run polibase scrape-politicians --party-id 5
+docker compose exec polibase uv run polibase scrape-politicians --all-parties --dry-run
 
 # Conference member extraction (3-step process)
 # Step 1: Extract members from conference URLs
-docker compose exec polibase uv run --no-project polibase extract-conference-members --conference-id 185
-docker compose exec polibase uv run --no-project polibase extract-conference-members --force  # Re-extract all
+docker compose exec polibase uv run polibase extract-conference-members --conference-id 185
+docker compose exec polibase uv run polibase extract-conference-members --force  # Re-extract all
 
 # Step 2: Match extracted members with existing politicians
-docker compose exec polibase uv run --no-project polibase match-conference-members --conference-id 185
-docker compose exec polibase uv run --no-project polibase match-conference-members  # Process all pending
+docker compose exec polibase uv run polibase match-conference-members --conference-id 185
+docker compose exec polibase uv run polibase match-conference-members  # Process all pending
 
 # Step 3: Create politician affiliations from matched data
-docker compose exec polibase uv run --no-project polibase create-affiliations --conference-id 185
-docker compose exec polibase uv run --no-project polibase create-affiliations --start-date 2024-01-01
+docker compose exec polibase uv run polibase create-affiliations --conference-id 185
+docker compose exec polibase uv run polibase create-affiliations --start-date 2024-01-01
 
 # Check extraction and matching status
-docker compose exec polibase uv run --no-project polibase member-status --conference-id 185
+docker compose exec polibase uv run polibase member-status --conference-id 185
 ```
 
 #### Direct Module Execution (Legacy)
 ```bash
 # Minutes Division Processing
-docker compose exec polibase uv run --no-project python -m src.process_minutes
+docker compose exec polibase uv run python -m src.process_minutes
 
 # Minutes Division Processing from GCS
-docker compose exec polibase uv run --no-project python -m src.process_minutes --meeting-id 123
+docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
 
 
 # LLM-based Speaker Matching
-docker compose exec polibase uv run --no-project python update_speaker_links_llm.py
+docker compose exec polibase uv run python update_speaker_links_llm.py
 ```
 
 ### Testing
 ```bash
 # Run tests
-docker compose exec polibase uv run --no-project pytest
+docker compose exec polibase uv run pytest
 
 # Test database connection
-docker compose exec polibase uv run --no-project python -c "from src.config.database import test_connection; test_connection()"
+docker compose exec polibase uv run python -c "from src.config.database import test_connection; test_connection()"
 ```
 
 ### Code Formatting and Quality
@@ -114,13 +114,13 @@ docker compose exec polibase uv run --no-project python -c "from src.config.data
 #### Ruff (Code Formatter and Linter)
 ```bash
 # Format code
-docker compose exec polibase uv run --no-project --frozen ruff format .
+docker compose exec polibase uv run --frozen ruff format .
 
 # Check code style
-docker compose exec polibase uv run --no-project --frozen ruff check .
+docker compose exec polibase uv run --frozen ruff check .
 
 # Fix auto-fixable issues
-docker compose exec polibase uv run --no-project --frozen ruff check . --fix
+docker compose exec polibase uv run --frozen ruff check . --fix
 ```
 
 **Critical Ruff Rules:**
@@ -135,7 +135,7 @@ docker compose exec polibase uv run --no-project --frozen ruff check . --fix
 #### Type Checking
 ```bash
 # Run type checking with pyright
-docker compose exec polibase uv run --no-project --frozen pyright
+docker compose exec polibase uv run --frozen pyright
 ```
 
 **Requirements:**
@@ -146,13 +146,13 @@ docker compose exec polibase uv run --no-project --frozen pyright
 #### Pre-commit Hooks
 ```bash
 # Install pre-commit hooks (first time only)
-docker compose exec polibase uv run --no-project pre-commit install
+docker compose exec polibase uv run pre-commit install
 
 # Run pre-commit manually on all files
-docker compose exec polibase uv run --no-project pre-commit run --all-files
+docker compose exec polibase uv run pre-commit run --all-files
 
 # Update pre-commit hooks to latest versions
-docker compose exec polibase uv run --no-project pre-commit autoupdate
+docker compose exec polibase uv run pre-commit autoupdate
 ```
 
 **Pre-commit Configuration:**
@@ -174,12 +174,12 @@ docker compose exec polibase uv run --no-project pre-commit autoupdate
 docker compose exec postgres psql -U polibase_user -d polibase_db
 
 # Backup/Restore (with GCS support)
-docker compose exec polibase uv run --no-project polibase database backup               # Backup to local and GCS
-docker compose exec polibase uv run --no-project polibase database backup --no-gcs      # Backup to local only
-docker compose exec polibase uv run --no-project polibase database restore backup.sql   # Restore from local
-docker compose exec polibase uv run --no-project polibase database restore gs://bucket/backup.sql  # Restore from GCS
-docker compose exec polibase uv run --no-project polibase database list                 # List all backups
-docker compose exec polibase uv run --no-project polibase database list --no-gcs        # List local backups only
+docker compose exec polibase uv run polibase database backup               # Backup to local and GCS
+docker compose exec polibase uv run polibase database backup --no-gcs      # Backup to local only
+docker compose exec polibase uv run polibase database restore backup.sql   # Restore from local
+docker compose exec polibase uv run polibase database restore gs://bucket/backup.sql  # Restore from GCS
+docker compose exec polibase uv run polibase database list                 # List all backups
+docker compose exec polibase uv run polibase database list --no-gcs        # List local backups only
 
 # Legacy backup scripts (local only)
 ./backup-database.sh backup

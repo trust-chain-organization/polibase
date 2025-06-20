@@ -46,14 +46,11 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 # uvをPATHに追加
 ENV PATH="/root/.local/bin:$PATH"
 
-# Dockerコンテナ内ではシステムPythonを使用（仮想環境を作成しない）
-ENV UV_SYSTEM_PYTHON=1
-
 # 必要なファイルをコピー（順序が重要）
 COPY README.md ./
 COPY pyproject.toml uv.lock ./
 
-# 依存関係をインストール（--systemフラグは不要、環境変数で制御）
+# 依存関係をインストール（デフォルトの仮想環境を使用）
 RUN uv sync
 
 # Playwrightのブラウザをインストール
