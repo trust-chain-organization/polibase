@@ -1,67 +1,76 @@
 """Repository for monitoring data coverage and statistics"""
 
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from typing import Any
+
 import pandas as pd
-from sqlalchemy import text
 
 from src.database.base_repository import BaseRepository
 
 
 class MonitoringRepository(BaseRepository):
     """監視ダッシュボード用のデータアクセスリポジトリ"""
-    
-    def get_overall_metrics(self) -> Dict[str, Any]:
+
+    def get_overall_metrics(self) -> dict[str, Any]:
         """全体的なメトリクスを取得"""
         # 基本的な統計情報を取得
         query = """
             WITH stats AS (
-                SELECT 
+                SELECT
                     -- 議会統計
                     (SELECT COUNT(*) FROM conferences) as total_conferences,
-                    (SELECT COUNT(DISTINCT conference_id) FROM meetings) as conferences_with_data,
-                    
+                    (SELECT COUNT(DISTINCT conference_id) FROM meetings)
+                        as conferences_with_data,
+
                     -- 会議統計
                     (SELECT COUNT(*) FROM meetings) as total_meetings,
-                    (SELECT COUNT(*) FROM meetings WHERE id IN (SELECT meeting_id FROM minutes)) as meetings_with_minutes,
-                    
+                    (SELECT COUNT(*) FROM meetings
+                     WHERE id IN (SELECT meeting_id FROM minutes))
+                        as meetings_with_minutes,
+
                     -- 議事録統計
                     (SELECT COUNT(*) FROM minutes) as total_minutes,
-                    (SELECT COUNT(*) FROM minutes WHERE processed_at IS NOT NULL) as processed_minutes,
-                    
+                    (SELECT COUNT(*) FROM minutes
+                     WHERE processed_at IS NOT NULL) as processed_minutes,
+
                     -- 発言者統計
                     (SELECT COUNT(*) FROM speakers) as total_speakers,
-                    (SELECT COUNT(*) FROM speakers WHERE politician_id IS NOT NULL) as linked_speakers,
-                    
+                    (SELECT COUNT(*) FROM speakers
+                     WHERE id IN (SELECT speaker_id FROM politicians))
+                        as linked_speakers,
+
                     -- 政治家統計
                     (SELECT COUNT(*) FROM politicians) as total_politicians,
-                    (SELECT COUNT(DISTINCT politician_id) FROM speakers) as active_politicians
+                    (SELECT COUNT(DISTINCT p.id) FROM politicians p
+                     WHERE EXISTS (SELECT 1 FROM conversations c
+                                  WHERE c.speaker_id = p.speaker_id))
+                        as active_politicians
             )
-            SELECT 
+            SELECT
                 total_conferences,
                 conferences_with_data,
-                CASE WHEN total_conferences > 0 
+                CASE WHEN total_conferences > 0
                     THEN ROUND(100.0 * conferences_with_data / total_conferences, 1)
                     ELSE 0 END as conferences_coverage,
-                
+
                 total_meetings,
                 meetings_with_minutes,
                 CASE WHEN total_meetings > 0
                     THEN ROUND(100.0 * meetings_with_minutes / total_meetings, 1)
                     ELSE 0 END as meetings_coverage,
-                
+
                 total_minutes,
                 processed_minutes,
                 CASE WHEN total_minutes > 0
                     THEN ROUND(100.0 * processed_minutes / total_minutes, 1)
                     ELSE 0 END as minutes_coverage,
-                
+
                 total_speakers,
                 linked_speakers,
                 CASE WHEN total_speakers > 0
                     THEN ROUND(100.0 * linked_speakers / total_speakers, 1)
                     ELSE 0 END as speakers_coverage,
-                
+
                 total_politicians,
                 active_politicians,
                 CASE WHEN total_politicians > 0
@@ -69,16 +78,16 @@ class MonitoringRepository(BaseRepository):
                     ELSE 0 END as politicians_coverage
             FROM stats
         """
-        
+
         result = self.fetch_one(query)
         return dict(result._mapping) if result else {}
-    
+
     def get_recent_activities(self, days: int = 7) -> pd.DataFrame:
         """最近のデータ入力活動を取得"""
         query = """
             WITH recent_activities AS (
                 -- 最近追加された会議
-                SELECT 
+                SELECT
                     'Meeting' as activity_type,
                     m.name as item_name,
                     m.date as activity_date,
@@ -87,11 +96,11 @@ class MonitoringRepository(BaseRepository):
                 FROM meetings m
                 JOIN conferences c ON m.conference_id = c.id
                 WHERE m.created_at >= :start_date
-                
+
                 UNION ALL
-                
+
                 -- 最近処理された議事録
-                SELECT 
+                SELECT
                     'Minutes' as activity_type,
                     COALESCE(m.name, 'Minutes #' || min.id) as item_name,
                     min.processed_at::date as activity_date,
@@ -101,21 +110,21 @@ class MonitoringRepository(BaseRepository):
                 LEFT JOIN meetings m ON min.meeting_id = m.id
                 LEFT JOIN conferences c ON m.conference_id = c.id
                 WHERE min.processed_at >= :start_date
-                
+
                 UNION ALL
-                
+
                 -- 最近追加された政治家
-                SELECT 
+                SELECT
                     'Politician' as activity_type,
                     p.name as item_name,
                     p.created_at::date as activity_date,
                     p.created_at,
-                    pp.short_name as conference_name
+                    pp.name as conference_name
                 FROM politicians p
                 LEFT JOIN political_parties pp ON p.political_party_id = pp.id
                 WHERE p.created_at >= :start_date
             )
-            SELECT 
+            SELECT
                 activity_type as "タイプ",
                 item_name as "項目名",
                 conference_name as "関連組織",
@@ -125,34 +134,34 @@ class MonitoringRepository(BaseRepository):
             ORDER BY created_at DESC
             LIMIT 100
         """
-        
+
         start_date = datetime.now() - timedelta(days=days)
         result = self.fetch_all(query, {"start_date": start_date})
-        
+
         return pd.DataFrame(result)
-    
+
     def get_conference_coverage(
-        self, 
-        governing_body_type: Optional[str] = None,
-        min_coverage: float = 0
+        self, governing_body_type: str | None = None, min_coverage: float = 0
     ) -> pd.DataFrame:
         """議会別のカバレッジ情報を取得"""
         where_clause = ""
         params = {"min_coverage": min_coverage}
-        
+
         if governing_body_type:
             where_clause = "WHERE gb.type = :gov_type"
             params["gov_type"] = governing_body_type
-        
+
         query = f"""
             WITH conference_stats AS (
-                SELECT 
+                SELECT
                     c.id as conference_id,
                     c.name as conference_name,
                     gb.name as governing_body_name,
                     gb.type as governing_body_type,
                     COUNT(DISTINCT m.id) as total_meetings,
-                    COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM minutes WHERE meeting_id = m.id) THEN m.id END) as processed_meetings,
+                    COUNT(DISTINCT CASE WHEN EXISTS
+                        (SELECT 1 FROM minutes WHERE meeting_id = m.id)
+                        THEN m.id END) as processed_meetings,
                     MAX(m.created_at) as last_updated
                 FROM conferences c
                 JOIN governing_bodies gb ON c.governing_body_id = gb.id
@@ -160,7 +169,7 @@ class MonitoringRepository(BaseRepository):
                 {where_clause}
                 GROUP BY c.id, c.name, gb.name, gb.type
             )
-            SELECT 
+            SELECT
                 conference_id,
                 conference_name,
                 governing_body_name,
@@ -177,14 +186,12 @@ class MonitoringRepository(BaseRepository):
                 ELSE 0 END >= :min_coverage
             ORDER BY coverage_rate DESC, total_meetings DESC
         """
-        
+
         result = self.fetch_all(query, params)
         return pd.DataFrame(result)
-    
+
     def get_timeline_data(
-        self, 
-        time_range: str = "過去30日",
-        data_type: str = "すべて"
+        self, time_range: str = "過去30日", data_type: str = "すべて"
     ) -> pd.DataFrame:
         """時系列データを取得"""
         # 期間の計算
@@ -199,12 +206,12 @@ class MonitoringRepository(BaseRepository):
             start_date = end_date - timedelta(days=365)
         else:  # 全期間
             start_date = datetime(2000, 1, 1)
-        
+
         queries = []
-        
+
         if data_type in ["会議数", "すべて"]:
             queries.append("""
-                SELECT 
+                SELECT
                     DATE(created_at) as date,
                     '会議' as data_type,
                     COUNT(*) as count
@@ -212,10 +219,10 @@ class MonitoringRepository(BaseRepository):
                 WHERE created_at >= :start_date
                 GROUP BY DATE(created_at)
             """)
-        
+
         if data_type in ["議事録数", "すべて"]:
             queries.append("""
-                SELECT 
+                SELECT
                     DATE(processed_at) as date,
                     '議事録' as data_type,
                     COUNT(*) as count
@@ -223,10 +230,10 @@ class MonitoringRepository(BaseRepository):
                 WHERE processed_at >= :start_date
                 GROUP BY DATE(processed_at)
             """)
-        
+
         if data_type in ["発言数", "すべて"]:
             queries.append("""
-                SELECT 
+                SELECT
                     DATE(created_at) as date,
                     '発言' as data_type,
                     COUNT(*) as count
@@ -234,7 +241,7 @@ class MonitoringRepository(BaseRepository):
                 WHERE created_at >= :start_date
                 GROUP BY DATE(created_at)
             """)
-        
+
         if queries:
             union_query = " UNION ALL ".join(queries)
             final_query = f"""
@@ -244,48 +251,54 @@ class MonitoringRepository(BaseRepository):
                 WHERE date IS NOT NULL
                 ORDER BY date, data_type
             """
-            
+
             result = self.fetch_all(final_query, {"start_date": start_date})
             return pd.DataFrame(result)
-        
+
         return pd.DataFrame()
-    
+
     def get_party_coverage(self) -> pd.DataFrame:
         """政党別カバレッジを取得"""
         query = """
-            SELECT 
+            SELECT
                 pp.name as party_name,
                 COUNT(DISTINCT p.id) as politician_count,
-                COUNT(DISTINCT s.politician_id) as active_count,
+                COUNT(DISTINCT CASE WHEN EXISTS
+                    (SELECT 1 FROM conversations c
+                     WHERE c.speaker_id = p.speaker_id) THEN p.id END) as active_count,
                 CASE WHEN COUNT(DISTINCT p.id) > 0
-                    THEN ROUND(100.0 * COUNT(DISTINCT s.politician_id) / COUNT(DISTINCT p.id), 1)
+                    THEN ROUND(100.0 * COUNT(DISTINCT CASE WHEN EXISTS
+                        (SELECT 1 FROM conversations c
+                         WHERE c.speaker_id = p.speaker_id) THEN p.id END)
+                        / COUNT(DISTINCT p.id), 1)
                     ELSE 0 END as coverage_rate
             FROM political_parties pp
             LEFT JOIN politicians p ON pp.id = p.political_party_id
-            LEFT JOIN speakers s ON p.id = s.politician_id
             GROUP BY pp.id, pp.name
             ORDER BY politician_count DESC
         """
-        
+
         result = self.fetch_all(query)
         return pd.DataFrame(result)
-    
+
     def get_prefecture_coverage(self) -> pd.DataFrame:
         """都道府県別カバレッジを取得"""
         query = """
             WITH prefecture_stats AS (
-                SELECT 
+                SELECT
                     gb.name as prefecture_name,
                     COUNT(DISTINCT c.id) as conference_count,
                     COUNT(DISTINCT m.id) as meeting_count,
-                    COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM minutes WHERE meeting_id = m.id) THEN m.id END) as processed_count
+                    COUNT(DISTINCT CASE WHEN EXISTS
+                    (SELECT 1 FROM minutes WHERE meeting_id = m.id)
+                    THEN m.id END) as processed_count
                 FROM governing_bodies gb
                 LEFT JOIN conferences c ON gb.id = c.governing_body_id
                 LEFT JOIN meetings m ON c.id = m.conference_id
                 WHERE gb.type = '都道府県'
                 GROUP BY gb.id, gb.name
             )
-            SELECT 
+            SELECT
                 prefecture_name,
                 conference_count,
                 meeting_count,
@@ -296,29 +309,31 @@ class MonitoringRepository(BaseRepository):
             FROM prefecture_stats
             ORDER BY coverage_rate DESC, meeting_count DESC
         """
-        
+
         result = self.fetch_all(query)
         return pd.DataFrame(result)
-    
+
     def get_committee_type_coverage(self) -> pd.DataFrame:
         """委員会タイプ別カバレッジを取得"""
         query = """
-            SELECT 
+            SELECT
                 gb.type as governing_body_type,
-                CASE 
+                CASE
                     WHEN c.name LIKE '%本会議%' THEN '本会議'
                     WHEN c.name LIKE '%委員会%' THEN '委員会'
                     WHEN c.name LIKE '%審議会%' THEN '審議会'
                     ELSE 'その他'
                 END as committee_type,
                 COUNT(DISTINCT m.id) as meeting_count,
-                COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM minutes WHERE meeting_id = m.id) THEN m.id END) as processed_count
+                COUNT(DISTINCT CASE WHEN EXISTS
+                    (SELECT 1 FROM minutes WHERE meeting_id = m.id)
+                    THEN m.id END) as processed_count
             FROM conferences c
             JOIN governing_bodies gb ON c.governing_body_id = gb.id
             LEFT JOIN meetings m ON c.id = m.conference_id
             GROUP BY gb.type, committee_type
             ORDER BY gb.type, meeting_count DESC
         """
-        
+
         result = self.fetch_all(query)
         return pd.DataFrame(result)
