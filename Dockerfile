@@ -50,8 +50,12 @@ ENV PATH="/root/.local/bin:$PATH"
 COPY README.md ./
 COPY pyproject.toml uv.lock ./
 
-# 依存関係をインストール（デフォルトの仮想環境を使用）
-RUN uv sync
+# uvのプロジェクト環境を設定（キャッシュ効率を向上）
+ENV UV_PROJECT_ENVIRONMENT=/app/.venv
+ENV UV_CACHE_DIR=/root/.cache/uv
+
+# 依存関係をインストール
+RUN uv sync --frozen
 
 # Playwrightのブラウザをインストール
 RUN uv run playwright install chromium
@@ -63,9 +67,11 @@ COPY scripts/ scripts/
 COPY backup-database.sh test-setup.sh reset-database.sh ./
 
 # Docker内でのuv実行用ラッパーを設定
-RUN chmod +x scripts/docker-uv-wrapper.sh
+RUN chmod +x scripts/docker-uv-wrapper.sh scripts/docker-entrypoint.sh
 RUN ln -sf /app/scripts/docker-uv-wrapper.sh /usr/local/bin/uv-wrapper
+
+# エントリーポイントを設定
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
 
 # コンテナ起動時に実行するコマンド
 CMD ["/bin/bash"]
-# CMD ["poetry", "run", "python", "main.py"]
