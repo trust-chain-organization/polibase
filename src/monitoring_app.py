@@ -434,6 +434,20 @@ def display_japan_map_tab(repo: MonitoringRepository):
         st.warning("都道府県データがありません")
         return
 
+    # 数値型カラムを明示的に変換
+    numeric_columns = [
+        "conference_count",
+        "meetings_count",
+        "processed_meetings_count",
+        "minutes_count",
+        "politicians_count",
+        "groups_count",
+        "total_value",
+    ]
+    for col in numeric_columns:
+        if col in prefecture_data.columns:
+            prefecture_data[col] = pd.to_numeric(prefecture_data[col], errors="coerce")
+
     # メトリクスの選択
     col1, col2 = st.columns([3, 1])
 
