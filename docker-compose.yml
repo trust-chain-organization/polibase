@@ -3,6 +3,7 @@ services:
     build: .
     volumes:
       - ./src:/app/src
+      - ./tests:/app/tests
       - ./database:/app/database
       - ./scripts:/app/scripts
       - ./pyproject.toml:/app/pyproject.toml
@@ -29,6 +30,7 @@ services:
     build: .
     volumes:
       - ./src:/app/src
+      - ./tests:/app/tests
       - ./database:/app/database
       - ./scripts:/app/scripts
       - ./pyproject.toml:/app/pyproject.toml

@@ -11,9 +11,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.config.database import get_db_engine, get_db_session
+from src.models.base import BaseModel, to_dict
 
 # Type variable for generic repository pattern
-T = TypeVar("T")
+T = TypeVar("T", bound=BaseModel)
 
 logger = logging.getLogger(__name__)
 
@@ -257,6 +258,83 @@ class BaseRepository:
 
         result = self.fetch_one(query, where)
         return result[0] if result else 0
+
+    def insert_model(
+        self, table: str, model: BaseModel, returning: str | None = None
+    ) -> Any | None:
+        """
+        Insert a Pydantic model into table
+
+        Args:
+            table: Table name
+            model: Pydantic model instance
+            returning: Column name to return (usually 'id')
+
+        Returns:
+            Value of returning column if specified, None otherwise
+        """
+        data = to_dict(model)
+        return self.insert(table, data, returning)
+
+    def update_model(self, table: str, model: BaseModel, where: dict[str, Any]) -> int:
+        """
+        Update records using a Pydantic model
+
+        Args:
+            table: Table name
+            model: Pydantic model instance with values to update
+            where: Dictionary of where conditions
+
+        Returns:
+            Number of affected rows
+        """
+        data = to_dict(model)
+        return self.update(table, data, where)
+
+    def fetch_as_model(
+        self, model_class: type[T], query: str, params: dict[str, Any] | None = None
+    ) -> T | None:
+        """
+        Execute query and return result as Pydantic model
+
+        Args:
+            model_class: Pydantic model class
+            query: SQL query string
+            params: Query parameters
+
+        Returns:
+            Model instance or None
+        """
+        result = self.fetch_one(query, params)
+        if result:
+            # Convert Row to dict
+            columns = result._fields
+            data = dict(zip(columns, result, strict=False))
+            return model_class(**data)
+        return None
+
+    def fetch_all_as_models(
+        self, model_class: type[T], query: str, params: dict[str, Any] | None = None
+    ) -> list[T]:
+        """
+        Execute query and return results as list of Pydantic models
+
+        Args:
+            model_class: Pydantic model class
+            query: SQL query string
+            params: Query parameters
+
+        Returns:
+            List of model instances
+        """
+        results = self.fetch_all(query, params)
+        models = []
+        for row in results:
+            # Convert Row to dict
+            columns = row._fields
+            data = dict(zip(columns, row, strict=False))
+            models.append(model_class(**data))
+        return models
 
     def close(self):
         """Close database connection/session"""
