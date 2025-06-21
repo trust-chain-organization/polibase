@@ -1,6 +1,6 @@
 """Parliamentary group model definitions"""
 
-from datetime import date
+import datetime
 
 from pydantic import Field
 
@@ -43,8 +43,8 @@ class ParliamentaryGroupMembershipBase(BaseModel):
     parliamentary_group_id: int = Field(..., description="議員団ID")
     politician_id: int = Field(..., description="政治家ID")
     role: str | None = Field(None, description="役職（団長、幹事長、会計など）")
-    start_date: date = Field(..., description="所属開始日")
-    end_date: date | None = Field(
+    start_date: datetime.date = Field(..., description="所属開始日")
+    end_date: datetime.date | None = Field(
         None, description="所属終了日（現在も所属している場合はNULL）"
     )
 

@@ -1,6 +1,6 @@
 """Meeting model definitions"""
 
-from datetime import date
+import datetime
 
 from pydantic import Field
 
@@ -11,7 +11,7 @@ class MeetingBase(BaseModel):
     """Base meeting model with common fields"""
 
     conference_id: int = Field(..., description="会議体ID")
-    date: date | None = Field(None, description="開催日")
+    date: datetime.date | None = Field(None, description="開催日")
     url: str | None = Field(None, description="会議関連のURLまたは議事録PDFのURL")
     name: str | None = Field(None, description="会議名")
     gcs_pdf_uri: str | None = Field(None, description="GCSに保存されたPDFのURI")
@@ -28,7 +28,7 @@ class MeetingUpdate(BaseModel):
     """Model for updating a meeting"""
 
     conference_id: int | None = Field(None, description="会議体ID")
-    date: date | None = Field(None, description="開催日")
+    date: datetime.date | None = Field(None, description="開催日")
     url: str | None = Field(None, description="会議関連のURLまたは議事録PDFのURL")
     name: str | None = Field(None, description="会議名")
     gcs_pdf_uri: str | None = Field(None, description="GCSに保存されたPDFのURI")
