@@ -301,6 +301,10 @@ Polibase follows these core design principles:
 - **Cloud Storage**: Google Cloud Storage for scraped data persistence
   - GCSStorage utility supports both upload and download operations
   - Handles GCS URI format: `gs://bucket-name/path/to/file`
+- **Data Visualization**:
+  - Plotly for interactive charts
+  - Folium for interactive Japan map visualization
+  - Streamlit for dashboard UI
 
 ### Development Patterns
 - Docker-first development (all commands run through `docker compose exec`)

@@ -6,8 +6,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from streamlit_folium import st_folium
 
 from src.database.monitoring_repository import MonitoringRepository
+from src.utils.japan_map import create_japan_map, create_prefecture_details_card
 
 # ページ設定
 st.set_page_config(
@@ -48,20 +50,29 @@ def main():
     repo = MonitoringRepository()
 
     # タブ作成
-    tab1, tab2, tab3, tab4 = st.tabs(
-        ["📈 全体概要", "🏛️ 議会別カバレッジ", "📅 時系列分析", "🎯 データ充実度詳細"]
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(
+        [
+            "📈 全体概要",
+            "🗾 日本地図",
+            "🏛️ 議会別カバレッジ",
+            "📅 時系列分析",
+            "🎯 データ充実度詳細",
+        ]
     )
 
     with tab1:
         display_overview_tab(repo)
 
     with tab2:
-        display_conference_coverage_tab(repo)
+        display_japan_map_tab(repo)
 
     with tab3:
-        display_timeline_tab(repo)
+        display_conference_coverage_tab(repo)
 
     with tab4:
+        display_timeline_tab(repo)
+
+    with tab5:
         display_detailed_coverage_tab(repo)
 
 
@@ -410,6 +421,157 @@ def display_committee_type_coverage(repo: MonitoringRepository):
 
     else:
         st.info("委員会データがありません")
+
+
+def display_japan_map_tab(repo: MonitoringRepository):
+    """日本地図タブの表示"""
+    st.header("🗾 日本地図でみるデータカバレッジ")
+
+    # データ取得
+    prefecture_data = repo.get_prefecture_detailed_coverage()
+
+    if prefecture_data.empty:
+        st.warning("都道府県データがありません")
+        return
+
+    # 数値型カラムを明示的に変換
+    numeric_columns = [
+        "conference_count",
+        "meetings_count",
+        "processed_meetings_count",
+        "minutes_count",
+        "politicians_count",
+        "groups_count",
+        "total_value",
+    ]
+    for col in numeric_columns:
+        if col in prefecture_data.columns:
+            prefecture_data[col] = pd.to_numeric(prefecture_data[col], errors="coerce")
+
+    # メトリクスの選択
+    col1, col2 = st.columns([3, 1])
+
+    with col2:
+        st.subheader("表示設定")
+
+        # 表示する指標の選択
+        metric_options = {
+            "total_value": "総合充実度",
+            "meetings_count": "会議数",
+            "minutes_count": "議事録数",
+            "politicians_count": "議員数",
+            "groups_count": "議員団数",
+        }
+
+        selected_metric = st.selectbox(
+            "表示する指標",
+            options=list(metric_options.keys()),
+            format_func=lambda x: metric_options[x],
+            index=0,
+        )
+
+        # データサマリー
+        st.markdown("### 📊 データサマリー")
+
+        # 全国平均
+        if selected_metric in prefecture_data.columns:
+            avg_value = prefecture_data[selected_metric].mean()
+            max_value = prefecture_data[selected_metric].max()
+            min_value = prefecture_data[selected_metric].min()
+
+            st.metric("全国平均", f"{avg_value:.1f}")
+            st.metric("最大値", f"{max_value:.0f}")
+            st.metric("最小値", f"{min_value:.0f}")
+
+        # トップ5都道府県
+        st.markdown("### 🏆 トップ5")
+        top5 = prefecture_data.nlargest(5, selected_metric)[
+            ["prefecture_name", selected_metric]
+        ]
+        for idx, row in top5.iterrows():
+            st.write(f"{idx + 1}. {row['prefecture_name']}: {row[selected_metric]:.1f}")
+
+    with col1:
+        # 地図の作成と表示
+        m = create_japan_map(
+            prefecture_data, value_column=selected_metric, zoom_start=5
+        )
+
+        # Foliumマップの表示
+        map_data = st_folium(
+            m,
+            height=600,
+            width=None,
+            returned_objects=["last_object_clicked"],
+            key="japan_map",
+        )
+
+        # クリックされた都道府県の詳細表示
+        if map_data["last_object_clicked"] is not None:
+            clicked_popup = map_data["last_object_clicked"].get("popup")
+            if clicked_popup:
+                # ポップアップから都道府県名を抽出
+                import re
+
+                match = re.search(r"<h4>(.+?)</h4>", clicked_popup)
+                if match:
+                    prefecture_name = match.group(1)
+
+                    # 該当する都道府県のデータを取得
+                    pref_data = prefecture_data[
+                        prefecture_data["prefecture_name"] == prefecture_name
+                    ]
+
+                    if not pref_data.empty:
+                        st.markdown("---")
+                        st.subheader(f"{prefecture_name}の詳細情報")
+
+                        # 詳細カードの表示
+                        st.markdown(
+                            create_prefecture_details_card(pref_data.iloc[0]),
+                            unsafe_allow_html=True,
+                        )
+
+    # データテーブルの表示
+    with st.expander("📋 都道府県別詳細データ", expanded=False):
+        # カラム名の日本語化
+        column_mapping = {
+            "prefecture_name": "都道府県",
+            "conference_count": "議会数",
+            "meetings_count": "会議数",
+            "processed_meetings_count": "処理済み会議数",
+            "minutes_count": "議事録数",
+            "politicians_count": "議員数",
+            "groups_count": "議員団数",
+            "total_value": "総合充実度 (%)",
+        }
+
+        # 表示用のデータフレームを作成
+        display_df = prefecture_data.rename(columns=column_mapping)
+
+        # データフレームの表示
+        st.dataframe(
+            display_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "総合充実度 (%)": st.column_config.ProgressColumn(
+                    "総合充実度 (%)",
+                    help="各種指標の総合評価",
+                    min_value=0,
+                    max_value=100,
+                ),
+            },
+        )
+
+        # CSVダウンロードボタン
+        csv = display_df.to_csv(index=False, encoding="utf-8-sig")
+        st.download_button(
+            label="📥 CSVダウンロード",
+            data=csv,
+            file_name=f"prefecture_coverage_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+        )
 
 
 if __name__ == "__main__":

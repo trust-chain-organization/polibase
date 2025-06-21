@@ -2,8 +2,16 @@ services:
   polibase:
     build: .
     volumes:
-      - .:/app
-      - ~/.config/gcloud:/root/.config/gcloud # GCP認証情報をマウント
+      - ./src:/app/src
+      - ./database:/app/database
+      - ./scripts:/app/scripts
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
+      - ./README.md:/app/README.md
+      - ./backup-database.sh:/app/backup-database.sh
+      - ./test-setup.sh:/app/test-setup.sh
+      - ./reset-database.sh:/app/reset-database.sh
+      - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
@@ -20,8 +28,16 @@ services:
   polibase-monitoring:
     build: .
     volumes:
-      - .:/app
-      - ~/.config/gcloud:/root/.config/gcloud # GCP認証情報をマウント
+      - ./src:/app/src
+      - ./database:/app/database
+      - ./scripts:/app/scripts
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
+      - ./README.md:/app/README.md
+      - ./backup-database.sh:/app/backup-database.sh
+      - ./test-setup.sh:/app/test-setup.sh
+      - ./reset-database.sh:/app/reset-database.sh
+      - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
@@ -33,7 +49,16 @@ services:
     tty: true
     depends_on:
       - postgres
-    command: ["uv", "run", "streamlit", "run", "src/monitoring_app.py", "--server.port=8502", "--server.address=0.0.0.0"]
+    command:
+      [
+        "uv",
+        "run",
+        "streamlit",
+        "run",
+        "src/monitoring_app.py",
+        "--server.port=8502",
+        "--server.address=0.0.0.0",
+      ]
 
   postgres:
     image: postgres:15-alpine
