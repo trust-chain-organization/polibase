@@ -1,5 +1,6 @@
 """Integration tests for parliamentary group repositories"""
 
+import os
 from datetime import date, timedelta
 
 import pytest
@@ -10,6 +11,12 @@ from src.config.database import DATABASE_URL
 from src.database.parliamentary_group_repository import (
     ParliamentaryGroupMembershipRepository,
     ParliamentaryGroupRepository,
+)
+
+# Skip all tests in this module if running in CI environment
+pytestmark = pytest.mark.skipif(
+    os.getenv("CI") == "true",
+    reason="Integration tests require database connection not available in CI",
 )
 
 
