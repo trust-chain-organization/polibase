@@ -1,17 +1,4 @@
 ---
-allowed-tools:
-  - Bash
-  - Task
-  - Read
-  - Write
-  - Edit
-  - MultiEdit
-  - Grep
-  - Glob
-  - LS
-  - TodoWrite
-  - TodoRead
-  - WebSearch
 description: GitHub Issueを自動的に解決するコマンド
 ---
 
