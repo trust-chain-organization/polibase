@@ -330,3 +330,4 @@ Polibase follows these core design principles:
 - **Duplicate Prevention**: Politician scraper checks existing records by name + party to avoid duplicates
 - **Database Migrations**: Run migrations after pulling updates that modify database schema
 - **GCS URI Format**: Always use `gs://` format for GCS URIs, not HTTPS URLs
+- **Intermediate Files**: Always create temporary or intermediate files (including markdown files for planning, summaries, etc.) in the `tmp/` directory. This directory is gitignored to keep the repository clean
