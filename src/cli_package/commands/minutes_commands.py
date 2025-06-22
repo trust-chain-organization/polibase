@@ -1,7 +1,5 @@
 """CLI commands for processing meeting minutes"""
 
-import sys
-
 import click
 
 from ..base import BaseCommand, with_error_handling
@@ -54,14 +52,12 @@ class MinutesCommands(BaseCommand):
         if use_llm:
             MinutesCommands.show_progress("Using LLM-based speaker matching...")
             # Import inside to avoid circular imports
-            sys.path.insert(0, ".")
-            from update_speaker_links_llm import main
+            from src.update_speaker_links_llm import main
 
             main()
         else:
             MinutesCommands.show_progress("Using rule-based speaker matching...")
-            sys.path.insert(0, ".")
-            from update_speaker_links import main
+            from src.update_speaker_links import main
 
             main()
 

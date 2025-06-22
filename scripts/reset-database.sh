@@ -20,19 +20,19 @@ fi
 
 echo ""
 echo "🛑 PostgreSQLコンテナを停止中..."
-docker compose stop postgres
+docker compose -f docker/docker-compose.yml stop postgres
 
 echo "🗑️  データベースボリュームを削除中..."
-docker compose down -v
+docker compose -f docker/docker-compose.yml down -v
 
 echo "🚀 コンテナを再作成中..."
-docker compose up -d postgres
+docker compose -f docker/docker-compose.yml up -d postgres
 
 echo "⏳ PostgreSQLの起動を待機中..."
 sleep 10
 
 # PostgreSQLの起動確認
-while ! docker compose exec -T postgres pg_isready -U polibase_user -d polibase_db > /dev/null 2>&1; do
+while ! docker compose -f docker/docker-compose.yml exec -T postgres pg_isready -U polibase_user -d polibase_db > /dev/null 2>&1; do
     echo "   PostgreSQL起動待機中..."
     sleep 2
 done
@@ -41,15 +41,15 @@ echo "✅ PostgreSQLが起動しました"
 
 echo ""
 echo "🔍 データベース初期化状態を確認中..."
-docker compose exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
+docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
 
 echo ""
 echo "🎉 データベースリセット完了！"
 echo "初期データが設定されています："
-docker compose exec -T postgres psql -U polibase_user -d polibase_db -c "SELECT name, type FROM governing_bodies;"
-docker compose exec -T postgres psql -U polibase_user -d polibase_db -c "SELECT name FROM political_parties;"
+docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -c "SELECT name, type FROM governing_bodies;"
+docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -c "SELECT name FROM political_parties;"
 
 echo ""
 echo "📝 次のステップ:"
-echo "   - アプリケーションを起動: docker compose up -d"
+echo "   - アプリケーションを起動: docker compose -f docker/docker-compose.yml up -d"
 echo "   - セットアップテスト: ./test-setup.sh"

@@ -64,7 +64,6 @@ RUN uv run playwright install chromium
 COPY src/ src/
 COPY database/ database/
 COPY scripts/ scripts/
-COPY backup-database.sh test-setup.sh reset-database.sh ./
 
 # Docker内でのuv実行用ラッパーを設定
 RUN chmod +x scripts/docker-uv-wrapper.sh scripts/docker-entrypoint.sh

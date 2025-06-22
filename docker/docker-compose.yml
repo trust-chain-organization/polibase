@@ -1,17 +1,16 @@
 services:
   polibase:
-    build: .
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
     volumes:
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./database:/app/database
-      - ./scripts:/app/scripts
-      - ./pyproject.toml:/app/pyproject.toml
-      - ./uv.lock:/app/uv.lock
-      - ./README.md:/app/README.md
-      - ./backup-database.sh:/app/backup-database.sh
-      - ./test-setup.sh:/app/test-setup.sh
-      - ./reset-database.sh:/app/reset-database.sh
+      - ../src:/app/src
+      - ../tests:/app/tests
+      - ../database:/app/database
+      - ../scripts:/app/scripts
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../uv.lock:/app/uv.lock
+      - ../README.md:/app/README.md
       - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
@@ -27,18 +26,17 @@ services:
       - postgres
 
   polibase-monitoring:
-    build: .
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
     volumes:
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./database:/app/database
-      - ./scripts:/app/scripts
-      - ./pyproject.toml:/app/pyproject.toml
-      - ./uv.lock:/app/uv.lock
-      - ./README.md:/app/README.md
-      - ./backup-database.sh:/app/backup-database.sh
-      - ./test-setup.sh:/app/test-setup.sh
-      - ./reset-database.sh:/app/reset-database.sh
+      - ../src:/app/src
+      - ../tests:/app/tests
+      - ../database:/app/database
+      - ../scripts:/app/scripts
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../uv.lock:/app/uv.lock
+      - ../README.md:/app/README.md
       - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
@@ -72,11 +70,11 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - ./database/seed_governing_bodies.sql:/docker-entrypoint-initdb.d/seed_governing_bodies.sql:ro
-      - ./database/seed_political_parties.sql:/docker-entrypoint-initdb.d/seed_political_parties.sql:ro
-      - ./database/seed_conferences.sql:/docker-entrypoint-initdb.d/seed_conferences.sql:ro
-      - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
+      - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ../database/seed_governing_bodies.sql:/docker-entrypoint-initdb.d/seed_governing_bodies.sql:ro
+      - ../database/seed_political_parties.sql:/docker-entrypoint-initdb.d/seed_political_parties.sql:ro
+      - ../database/seed_conferences.sql:/docker-entrypoint-initdb.d/seed_conferences.sql:ro
+      - ../database/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db"]
       interval: 10s

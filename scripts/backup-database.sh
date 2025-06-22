@@ -29,15 +29,15 @@ backup_database() {
     echo "💾 データベースをバックアップ中..."
 
     # PostgreSQLが起動しているか確認
-    if ! docker compose ps postgres | grep -q "Up"; then
+    if ! docker compose -f docker/docker-compose.yml ps postgres | grep -q "Up"; then
         echo "❌ PostgreSQLコンテナが起動していません"
         echo "以下のコマンドでDockerサービスを起動してください："
-        echo "docker compose up -d"
+        echo "docker compose -f docker/docker-compose.yml up -d"
         exit 1
     fi
 
     # バックアップ実行
-    docker compose exec -T postgres pg_dump -U polibase_user polibase_db > "$BACKUP_DIR/$BACKUP_FILE"
+    docker compose -f docker/docker-compose.yml exec -T postgres pg_dump -U polibase_user polibase_db > "$BACKUP_DIR/$BACKUP_FILE"
 
     if [ $? -eq 0 ]; then
         echo "✅ バックアップ完了: $BACKUP_DIR/$BACKUP_FILE"
@@ -77,24 +77,24 @@ restore_database() {
     echo "📥 データベースをリストア中..."
 
     # PostgreSQLが起動しているか確認
-    if ! docker compose ps postgres | grep -q "Up"; then
+    if ! docker compose -f docker/docker-compose.yml ps postgres | grep -q "Up"; then
         echo "❌ PostgreSQLコンテナが起動していません"
         echo "以下のコマンドでDockerサービスを起動してください："
-        echo "docker compose up -d"
+        echo "docker compose -f docker/docker-compose.yml up -d"
         exit 1
     fi
 
     # 既存のデータベースを削除して再作成
-    docker compose exec -T postgres psql -U polibase_user -d postgres -c "DROP DATABASE IF EXISTS polibase_db;"
-    docker compose exec -T postgres psql -U polibase_user -d postgres -c "CREATE DATABASE polibase_db;"
+    docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d postgres -c "DROP DATABASE IF EXISTS polibase_db;"
+    docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d postgres -c "CREATE DATABASE polibase_db;"
 
     # リストア実行
-    docker compose exec -T postgres psql -U polibase_user -d polibase_db < "$backup_file"
+    docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db < "$backup_file"
 
     if [ $? -eq 0 ]; then
         echo "✅ リストア完了"
         echo "🔍 データベース状態を確認中..."
-        docker compose exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
+        docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
     else
         echo "❌ リストアに失敗しました"
         exit 1

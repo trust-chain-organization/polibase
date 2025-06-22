@@ -100,20 +100,29 @@ class DatabaseBackupManager:
                     # Running on host - use docker compose
                     # Check if PostgreSQL container is running
                     check_result = subprocess.run(
-                        ["docker", "compose", "ps", "postgres"],
+                        [
+                            "docker",
+                            "compose",
+                            "-f",
+                            "docker/docker-compose.yml",
+                            "ps",
+                            "postgres",
+                        ],
                         capture_output=True,
                         text=True,
                     )
                     if "Up" not in check_result.stdout:
                         logger.error("❌ PostgreSQLコンテナが起動していません")
                         print("以下のコマンドでDockerサービスを起動してください：")
-                        print("docker compose up -d")
+                        print("docker compose -f docker/docker-compose.yml up -d")
                         return None
 
                     result = subprocess.run(
                         [
                             "docker",
                             "compose",
+                            "-f",
+                            "docker/docker-compose.yml",
                             "exec",
                             "-T",
                             "postgres",
@@ -256,14 +265,21 @@ class DatabaseBackupManager:
                 # Running on host - use docker compose
                 # Check if PostgreSQL container is running
                 check_result = subprocess.run(
-                    ["docker", "compose", "ps", "postgres"],
+                    [
+                        "docker",
+                        "compose",
+                        "-f",
+                        "docker/docker-compose.yml",
+                        "ps",
+                        "postgres",
+                    ],
                     capture_output=True,
                     text=True,
                 )
                 if "Up" not in check_result.stdout:
                     logger.error("❌ PostgreSQLコンテナが起動していません")
                     print("以下のコマンドでDockerサービスを起動してください：")
-                    print("docker compose up -d")
+                    print("docker compose -f docker/docker-compose.yml up -d")
                     return False
 
                 # Drop and recreate database
@@ -271,6 +287,8 @@ class DatabaseBackupManager:
                     [
                         "docker",
                         "compose",
+                        "-f",
+                        "docker/docker-compose.yml",
                         "exec",
                         "-T",
                         "postgres",
@@ -289,6 +307,8 @@ class DatabaseBackupManager:
                     [
                         "docker",
                         "compose",
+                        "-f",
+                        "docker/docker-compose.yml",
                         "exec",
                         "-T",
                         "postgres",
@@ -309,6 +329,8 @@ class DatabaseBackupManager:
                         [
                             "docker",
                             "compose",
+                            "-f",
+                            "docker/docker-compose.yml",
                             "exec",
                             "-T",
                             "postgres",
@@ -352,6 +374,8 @@ class DatabaseBackupManager:
                     [
                         "docker",
                         "compose",
+                        "-f",
+                        "docker/docker-compose.yml",
                         "exec",
                         "-T",
                         "postgres",

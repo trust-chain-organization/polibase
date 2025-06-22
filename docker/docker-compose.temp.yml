@@ -3,9 +3,11 @@
 
 services:
   polibase:
-    build: .
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
     volumes:
-      - .:/app
+      - ../:/app
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
