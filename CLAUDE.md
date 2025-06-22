@@ -316,7 +316,7 @@ Polibase follows these core design principles:
 
 ## Important Notes
 - **API Key Required**: GOOGLE_API_KEY must be set in .env for Gemini API access
-- **Database Persistence**: Default docker-compose.yml uses volumes for persistent storage
+- **Database Persistence**: Default docker/docker-compose.yml uses volumes for persistent storage
 - **Master Data**: Governing bodies and conferences are fixed master data, not modified during operation
 - **Processing Order**: Always run process-minutes → extract-speakers → update-speakers in sequence
 - **File Naming**: Fixed typo in minutes_divider.py (was minutes_dividor.py)

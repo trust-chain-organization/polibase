@@ -1,1 +1,0 @@
-scripts/reset-database.sh

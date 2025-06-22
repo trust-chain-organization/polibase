@@ -1,1 +1,0 @@
-scripts/backup-database.sh
