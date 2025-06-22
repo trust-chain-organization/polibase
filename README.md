@@ -43,10 +43,10 @@ cp .env.example .env
 ### 3. Docker環境の起動
 ```bash
 # PostgreSQLデータベースとアプリケーションを起動
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 
 # ログの確認
-docker compose logs -f
+docker compose -f docker/docker-compose.yml logs -f
 ```
 
 ### 4. Python依存関係のインストール（ローカル開発用）
@@ -58,7 +58,7 @@ uv sync
 ### 5. セットアップの確認
 ```bash
 # セットアップが正常に完了したか確認
-./test-setup.sh
+./scripts/test-setup.sh
 ```
 
 ## 🏃 使用方法
@@ -107,41 +107,41 @@ Polibaseは以下の設計原則に基づいて構築されています：
 
 ```bash
 # 利用可能なコマンドを表示
-docker compose exec polibase uv run polibase --help
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase --help
 
 # 議事録を処理（発言を抽出）
-docker compose exec polibase uv run polibase process-minutes
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase process-minutes
 
 # 議事録から発言者情報を抽出
-docker compose exec polibase uv run polibase extract-speakers
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-speakers
 
 # 発言者をマッチング（LLM使用）
-docker compose exec polibase uv run polibase update-speakers --use-llm
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase update-speakers --use-llm
 
 # データベース接続をテスト
-docker compose exec polibase uv run polibase test-connection
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase test-connection
 
 # 会議管理Web UIを起動
-docker compose exec polibase uv run polibase streamlit
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit
 
 # データカバレッジ監視ダッシュボードを起動
-docker compose exec polibase uv run polibase monitoring
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring
 
 # 政党議員情報を取得（Web スクレイピング）
-docker compose exec polibase uv run polibase scrape-politicians --all-parties
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties
 
 # 会議体所属議員の抽出・マッチング（3段階処理）
 # ステップ1: 議員情報を抽出
-docker compose exec polibase uv run polibase extract-conference-members --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members --conference-id 185
 
 # ステップ2: 既存政治家とマッチング
-docker compose exec polibase uv run polibase match-conference-members --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase match-conference-members --conference-id 185
 
 # ステップ3: 所属情報を作成
-docker compose exec polibase uv run polibase create-affiliations --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --conference-id 185
 
 # 処理状況を確認
-docker compose exec polibase uv run polibase member-status
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase member-status
 ```
 
 ### アプリケーションの実行（従来の方法）
@@ -149,15 +149,15 @@ docker compose exec polibase uv run polibase member-status
 #### 議事録分割処理（発言抽出）
 ```bash
 # Docker環境で実行（新しいファイル名でも実行可能）
-docker compose exec polibase uv run python -m src.process_minutes
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes
 # または従来のコマンド
-docker compose exec polibase uv run python -m src.main
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.main
 
 # ローカル環境で実行
 uv run python -m src.process_minutes
 
 # GCSから議事録を取得して処理（meeting IDを指定）
-docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
 ```
 議事録PDFファイルを読み込み、発言単位に分割してデータベースに保存します。
 meeting IDを指定すると、GCSに保存された議事録テキストを自動的に取得して処理します。
@@ -165,7 +165,7 @@ meeting IDを指定すると、GCSに保存された議事録テキストを自�
 #### 発言者抽出処理
 ```bash
 # Docker環境で実行
-docker compose exec polibase uv run python -m src.extract_speakers_from_minutes
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.extract_speakers_from_minutes
 
 # ローカル環境で実行
 uv run python -m src.extract_speakers_from_minutes
@@ -175,10 +175,10 @@ uv run python -m src.extract_speakers_from_minutes
 #### 会議管理Web UI
 ```bash
 # Docker環境で実行（コンテナ内で起動）
-docker compose exec polibase uv run polibase streamlit --host 0.0.0.0
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit --host 0.0.0.0
 
 # Docker環境で実行（ポートフォワーディング付き）
-docker compose run -p 8501:8501 polibase uv run polibase streamlit --host 0.0.0.0
+docker compose -f docker/docker-compose.yml run -p 8501:8501 polibase uv run polibase streamlit --host 0.0.0.0
 
 # ローカル環境で実行
 uv run polibase streamlit
@@ -195,13 +195,13 @@ Webブラウザで会議情報（URL、日付）と政党情報を管理でき�
 #### データカバレッジ監視ダッシュボード
 ```bash
 # Docker環境で実行（専用ポートで起動）
-docker compose exec polibase uv run polibase monitoring
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring
 
 # カスタムポートで起動
-docker compose exec polibase uv run polibase monitoring --port 8503
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring --port 8503
 
 # Docker Composeで専用コンテナとして起動（推奨）
-docker compose up -d polibase-monitoring
+docker compose -f docker/docker-compose.yml up -d polibase-monitoring
 ```
 データ入力の進捗状況を可視化する監視ダッシュボードを提供します：
 - **全体概要**: 議会数、会議数、議事録数、政治家数などの主要メトリクス
@@ -218,10 +218,10 @@ docker compose up -d polibase-monitoring
 #### LLMベース発言者マッチング処理
 ```bash
 # Docker環境で実行
-docker compose exec polibase uv run python update_speaker_links_llm.py
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.update_speaker_links_llm
 
 # ローカル環境で実行
-uv run python update_speaker_links_llm.py
+uv run python -m src.update_speaker_links_llm
 ```
 LLMを活用したfuzzy matchingにより、議事録の発言(`conversations.speaker_name`)と発言者マスタ(`speakers.name`)の間で高精度なマッチングを実行し、未紐付けの会話に適切な発言者IDを自動で紐付けます。
 
@@ -237,7 +237,7 @@ LLMを活用したfuzzy matchingにより、議事録の発言(`conversations.sp
 #### 議事録Web取得処理
 ```bash
 # 単一の議事録を取得（kaigiroku.net対応）
-docker compose exec polibase uv run polibase scrape-minutes "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-minutes "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
 
 # 出力形式とディレクトリを指定
 uv run polibase scrape-minutes "URL" --output-dir data/scraped --format txt
@@ -262,16 +262,16 @@ Webサイトから議事録を自動取得し、テキストまたはJSON形式�
 #### 政党議員情報取得処理（LLMベース）
 ```bash
 # 全政党の議員情報を取得（議員一覧URLが設定されている政党）
-docker compose exec polibase uv run polibase scrape-politicians --all-parties
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties
 
 # 特定の政党のみ取得（政党IDを指定）
-docker compose exec polibase uv run polibase scrape-politicians --party-id 5
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --party-id 5
 
 # ドライラン（データベースに保存せずに確認）
-docker compose exec polibase uv run polibase scrape-politicians --all-parties --dry-run
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties --dry-run
 
 # 最大ページ数を指定（ページネーション対応）
-docker compose exec polibase uv run polibase scrape-politicians --all-parties --max-pages 5
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties --max-pages 5
 ```
 
 各政党のWebサイトから議員情報を自動取得し、データベースに保存します。
@@ -306,19 +306,19 @@ docker compose exec polibase uv run polibase scrape-politicians --all-parties --
 
 ```bash
 # ステップ1: 議員情報の抽出
-docker compose exec polibase uv run polibase extract-conference-members --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members --conference-id 185
 # または全会議体を処理
-docker compose exec polibase uv run polibase extract-conference-members
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members
 
 # ステップ2: 既存政治家とのマッチング
-docker compose exec polibase uv run polibase match-conference-members --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase match-conference-members --conference-id 185
 
 # ステップ3: 所属情報の作成
-docker compose exec polibase uv run polibase create-affiliations --conference-id 185
-docker compose exec polibase uv run polibase create-affiliations --start-date 2024-01-01
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --start-date 2024-01-01
 
 # 処理状況の確認
-docker compose exec polibase uv run polibase member-status --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase member-status --conference-id 185
 ```
 
 **処理フロー:**
@@ -350,7 +350,7 @@ docker compose exec polibase uv run polibase member-status --conference-id 185
 ### テストの実行
 ```bash
 # Docker環境で実行
-docker compose exec polibase uv run pytest
+docker compose -f docker/docker-compose.yml exec polibase uv run pytest
 
 # ローカル環境で実行
 uv run pytest
@@ -381,7 +381,7 @@ uv run pytest --cov=src tests/
 ### 1. PostgreSQLに接続
 ```bash
 # Docker環境のPostgreSQLに接続
-docker compose exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
 ```
 
 ### 2. 基本的なSQLクエリ例
@@ -417,7 +417,7 @@ LIMIT 10;
 ### 3. データベース接続テスト
 ```bash
 # Pythonでデータベース接続をテスト
-docker compose exec polibase uv run python -c "
+docker compose -f docker/docker-compose.yml exec polibase uv run python -c "
 from src.config.database import test_connection
 test_connection()
 "
@@ -433,11 +433,11 @@ test_connection()
 
 ```bash
 # 永続化モードで起動（デフォルト）
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 
 # コンテナを停止してもデータは保持される
-docker compose down
-docker compose up -d  # データがそのまま残る
+docker compose -f docker/docker-compose.yml down
+docker compose -f docker/docker-compose.yml up -d  # データがそのまま残る
 ```
 
 **非永続化モード（一時的な使用）**:
@@ -446,11 +446,11 @@ docker compose up -d  # データがそのまま残る
 
 ```bash
 # 非永続化モードで起動
-docker compose -f docker compose.temp.yml up -d
+docker compose -f docker/docker-compose.temp.yml up -d
 
 # または、既存のボリュームを使用せずに起動
-docker compose down -v
-docker compose up -d --renew-anon-volumes
+docker compose -f docker/docker-compose.yml down -v
+docker compose -f docker/docker-compose.yml up -d --renew-anon-volumes
 ```
 
 ### データベースのリセット
@@ -458,16 +458,16 @@ docker compose up -d --renew-anon-volumes
 #### 完全リセット（推奨）
 ```bash
 # 自動化されたリセットスクリプトを使用
-./reset-database.sh
+./scripts/reset-database.sh
 ```
 
 #### 手動リセット
 ```bash
 # 1. コンテナとボリュームを完全削除
-docker compose down -v
+docker compose -f docker/docker-compose.yml down -v
 
 # 2. 再起動（初期データで復元）
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 ### データのバックアップ・リストア
@@ -483,55 +483,55 @@ Polibaseは、ローカルとGoogle Cloud Storage（GCS）の両方にデータ�
 #### バックアップ作成
 ```bash
 # ローカルとGCSの両方にバックアップ（デフォルト）
-docker compose exec polibase uv run polibase database backup
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database backup
 
 # ローカルのみにバックアップ
-docker compose exec polibase uv run polibase database backup --no-gcs
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database backup --no-gcs
 
 # 従来のスクリプトを使用（ローカルのみ）
-./backup-database.sh backup
+./scripts/backup-database.sh backup
 ```
 
 #### バックアップ一覧の確認
 ```bash
 # ローカルとGCSのバックアップを表示
-docker compose exec polibase uv run polibase database list
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database list
 
 # ローカルのバックアップのみ表示
-docker compose exec polibase uv run polibase database list --no-gcs
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database list --no-gcs
 
 # 従来のスクリプトを使用
-./backup-database.sh list
+./scripts/backup-database.sh list
 ```
 
 #### リストア実行
 ```bash
 # ローカルファイルからリストア
-docker compose exec polibase uv run polibase database restore database/backups/polibase_backup_20241230_123456.sql
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore database/backups/polibase_backup_20241230_123456.sql
 
 # GCSからリストア
-docker compose exec polibase uv run polibase database restore gs://polibase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore gs://polibase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
 
 # 従来のスクリプトを使用（ローカルのみ）
-./backup-database.sh restore database/backups/polibase_backup_20240529_123456.sql
+./scripts/backup-database.sh restore database/backups/polibase_backup_20240529_123456.sql
 ```
 
 #### 手動バックアップ・リストア
 ```bash
 # 手動バックアップ
-docker compose exec postgres pg_dump -U polibase_user polibase_db > backup.sql
+docker compose -f docker/docker-compose.yml exec postgres pg_dump -U polibase_user polibase_db > backup.sql
 
 # 手動リストア
-docker compose exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
+docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
 ```
 
 ## formattingとリンティング
-`docker compose exec polibase uv sync`で依存関係をインストール
-`docker compose exec polibase uv run --frozen ruff format .`でフォーマット実行
-`docker compose exec polibase uv run --frozen ruff check .`でリンティング実行
-`docker compose exec polibase uv run --frozen pyright`で型チェック実行
-`docker compose exec polibase uv run pre-commit install`でpre-commitフックをインストール
-`docker compose exec polibase uv run pre-commit run --all-files`で全ファイルチェック
+`docker compose -f docker/docker-compose.yml exec polibase uv sync`で依存関係をインストール
+`docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff format .`でフォーマット実行
+`docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check .`でリンティング実行
+`docker compose -f docker/docker-compose.yml exec polibase uv run --frozen pyright`で型チェック実行
+`docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit install`でpre-commitフックをインストール
+`docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit run --all-files`で全ファイルチェック
 
 ## ⚙️ 環境変数設定
 
@@ -565,6 +565,9 @@ polibase/
 │   ├── streamlit_app.py         # 会議管理Web UI
 │   ├── process_minutes.py       # 議事録分割処理
 │   ├── extract_speakers_from_minutes.py   # 発言者抽出処理
+│   ├── update_speaker_links.py  # 発言者紐付け更新スクリプト（レガシー）
+│   ├── update_speaker_links_llm.py # LLMベース発言者マッチングスクリプト
+│   ├── update_speaker_links_llm_refactored.py # LLMベース発言者マッチング（リファクタリング版）
 │   ├── config/                   # 設定ファイル
 │   │   ├── database.py          # データベース接続設定
 │   │   ├── config.py            # アプリケーション設定
@@ -592,6 +595,10 @@ polibase/
 │   │   ├── 003_add_politician_details.sql
 │   │   └── 004_add_gcs_uri_to_meetings.sql  # GCS URI保存用カラム追加
 │   └── backups/                # データベースバックアップファイル
+├── docker/                      # Docker関連ファイル
+│   ├── docker-compose.yml       # Docker Compose設定（永続化モード）
+│   ├── docker-compose.temp.yml  # Docker Compose設定（非永続化モード）
+│   └── Dockerfile               # Dockerイメージ設定
 ├── scripts/                     # 管理スクリプト
 │   ├── backup-database.sh      # データベースバックアップスクリプト
 │   ├── reset-database.sh       # データベースリセットスクリプト
@@ -599,14 +606,10 @@ polibase/
 │   └── setup_database.sh       # データベースセットアップスクリプト
 ├── data/                       # データファイル
 ├── tests/                      # テストコード
-├── docker compose.yml          # Docker Compose設定（永続化モード）
-├── docker compose.temp.yml     # Docker Compose設定（非永続化モード）
-├── Dockerfile                  # Dockerイメージ設定
+│   └── pytest.ini              # pytest設定ファイル
 ├── backup-database.sh          # → scripts/backup-database.sh (シンボリックリンク)
 ├── reset-database.sh           # → scripts/reset-database.sh (シンボリックリンク)
 ├── test-setup.sh              # → scripts/test-setup.sh (シンボリックリンク)
-├── update_speaker_links.py     # 発言者紐付け更新スクリプト（レガシー）
-├── update_speaker_links_llm.py # LLMベース発言者マッチングスクリプト
 ├── pyproject.toml             # Python依存関係
 ├── CLAUDE.md                  # Claude Code用ガイド
 └── polibase.dbml              # データベーススキーマ定義
@@ -630,7 +633,7 @@ docker compose up -d
 #### データベース接続エラー
 ```bash
 # PostgreSQLコンテナのログを確認
-docker compose logs postgres
+docker compose -f docker/docker-compose.yml logs postgres
 
 # データベース接続テスト
 ./test-setup.sh
@@ -639,8 +642,8 @@ docker compose logs postgres
 #### コンテナのリセット
 ```bash
 # 全てのコンテナとボリュームを削除して再作成
-docker compose down -v
-docker compose up -d
+docker compose -f docker/docker-compose.yml down -v
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 #### データベースの問題
@@ -726,13 +729,13 @@ gsutil iam get gs://YOUR_BUCKET_NAME/
 ```bash
 # 🏗️ 初期セットアップ
 cp .env.example .env
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 ./test-setup.sh
 
 # 🔄 通常の起動・停止
-docker compose up -d      # バックグラウンド起動
-docker compose down       # 停止（データは保持）
-docker compose logs -f    # ログ確認
+docker compose -f docker/docker-compose.yml up -d      # バックグラウンド起動
+docker compose -f docker/docker-compose.yml down       # 停止（データは保持）
+docker compose -f docker/docker-compose.yml logs -f    # ログ確認
 
 # 💾 データベース管理
 ./backup-database.sh backup           # バックアップ作成
@@ -740,28 +743,28 @@ docker compose logs -f    # ログ確認
 ./reset-database.sh                   # データベースリセット
 
 # 🏃 アプリケーション実行（新しいCLI）
-docker compose exec polibase uv run polibase process-minutes      # 議事録分割
-docker compose exec polibase uv run polibase extract-speakers      # 発言者抽出
-docker compose exec polibase uv run polibase update-speakers --use-llm  # LLM発言者マッチング
-docker compose exec polibase uv run polibase scrape-politicians --all-parties  # 政治家情報取得
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase process-minutes      # 議事録分割
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-speakers      # 発言者抽出
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase update-speakers --use-llm  # LLM発言者マッチング
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties  # 政治家情報取得
 
 # 🏃 アプリケーション実行（従来の方法）
-docker compose exec polibase uv run python -m src.process_minutes  # 議事録分割（発言抽出）
-docker compose exec polibase uv run python -m src.extract_speakers_from_minutes  # 発言者抽出
-docker compose exec polibase uv run python update_speaker_links_llm.py  # LLM発言者マッチング
-docker compose exec polibase uv run pytest              # テスト実行
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes  # 議事録分割（発言抽出）
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.extract_speakers_from_minutes  # 発言者抽出
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.update_speaker_links_llm  # LLM発言者マッチング
+docker compose -f docker/docker-compose.yml exec polibase uv run pytest              # テスト実行
 
 # 🗃️ データベース操作
-docker compose exec postgres psql -U polibase_user -d polibase_db  # DB接続
+docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db  # DB接続
 ```
 
 ### 開発モード
 
 ```bash
 # 🔧 非永続化モード（テスト用）
-docker compose -f docker compose.temp.yml up -d
+docker compose -f docker/docker-compose.temp.yml up -d
 
 # 🐛 デバッグモード
-docker compose up          # フォアグラウンド実行
-docker compose exec polibase bash  # コンテナ内でshell実行
+docker compose -f docker/docker-compose.yml up          # フォアグラウンド実行
+docker compose -f docker/docker-compose.yml exec polibase bash  # コンテナ内でshell実行
 ```
