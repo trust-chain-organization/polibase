@@ -101,269 +101,55 @@ Polibaseは以下の設計原則に基づいて構築されています：
    - 時系列でのデータ入力推移を分析
    - データ充実度の低い領域を特定して効率的な作業が可能
 
-### 統一CLIコマンド
+### コマンドリファレンス
 
-新しく統一されたCLIインターフェースが利用可能です：
+📚 **すべてのコマンドの詳細は [COMMANDS.md](COMMANDS.md) を参照してください。**
+
+以下は基本的な使用例です：
+
+### クイックスタート
 
 ```bash
-# 利用可能なコマンドを表示
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase --help
-
 # 議事録を処理（発言を抽出）
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase process-minutes
-
-# 議事録から発言者情報を抽出
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-speakers
-
-# 発言者をマッチング（LLM使用）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase update-speakers --use-llm
-
-# データベース接続をテスト
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase test-connection
 
 # 会議管理Web UIを起動
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit
 
 # データカバレッジ監視ダッシュボードを起動
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring
-
-# 政党議員情報を取得（Web スクレイピング）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties
-
-# 会議体所属議員の抽出・マッチング（3段階処理）
-# ステップ1: 議員情報を抽出
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members --conference-id 185
-
-# ステップ2: 既存政治家とマッチング
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase match-conference-members --conference-id 185
-
-# ステップ3: 所属情報を作成
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --conference-id 185
-
-# 処理状況を確認
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase member-status
 ```
 
-### アプリケーションの実行（従来の方法）
+### 主要な機能
 
-#### 議事録分割処理（発言抽出）
-```bash
-# Docker環境で実行（新しいファイル名でも実行可能）
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes
-# または従来のコマンド
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.main
-
-# ローカル環境で実行
-uv run python -m src.process_minutes
-
-# GCSから議事録を取得して処理（meeting IDを指定）
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
-```
+#### 議事録処理
 議事録PDFファイルを読み込み、発言単位に分割してデータベースに保存します。
-meeting IDを指定すると、GCSに保存された議事録テキストを自動的に取得して処理します。
-
-#### 発言者抽出処理
-```bash
-# Docker環境で実行
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.extract_speakers_from_minutes
-
-# ローカル環境で実行
-uv run python -m src.extract_speakers_from_minutes
-```
-議事録から発言者の情報を抽出してspeakersテーブルに保存します。
 
 #### 会議管理Web UI
-```bash
-# Docker環境で実行（コンテナ内で起動）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit --host 0.0.0.0
-
-# Docker環境で実行（ポートフォワーディング付き）
-docker compose -f docker/docker-compose.yml run -p 8501:8501 polibase uv run polibase streamlit --host 0.0.0.0
-
-# ローカル環境で実行
-uv run polibase streamlit
-
-# カスタムポートで起動
-uv run polibase streamlit --port 8080
-```
 Webブラウザで会議情報（URL、日付）と政党情報を管理できるインターフェースを提供します：
 - 会議一覧の表示・フィルタリング
 - 新規会議の登録（開催主体、会議体、日付、URL）
 - 既存会議の編集・削除
 - 政党管理（議員一覧ページURLの設定）
 
+アクセスURL: http://localhost:8501
+
 #### データカバレッジ監視ダッシュボード
-```bash
-# Docker環境で実行（専用ポートで起動）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring
-
-# カスタムポートで起動
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring --port 8503
-
-# Docker Composeで専用コンテナとして起動（推奨）
-docker compose -f docker/docker-compose.yml up -d polibase-monitoring
-```
 データ入力の進捗状況を可視化する監視ダッシュボードを提供します：
 - **全体概要**: 議会数、会議数、議事録数、政治家数などの主要メトリクス
 - **日本地図表示**: 都道府県ごとのデータ充実度を地図上で可視化
-  - 議事録、議会、議員団、議会所属議員の数を色分け表示
-  - インタラクティブな地図でクリック時に詳細情報を表示
-  - 各種指標の切り替え表示が可能
 - **議会別カバレッジ**: 各議会のデータ入力率をヒートマップで表示
 - **時系列分析**: データ入力の推移を時系列グラフで確認
-- **詳細分析**: 政党別、都道府県別、委員会タイプ別の充実度
 
 アクセスURL: http://localhost:8502 （Docker Compose使用時）
 
-#### LLMベース発言者マッチング処理
-```bash
-# Docker環境で実行
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.update_speaker_links_llm
-
-# ローカル環境で実行
-uv run python -m src.update_speaker_links_llm
-```
-LLMを活用したfuzzy matchingにより、議事録の発言(`conversations.speaker_name`)と発言者マスタ(`speakers.name`)の間で高精度なマッチングを実行し、未紐付けの会話に適切な発言者IDを自動で紐付けます。
-
-**特徴:**
-- ルールベース + LLMベースのハイブリッドマッチング
-- 表記揺れや記号の有無に対応した高精度マッチング
-- インタラクティブな確認機能付き
-- 詳細な処理結果レポート
-
-**必要な環境変数:**
-- `GOOGLE_API_KEY`: Google Gemini APIキー（.envファイルに設定）
-
-#### 議事録Web取得処理
-```bash
-# 単一の議事録を取得（kaigiroku.net対応）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-minutes "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
-
-# 出力形式とディレクトリを指定
-uv run polibase scrape-minutes "URL" --output-dir data/scraped --format txt
-
-# キャッシュを無視して再取得
-uv run polibase scrape-minutes "URL" --no-cache
-
-# Google Cloud Storageにアップロード（meetingsテーブルにGCS URIを自動保存）
-uv run polibase scrape-minutes "URL" --upload-to-gcs
-uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
-
-# 複数の議事録を一括取得（kaigiroku.net）
-uv run polibase batch-scrape --tenant kyoto --start-id 6000 --end-id 6100
-uv run polibase batch-scrape --tenant osaka --start-id 1000 --end-id 1100
-
-# バッチ取得でGCSにアップロード
-uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
-```
-
-Webサイトから議事録を自動取得し、テキストまたはJSON形式で保存します。
-
-#### 政党議員情報取得処理（LLMベース）
-```bash
-# 全政党の議員情報を取得（議員一覧URLが設定されている政党）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties
-
-# 特定の政党のみ取得（政党IDを指定）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --party-id 5
-
-# ドライラン（データベースに保存せずに確認）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties --dry-run
-
-# 最大ページ数を指定（ページネーション対応）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties --max-pages 5
-```
-
-各政党のWebサイトから議員情報を自動取得し、データベースに保存します。
-
-**特徴:**
-- LLMを活用してHTMLから議員情報を構造化データとして抽出
-- サイト固有のセレクタに依存しない汎用的な実装
-- ページネーション対応（複数ページの自動取得）
-- 重複チェック機能（既存議員は更新、新規議員は追加）
-
-**事前準備:**
-1. Streamlit UIの「政党管理」タブで議員一覧ページURLを設定
-2. GOOGLE_API_KEYが設定されていることを確認
-
-**特徴:**
-- JavaScriptで動的に生成される議事録にも対応
-- 発言者の抽出と整理
-- キャッシュ機能で再取得を効率化
-- バッチ処理で複数の議事録を一括取得
-
-**対応システム:**
-- **kaigiroku.net** - 多くの地方議会で使用される統一システム
-  - 京都市（tenant/kyoto）
-  - 大阪市（tenant/osaka）
-  - 神戸市（tenant/kobe）
-  - その他多数の自治体
-- 今後、独自システムを使用する自治体にも対応予定
-
-#### 会議体所属議員の抽出・マッチング（3段階処理）
-
-議会や委員会に所属する議員情報を段階的に抽出・マッチングする機能です。
-
-```bash
-# ステップ1: 議員情報の抽出
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members --conference-id 185
-# または全会議体を処理
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members
-
-# ステップ2: 既存政治家とのマッチング
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase match-conference-members --conference-id 185
-
-# ステップ3: 所属情報の作成
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --conference-id 185
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --start-date 2024-01-01
-
-# 処理状況の確認
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase member-status --conference-id 185
-```
-
-**処理フロー:**
-1. **抽出（Extract）**: 会議体の議員紹介URLから議員名、役職、所属政党を抽出
-   - Playwright + LLMでWebページを解析
-   - `extracted_conference_members`テーブルに保存（ステータス: pending）
-
-2. **マッチング（Match）**: 抽出した議員を既存の政治家データとマッチング
-   - LLMによるfuzzyマッチング（表記揺れ対応）
-   - 信頼度スコアを計算：
-     - 0.7以上: 自動マッチング（matched）
-     - 0.5-0.7: 要確認（needs_review）
-     - 0.5未満: 該当なし（no_match）
-
-3. **作成（Create）**: マッチング済みデータから正式な所属情報を作成
-   - `politician_affiliations`テーブルに保存
-   - 役職（議長、副議長、委員長など）も記録
-
-**事前準備:**
-1. Streamlit UIの「会議体管理」→「議員紹介URL管理」タブでURLを設定
-2. 政治家マスタデータが登録されていることを確認
-
-**特徴:**
-- 各段階で処理を中断・再開可能
-- 中間データを確認してから次の段階へ進める
-- エラーが発生しても部分的な再処理が可能
-- 信頼度に基づく柔軟なマッチング
-
 ### テストの実行
 ```bash
-# Docker環境で実行
+# 全テスト実行
 docker compose -f docker/docker-compose.yml exec polibase uv run pytest
-
-# ローカル環境で実行
-uv run pytest
 
 # 特定のテストを実行
 uv run pytest tests/test_minutes_divider.py -v
-
-# Streamlit関連のテストを実行
-uv run pytest tests/test_streamlit_app.py tests/test_meeting_repository.py -v
-
-# カバレッジレポート付きでテスト実行（開発時）
-uv pip install pytest-cov
-uv run pytest --cov=src tests/
 ```
 
 ## 🗃️ データベースの確認方法
@@ -525,13 +311,21 @@ docker compose -f docker/docker-compose.yml exec postgres pg_dump -U polibase_us
 docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
 ```
 
-## formattingとリンティング
-`docker compose -f docker/docker-compose.yml exec polibase uv sync`で依存関係をインストール
-`docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff format .`でフォーマット実行
-`docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check .`でリンティング実行
-`docker compose -f docker/docker-compose.yml exec polibase uv run --frozen pyright`で型チェック実行
-`docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit install`でpre-commitフックをインストール
-`docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit run --all-files`で全ファイルチェック
+## 🔧 開発
+
+### コードフォーマットとリンティング
+```bash
+# コードフォーマット
+docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff format .
+
+# リンティング
+docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check .
+
+# 型チェック
+docker compose -f docker/docker-compose.yml exec polibase uv run --frozen pyright
+```
+
+詳細な開発用コマンドは [COMMANDS.md](COMMANDS.md#開発用コマンド) を参照してください。
 
 ## ⚙️ 環境変数設定
 
@@ -724,8 +518,6 @@ gsutil iam get gs://YOUR_BUCKET_NAME/
 
 ## 🚀 クイックリファレンス
 
-### よく使うコマンド
-
 ```bash
 # 🏗️ 初期セットアップ
 cp .env.example .env
@@ -735,36 +527,11 @@ docker compose -f docker/docker-compose.yml up -d
 # 🔄 通常の起動・停止
 docker compose -f docker/docker-compose.yml up -d      # バックグラウンド起動
 docker compose -f docker/docker-compose.yml down       # 停止（データは保持）
-docker compose -f docker/docker-compose.yml logs -f    # ログ確認
 
-# 💾 データベース管理
-./backup-database.sh backup           # バックアップ作成
-./backup-database.sh list             # バックアップ一覧
-./reset-database.sh                   # データベースリセット
-
-# 🏃 アプリケーション実行（新しいCLI）
+# 🏃 主要な処理実行
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase process-minutes      # 議事録分割
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-speakers      # 発言者抽出
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase update-speakers --use-llm  # LLM発言者マッチング
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties  # 政治家情報取得
-
-# 🏃 アプリケーション実行（従来の方法）
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes  # 議事録分割（発言抽出）
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.extract_speakers_from_minutes  # 発言者抽出
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.update_speaker_links_llm  # LLM発言者マッチング
-docker compose -f docker/docker-compose.yml exec polibase uv run pytest              # テスト実行
-
-# 🗃️ データベース操作
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db  # DB接続
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit           # Web UI起動
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring          # 監視ダッシュボード
 ```
 
-### 開発モード
-
-```bash
-# 🔧 非永続化モード（テスト用）
-docker compose -f docker/docker-compose.temp.yml up -d
-
-# 🐛 デバッグモード
-docker compose -f docker/docker-compose.yml up          # フォアグラウンド実行
-docker compose -f docker/docker-compose.yml exec polibase bash  # コンテナ内でshell実行
-```
+📚 **すべてのコマンドの詳細は [COMMANDS.md](COMMANDS.md) を参照してください。**
