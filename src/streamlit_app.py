@@ -427,9 +427,7 @@ def manage_conferences():
     conf_repo = ConferenceRepository()
 
     # サブタブを作成
-    conf_tab1, conf_tab2, conf_tab3, conf_tab4 = st.tabs(
-        ["会議体一覧", "新規登録", "編集・削除", "議員紹介URL管理"]
-    )
+    conf_tab1, conf_tab2, conf_tab3 = st.tabs(["会議体一覧", "新規登録", "編集・削除"])
 
     with conf_tab1:
         # 会議体一覧
@@ -439,17 +437,50 @@ def manage_conferences():
         if conferences:
             # DataFrameに変換
             df = pd.DataFrame(conferences)
+
+            # 議員紹介URLの状態を追加
+            df["URL状態"] = df["members_introduction_url"].apply(
+                lambda x: "✅ 設定済み" if x else "❌ 未設定"
+            )
+
+            # 必要なカラムを選択
             df = df[
-                ["id", "governing_body_name", "governing_body_type", "name", "type"]
+                [
+                    "id",
+                    "governing_body_name",
+                    "governing_body_type",
+                    "name",
+                    "type",
+                    "URL状態",
+                    "members_introduction_url",
+                ]
             ]
-            df.columns = ["ID", "開催主体", "開催主体種別", "会議体名", "会議体種別"]
+            df.columns = [
+                "ID",
+                "開催主体",
+                "開催主体種別",
+                "会議体名",
+                "会議体種別",
+                "URL状態",
+                "議員紹介URL",
+            ]
 
             # 開催主体でグループ化して表示
             for gb_name in df["開催主体"].unique():
                 with st.expander(f"📂 {gb_name}"):
                     gb_df = df[df["開催主体"] == gb_name]
+                    # 議員紹介URLを短縮表示
+                    gb_df["議員紹介URL"] = gb_df["議員紹介URL"].apply(
+                        lambda x: x[:50] + "..."
+                        if x and len(x) > 50
+                        else x
+                        if x
+                        else "未設定"
+                    )
                     st.dataframe(
-                        gb_df[["ID", "会議体名", "会議体種別"]],
+                        gb_df[
+                            ["ID", "会議体名", "会議体種別", "URL状態", "議員紹介URL"]
+                        ],
                         use_container_width=True,
                         hide_index=True,
                     )
@@ -486,6 +517,11 @@ def manage_conferences():
                     "会議体種別（任意）",
                     placeholder="例: 本会議、常任委員会、特別委員会",
                 )
+                members_url = st.text_input(
+                    "議員紹介URL（任意）",
+                    placeholder="https://example.com/members",
+                    help="会議体の議員一覧が掲載されているページのURL",
+                )
 
                 submitted = st.form_submit_button("登録")
 
@@ -499,6 +535,12 @@ def manage_conferences():
                             type=conf_type if conf_type else None,
                         )
                         if conf_id:
+                            # 議員紹介URLが入力されていれば更新
+                            if members_url:
+                                conf_repo.update_conference_members_url(
+                                    conference_id=conf_id,
+                                    members_introduction_url=members_url,
+                                )
                             st.success(f"会議体を登録しました (ID: {conf_id})")
                             st.rerun()
                         else:
@@ -522,12 +564,21 @@ def manage_conferences():
                 display_name = f"{conf['governing_body_name']} - {conf['name']}"
                 if conf.get("type"):
                     display_name += f" ({conf['type']})"
+                # URL設定状態を追加
+                url_status = "✅" if conf.get("members_introduction_url") else "❌"
+                display_name = f"{url_status} {display_name}"
                 conf_options.append(display_name)
                 conf_map[display_name] = conf
 
             selected_conf_display = st.selectbox("編集する会議体を選択", conf_options)
 
             selected_conf = conf_map[selected_conf_display]
+
+            # 現在の議員紹介URLの状態を表示
+            if selected_conf.get("members_introduction_url"):
+                st.info(f"🔗 現在のURL: {selected_conf['members_introduction_url']}")
+            else:
+                st.warning("❌ 議員紹介URLが未設定です")
 
             # 編集フォーム
             col1, col2 = st.columns(2)
@@ -539,6 +590,12 @@ def manage_conferences():
                     new_type = st.text_input(
                         "会議体種別", value=selected_conf.get("type", "")
                     )
+                    new_members_url = st.text_input(
+                        "議員紹介URL",
+                        value=selected_conf.get("members_introduction_url", "") or "",
+                        placeholder="https://example.com/members",
+                        help="会議体の議員一覧が掲載されているページのURL",
+                    )
 
                     submitted = st.form_submit_button("更新")
 
@@ -546,11 +603,19 @@ def manage_conferences():
                         if not new_name:
                             st.error("会議体名を入力してください")
                         else:
+                            # 基本情報を更新
                             if conf_repo.update_conference(
                                 conference_id=selected_conf["id"],
                                 name=new_name,
                                 type=new_type if new_type else None,
                             ):
+                                # 議員紹介URLを更新
+                                conf_repo.update_conference_members_url(
+                                    conference_id=selected_conf["id"],
+                                    members_introduction_url=new_members_url
+                                    if new_members_url
+                                    else None,
+                                )
                                 st.success("会議体を更新しました")
                                 st.rerun()
                             else:
@@ -572,158 +637,7 @@ def manage_conferences():
                             "（関連する会議が存在する可能性があります）"
                         )
 
-    with conf_tab4:
-        # 議員紹介URL管理
-        st.subheader("議員紹介URL管理")
-        st.markdown("各会議体の議員が紹介されているページURLを管理します")
-
-        conferences = conf_repo.get_all_conferences()
-        if not conferences:
-            st.info("会議体が登録されていません")
-        else:
-            # 開催主体と会議体種別で階層的にグループ化
-            hierarchy = {}
-            for conf in conferences:
-                gb_name = conf["governing_body_name"]
-                conf_type = conf.get("type", "その他")
-
-                if gb_name not in hierarchy:
-                    hierarchy[gb_name] = {}
-                if conf_type not in hierarchy[gb_name]:
-                    hierarchy[gb_name][conf_type] = []
-                hierarchy[gb_name][conf_type].append(conf)
-
-            # 開催主体ごとに表示（タブで分ける）
-            gb_names = sorted(hierarchy.keys())
-            if len(gb_names) > 1:
-                gb_tabs = st.tabs(gb_names)
-
-                for gb_name, gb_tab in zip(gb_names, gb_tabs, strict=False):
-                    with gb_tab:
-                        _display_conferences_by_type(hierarchy[gb_name], conf_repo)
-            else:
-                # 開催主体が1つの場合はタブを使わない
-                gb_name = gb_names[0]
-                st.markdown(f"### 📂 {gb_name}")
-                _display_conferences_by_type(hierarchy[gb_name], conf_repo)
-
-            # 一括確認セクション
-            with st.expander("登録済みURL一覧", expanded=False):
-                df_data = []
-                for conf in conferences:
-                    df_data.append(
-                        {
-                            "開催主体": conf["governing_body_name"],
-                            "種別": conf.get("type", "その他"),
-                            "会議体名": conf["name"],
-                            "議員紹介URL": conf.get("members_introduction_url")
-                            or "未設定",
-                        }
-                    )
-
-                df = pd.DataFrame(df_data)
-                # URLが設定されているものを上に表示
-                df["URLステータス"] = df["議員紹介URL"].apply(
-                    lambda x: "✅ 設定済み" if x != "未設定" else "❌ 未設定"
-                )
-                df = df.sort_values(
-                    by=["URLステータス", "開催主体", "種別", "会議体名"],
-                    ascending=[False, True, True, True],
-                )
-                st.dataframe(
-                    df.drop(columns=["URLステータス"]),
-                    use_container_width=True,
-                    hide_index=True,
-                )
-
     conf_repo.close()
-
-
-def _display_conferences_by_type(type_groups: dict, conf_repo):
-    """
-    会議体種別ごとに会議体を表示する補助関数
-
-    Args:
-        type_groups: 会議体種別でグループ化された会議体のdict
-        conf_repo: ConferenceRepositoryインスタンス
-    """
-    # 種別の表示順序を定義（優先度順）
-    type_order = ["本会議", "常任委員会", "特別委員会", "その他"]
-
-    # 存在する種別を優先度順にソート
-    sorted_types = []
-    for t in type_order:
-        if t in type_groups:
-            sorted_types.append(t)
-    # type_orderに含まれない種別を追加
-    for t in sorted(type_groups.keys()):
-        if t not in sorted_types:
-            sorted_types.append(t)
-
-    for conf_type in sorted_types:
-        conf_list = type_groups[conf_type]
-
-        # 種別ごとにセクションを作成
-        with st.container():
-            # 種別ヘッダーと会議体数を表示
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.markdown(f"#### 📋 {conf_type}")
-            with col2:
-                # URL設定状況を表示
-                url_set_count = sum(
-                    1 for c in conf_list if c.get("members_introduction_url")
-                )
-                st.metric(
-                    "URL設定済み",
-                    f"{url_set_count}/{len(conf_list)}",
-                    label_visibility="collapsed",
-                )
-
-            # 会議体ごとにコンパクトな入力フォームを表示
-            for conf in sorted(conf_list, key=lambda x: x["name"]):
-                with st.container():
-                    # 会議体名とURL入力を同じ行に配置
-                    col1, col2, col3 = st.columns([2, 3, 1])
-
-                    with col1:
-                        # 会議体名とURL設定状況
-                        url_status = (
-                            "✅" if conf.get("members_introduction_url") else "❌"
-                        )
-                        st.markdown(
-                            f"**{url_status} {conf['name']}**", help=f"ID: {conf['id']}"
-                        )
-
-                    with col2:
-                        # URL入力フォーム（インラインで表示）
-                        current_url = conf.get("members_introduction_url", "") or ""
-                        new_url = st.text_input(
-                            "URL",
-                            value=current_url,
-                            placeholder="https://example.com/members",
-                            key=f"members_url_input_{conf['id']}",
-                            label_visibility="collapsed",
-                        )
-
-                    with col3:
-                        # 更新ボタン
-                        if st.button(
-                            "更新",
-                            key=f"update_btn_{conf['id']}",
-                            type="primary" if new_url != current_url else "secondary",
-                            disabled=(new_url == current_url),
-                        ):
-                            if conf_repo.update_conference_members_url(
-                                conference_id=conf["id"],
-                                members_introduction_url=new_url if new_url else None,
-                            ):
-                                st.success(f"{conf['name']}のURLを更新しました")
-                                st.rerun()
-                            else:
-                                st.error("URLの更新に失敗しました")
-
-            st.divider()
 
 
 def execute_processes():
@@ -1335,7 +1249,7 @@ def execute_conference_member_processes():
 
     if not conferences:
         st.warning("議員紹介URLが設定されている会議体がありません。")
-        st.info("会議体管理タブの「議員紹介URL管理」から設定してください。")
+        st.info("会議体管理タブの「編集・削除」から議員紹介URLを設定してください。")
         conf_repo.close()
         return
 
