@@ -120,34 +120,6 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase create
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase member-status --conference-id 185
 ```
 
-## 従来の実行方法
-
-CLIコマンドとして統合される前の直接実行方法です。
-
-### 議事録処理
-
-```bash
-# Docker環境で実行
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.main  # 旧エントリーポイント
-
-# ローカル環境で実行
-uv run python -m src.process_minutes
-
-# GCSから議事録を取得して処理
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
-```
-
-### 発言者抽出・マッチング
-
-```bash
-# 発言者情報の抽出
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.extract_speakers_from_minutes
-
-# LLMベース発言者マッチング
-docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.update_speaker_links_llm
-```
-
 ### Web UI（従来の起動方法）
 
 ```bash
@@ -179,22 +151,6 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase databa
 # リストア実行
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore database/backups/polibase_backup_20241230_123456.sql
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore gs://polibase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
-```
-
-### バックアップ・リストア（従来のスクリプト）
-
-```bash
-# バックアップ作成
-./scripts/backup-database.sh backup
-
-# バックアップ一覧
-./scripts/backup-database.sh list
-
-# リストア
-./scripts/backup-database.sh restore database/backups/polibase_backup_20240529_123456.sql
-
-# データベースリセット
-./scripts/reset-database.sh
 ```
 
 ### 直接データベース操作
@@ -249,49 +205,7 @@ docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit inst
 docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit run --all-files
 ```
 
-### 環境管理
-
-```bash
-# 永続化モードで起動（デフォルト）
-docker compose -f docker/docker-compose.yml up -d
-
-# 非永続化モードで起動（テスト用）
-docker compose -f docker/docker-compose.temp.yml up -d
-
-# ログの確認
-docker compose -f docker/docker-compose.yml logs -f
-docker compose -f docker/docker-compose.yml logs -f polibase  # 特定のサービスのみ
-
-# コンテナに入る
-docker compose -f docker/docker-compose.yml exec polibase bash
-```
-
 ## トラブルシューティング用コマンド
-
-### Docker関連
-
-```bash
-# コンテナの状態確認
-docker compose -f docker/docker-compose.yml ps
-
-# 使用中のポートを確認
-lsof -i :5432
-lsof -i :8000
-lsof -i :8501
-lsof -i :8502
-
-# コンテナの再起動
-docker compose -f docker/docker-compose.yml restart
-
-# 完全リセット
-docker compose -f docker/docker-compose.yml down -v
-docker compose -f docker/docker-compose.yml up -d
-
-# ディスク容量の確認と削除
-docker system df
-docker volume prune
-docker image prune -a
-```
 
 ### データベース関連
 
@@ -306,21 +220,6 @@ docker compose -f docker/docker-compose.yml logs postgres
 docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -c "\dt"
 ```
 
-### Google Cloud Storage関連
-
-```bash
-# GCP認証
-gcloud auth application-default login
-
-# プロジェクトID設定
-gcloud config set project YOUR_PROJECT_ID
-
-# バケットの確認
-gsutil ls gs://YOUR_BUCKET_NAME/
-
-# 権限の確認
-gsutil iam get gs://YOUR_BUCKET_NAME/
-```
 
 ## クイックリファレンス
 
