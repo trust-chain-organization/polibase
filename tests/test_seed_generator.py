@@ -19,12 +19,18 @@ class TestSeedGenerator:
     def test_generate_governing_bodies_seed(self, seed_generator):
         """governing_bodiesのSEED生成テスト"""
         # モックデータの準備
-        mock_result = MagicMock()
-        mock_result.fetchall.return_value = [
+        mock_rows = []
+        for data in [
             {"id": 1, "name": "日本国", "type": "国"},
             {"id": 2, "name": "東京都", "type": "都道府県"},
             {"id": 3, "name": "大阪府", "type": "都道府県"},
-        ]
+        ]:
+            mock_row = MagicMock()
+            mock_row._mapping = data
+            mock_rows.append(mock_row)
+
+        mock_result = MagicMock()
+        mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_result
@@ -49,8 +55,8 @@ class TestSeedGenerator:
     def test_generate_conferences_seed(self, seed_generator):
         """conferencesのSEED生成テスト"""
         # モックデータの準備
-        mock_result = MagicMock()
-        mock_result.fetchall.return_value = [
+        mock_rows = []
+        for data in [
             {
                 "id": 1,
                 "name": "国会",
@@ -67,7 +73,13 @@ class TestSeedGenerator:
                 "governing_body_name": "東京都",
                 "governing_body_type": "都道府県",
             },
-        ]
+        ]:
+            mock_row = MagicMock()
+            mock_row._mapping = data
+            mock_rows.append(mock_row)
+
+        mock_result = MagicMock()
+        mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_result
@@ -99,12 +111,18 @@ class TestSeedGenerator:
     def test_generate_political_parties_seed(self, seed_generator):
         """political_partiesのSEED生成テスト"""
         # モックデータの準備
-        mock_result = MagicMock()
-        mock_result.fetchall.return_value = [
+        mock_rows = []
+        for data in [
             {"id": 1, "name": "自由民主党"},
             {"id": 2, "name": "立憲民主党"},
             {"id": 3, "name": "無所属"},
-        ]
+        ]:
+            mock_row = MagicMock()
+            mock_row._mapping = data
+            mock_rows.append(mock_row)
+
+        mock_result = MagicMock()
+        mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_result
@@ -125,14 +143,18 @@ class TestSeedGenerator:
     def test_sql_injection_protection(self, seed_generator):
         """SQLインジェクション対策のテスト"""
         # 悪意のあるデータを含むモックデータ
+        mock_rows = []
+        data = {
+            "id": 1,
+            "name": "O'Reilly's Party",
+            "type": "国",
+        }  # シングルクォートを含む
+        mock_row = MagicMock()
+        mock_row._mapping = data
+        mock_rows.append(mock_row)
+
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = [
-            {
-                "id": 1,
-                "name": "O'Reilly's Party",
-                "type": "国",
-            },  # シングルクォートを含む
-        ]
+        mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_result
@@ -149,7 +171,7 @@ class TestSeedGenerator:
         """データが空の場合のテスト"""
         # 空のモックデータ
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = []
+        mock_result.__iter__ = MagicMock(return_value=iter([]))
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_result
@@ -200,8 +222,14 @@ class TestSeedGenerator:
         mock_conn = MagicMock()
         results = []
         for mock_data in mock_results:
+            mock_rows = []
+            for data in mock_data:
+                mock_row = MagicMock()
+                mock_row._mapping = data
+                mock_rows.append(mock_row)
+
             mock_result = MagicMock()
-            mock_result.fetchall.return_value = mock_data
+            mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
             results.append(mock_result)
 
         mock_conn.execute.side_effect = results
