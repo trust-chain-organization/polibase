@@ -31,7 +31,7 @@ class SeedGenerator:
                         name
                 """)
             )
-            bodies = result.fetchall()
+            bodies = [dict(row._mapping) for row in result]
 
         lines = [
             f"-- Generated from database on "
@@ -101,7 +101,7 @@ class SeedGenerator:
                         c.name
                 """)
             )
-            conferences = result.fetchall()
+            conferences = [dict(row._mapping) for row in result]
 
         lines = [
             f"-- Generated from database on "
@@ -180,7 +180,7 @@ class SeedGenerator:
                     ORDER BY name
                 """)
             )
-            parties = result.fetchall()
+            parties = [dict(row._mapping) for row in result]
 
         lines = [
             f"-- Generated from database on "
