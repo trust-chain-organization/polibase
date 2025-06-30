@@ -32,11 +32,60 @@ if "process_status" not in st.session_state:
     st.session_state.process_status = {}
 if "process_output" not in st.session_state:
     st.session_state.process_output = {}
+if "success_message" not in st.session_state:
+    st.session_state.success_message = None
+if "error_message" not in st.session_state:
+    st.session_state.error_message = None
+if "message_details" not in st.session_state:
+    st.session_state.message_details = None
+if "active_tab" not in st.session_state:
+    st.session_state.active_tab = "会議一覧"
+
+
+def display_messages():
+    """セッション状態のメッセージを表示"""
+    # メッセージクリアフラグをチェック
+    if "clear_messages" in st.session_state and st.session_state.clear_messages:
+        st.session_state.success_message = None
+        st.session_state.error_message = None
+        st.session_state.message_details = None
+        st.session_state.clear_messages = False
+        return
+
+    # 成功メッセージの表示
+    if st.session_state.success_message:
+        with st.container():
+            col1, col2 = st.columns([10, 1])
+            with col1:
+                st.success(st.session_state.success_message)
+            with col2:
+                if st.button("✖", key="clear_success", help="メッセージを閉じる"):
+                    st.session_state.clear_messages = True
+                    st.rerun()
+
+            # 詳細情報があれば表示
+            if st.session_state.message_details:
+                with st.expander("詳細を表示", expanded=True):
+                    st.markdown(st.session_state.message_details)
+
+    # エラーメッセージの表示
+    if st.session_state.error_message:
+        with st.container():
+            col1, col2 = st.columns([10, 1])
+            with col1:
+                st.error(st.session_state.error_message)
+            with col2:
+                if st.button("✖", key="clear_error", help="メッセージを閉じる"):
+                    st.session_state.clear_messages = True
+                    st.rerun()
 
 
 def main():
     st.title("🏛️ Polibase - 会議管理システム")
     st.markdown("議事録の会議情報（URL、日付）を管理します")
+
+    # グローバルメッセージを表示（会議体管理以外で使用）
+    # display_messages()
 
     # タブ作成
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
@@ -431,6 +480,37 @@ def manage_conferences():
 
     conf_repo = ConferenceRepository()
 
+    # 会議体管理用のメッセージを表示
+    if (
+        "conf_success_message" in st.session_state
+        and st.session_state.conf_success_message
+    ):
+        col1, col2 = st.columns([10, 1])
+        with col1:
+            st.success(st.session_state.conf_success_message)
+        with col2:
+            if st.button("✖", key="clear_conf_success", help="メッセージを閉じる"):
+                st.session_state.conf_success_message = None
+                st.session_state.conf_message_details = None
+                st.rerun()
+
+        # 詳細情報があれば表示
+        if (
+            "conf_message_details" in st.session_state
+            and st.session_state.conf_message_details
+        ):
+            with st.expander("詳細を表示", expanded=True):
+                st.markdown(st.session_state.conf_message_details)
+
+    if "conf_error_message" in st.session_state and st.session_state.conf_error_message:
+        col1, col2 = st.columns([10, 1])
+        with col1:
+            st.error(st.session_state.conf_error_message)
+        with col2:
+            if st.button("✖", key="clear_conf_error", help="メッセージを閉じる"):
+                st.session_state.conf_error_message = None
+                st.rerun()
+
     # サブタブを作成
     conf_tab1, conf_tab2, conf_tab3 = st.tabs(["会議体一覧", "新規登録", "編集・削除"])
 
@@ -532,7 +612,10 @@ def manage_conferences():
 
                 if submitted:
                     if not conf_name:
-                        st.error("会議体名を入力してください")
+                        st.session_state.conf_error_message = (
+                            "会議体名を入力してください"
+                        )
+                        st.rerun()
                     elif selected_gb_id:
                         conf_id = conf_repo.create_conference(
                             name=conf_name,
@@ -546,13 +629,33 @@ def manage_conferences():
                                     conference_id=conf_id,
                                     members_introduction_url=members_url,
                                 )
-                            st.success(f"会議体を登録しました (ID: {conf_id})")
+
+                            # 成功メッセージと詳細をセッション状態に保存
+                            st.session_state.conf_success_message = (
+                                "✅ 会議体を登録しました"
+                            )
+                            st.session_state.conf_message_details = f"""
+                            **会議体ID:** {conf_id}
+
+                            **開催主体:** {gb_selected}
+
+                            **会議体名:** {conf_name}
+
+                            **会議体種別:** {conf_type if conf_type else "未設定"}
+
+                            **議員紹介URL:** {
+                                "✅ 設定済み" if members_url else "❌ 未設定"
+                            }
+                            {f"\\n- {members_url}" if members_url else ""}
+                            """
+
                             st.rerun()
                         else:
-                            st.error(
+                            st.session_state.conf_error_message = (
                                 "会議体の登録に失敗しました"
                                 "（同じ名前の会議体が既に存在する可能性があります）"
                             )
+                            st.rerun()
 
     with conf_tab3:
         # 編集・削除
