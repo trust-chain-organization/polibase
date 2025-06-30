@@ -91,16 +91,26 @@ class GoverningBodyRepository:
             self.connection = self.engine.connect()
 
         query = text("""
-            SELECT id, name, type
-            FROM governing_bodies
-            WHERE type = :type
-            ORDER BY name
+            SELECT gb.id, gb.name, gb.type,
+                   COUNT(DISTINCT c.id) as conference_count
+            FROM governing_bodies gb
+            LEFT JOIN conferences c ON gb.id = c.governing_body_id
+            WHERE gb.type = :type
+            GROUP BY gb.id, gb.name, gb.type
+            ORDER BY gb.name
         """)
 
         result = self.connection.execute(query, {"type": gb_type})
         governing_bodies = []
         for row in result:
-            governing_bodies.append({"id": row.id, "name": row.name, "type": row.type})
+            governing_bodies.append(
+                {
+                    "id": row.id,
+                    "name": row.name,
+                    "type": row.type,
+                    "conference_count": row.conference_count,
+                }
+            )
 
         return governing_bodies
 
