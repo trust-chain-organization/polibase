@@ -331,3 +331,9 @@ Polibase follows these core design principles:
 - **Database Migrations**: Run migrations after pulling updates that modify database schema
 - **GCS URI Format**: Always use `gs://` format for GCS URIs, not HTTPS URLs
 - **Intermediate Files**: Always create temporary or intermediate files (including markdown files for planning, summaries, etc.) in the `tmp/` directory. This directory is gitignored to keep the repository clean
+- **UI Testing with Playwright**: When testing or verifying Streamlit UI behavior, use Playwright MCP tools (`mcp__playwright__*`) to:
+  - Navigate to the Streamlit app (usually http://localhost:8501)
+  - Take screenshots to verify UI changes
+  - Interact with UI elements to test functionality
+  - Capture and verify error messages or success notifications
+  - Ensure UI updates are properly rendered after data modifications
