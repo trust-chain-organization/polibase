@@ -1,6 +1,7 @@
 """CLI commands package"""
 
 from .conference_member_commands import get_conference_member_commands
+from .coverage_commands import get_coverage_commands
 from .database_commands import get_database_commands
 from .minutes_commands import get_minutes_commands
 from .parliamentary_group_commands import get_parliamentary_group_commands
@@ -18,4 +19,5 @@ __all__ = [
     "get_conference_member_commands",
     "get_parliamentary_group_commands",
     "get_seed_commands",
+    "get_coverage_commands",
 ]

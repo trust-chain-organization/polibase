@@ -85,6 +85,9 @@ docker compose exec polibase uv run polibase create-affiliations --start-date 20
 
 # Check extraction and matching status
 docker compose exec polibase uv run polibase member-status --conference-id 185
+
+# Show coverage statistics for governing bodies
+docker compose exec polibase uv run polibase coverage
 ```
 
 #### Direct Module Execution (Legacy)
@@ -289,6 +292,7 @@ Polibase follows these core design principles:
   - `006_add_role_to_politician_affiliations.sql`: Adds role column for positions
   - `007_create_extracted_conference_members_table.sql`: Creates staging table
   - `008_create_parliamentary_groups_tables.sql`: Creates parliamentary groups and membership tables
+  - `011_add_organization_code_to_governing_bodies.sql`: Adds organization_code and organization_type for tracking coverage
 
 ### Technology Stack
 - **LLM**: Google Gemini API (gemini-2.0-flash, gemini-1.5-flash) via LangChain
@@ -318,6 +322,7 @@ Polibase follows these core design principles:
 - **API Key Required**: GOOGLE_API_KEY must be set in .env for Gemini API access
 - **Database Persistence**: Default docker/docker-compose.yml uses volumes for persistent storage
 - **Master Data**: Governing bodies and conferences are fixed master data, not modified during operation
+- **Coverage Tracking**: All Japanese municipalities (1,966 entities) are now tracked in governing_bodies table with organization codes
 - **Processing Order**: Always run process-minutes → extract-speakers → update-speakers in sequence
 - **File Naming**: Fixed typo in minutes_divider.py (was minutes_dividor.py)
 - **Unified CLI**: New `polibase` command provides single entry point for all operations
