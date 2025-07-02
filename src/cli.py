@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 # Import command modules
 from src.cli_package.commands import (
     get_conference_member_commands,
+    get_coverage_commands,
     get_database_commands,
     get_minutes_commands,
     get_parliamentary_group_commands,
@@ -56,6 +57,7 @@ def register_commands(cli_group: click.Group) -> None:
         get_conference_member_commands,
         get_parliamentary_group_commands,
         get_seed_commands,
+        get_coverage_commands,
     ]
 
     for getter in command_getters:
