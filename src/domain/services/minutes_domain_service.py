@@ -58,7 +58,7 @@ class MinutesDomainService:
 
     def create_conversations_from_speeches(
         self,
-        speeches: list[dict] | list[ExtractedSpeechDTO],
+        speeches: list[dict] | list["ExtractedSpeechDTO"],
         minutes_id: int,
         chapter_number: int = 1,
     ) -> list[Conversation]:
