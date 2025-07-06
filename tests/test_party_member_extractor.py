@@ -1,6 +1,6 @@
 """Tests for Party Member Extractor"""
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -26,22 +26,16 @@ class TestPartyMemberExtractor:
     @pytest.fixture
     def extractor(self, mock_llm):
         """エクストラクターのフィクスチャ"""
-        # Mock the extraction_llm that will be used in tests
+        # PartyMemberExtractorはLLMServiceを使わず、直接ChatGoogleGenerativeAIを使用
+        extractor = PartyMemberExtractor(llm=mock_llm)
+
+        # Mock the with_structured_output method
         mock_extraction_llm = Mock()
+        mock_llm.with_structured_output.return_value = mock_extraction_llm
 
-        with patch(
-            "src.party_member_extractor.extractor.LLMService"
-        ) as mock_llm_service_class:
-            mock_llm_service = Mock()
-            mock_llm_service.get_structured_llm.return_value = mock_extraction_llm
-            mock_llm_service_class.return_value = mock_llm_service
-
-            with patch("src.party_member_extractor.extractor.PromptManager"):
-                with patch("src.party_member_extractor.extractor.ChainFactory"):
-                    extractor = PartyMemberExtractor(llm=mock_llm)
-                    # Store reference for test access
-                    extractor._mock_extraction_llm = mock_extraction_llm
-                    return extractor
+        # Store reference for test access
+        extractor._mock_extraction_llm = mock_extraction_llm
+        return extractor
 
     @pytest.fixture
     def sample_html(self):

@@ -158,14 +158,27 @@ class TestPartyMemberIntegration:
 
             mock_conn.execute = Mock(side_effect=execute_side_effect)
 
-            # リポジトリ実行
-            repo = PoliticianRepository()
-            stats = repo.bulk_create_politicians(politicians_data)
+            # リポジトリの各メソッドをモック
+            with patch.object(
+                PoliticianRepository, "find_by_name_and_party", return_value=None
+            ):
+                with patch.object(PoliticianRepository, "create") as mock_create:
+                    # createメソッドはPoliticianオブジェクトを返す
+                    from src.models.politician import Politician
 
-            # アサーション
-            assert len(stats["created"]) == 2
-            assert len(stats["updated"]) == 0
-            assert len(stats["errors"]) == 0
+                    mock_create.side_effect = [
+                        Politician(id=1, name="DB統合太郎", political_party_id=1),
+                        Politician(id=2, name="DB統合花子", political_party_id=1),
+                    ]
+
+                    # リポジトリ実行
+                    repo = PoliticianRepository()
+                    stats = repo.bulk_create_politicians(politicians_data)
+
+                    # アサーション
+                    assert len(stats["created"]) == 2
+                    assert len(stats["updated"]) == 0
+                    assert len(stats["errors"]) == 0
 
     def test_duplicate_handling_integration(self):
         """重複処理の統合テスト"""
@@ -228,37 +241,54 @@ class TestPartyMemberIntegration:
 
             mock_conn.execute = Mock(side_effect=execute_side_effect_initial)
 
-            repo = PoliticianRepository()
-            first_stats = repo.bulk_create_politicians(initial_data)
+            # PoliticianRepositoryのメソッドをモック
+            with patch.object(
+                PoliticianRepository, "find_by_name_and_party"
+            ) as mock_find:
+                with patch.object(PoliticianRepository, "create") as mock_create:
+                    with patch.object(PoliticianRepository, "update") as mock_update:
+                        from src.models.politician import Politician
 
-            # 2回目: 更新
-            existing_record = Mock(
-                id=1,
-                position="衆議院議員",
-                prefecture="東京都",
-                electoral_district=None,
-                profile_url=None,
-                party_position=None,
-            )
+                        # 初回: 新規作成
+                        mock_find.return_value = None
+                        mock_create.return_value = Politician(
+                            id=1,
+                            name="重複チェック太郎",
+                            political_party_id=1,
+                            position="衆議院議員",
+                        )
 
-            def execute_side_effect_update(query, params=None):
-                # SELECTクエリの場合（既存チェック）
-                if "SELECT" in str(query):
-                    return Mock(fetchone=Mock(return_value=existing_record))  # 既存あり
-                # UPDATEクエリの場合
-                elif "UPDATE" in str(query):
-                    return Mock()
-                else:
-                    return Mock()
+                        repo = PoliticianRepository()
+                        first_stats = repo.bulk_create_politicians(initial_data)
 
-            mock_conn.execute = Mock(side_effect=execute_side_effect_update)
+                        # 2回目: 更新
+                        existing_politician = Politician(
+                            id=1,
+                            name="重複チェック太郎",
+                            political_party_id=1,
+                            position="衆議院議員",
+                            prefecture="東京都",
+                            electoral_district=None,
+                            profile_url=None,
+                            party_position=None,
+                        )
 
-            second_stats = repo.bulk_create_politicians(update_data)
+                        mock_find.return_value = existing_politician
+                        mock_update.return_value = Politician(
+                            id=1,
+                            name="重複チェック太郎",
+                            political_party_id=1,
+                            position="参議院議員",
+                            prefecture="東京都",
+                            electoral_district="東京",
+                        )
 
-            # アサーション
-            assert len(first_stats["created"]) == 1
-            assert len(second_stats["updated"]) == 1
-            assert len(second_stats["created"]) == 0
+                        second_stats = repo.bulk_create_politicians(update_data)
+
+                        # アサーション
+                        assert len(first_stats["created"]) == 1
+                        assert len(second_stats["updated"]) == 1
+                        assert len(second_stats["created"]) == 0
 
     @pytest.mark.asyncio
     async def test_error_recovery(self):
