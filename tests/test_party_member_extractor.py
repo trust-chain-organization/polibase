@@ -18,12 +18,24 @@ class TestPartyMemberExtractor:
     @pytest.fixture
     def mock_llm(self):
         """モックLLMのフィクスチャ"""
-        return Mock()
+        mock = Mock()
+        mock.model_name = "test-model"
+        mock.temperature = 0.1
+        return mock
 
     @pytest.fixture
     def extractor(self, mock_llm):
         """エクストラクターのフィクスチャ"""
-        return PartyMemberExtractor(llm=mock_llm)
+        # PartyMemberExtractorはLLMServiceを使わず、直接ChatGoogleGenerativeAIを使用
+        extractor = PartyMemberExtractor(llm=mock_llm)
+
+        # Mock the with_structured_output method
+        mock_extraction_llm = Mock()
+        mock_llm.with_structured_output.return_value = mock_extraction_llm
+
+        # Store reference for test access
+        extractor._mock_extraction_llm = mock_extraction_llm
+        return extractor
 
     @pytest.fixture
     def sample_html(self):
@@ -54,9 +66,8 @@ class TestPartyMemberExtractor:
 
     def test_extract_from_pages(self, extractor, mock_llm, sample_html):
         """複数ページからの抽出テスト"""
-        # モックLLMの設定
-        mock_extraction_llm = Mock()
-        mock_extraction_llm.invoke.side_effect = [
+        # モックLLMの設定 - Use the mock from fixture
+        extractor.extraction_llm.invoke.side_effect = [
             PartyMemberList(
                 members=[
                     PartyMemberInfo(
@@ -84,7 +95,6 @@ class TestPartyMemberExtractor:
                 party_name="テスト党",
             ),
         ]
-        extractor.extraction_llm = mock_extraction_llm
 
         # テストデータ
         pages = [

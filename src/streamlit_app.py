@@ -520,55 +520,161 @@ def manage_conferences():
 
         conferences = conf_repo.get_all_conferences()
         if conferences:
-            # DataFrameに変換
-            df = pd.DataFrame(conferences)
+            # フィルター設定
+            col_filter1, col_filter2, col_filter3 = st.columns([2, 2, 6])
+            with col_filter1:
+                url_filter = st.selectbox(
+                    "議員紹介URL",
+                    ["すべて", "設定済み", "未設定"],
+                    key="conf_url_filter",
+                )
 
-            # 議員紹介URLの状態を追加
-            df["URL状態"] = df["members_introduction_url"].apply(
-                lambda x: "✅ 設定済み" if x else "❌ 未設定"
-            )
-
-            # 必要なカラムを選択
-            df = df[
-                [
-                    "id",
-                    "governing_body_name",
-                    "governing_body_type",
-                    "name",
-                    "type",
-                    "URL状態",
-                    "members_introduction_url",
+            # フィルタリング適用
+            filtered_conferences = conferences
+            if url_filter == "設定済み":
+                filtered_conferences = [
+                    conf for conf in conferences if conf.get("members_introduction_url")
                 ]
-            ]
-            df.columns = [
-                "ID",
-                "開催主体",
-                "開催主体種別",
-                "会議体名",
-                "会議体種別",
-                "URL状態",
-                "議員紹介URL",
-            ]
+            elif url_filter == "未設定":
+                filtered_conferences = [
+                    conf
+                    for conf in conferences
+                    if not conf.get("members_introduction_url")
+                ]
 
-            # 開催主体でグループ化して表示
-            for gb_name in df["開催主体"].unique():
-                with st.expander(f"📂 {gb_name}"):
-                    gb_df = df[df["開催主体"] == gb_name]
-                    # 議員紹介URLを短縮表示
-                    gb_df["議員紹介URL"] = gb_df["議員紹介URL"].apply(
-                        lambda x: x[:50] + "..."
-                        if x and len(x) > 50
-                        else x
-                        if x
-                        else "未設定"
-                    )
-                    st.dataframe(
-                        gb_df[
-                            ["ID", "会議体名", "会議体種別", "URL状態", "議員紹介URL"]
-                        ],
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+            # 統計情報を表示
+            total_count = len(conferences)
+            with_url_count = len(
+                [c for c in conferences if c.get("members_introduction_url")]
+            )
+            without_url_count = total_count - with_url_count
+
+            with col_filter2:
+                st.metric(
+                    "設定済み",
+                    f"{with_url_count}/{total_count}",
+                    (
+                        f"{with_url_count / total_count * 100:.0f}%"
+                        if total_count > 0
+                        else "0%"
+                    ),
+                )
+
+            with col_filter3:
+                st.metric(
+                    "未設定",
+                    f"{without_url_count}/{total_count}",
+                    (
+                        f"{without_url_count / total_count * 100:.0f}%"
+                        if total_count > 0
+                        else "0%"
+                    ),
+                )
+
+            st.markdown("---")
+
+            # フィルター後の会議体が存在するかチェック
+            if filtered_conferences:
+                # 開催主体でグループ化
+                grouped_conferences = {}
+                for conf in filtered_conferences:
+                    gb_name = conf["governing_body_name"]
+                    if gb_name not in grouped_conferences:
+                        grouped_conferences[gb_name] = []
+                    grouped_conferences[gb_name].append(conf)
+
+                # 開催主体ごとに表示
+                for gb_name, gb_conferences in grouped_conferences.items():
+                    with st.expander(f"📂 {gb_name}", expanded=True):
+                        for idx, conf in enumerate(gb_conferences):
+                            # 各会議体を個別に表示
+                            col1, col2, col3, col4 = st.columns([3, 2, 2, 1])
+
+                            with col1:
+                                st.markdown(f"**{conf['name']}**")
+                                if conf.get("type"):
+                                    st.caption(f"種別: {conf['type']}")
+
+                            with col2:
+                                if conf.get("members_introduction_url"):
+                                    st.success("✅ URL設定済み")
+                                else:
+                                    st.error("❌ URL未設定")
+
+                            with col3:
+                                # 編集状態の管理
+                                edit_key = f"edit_conf_{conf['id']}"
+                                if edit_key not in st.session_state:
+                                    st.session_state[edit_key] = False
+
+                                # 現在のURLを表示（編集モードでない場合）
+                                if not st.session_state[edit_key] and conf.get(
+                                    "members_introduction_url"
+                                ):
+                                    url = conf["members_introduction_url"]
+                                    display_url = (
+                                        url[:30] + "..." if len(url) > 30 else url
+                                    )
+                                    st.caption(f"🔗 {display_url}")
+
+                            with col4:
+                                if st.button("✏️ 編集", key=f"edit_btn_{conf['id']}"):
+                                    st.session_state[edit_key] = not st.session_state[
+                                        edit_key
+                                    ]
+                                    st.rerun()
+
+                            # 編集モード
+                            if st.session_state[edit_key]:
+                                with st.container():
+                                    st.markdown("---")
+                                    col_input, col_save, col_cancel = st.columns(
+                                        [6, 1, 1]
+                                    )
+
+                                with col_input:
+                                    new_url = st.text_input(
+                                        "議員紹介URL",
+                                        value=conf.get("members_introduction_url", ""),
+                                        key=f"url_input_{conf['id']}",
+                                        placeholder="https://example.com/members",
+                                    )
+
+                                with col_save:
+                                    if st.button(
+                                        "💾 保存", key=f"save_btn_{conf['id']}"
+                                    ):
+                                        # URLを更新
+                                        conf_repo.update_conference_members_url(
+                                            conference_id=conf["id"],
+                                            members_introduction_url=(
+                                                new_url if new_url else None
+                                            ),
+                                        )
+                                        st.session_state[edit_key] = False
+                                        st.session_state.conf_success_message = (
+                                            f"✅ {conf['name']}の議員紹介URL"
+                                            "を更新しました"
+                                        )
+                                        st.rerun()
+
+                                with col_cancel:
+                                    if st.button(
+                                        "❌ キャンセル",
+                                        key=f"cancel_btn_{conf['id']}",
+                                    ):
+                                        st.session_state[edit_key] = False
+                                        st.rerun()
+
+                            # 区切り線（最後の項目以外）
+                            if idx < len(gb_conferences) - 1:
+                                st.markdown("---")
+            else:
+                # フィルター結果が空の場合
+                if url_filter == "設定済み":
+                    st.info("議員紹介URLが設定済みの会議体はありません")
+                elif url_filter == "未設定":
+                    st.info("議員紹介URLが未設定の会議体はありません")
         else:
             st.info("会議体が登録されていません")
 
