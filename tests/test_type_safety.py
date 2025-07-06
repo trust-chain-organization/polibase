@@ -120,9 +120,9 @@ def test_all_functions_have_return_types():
             print(f"  ... and {len(functions_without_returns) - 10} more")
 
     # Assert all functions have return types
-    assert (
-        len(functions_without_returns) <= 50
-    ), f"Too many functions without return types: {len(functions_without_returns)}"
+    assert len(functions_without_returns) <= 50, (
+        f"Too many functions without return types: {len(functions_without_returns)}"
+    )
 
 
 if __name__ == "__main__":
