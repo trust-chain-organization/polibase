@@ -1,40 +1,14 @@
 """LLM service interface and implementation."""
 
-from abc import ABC, abstractmethod
-from typing import Any
+from src.domain.types import (
+    LLMExtractResult,
+    LLMMatchResult,
+    LLMSpeakerMatchContext,
+    PoliticianDTO,
+)
 
 
-class ILLMService(ABC):
-    """Interface for LLM service."""
-
-    @abstractmethod
-    async def match_speaker_to_politician(
-        self, context: dict[str, Any]
-    ) -> dict[str, Any] | None:
-        """Match speaker to politician using LLM."""
-        pass
-
-    @abstractmethod
-    async def extract_politicians_from_html(
-        self, html_content: str, party_id: int
-    ) -> list[dict[str, Any]]:
-        """Extract politician information from HTML."""
-        pass
-
-    @abstractmethod
-    async def match_conference_member(
-        self, name: str, party: str, role: str | None = None
-    ) -> dict[str, Any] | None:
-        """Match conference member to politician."""
-        pass
-
-    @abstractmethod
-    async def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
-        """Extract speeches from minutes text."""
-        pass
-
-
-class GeminiLLMService(ILLMService):
+class GeminiLLMService:
     """Gemini-based implementation of LLM service."""
 
     def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
@@ -43,43 +17,52 @@ class GeminiLLMService(ILLMService):
         # Initialize Gemini client here
 
     async def match_speaker_to_politician(
-        self, context: dict[str, Any]
-    ) -> dict[str, Any] | None:
+        self, context: LLMSpeakerMatchContext
+    ) -> LLMMatchResult | None:
         """Match speaker to politician using Gemini."""
         # Implementation would call Gemini API
         # This is a placeholder
-        return {
-            "politician_id": 1,
-            "politician_name": "Sample Politician",
-            "confidence": 0.85,
-        }
+        return LLMMatchResult(
+            matched=True,
+            confidence=0.85,
+            reason="Sample match",
+            matched_id=1,
+            metadata={"politician_name": "Sample Politician"},
+        )
 
-    async def extract_politicians_from_html(
+    async def extract_party_members(
         self, html_content: str, party_id: int
-    ) -> list[dict[str, Any]]:
+    ) -> LLMExtractResult:
         """Extract politician information from HTML using Gemini."""
         # Implementation would call Gemini API
         # This is a placeholder
-        return [
-            {
-                "name": "Sample Politician",
-                "furigana": "サンプル セイジカ",
-                "position": "議員",
-                "district": "東京1区",
-            }
-        ]
+        return LLMExtractResult(
+            success=True,
+            extracted_data=[
+                {
+                    "name": "Sample Politician",
+                    "furigana": "サンプル セイジカ",
+                    "position": "議員",
+                    "district": "東京1区",
+                }
+            ],
+            error=None,
+            metadata={"party_id": str(party_id)},
+        )
 
     async def match_conference_member(
-        self, name: str, party: str, role: str | None = None
-    ) -> dict[str, Any] | None:
+        self, member_name: str, party_name: str | None, candidates: list[PoliticianDTO]
+    ) -> LLMMatchResult | None:
         """Match conference member to politician using Gemini."""
         # Implementation would call Gemini API
         # This is a placeholder
-        return {
-            "politician_id": 1,
-            "politician_name": name,
-            "confidence": 0.9,
-        }
+        return LLMMatchResult(
+            matched=True,
+            confidence=0.9,
+            reason="High confidence match",
+            matched_id=1,
+            metadata={"politician_name": member_name},
+        )
 
     async def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
         """Extract speeches from minutes text using Gemini."""

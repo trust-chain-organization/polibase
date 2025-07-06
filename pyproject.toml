@@ -84,19 +84,4 @@ ignore = []
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
 
-[tool.pyright]
-pythonVersion = "3.13"
-typeCheckingMode = "standard"
-reportMissingImports = true
-reportMissingTypeStubs = false
-reportUnknownParameterType = "warning"
-reportMissingParameterType = "warning"
-reportMissingTypeArgument = "warning"
-reportPrivateUsage = "warning"
-reportUnknownMemberType = "warning"
-reportUnknownVariableType = "warning"
-reportUnknownArgumentType = "warning"
-reportGeneralTypeIssues = "error"
-reportOptionalMemberAccess = "error"
-reportOptionalOperand = "error"
-strictParameterNoneValue = true
+# Pyright configuration moved to pyrightconfig.json

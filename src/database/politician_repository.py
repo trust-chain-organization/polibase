@@ -6,7 +6,7 @@ from difflib import SequenceMatcher
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.database.base_repository import BaseRepository
+from src.database.typed_repository import TypedRepository
 from src.exceptions import (
     DatabaseError,
     DuplicateRecordError,
@@ -17,16 +17,16 @@ from src.models.politician import Politician, PoliticianCreate, PoliticianUpdate
 logger = logging.getLogger(__name__)
 
 
-class PoliticianRepository(BaseRepository):
+class PoliticianRepository(TypedRepository[Politician]):
     """Politician repository with Pydantic model support"""
 
     def __init__(self, db=None):
         # If db session is provided, use it; otherwise fall back to engine
         if db:
-            super().__init__(use_session=True)
+            super().__init__(Politician, "politicians", use_session=True)
             self._session = db  # Set internal _session attribute
         else:
-            super().__init__(use_session=False)
+            super().__init__(Politician, "politicians", use_session=False)
 
     def create_politician(self, politician: PoliticianCreate) -> Politician | None:
         """新しい政治家を作成（既存の場合は更新）
