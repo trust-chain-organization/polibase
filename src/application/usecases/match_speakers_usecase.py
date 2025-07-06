@@ -5,6 +5,7 @@ from src.domain.repositories.conversation_repository import ConversationReposito
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.speaker_domain_service import SpeakerDomainService
+from src.infrastructure.interfaces.llm_service import ILLMService
 
 
 class MatchSpeakersUseCase:
@@ -16,7 +17,7 @@ class MatchSpeakersUseCase:
         politician_repository: PoliticianRepository,
         conversation_repository: ConversationRepository,
         speaker_domain_service: SpeakerDomainService,
-        llm_service,  # External service interface
+        llm_service: ILLMService,
     ):
         self.speaker_repo = speaker_repository
         self.politician_repo = politician_repository
@@ -48,13 +49,15 @@ class MatchSpeakersUseCase:
 
         for speaker in speakers:
             # Skip if already linked
+            if speaker.id is None:
+                continue
             existing_politician = await self.politician_repo.get_by_speaker_id(
                 speaker.id
             )
             if existing_politician:
                 results.append(
                     SpeakerMatchingDTO(
-                        speaker_id=speaker.id,
+                        speaker_id=speaker.id if speaker.id is not None else 0,
                         speaker_name=speaker.name,
                         matched_politician_id=existing_politician.id,
                         matched_politician_name=existing_politician.name,
@@ -77,7 +80,7 @@ class MatchSpeakersUseCase:
                 # No match found
                 results.append(
                     SpeakerMatchingDTO(
-                        speaker_id=speaker.id,
+                        speaker_id=speaker.id if speaker.id is not None else 0,
                         speaker_name=speaker.name,
                         matched_politician_id=None,
                         matched_politician_name=None,
@@ -116,7 +119,7 @@ class MatchSpeakersUseCase:
 
         if best_match:
             return SpeakerMatchingDTO(
-                speaker_id=speaker.id,
+                speaker_id=speaker.id if speaker.id is not None else 0,
                 speaker_name=speaker.name,
                 matched_politician_id=best_match.id,
                 matched_politician_name=best_match.name,
@@ -160,7 +163,7 @@ class MatchSpeakersUseCase:
 
             if politician:
                 return SpeakerMatchingDTO(
-                    speaker_id=speaker.id,
+                    speaker_id=speaker.id if speaker.id is not None else 0,
                     speaker_name=speaker.name,
                     matched_politician_id=politician.id,
                     matched_politician_name=politician.name,

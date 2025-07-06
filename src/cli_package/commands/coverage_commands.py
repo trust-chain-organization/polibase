@@ -55,16 +55,23 @@ def coverage():
         bodies_with_meetings = result.scalar()
 
         # Coverage percentage
-        conference_coverage = (
-            (bodies_with_conferences / total_governing_bodies * 100)
-            if total_governing_bodies > 0
-            else 0
-        )
-        meeting_coverage = (
-            (bodies_with_meetings / total_governing_bodies * 100)
-            if total_governing_bodies > 0
-            else 0
-        )
+        if bodies_with_conferences is not None and total_governing_bodies is not None:
+            conference_coverage = (
+                (bodies_with_conferences / total_governing_bodies * 100)
+                if total_governing_bodies > 0
+                else 0
+            )
+        else:
+            conference_coverage = 0
+
+        if bodies_with_meetings is not None and total_governing_bodies is not None:
+            meeting_coverage = (
+                (bodies_with_meetings / total_governing_bodies * 100)
+                if total_governing_bodies > 0
+                else 0
+            )
+        else:
+            meeting_coverage = 0
 
         # Display results
         click.echo("=== Governing Bodies Coverage Report ===\n")

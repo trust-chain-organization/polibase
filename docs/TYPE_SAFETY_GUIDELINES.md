@@ -1,0 +1,204 @@
+# 型安全性ガイドライン
+
+このドキュメントは、Polibaseプロジェクトにおける型安全性の実装方針と実践方法について説明します。
+
+## 概要
+
+Polibaseは、Python 3.11+の型ヒント機能とpyrightを使用して、実行時エラーを削減し、コードの品質を向上させています。
+
+## 型チェック設定
+
+### pyright設定（pyproject.toml）
+
+```toml
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnknownParameterType = "warning"
+reportMissingParameterType = "warning"
+reportMissingTypeArgument = "warning"
+reportPrivateUsage = "warning"
+reportUnknownMemberType = "warning"
+reportUnknownVariableType = "warning"
+reportUnknownArgumentType = "warning"
+reportGeneralTypeIssues = "error"
+reportOptionalMemberAccess = "error"
+reportOptionalOperand = "error"
+strictParameterNoneValue = true
+```
+
+## 実装ガイドライン
+
+### 1. 基本的な型ヒント
+
+すべての関数とメソッドには、引数と戻り値の型ヒントを追加してください：
+
+```python
+# 良い例
+def calculate_similarity(name1: str, name2: str) -> float:
+    """名前の類似度を計算する"""
+    return 0.85
+
+# 悪い例
+def calculate_similarity(name1, name2):
+    return 0.85
+```
+
+### 2. Optional型の扱い
+
+Noneを許容する場合は、明示的にOptional型またはUnion型を使用します：
+
+```python
+from typing import Optional
+
+# 良い例
+def get_politician(id: int) -> Optional[Politician]:
+    """政治家を取得。見つからない場合はNoneを返す"""
+    return None
+
+# Python 3.10+の場合
+def get_politician(id: int) -> Politician | None:
+    return None
+```
+
+### 3. 型ガードの使用
+
+Optional型を使用する際は、適切な型ガードを実装してください：
+
+```python
+# 良い例
+politician = await repo.get_by_id(politician_id)
+if politician is None:
+    raise ValueError(f"Politician {politician_id} not found")
+# この時点でpoliticianはPolitician型として扱われる
+
+# または早期リターン
+if politician is None:
+    return None
+# この時点でpoliticianはPolitician型として扱われる
+```
+
+### 4. ProtocolとInterface
+
+外部サービスのインターフェースは、Protocolを使用して定義します：
+
+```python
+from typing import Protocol, Any
+
+class ILLMService(Protocol):
+    """LLMサービスのインターフェース"""
+
+    async def match_speaker_to_politician(
+        self, context: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """話者を政治家にマッチング"""
+        ...
+```
+
+### 5. TypedDictの使用
+
+辞書型のデータ構造には、TypedDictを使用して型安全性を確保します：
+
+```python
+from typing import TypedDict
+
+class PoliticianData(TypedDict):
+    """政治家データの型定義"""
+    id: int
+    name: str
+    party_id: int | None
+    position: str | None
+```
+
+### 6. Genericを使った型安全なリポジトリ
+
+リポジトリパターンでは、Genericを使用して型安全性を確保します：
+
+```python
+from typing import TypeVar, Generic
+
+T = TypeVar("T", bound=BaseEntity)
+
+class BaseRepository(Generic[T]):
+    """型安全なリポジトリ基底クラス"""
+
+    async def get_by_id(self, entity_id: int) -> T | None:
+        """IDでエンティティを取得"""
+        pass
+```
+
+### 7. Any型の使用制限
+
+Any型の使用は最小限に抑え、具体的な型を使用してください：
+
+```python
+# 避けるべき例
+def process_data(data: Any) -> Any:
+    return data
+
+# 良い例
+def process_data(data: dict[str, str]) -> list[str]:
+    return list(data.values())
+```
+
+## 型チェックの実行
+
+### 開発時の型チェック
+
+```bash
+# Docker環境での実行
+docker compose exec polibase uv run --frozen pyright
+
+# ローカル環境での実行
+uv run pyright
+```
+
+### CI/CDでの型チェック
+
+GitHub Actionsなどで自動的に型チェックを実行し、エラーがある場合はマージを防ぎます。
+
+### 型チェックのテスト
+
+`tests/test_type_safety.py`で型安全性のテストを実行できます：
+
+```bash
+docker compose exec polibase uv run pytest tests/test_type_safety.py
+```
+
+## 段階的な移行戦略
+
+1. **Phase 1（現在）**: 基本的な型エラーの修正
+   - Optional型の適切な処理
+   - 必須引数の追加
+   - 基本的な型ヒントの追加
+
+2. **Phase 2**: strictモードへの移行準備
+   - Any型の削減
+   - TypedDictの導入
+   - Protocolの活用
+
+3. **Phase 3**: strictモードの有効化
+   - pyrightのstrictモード設定
+   - 全関数への型ヒント必須化
+   - 型カバレッジ95%以上の達成
+
+## トラブルシューティング
+
+### よくあるエラーと対処法
+
+1. **"Type of X is unknown"**
+   - 変数や引数に明示的な型ヒントを追加
+
+2. **"Argument of type 'X | None' cannot be assigned to parameter of type 'X'"**
+   - 型ガードを使用してNoneチェックを実施
+
+3. **"reportOptionalMemberAccess"**
+   - Optional型のメンバーアクセス前にNoneチェックを追加
+
+## 参考資料
+
+- [Python Type Hints](https://docs.python.org/3/library/typing.html)
+- [Pyright Documentation](https://github.com/microsoft/pyright)
+- [PEP 484 – Type Hints](https://www.python.org/dev/peps/pep-0484/)

@@ -7,6 +7,7 @@ from src.domain.repositories.political_party_repository import PoliticalPartyRep
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.politician_domain_service import PoliticianDomainService
+from src.infrastructure.interfaces.web_scraper_service import IWebScraperService
 
 
 class ScrapePoliticiansUseCase:
@@ -18,7 +19,7 @@ class ScrapePoliticiansUseCase:
         politician_repository: PoliticianRepository,
         speaker_repository: SpeakerRepository,
         politician_domain_service: PoliticianDomainService,
-        web_scraper_service,  # External service interface
+        web_scraper_service: IWebScraperService,
     ):
         self.party_repo = political_party_repository
         self.politician_repo = politician_repository
@@ -161,6 +162,8 @@ class ScrapePoliticiansUseCase:
         created_speaker = await self.speaker_repo.upsert(speaker)
 
         # Create politician
+        if created_speaker.id is None:
+            raise ValueError("Created speaker must have an ID")
         politician = Politician(
             name=data.name,
             speaker_id=created_speaker.id,
@@ -178,7 +181,7 @@ class ScrapePoliticiansUseCase:
     def _to_dto(self, politician: Politician) -> PoliticianDTO:
         """Convert politician entity to DTO."""
         return PoliticianDTO(
-            id=politician.id,
+            id=politician.id if politician.id is not None else 0,
             name=politician.name,
             speaker_id=politician.speaker_id,
             political_party_id=politician.political_party_id,

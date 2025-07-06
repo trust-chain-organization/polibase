@@ -65,7 +65,9 @@ class ConferenceMemberCommands(BaseCommand):
         is_flag=True,
         help="既存の抽出データを削除して再抽出",
     )
-    def extract_conference_members(conference_id: int = None, force: bool = False):
+    def extract_conference_members(
+        conference_id: int | None = None, force: bool = False
+    ):
         """会議体の議員紹介URLから議員情報を抽出（ステップ1）"""
 
         click.echo("📋 会議体メンバー情報の抽出を開始します（ステップ1/3）")
@@ -189,7 +191,7 @@ class ConferenceMemberCommands(BaseCommand):
         type=int,
         help="会議体ID（指定しない場合は全ての未処理データを処理）",
     )
-    def match_conference_members(conference_id: int = None):
+    def match_conference_members(conference_id: int | None = None):
         """抽出した議員情報を既存の政治家データとマッチング（ステップ2）"""
 
         ConferenceMemberCommands.echo_info(
@@ -235,7 +237,7 @@ class ConferenceMemberCommands(BaseCommand):
         type=click.DateTime(formats=["%Y-%m-%d"]),
         help="所属開始日（デフォルト: 今日）",
     )
-    def create_affiliations(conference_id: int = None, start_date=None):
+    def create_affiliations(conference_id: int | None = None, start_date=None):
         """マッチング済みデータから政治家所属情報を作成（ステップ3）"""
 
         ConferenceMemberCommands.echo_info(
@@ -280,7 +282,7 @@ class ConferenceMemberCommands(BaseCommand):
         type=int,
         help="会議体ID（指定しない場合は全体のステータスを表示）",
     )
-    def member_status(conference_id: int = None):
+    def member_status(conference_id: int | None = None):
         """抽出・マッチング状況を表示"""
 
         ConferenceMemberCommands.echo_info("📊 会議体メンバー抽出・マッチング状況")
