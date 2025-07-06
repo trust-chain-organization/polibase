@@ -128,11 +128,8 @@ class SpeakerExtractorFromMinutes:
             from src.database.politician_matching_service import (
                 PoliticianMatchingService,
             )
-            from src.services.llm_service import LLMService
 
-            llm_service = LLMService()
-            llm = llm_service.llm
-            matching_service = PoliticianMatchingService(llm)
+            matching_service = PoliticianMatchingService()
 
             stats = matching_service.batch_link_speakers_to_politicians()
             logger.info(

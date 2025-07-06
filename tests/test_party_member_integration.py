@@ -67,13 +67,14 @@ class TestPartyMemberIntegration:
             mock_fetcher.return_value.__aenter__.return_value = mock_fetcher_instance
 
             with patch(
-                "src.party_member_extractor.extractor.ChatGoogleGenerativeAI"
-            ) as mock_llm_class:
-                mock_llm = Mock()
+                "src.party_member_extractor.extractor.LLMServiceFactory"
+            ) as mock_factory:
+                mock_service = Mock()
                 mock_extraction_llm = Mock()
                 mock_extraction_llm.invoke.return_value = mock_llm_result
-                mock_llm.with_structured_output.return_value = mock_extraction_llm
-                mock_llm_class.return_value = mock_llm
+                mock_service.get_structured_llm.return_value = mock_extraction_llm
+                mock_service.invoke_prompt.return_value = mock_llm_result
+                mock_factory.return_value.create_advanced.return_value = mock_service
 
                 # エクストラクター作成
                 extractor = PartyMemberExtractor()
@@ -314,11 +315,10 @@ class TestPartyMemberIntegration:
 
         # LLMのモック（2ページ目でエラー）
         with patch(
-            "src.party_member_extractor.extractor.ChatGoogleGenerativeAI"
-        ) as mock_llm_class:
-            mock_llm = Mock()
-            mock_extraction_llm = Mock()
-            mock_extraction_llm.invoke.side_effect = [
+            "src.party_member_extractor.extractor.LLMServiceFactory"
+        ) as mock_factory:
+            mock_service = Mock()
+            mock_service.invoke_prompt.side_effect = [
                 PartyMemberList(
                     members=[PartyMemberInfo(name="成功太郎", position="衆議院議員")],
                     total_count=1,
@@ -329,8 +329,7 @@ class TestPartyMemberIntegration:
                     total_count=1,
                 ),
             ]
-            mock_llm.with_structured_output.return_value = mock_extraction_llm
-            mock_llm_class.return_value = mock_llm
+            mock_factory.return_value.create_advanced.return_value = mock_service
 
             extractor = PartyMemberExtractor()
             result = extractor.extract_from_pages(mock_pages, "エラーテスト党")

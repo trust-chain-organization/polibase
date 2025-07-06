@@ -9,8 +9,6 @@ import sys
 # プロジェクトルートをパスに追加
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-
 from src.config import config
 from src.config.database import test_connection
 from src.database.conversation_repository import ConversationRepository
@@ -36,23 +34,15 @@ def main():
 
     print("✅ データベース接続成功")
 
-    # LLMの初期化
+    # マッチングサービスの初期化（LLMServiceを内部で使用）
+    print("\n🎯 Speaker Matchingサービスを初期化中...")
     try:
-        print("\n🔧 LLMを初期化中...")
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
-            temperature=0.1,  # 一貫性を重視
-            max_tokens=1000,
-        )
-        print("✅ LLM初期化完了")
+        matching_service = SpeakerMatchingService()  # LLMServiceを内部で作成
+        print("✅ Speaker Matchingサービス初期化完了")
     except Exception as e:
-        print(f"❌ LLM初期化エラー: {e}")
+        print(f"❌ サービス初期化エラー: {e}")
         print("   環境変数 GOOGLE_API_KEY が正しく設定されているか確認してください")
         sys.exit(1)
-
-    # マッチングサービスの初期化
-    print("\n🎯 Speaker Matchingサービスを初期化中...")
-    matching_service = SpeakerMatchingService(llm)
 
     # リポジトリの初期化（マッチングサービス付き）
     repository = ConversationRepository(speaker_matching_service=matching_service)
@@ -141,9 +131,8 @@ def test_single_match():
 
     config.set_env()
 
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.1)
-
-    matching_service = SpeakerMatchingService(llm)
+    # Use LLMService instead of direct instantiation
+    matching_service = SpeakerMatchingService()
 
     # テスト用の発言者名
     test_names = [

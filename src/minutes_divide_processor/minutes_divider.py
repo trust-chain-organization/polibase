@@ -1,10 +1,14 @@
 import json
+import logging
 import re
 import unicodedata
 
 from langchain import hub
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_google_genai import ChatGoogleGenerativeAI
+
+from ..services.llm_factory import LLMServiceFactory
+from ..services.llm_service import LLMService
 
 # Use relative import for modules within the same package
 from .models import (
@@ -17,13 +21,27 @@ from .models import (
     SpeakerAndSpeechContentList,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class MinutesDivider:
-    def __init__(self, llm: ChatGoogleGenerativeAI, k: int = 5):
-        self.section_info_list_formatted_llm = llm.with_structured_output(
+    def __init__(self, llm_service: LLMService | None = None, k: int = 5):
+        """
+        Initialize MinutesDivider
+
+        Args:
+            llm_service: LLMService instance (creates default if not provided)
+            k: Number of sections (default 5)
+        """
+        if llm_service is None:
+            factory = LLMServiceFactory()
+            llm_service = factory.create_advanced()
+
+        self.llm_service = llm_service
+        self.section_info_list_formatted_llm = llm_service.get_structured_llm(
             SectionInfoList
         )
-        self.speaker_and_speech_content_formatted_llm = llm.with_structured_output(
+        self.speaker_and_speech_content_formatted_llm = llm_service.get_structured_llm(
             SpeakerAndSpeechContentList
         )
         self.k = k
@@ -131,15 +149,22 @@ class MinutesDivider:
 
     # 議事録の情報をベースに議事録を30分割する
     def section_divide_run(self, minutes: str) -> SectionInfoList:
-        prompt_template = hub.pull("divide_chapter_prompt")
+        # Try to get prompt from hub first, fallback to local
+        try:
+            prompt_template = hub.pull("divide_chapter_prompt")
+        except Exception as e:
+            logger.warning(f"Failed to pull prompt from hub: {e}. Using local prompt.")
+            prompt_template = self.llm_service.get_prompt("minutes_divide")
+
         runnable_prompt = prompt_template | self.section_info_list_formatted_llm
         # 議事録を分割するチェーンを作成
         chain = {"minutes": RunnablePassthrough()} | runnable_prompt
         # 引数に議事録を渡して実行
-        result = chain.invoke(
+        result = self.llm_service.invoke_with_retry(
+            chain,
             {
                 "minutes": minutes,
-            }
+            },
         )
 
         # resultがSectionInfoList型でない場合の処理を追加
@@ -183,7 +208,18 @@ class MinutesDivider:
     def do_redivide(
         self, redivide_section_string_list: RedivideSectionStringList
     ) -> RedividedSectionInfoList:
-        prompt_template = hub.pull("redivide_chapter_prompt")
+        # Try to get prompt from hub first, fallback to local
+        try:
+            prompt_template = hub.pull("redivide_chapter_prompt")
+        except Exception as e:
+            logger.warning(f"Failed to pull prompt from hub: {e}. Using local prompt.")
+            # Create a fallback prompt similar to redivide
+            prompt_template = ChatPromptTemplate.from_template(
+                "セクションを{divide_counter}個に再分割してください。\n"
+                "元のインデックス: {original_index}\n\n"
+                "セクション内容:\n{minutes}"
+            )
+
         runnable_prompt = prompt_template | self.section_info_list_formatted_llm
         # 議事録を分割するチェーンを作成
         chain = {"minutes": RunnablePassthrough()} | runnable_prompt
@@ -196,12 +232,13 @@ class MinutesDivider:
             divide_counter = divide_counter + 2
 
             # 引数に議事録を渡して実行
-            result = chain.invoke(
+            result = self.llm_service.invoke_with_retry(
+                chain,
                 {
                     "minutes": redivide_section_string.redivide_section_string,
                     "original_index": redivide_section_string.original_index,
                     "divide_counter": divide_counter,
-                }
+                },
             )
             section_string_list = section_string_list + result
         return section_string_list
@@ -211,24 +248,19 @@ class MinutesDivider:
         self, section_string: SectionString
     ) -> SpeakerAndSpeechContentList:
         # 国会議事録向けのプロンプトを使用
-        from langchain_core.prompts import ChatPromptTemplate
-
-        from ..services.prompt_manager import PromptManager
-
-        prompt_manager = PromptManager()
-        prompt_text = prompt_manager.PROMPTS.get("speech_divide_kokkai")
-        prompt_template = ChatPromptTemplate.from_template(prompt_text)
+        prompt_template = self.llm_service.get_prompt("speech_divide_kokkai")
 
         runnable_prompt = (
             prompt_template | self.speaker_and_speech_content_formatted_llm
         )
         chain = {"section_string": RunnablePassthrough()} | runnable_prompt
-        result = chain.invoke(
+        result = self.llm_service.invoke_with_retry(
+            chain,
             {
                 "section_string": (
                     section_string.section_string
                 ),  # section_stringオブジェクトから文字列を抽出
-            }
+            },
         )
         if result is None:
             print("Error: result is None")

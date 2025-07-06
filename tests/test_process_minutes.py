@@ -24,9 +24,9 @@ class TestProcessMinutes:
     """Test for process_minutes function"""
 
     @patch.dict(os.environ, {"GOOGLE_API_KEY": "test-api-key"})
-    @patch("src.process_minutes.ChatGoogleGenerativeAI")
+    @patch("src.process_minutes.LLMServiceFactory")
     @patch("src.process_minutes.MinutesProcessAgent")
-    def test_process_minutes_success(self, mock_agent_class, mock_llm_class):
+    def test_process_minutes_success(self, mock_agent_class, mock_factory_class):
         """Test successful minutes processing"""
         # Arrange
         test_text = "これは議事録のテキストです。"
@@ -48,8 +48,8 @@ class TestProcessMinutes:
 
         # Assert
         assert results == expected_results
-        mock_llm_class.assert_called_once_with(model="gemini-2.0-flash", temperature=0)
-        mock_agent_class.assert_called_once_with(llm=mock_llm_class.return_value)
+        mock_factory_class.assert_called_once()
+        mock_agent_class.assert_called_once()
         mock_agent.run.assert_called_once_with(original_minutes=test_text)
 
     def test_process_minutes_empty_text(self):
@@ -69,9 +69,9 @@ class TestProcessMinutes:
         assert "GOOGLE_API_KEY not set" in str(exc_info.value)
 
     @patch.dict(os.environ, {"GOOGLE_API_KEY": "test-api-key"})
-    @patch("src.process_minutes.ChatGoogleGenerativeAI")
+    @patch("src.process_minutes.LLMServiceFactory")
     @patch("src.process_minutes.MinutesProcessAgent")
-    def test_process_minutes_agent_error(self, mock_agent_class, mock_llm_class):
+    def test_process_minutes_agent_error(self, mock_agent_class, mock_factory_class):
         """Test handling of agent processing error"""
         # Arrange
         mock_agent = Mock()

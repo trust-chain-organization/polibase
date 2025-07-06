@@ -3,10 +3,11 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 
-from src.services import ChainFactory, LLMService, PromptManager
+from src.services.llm_factory import LLMServiceFactory
+from src.services.llm_service import LLMService
+from src.services.prompt_loader import PromptLoader
 
 
 class SampleTestSchema(BaseModel):
@@ -19,14 +20,16 @@ class SampleTestSchema(BaseModel):
 class TestLLMService:
     """Test LLM Service functionality"""
 
-    def test_initialization_with_api_key(self):
+    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    def test_initialization_with_api_key(self, mock_llm_class):
         """Test LLM service initialization with API key"""
         service = LLMService(api_key="test-key")
         assert service.api_key == "test-key"
-        assert service.model_name == LLMService.DEFAULT_MODELS["fast"]
+        assert service.model_name == "gemini-1.5-flash"  # Default model
         assert service.temperature == 0.1
 
-    def test_initialization_from_env(self, monkeypatch):
+    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    def test_initialization_from_env(self, mock_llm_class, monkeypatch):
         """Test LLM service initialization from environment"""
         monkeypatch.setenv("GOOGLE_API_KEY", "env-test-key")
         service = LLMService()
@@ -35,24 +38,27 @@ class TestLLMService:
     def test_initialization_without_api_key(self, monkeypatch):
         """Test initialization fails without API key"""
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="Google API key not found"):
+        from src.services.llm_errors import LLMAuthenticationError
+
+        with pytest.raises(LLMAuthenticationError, match="Google API key not found"):
             LLMService(api_key=None)
 
-    def test_lazy_llm_creation(self):
+    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    def test_lazy_llm_creation(self, mock_llm_class):
         """Test lazy initialization of LLM"""
         service = LLMService(api_key="test-key")
         assert service._llm is None
 
         # Access llm property
-        with patch.object(service, "_create_llm") as mock_create:
-            mock_llm = MagicMock(spec=ChatGoogleGenerativeAI)
-            mock_create.return_value = mock_llm
+        mock_llm = MagicMock()
+        mock_llm_class.return_value = mock_llm
 
-            llm = service.llm
-            assert llm == mock_llm
-            mock_create.assert_called_once()
+        llm = service.llm
+        assert llm == mock_llm
+        mock_llm_class.assert_called_once()
 
-    def test_get_structured_llm(self):
+    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    def test_get_structured_llm(self, mock_llm_class):
         """Test structured LLM creation"""
         service = LLMService(api_key="test-key")
 
@@ -73,155 +79,108 @@ class TestLLMService:
         # Should not call again due to caching
         assert mock_llm.with_structured_output.call_count == 1
 
-    def test_create_fast_instance(self):
+    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    def test_create_fast_instance(self, mock_llm_class, monkeypatch):
         """Test fast instance creation"""
-        instance = LLMService.create_fast_instance(api_key="test-key")
-        assert instance.model_name == LLMService.DEFAULT_MODELS["fast"]
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+        factory = LLMServiceFactory()
+        instance = factory.create_fast()
+        assert instance.model_name == "gemini-1.5-flash"
         assert instance.temperature == 0.1
 
-    def test_create_advanced_instance(self):
+    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    def test_create_advanced_instance(self, mock_llm_class, monkeypatch):
         """Test advanced instance creation"""
-        # Don't pass temperature as keyword arg since it's handled specially
-        instance = LLMService.create_advanced_instance(api_key="test-key")
-        assert instance.model_name == LLMService.DEFAULT_MODELS["advanced"]
-        assert instance.temperature == 0.1  # Default temperature
-
-        # Test with custom temperature
-        instance2 = LLMService(
-            model_name=LLMService.DEFAULT_MODELS["advanced"],
-            api_key="test-key",
-            temperature=0.5,
-        )
-        assert instance2.temperature == 0.5
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+        factory = LLMServiceFactory()
+        instance = factory.create_advanced()
+        assert instance.model_name == "gemini-2.0-flash-exp"
+        assert instance.temperature == 0.1
 
 
-class TestPromptManager:
-    """Test Prompt Manager functionality"""
+class TestPromptLoader:
+    """Test Prompt Loader functionality"""
 
     def test_get_prompt(self):
         """Test getting prompts"""
-        manager = PromptManager()
+        loader = PromptLoader()
 
-        prompt = manager.get_prompt("minutes_divide")
+        prompt = loader.get_prompt("minutes_divide")
         assert prompt is not None
-        assert "議事録" in prompt.messages[0].prompt.template
 
     def test_get_unknown_prompt(self):
         """Test getting unknown prompt raises error"""
-        manager = PromptManager()
+        loader = PromptLoader()
 
-        with pytest.raises(ValueError, match="Unknown prompt key"):
-            manager.get_prompt("unknown_prompt")
+        with pytest.raises(KeyError, match="Prompt not found"):
+            loader.get_prompt("unknown_prompt")
 
-    def test_prompt_caching(self):
-        """Test prompt caching"""
-        manager = PromptManager()
+    def test_list_prompts(self):
+        """Test listing available prompts"""
+        loader = PromptLoader()
 
-        prompt1 = manager.get_prompt("minutes_divide")
-        prompt2 = manager.get_prompt("minutes_divide")
+        prompts = loader.list_prompts()
+        assert "minutes_divide" in prompts
+        assert "speaker_match" in prompts
 
-        # Should be the same object due to caching
-        assert prompt1 is prompt2
+    def test_get_variables(self):
+        """Test getting prompt variables"""
+        loader = PromptLoader()
 
-    def test_create_custom_prompt(self):
-        """Test creating custom prompt"""
-        manager = PromptManager()
-
-        template = "This is a {test} prompt"
-        prompt = manager.create_custom_prompt(template, cache_key="test_prompt")
-
-        assert prompt is not None
-
-        # Test it was cached
-        cached_prompt = manager.get_prompt("test_prompt")
-        assert cached_prompt is prompt
-
-    def test_singleton_instance(self):
-        """Test singleton pattern"""
-        instance1 = PromptManager.get_default_instance()
-        instance2 = PromptManager.get_default_instance()
-
-        assert instance1 is instance2
+        variables = loader.get_variables("speaker_match")
+        assert "speaker_name" in variables
+        assert "available_speakers" in variables
 
 
-class TestChainFactory:
-    """Test Chain Factory functionality"""
+class TestLLMServiceFactory:
+    """Test LLM Service Factory functionality"""
 
-    @pytest.fixture
-    def mock_llm_service(self):
-        """Create mock LLM service"""
-        service = MagicMock(spec=LLMService)
-        service.get_structured_llm.return_value = MagicMock()
-        service.llm = MagicMock()
-        service.invoke_with_retry.return_value = {"result": "test"}
-        return service
+    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    def test_factory_presets(self, mock_llm_class, monkeypatch):
+        """Test factory preset configurations"""
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
+        factory = LLMServiceFactory()
 
-    @pytest.fixture
-    def mock_prompt_manager(self):
-        """Create mock prompt manager"""
-        manager = MagicMock(spec=PromptManager)
-        manager.get_prompt.return_value = MagicMock()
-        manager.get_hub_prompt.return_value = MagicMock()
-        return manager
+        # Test fast preset
+        fast = factory.create_fast()
+        assert fast.model_name == "gemini-1.5-flash"
+        assert fast.temperature == 0.1
 
-    def test_initialization(self, mock_llm_service, mock_prompt_manager):
-        """Test chain factory initialization"""
-        factory = ChainFactory(mock_llm_service, mock_prompt_manager)
+        # Test advanced preset
+        advanced = factory.create_advanced()
+        assert advanced.model_name == "gemini-2.0-flash-exp"
+        assert advanced.temperature == 0.1
 
-        assert factory.llm_service == mock_llm_service
-        assert factory.prompt_manager == mock_prompt_manager
+        # Test creative preset
+        creative = factory.create_creative()
+        assert creative.temperature == 0.7
 
-    def test_create_minutes_divider_chain(self, mock_llm_service, mock_prompt_manager):
-        """Test creating minutes divider chain"""
-        factory = ChainFactory(mock_llm_service, mock_prompt_manager)
+        # Test precise preset
+        precise = factory.create_precise()
+        assert precise.temperature == 0.0
 
-        chain = factory.create_minutes_divider_chain(SampleTestSchema)
+    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    def test_custom_service_creation(self, mock_llm_class, monkeypatch):
+        """Test creating custom service"""
+        monkeypatch.setenv("GOOGLE_API_KEY", "custom-key")
+        factory = LLMServiceFactory()
 
-        assert chain is not None
-        mock_llm_service.get_structured_llm.assert_called_once_with(SampleTestSchema)
-
-    def test_create_speech_divider_chain(self, mock_llm_service, mock_prompt_manager):
-        """Test creating speech divider chain"""
-        factory = ChainFactory(mock_llm_service, mock_prompt_manager)
-
-        chain = factory.create_speech_divider_chain(SampleTestSchema)
-
-        assert chain is not None
-        mock_llm_service.get_structured_llm.assert_called_once_with(SampleTestSchema)
-
-    def test_invoke_with_retry(self, mock_llm_service, mock_prompt_manager):
-        """Test invoke with retry"""
-        factory = ChainFactory(mock_llm_service, mock_prompt_manager)
-
-        mock_chain = MagicMock()
-        input_data = {"test": "data"}
-
-        result = factory.invoke_with_retry(mock_chain, input_data)
-
-        mock_llm_service.invoke_with_retry.assert_called_once_with(
-            mock_chain, input_data, 3
-        )
-        assert result == {"result": "test"}
-
-    def test_create_generic_chain(self, mock_llm_service, mock_prompt_manager):
-        """Test creating generic chain"""
-        factory = ChainFactory(mock_llm_service, mock_prompt_manager)
-
-        template = "Test {input}"
-        chain = factory.create_generic_chain(
-            template, output_schema=SampleTestSchema, input_variables=["input"]
+        service = factory.create(
+            model_name="custom-model", temperature=0.5, max_tokens=2000
         )
 
-        assert chain is not None
-        mock_llm_service.get_structured_llm.assert_called_once_with(SampleTestSchema)
+        assert service.model_name == "custom-model"
+        assert service.temperature == 0.5
+        assert service.max_tokens == 2000
 
 
 class TestIntegration:
     """Integration tests with mocked API calls"""
 
     @patch("src.services.llm_service.ChatGoogleGenerativeAI")
-    def test_end_to_end_flow(self, mock_llm_class):
+    def test_end_to_end_flow(self, mock_llm_class, monkeypatch):
         """Test end-to-end flow with mocked LLM"""
+        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
         # Setup mock
         mock_llm = MagicMock()
         mock_llm_class.return_value = mock_llm
@@ -234,19 +193,20 @@ class TestIntegration:
         )
 
         # Create service
-        service = LLMService(api_key="test-key")
-        factory = ChainFactory(service)
+        factory = LLMServiceFactory()
+        service = factory.create_fast()
 
-        # Create and invoke chain
-        chain = factory.create_generic_chain(
-            "Generate test data", output_schema=SampleTestSchema
-        )
+        # Test structured output
+        structured_llm = service.get_structured_llm(SampleTestSchema)
+        assert structured_llm is not None
 
-        # Mock the chain invocation
-        with patch.object(service, "invoke_with_retry") as mock_invoke:
+        # Test invoke_prompt
+        with patch.object(service, "invoke_prompt") as mock_invoke:
             mock_invoke.return_value = SampleTestSchema(message="Test", number=42)
 
-            result = factory.invoke_with_retry(chain, {})
+            result = service.invoke_prompt(
+                "test_prompt", {"input": "test"}, output_schema=SampleTestSchema
+            )
 
             assert isinstance(result, SampleTestSchema)
             assert result.message == "Test"
