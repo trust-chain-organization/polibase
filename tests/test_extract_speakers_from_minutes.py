@@ -153,17 +153,9 @@ class TestSpeakerExtractorFromMinutes:
     def test_link_speakers_to_politicians_with_llm(self, extractor):
         """Test LLM-based speaker to politician linking"""
         # Arrange
-        with (
-            patch("src.services.llm_service.LLMService") as mock_llm_service_class,
-            patch(
-                "src.database.politician_matching_service.PoliticianMatchingService"
-            ) as mock_matching_class,
-        ):
-            # Mock LLM service
-            mock_llm_service = Mock()
-            mock_llm_service.llm = Mock()
-            mock_llm_service_class.return_value = mock_llm_service
-
+        with patch(
+            "src.database.politician_matching_service.PoliticianMatchingService"
+        ) as mock_matching_class:
             mock_matching_service = Mock()
             mock_matching_service.batch_link_speakers_to_politicians.return_value = {
                 "successfully_matched": 5,
@@ -175,7 +167,6 @@ class TestSpeakerExtractorFromMinutes:
             extractor.link_speakers_to_politicians(use_llm=True)
 
             # Assert
-            mock_llm_service_class.assert_called_once()
             mock_matching_class.assert_called_once()
             mock_matching_service.batch_link_speakers_to_politicians.assert_called_once()
 

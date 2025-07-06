@@ -46,7 +46,7 @@ class PoliticianMatchingService:
         """
         if llm_service is None:
             factory = LLMServiceFactory()
-            llm_service = factory.create_fast_instance(temperature=0.1)
+            llm_service = factory.create_fast()
 
         self.llm_service = llm_service
         self.session = get_db_session()

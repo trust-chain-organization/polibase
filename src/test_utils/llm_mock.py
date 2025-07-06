@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
+from langchain_core.runnables import Runnable
 from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
@@ -34,7 +35,7 @@ class MockLLMResponse:
         return ChatResult(generations=[generation])
 
 
-class MockLLM:
+class MockLLM(Runnable):
     """Mock LLM for testing"""
 
     def __init__(self, responses: list[Any] | None = None):
@@ -48,7 +49,9 @@ class MockLLM:
         self.call_count = 0
         self.call_history: list[dict[str, Any]] = []
 
-    def invoke(self, input_data: Any) -> BaseMessage:
+    def invoke(
+        self, input_data: Any, config: dict[str, Any] | None = None
+    ) -> BaseMessage:
         """Mock invoke method"""
         self.call_history.append({"method": "invoke", "input": input_data})
 
@@ -69,7 +72,7 @@ class MockLLM:
         self.call_history.clear()
 
 
-class MockStructuredLLM:
+class MockStructuredLLM(Runnable):
     """Mock structured LLM for testing"""
 
     def __init__(
@@ -83,7 +86,7 @@ class MockStructuredLLM:
         self.call_count = 0
         self.call_history = shared_history if shared_history is not None else []
 
-    def invoke(self, input_data: Any) -> T:
+    def invoke(self, input_data: Any, config: dict[str, Any] | None = None) -> T:
         """Mock invoke method returning structured output"""
         self.call_history.append(
             {"method": "invoke_structured", "input": input_data, "schema": self.schema}
