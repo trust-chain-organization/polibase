@@ -554,7 +554,7 @@ def manage_conferences():
                     "設定済み",
                     f"{with_url_count}/{total_count}",
                     (
-                        f"{with_url_count/total_count*100:.0f}%"
+                        f"{with_url_count / total_count * 100:.0f}%"
                         if total_count > 0
                         else "0%"
                     ),
@@ -565,7 +565,7 @@ def manage_conferences():
                     "未設定",
                     f"{without_url_count}/{total_count}",
                     (
-                        f"{without_url_count/total_count*100:.0f}%"
+                        f"{without_url_count / total_count * 100:.0f}%"
                         if total_count > 0
                         else "0%"
                     ),
