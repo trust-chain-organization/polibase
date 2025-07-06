@@ -197,6 +197,57 @@ docker compose exec postgres psql -U polibase_user -d polibase_db -f /docker-ent
 
 ## Architecture
 
+### Clean Architecture Implementation
+
+Polibase is transitioning to Clean Architecture for improved maintainability and testability. The architecture separates concerns into distinct layers:
+
+#### Layer Structure
+
+1. **Domain Layer** (`src/domain/`)
+   - **Entities**: Core business objects with business rules
+     - `BaseEntity`: Common fields and methods for all entities
+     - Business entities: GoverningBody, Conference, Meeting, Politician, Speaker, etc.
+   - **Repository Interfaces**: Abstract interfaces for data access
+     - `BaseRepository[T]`: Generic repository with common CRUD operations
+     - Entity-specific repositories with additional methods
+   - **Domain Services**: Business logic that doesn't belong to entities
+     - `SpeakerDomainService`: Name normalization, party extraction, similarity
+     - `PoliticianDomainService`: Deduplication, validation, merging
+     - `MinutesDomainService`: Text processing, conversation extraction
+     - `ConferenceDomainService`: Member role extraction
+     - `ParliamentaryGroupDomainService`: Group membership validation
+
+2. **Application Layer** (`src/application/`)
+   - **Use Cases**: Application-specific business rules
+     - `ProcessMinutesUseCase`: Orchestrates minutes processing workflow
+     - `MatchSpeakersUseCase`: Speaker-politician matching coordination
+     - `ScrapePoliticiansUseCase`: Party member scraping workflow
+     - `ManageConferenceMembersUseCase`: Conference member management
+   - **DTOs**: Data Transfer Objects for clean layer separation
+     - Input/Output DTOs for each use case
+     - Prevents domain model leakage to outer layers
+
+3. **Infrastructure Layer** (`src/infrastructure/`)
+   - **Persistence**: Database access implementations
+     - `BaseRepositoryImpl`: Generic SQLAlchemy repository
+     - Entity-specific implementations
+   - **External Services**: Third-party integrations
+     - `ILLMService` / `GeminiLLMService`: LLM integration
+     - `IStorageService` / `GCSStorageService`: Cloud storage
+     - `IWebScraperService` / `PlaywrightScraperService`: Web scraping
+
+4. **Interfaces Layer** (`src/interfaces/`)
+   - **CLI**: Command-line interfaces (migration in progress)
+   - **Web**: Streamlit UI (migration in progress)
+
+#### Migration Strategy
+
+The codebase is being gradually migrated to Clean Architecture:
+- New features are implemented using the new architecture
+- Existing code is refactored module by module
+- Legacy code continues to work during migration
+- See [CLEAN_ARCHITECTURE_MIGRATION.md](docs/CLEAN_ARCHITECTURE_MIGRATION.md) for details
+
 ### System Design Principles
 
 Polibase follows these core design principles:
@@ -317,6 +368,24 @@ Polibase follows these core design principles:
 - Modular architecture with shared utilities in `src/common/`
 - Async/await pattern for web scraping operations
 - Upsert pattern for politician data to prevent duplicates
+
+#### Clean Architecture Guidelines
+- **Dependency Rule**: Dependencies must point inward (Domain ← Application ← Infrastructure ← Interfaces)
+- **Entity Independence**: Domain entities should not depend on external frameworks or libraries
+- **Interface Segregation**: Repository interfaces should be minimal and focused
+- **Async Repositories**: All repository methods use async/await for consistency
+- **DTO Usage**: Always use DTOs for data transfer between layers
+- **Service Injection**: Use dependency injection pattern in use cases
+- **Type Safety**: Leverage Python 3.11+ type hints throughout
+- **Testing**: Write unit tests for domain services and use cases
+
+#### When Adding New Features
+1. Start with domain entities and services
+2. Define repository interfaces needed
+3. Create use cases in application layer
+4. Implement infrastructure (repositories, external services)
+5. Add interface layer last (CLI/Web)
+6. Write tests at each layer
 
 ## Important Notes
 - **API Key Required**: GOOGLE_API_KEY must be set in .env for Gemini API access

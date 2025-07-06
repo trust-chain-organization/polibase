@@ -1,0 +1,61 @@
+"""Politician-related DTOs."""
+
+from dataclasses import dataclass
+
+
+@dataclass
+class CreatePoliticianDTO:
+    """DTO for creating a politician."""
+
+    name: str
+    speaker_id: int
+    political_party_id: int | None = None
+    furigana: str | None = None
+    position: str | None = None
+    district: str | None = None
+    profile_image_url: str | None = None
+    profile_page_url: str | None = None
+
+
+@dataclass
+class UpdatePoliticianDTO:
+    """DTO for updating a politician."""
+
+    id: int
+    name: str | None = None
+    political_party_id: int | None = None
+    furigana: str | None = None
+    position: str | None = None
+    district: str | None = None
+    profile_image_url: str | None = None
+    profile_page_url: str | None = None
+
+
+@dataclass
+class PoliticianDTO:
+    """DTO for politician data."""
+
+    id: int
+    name: str
+    speaker_id: int
+    political_party_id: int | None
+    political_party_name: str | None
+    furigana: str | None
+    position: str | None
+    district: str | None
+    profile_image_url: str | None
+    profile_page_url: str | None
+
+
+@dataclass
+class ExtractedPoliticianDTO:
+    """DTO for politician data extracted from web."""
+
+    name: str
+    party_id: int
+    furigana: str | None = None
+    position: str | None = None
+    district: str | None = None
+    profile_image_url: str | None = None
+    profile_page_url: str | None = None
+    source_url: str | None = None
