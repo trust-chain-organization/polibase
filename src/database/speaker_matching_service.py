@@ -1,16 +1,16 @@
-"""
-LLMを活用した発言者名の高精度マッチングサービス
-"""
+"""Refactored Speaker Matching Service using shared LLM service layer"""
 
+import logging
 import re
 
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from src.config.database import get_db_session
+from ..config.database import get_db_session
+from ..services import ChainFactory, LLMService
+
+logger = logging.getLogger(__name__)
 
 
 class SpeakerMatch(BaseModel):
@@ -28,52 +28,34 @@ class SpeakerMatch(BaseModel):
 class SpeakerMatchingService:
     """LLMを活用した発言者名マッチングサービス"""
 
-    def __init__(self, llm: ChatGoogleGenerativeAI):
-        self.llm = llm
+    def __init__(self, llm: ChatGoogleGenerativeAI | None = None):
+        """
+        Initialize speaker matching service
+
+        Args:
+            llm: Optional LLM instance for backward compatibility
+        """
+        # Initialize services
+        if llm:
+            # Backward compatibility
+            self.llm_service = LLMService(
+                model_name=llm.model_name,
+                temperature=llm.temperature,
+                max_tokens=getattr(llm, "max_tokens", 1000),
+            )
+        else:
+            # Use fast model with low temperature for consistency
+            self.llm_service = LLMService.create_fast_instance(
+                temperature=0.1, max_tokens=1000
+            )
+
+        self.chain_factory = ChainFactory(self.llm_service)
         self.session = get_db_session()
-        self._setup_prompt()
 
-    def _setup_prompt(self):
-        """LLMプロンプトの設定"""
-        self.prompt = ChatPromptTemplate.from_template("""
-あなたは議事録の発言者名マッチング専門家です。
-議事録から抽出された発言者名と、既存の発言者リストから最も適切なマッチを見つけてください。
-
-# 抽出された発言者名
-{speaker_name}
-
-# 既存の発言者リスト
-{available_speakers}
-
-# マッチング基準
-1. 【会議体所属議員】とマークされた発言者を優先的に考慮
-2. 完全一致を最優先
-3. 括弧内の名前との一致（例: "委員長(平山たかお)" → "平山たかお"）
-4. 記号除去後の一致（例: "◆委員(下村あきら)" → "委員(下村あきら)"）
-5. 部分一致や音韻的類似性
-6. 漢字の異なる読みや表記ゆれ
-7. 役職が記載されている場合は、その役職との整合性も考慮
-
-# 出力形式
-以下のJSON形式で回答してください：
-{{
-    "matched": true/false,
-    "speaker_id": マッチした場合のID (数値) または null,
-    "speaker_name": マッチした場合の名前 (文字列) または null,
-    "confidence": 信頼度 (0.0-1.0の小数),
-    "reason": "マッチング判定の理由"
-}}
-
-# 重要な注意事項
-- 【会議体所属議員】とマークされた候補者は、その会議体のメンバーとして
-  登録されているため、優先的にマッチングしてください
-- 確実性が低い場合は matched: false を返してください
-- confidence は 0.8 以上の場合のみマッチとして扱ってください
-- 複数の候補がある場合は最も確からしいものを選んでください
-        """)
-
-        self.output_parser = JsonOutputParser(pydantic_object=SpeakerMatch)
-        self.chain = self.prompt | self.llm | self.output_parser
+        # Create matching chain
+        self._matching_chain = self.chain_factory.create_speaker_matching_chain(
+            SpeakerMatch
+        )
 
     def find_best_match(
         self,
@@ -82,7 +64,7 @@ class SpeakerMatchingService:
         conference_id: int | None = None,
     ) -> SpeakerMatch:
         """
-        発言者名に最適なマッチを見つける
+        発言者名に最適なマッチを見つける（会議体所属を考慮）
 
         Args:
             speaker_name: マッチングする発言者名
@@ -100,23 +82,14 @@ class SpeakerMatchingService:
                 matched=False, confidence=0.0, reason="利用可能な発言者リストが空です"
             )
 
-        # PoliticianAffiliationsを考慮した発言者リストを取得
+        # 会議体所属情報を取得（利用可能な場合）
+        affiliated_speakers = []
+        affiliated_speaker_ids = set()
         if meeting_date and conference_id:
             affiliated_speakers = self._get_affiliated_speakers(
                 meeting_date, conference_id
             )
-            # アフィリエーション情報を既存のスピーカーリストに追加
-            speaker_dict = {s["id"]: s for s in available_speakers}
-            for affiliated in affiliated_speakers:
-                if affiliated["speaker_id"] in speaker_dict:
-                    speaker_dict[affiliated["speaker_id"]]["is_affiliated"] = True
-                    speaker_dict[affiliated["speaker_id"]]["politician_id"] = (
-                        affiliated["politician_id"]
-                    )
-                    speaker_dict[affiliated["speaker_id"]]["role"] = affiliated.get(
-                        "role"
-                    )
-            available_speakers = list(speaker_dict.values())
+            affiliated_speaker_ids = {s["speaker_id"] for s in affiliated_speakers}
 
         # まず従来のルールベースマッチングを試行
         rule_based_match = self._rule_based_matching(speaker_name, available_speakers)
@@ -125,18 +98,21 @@ class SpeakerMatchingService:
 
         # LLMによる高度なマッチング
         try:
-            # 候補を絞り込み（アフィリエーション情報を優先）
+            # 候補を絞り込み（パフォーマンス向上のため）
             filtered_speakers = self._filter_candidates(
-                speaker_name, available_speakers
+                speaker_name, available_speakers, affiliated_speaker_ids
             )
 
-            result = self.chain.invoke(
+            # Use chain factory with retry logic
+            result = self.chain_factory.invoke_with_retry(
+                self._matching_chain,
                 {
                     "speaker_name": speaker_name,
                     "available_speakers": self._format_speakers_for_llm(
-                        filtered_speakers
+                        filtered_speakers, affiliated_speaker_ids
                     ),
-                }
+                },
+                max_retries=3,
             )
 
             # 結果の検証
@@ -154,7 +130,7 @@ class SpeakerMatchingService:
             return match_result
 
         except Exception as e:
-            print(f"❌ LLMマッチングエラー: {e}")
+            logger.error(f"LLMマッチングエラー: {e}")
             # エラー時はルールベースの結果を返す
             return rule_based_match
 
@@ -270,9 +246,10 @@ class SpeakerMatchingService:
         self,
         speaker_name: str,
         available_speakers: list[dict],
+        affiliated_speaker_ids: set[int] | None = None,
         max_candidates: int = 10,
     ) -> list[dict]:
-        """候補を絞り込む（LLMの処理効率向上のため）"""
+        """候補を絞り込む（LLMの処理効率向上のため、会議体所属を優先）"""
         candidates = []
 
         # 括弧内の名前を抽出
@@ -286,10 +263,6 @@ class SpeakerMatchingService:
 
         for speaker in available_speakers:
             score = 0
-
-            # アフィリエーション優先ボーナス
-            if speaker.get("is_affiliated"):
-                score += 10  # 会議体に所属している議員を優先
 
             # 部分一致スコア
             if speaker["name"] in speaker_name or speaker_name in speaker["name"]:
@@ -310,6 +283,10 @@ class SpeakerMatchingService:
             if len_diff <= 3:
                 score += 1
 
+            # 会議体所属ボーナス
+            if affiliated_speaker_ids and speaker["id"] in affiliated_speaker_ids:
+                score += 10  # 大きなボーナスを付与
+
             if score > 0:
                 candidates.append({**speaker, "score": score})
 
@@ -323,16 +300,16 @@ class SpeakerMatchingService:
             else available_speakers[:max_candidates]
         )
 
-    def _format_speakers_for_llm(self, speakers: list[dict]) -> str:
-        """発言者リストをLLM用にフォーマット"""
+    def _format_speakers_for_llm(
+        self, speakers: list[dict], affiliated_speaker_ids: set[int] | None = None
+    ) -> str:
+        """発言者リストをLLM用にフォーマット（会議体所属情報を含む）"""
         formatted = []
         for speaker in speakers:
-            info = f"ID: {speaker['id']}, 名前: {speaker['name']}"
-            if speaker.get("is_affiliated"):
-                info += " 【会議体所属議員】"
-                if speaker.get("role"):
-                    info += f" 役職: {speaker['role']}"
-            formatted.append(info)
+            entry = f"ID: {speaker['id']}, 名前: {speaker['name']}"
+            if affiliated_speaker_ids and speaker["id"] in affiliated_speaker_ids:
+                entry += " 【会議体所属議員】"
+            formatted.append(entry)
         return "\n".join(formatted)
 
     def batch_update_speaker_links(self) -> dict[str, int]:
@@ -343,18 +320,12 @@ class SpeakerMatchingService:
             Dict[str, int]: 更新統計
         """
         try:
-            # speaker_idがNULLのレコードを会議情報と共に取得
+            # speaker_idがNULLのレコードを取得（会議情報も含む）
             query = text("""
-                SELECT
-                    c.id as conversation_id,
-                    c.speaker_name,
-                    m.date as meeting_date,
-                    conf.id as conference_id,
-                    conf.name as conference_name
+                SELECT c.id, c.speaker_name, m.date, m.conference_id
                 FROM conversations c
-                LEFT JOIN minutes min ON c.minutes_id = min.id
-                LEFT JOIN meetings m ON min.meeting_id = m.id
-                LEFT JOIN conferences conf ON m.conference_id = conf.id
+                JOIN minutes min ON c.minute_id = min.id
+                JOIN meetings m ON min.meeting_id = m.id
                 WHERE c.speaker_id IS NULL
                 ORDER BY c.id
             """)
@@ -367,23 +338,24 @@ class SpeakerMatchingService:
                 "successfully_matched": 0,
                 "high_confidence_matches": 0,
                 "failed_matches": 0,
-                "with_affiliation_info": 0,
+                "affiliation_aided_matches": 0,
             }
 
-            for row in unlinked_conversations:
-                conversation_id = row[0]
-                speaker_name = row[1]
-                meeting_date = row[2].strftime("%Y-%m-%d") if row[2] else None
-                conference_id = row[3]
-                conference_name = row[4]
+            for (
+                conversation_id,
+                speaker_name,
+                meeting_date,
+                conference_id,
+            ) in unlinked_conversations:
+                logger.info(f"マッチング処理中: {speaker_name}")
 
-                print(f"🔍 マッチング処理中: {speaker_name}")
-                if meeting_date and conference_id:
-                    print(f"   📅 会議日: {meeting_date}, 会議体: {conference_name}")
-                    stats["with_affiliation_info"] += 1
+                # 会議日付をYYYY-MM-DD形式に変換
+                meeting_date_str = (
+                    meeting_date.strftime("%Y-%m-%d") if meeting_date else None
+                )
 
                 match_result = self.find_best_match(
-                    speaker_name, meeting_date, conference_id
+                    speaker_name, meeting_date_str, conference_id
                 )
 
                 if match_result.matched and match_result.speaker_id:
@@ -408,31 +380,30 @@ class SpeakerMatchingService:
                         stats["high_confidence_matches"] += 1
 
                     confidence_emoji = "🟢" if match_result.confidence >= 0.9 else "🟡"
-                    print(
+                    logger.info(
                         f"  {confidence_emoji} マッチ成功: {speaker_name} → "
                         f"{match_result.speaker_name} "
                         f"(信頼度: {match_result.confidence:.2f})"
                     )
                 else:
                     stats["failed_matches"] += 1
-                    print(f"  🔴 マッチ失敗: {speaker_name} ({match_result.reason})")
+                    logger.warning(
+                        f"  🔴 マッチ失敗: {speaker_name} ({match_result.reason})"
+                    )
 
             self.session.commit()
 
-            print("\n📊 マッチング結果:")
-            print(f"   - 処理総数: {stats['total_processed']}件")
-            print(f"   - マッチ成功: {stats['successfully_matched']}件")
-            print(f"   - 高信頼度マッチ: {stats['high_confidence_matches']}件")
-            print(f"   - マッチ失敗: {stats['failed_matches']}件")
-            print(
-                f"   - アフィリエーション情報あり: {stats['with_affiliation_info']}件"
-            )
+            logger.info("マッチング結果:")
+            logger.info(f"   - 処理総数: {stats['total_processed']}件")
+            logger.info(f"   - マッチ成功: {stats['successfully_matched']}件")
+            logger.info(f"   - 高信頼度マッチ: {stats['high_confidence_matches']}件")
+            logger.info(f"   - マッチ失敗: {stats['failed_matches']}件")
 
             return stats
 
         except Exception as e:
             self.session.rollback()
-            print(f"❌ 一括マッチング更新エラー: {e}")
+            logger.error(f"一括マッチング更新エラー: {e}")
             raise
         finally:
             self.session.close()

@@ -28,7 +28,9 @@ class TestSpeakerMatchingService(unittest.TestCase):
             "src.database.speaker_matching_service.get_db_session"
         ) as mock_get_session:
             mock_get_session.return_value = self.mock_session
-            self.service = SpeakerMatchingService(self.mock_llm)
+            # LLMServiceのモックも必要
+            with patch("src.database.speaker_matching_service.LLMService"):
+                self.service = SpeakerMatchingService(self.mock_llm)
 
     def test_rule_based_exact_match(self):
         """完全一致のルールベーステスト"""

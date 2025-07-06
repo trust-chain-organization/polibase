@@ -2,6 +2,7 @@
 
 import logging
 import re
+import time
 
 from bs4 import BeautifulSoup
 from langchain_core.prompts import PromptTemplate
@@ -15,6 +16,29 @@ logger = logging.getLogger(__name__)
 class PartyMemberExtractor:
     """LLMを使用して政党議員情報を抽出"""
 
+    # デフォルトプロンプト
+    DEFAULT_PROMPT = """
+あなたは政党の議員一覧ページから議員情報を抽出する専門家です。
+以下のHTMLコンテンツから、{party_name}所属の議員情報を抽出してください。
+
+抽出する情報：
+- name: 議員の氏名（姓名）
+- position: 役職（衆議院議員、参議院議員など）
+- electoral_district: 選挙区（例：東京1区、比例北海道）
+- prefecture: 都道府県（選挙区から推測可能な場合）
+- profile_url: プロフィールページのURL（相対URLの場合は{base_url}を基準に絶対URLに変換）
+- party_position: 党内役職（代表、幹事長など）
+
+注意事項：
+- 議員でない人物（スタッフ、事務所関係者など）は除外してください
+- 氏名は漢字表記を優先し、ふりがなは除外してください
+- 選挙区から都道府県を推測できる場合は prefecture に設定してください
+- URLは絶対URLに変換してください
+
+HTMLコンテンツ：
+{content}
+"""
+
     def __init__(self, llm: ChatGoogleGenerativeAI | None = None):
         if llm is None:
             self.llm = ChatGoogleGenerativeAI(
@@ -24,6 +48,7 @@ class PartyMemberExtractor:
             self.llm = llm
 
         self.extraction_llm = self.llm.with_structured_output(PartyMemberList)
+        self.prompt_template = PromptTemplate.from_template(self.DEFAULT_PROMPT)
 
     def extract_from_pages(
         self, pages: list[WebPageContent], party_name: str
@@ -69,48 +94,36 @@ class PartyMemberExtractor:
             return None
 
         # LLMで抽出
-        prompt = PromptTemplate.from_template("""
-あなたは政党の議員一覧ページから議員情報を抽出する専門家です。
-以下のHTMLコンテンツから、{party_name}所属の議員情報を抽出してください。
 
-抽出する情報：
-- name: 議員の氏名（姓名）
-- position: 役職（衆議院議員、参議院議員など）
-- electoral_district: 選挙区（例：東京1区、比例北海道）
-- prefecture: 都道府県（選挙区から推測可能な場合）
-- profile_url: プロフィールページのURL（相対URLの場合は{base_url}を基準に絶対URLに変換）
-- party_position: 党内役職（代表、幹事長など）
-
-注意事項：
-- 議員でない人物（スタッフ、事務所関係者など）は除外してください
-- 氏名は漢字表記を優先し、ふりがなは除外してください
-- 選挙区から都道府県を推測できる場合は prefecture に設定してください
-- URLは絶対URLに変換してください
-
-HTMLコンテンツ：
-{content}
-""")
-
-        try:
-            result = self.extraction_llm.invoke(
-                prompt.format(
-                    party_name=party_name,
-                    base_url=self._get_base_url(page.url),
-                    content=main_content,
+        # リトライロジックを追加
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                result = self.extraction_llm.invoke(
+                    self.prompt_template.format(
+                        party_name=party_name,
+                        base_url=self._get_base_url(page.url),
+                        content=main_content,
+                    )
                 )
-            )
 
-            # URLを絶対URLに変換
-            base_url = self._get_base_url(page.url)
-            for member in result.members:
-                if member.profile_url and not member.profile_url.startswith("http"):
-                    member.profile_url = base_url + member.profile_url.lstrip("/")
+                # URLを絶対URLに変換
+                base_url = self._get_base_url(page.url)
+                for member in result.members:
+                    if member.profile_url and not member.profile_url.startswith("http"):
+                        member.profile_url = base_url + member.profile_url.lstrip("/")
 
-            return result
+                return result
 
-        except Exception as e:
-            logger.error(f"Error extracting from page: {e}")
-            return None
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying...")
+                    time.sleep(2**attempt)  # Exponential backoff
+                else:
+                    logger.error(
+                        f"Error extracting from page after {max_retries} attempts: {e}"
+                    )
+                    return None
 
     def _extract_main_content(self, soup: BeautifulSoup) -> str:
         """メインコンテンツを抽出"""

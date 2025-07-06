@@ -1,6 +1,6 @@
 """Tests for Party Member Extractor"""
 
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -18,12 +18,30 @@ class TestPartyMemberExtractor:
     @pytest.fixture
     def mock_llm(self):
         """モックLLMのフィクスチャ"""
-        return Mock()
+        mock = Mock()
+        mock.model_name = "test-model"
+        mock.temperature = 0.1
+        return mock
 
     @pytest.fixture
     def extractor(self, mock_llm):
         """エクストラクターのフィクスチャ"""
-        return PartyMemberExtractor(llm=mock_llm)
+        # Mock the extraction_llm that will be used in tests
+        mock_extraction_llm = Mock()
+
+        with patch(
+            "src.party_member_extractor.extractor.LLMService"
+        ) as mock_llm_service_class:
+            mock_llm_service = Mock()
+            mock_llm_service.get_structured_llm.return_value = mock_extraction_llm
+            mock_llm_service_class.return_value = mock_llm_service
+
+            with patch("src.party_member_extractor.extractor.PromptManager"):
+                with patch("src.party_member_extractor.extractor.ChainFactory"):
+                    extractor = PartyMemberExtractor(llm=mock_llm)
+                    # Store reference for test access
+                    extractor._mock_extraction_llm = mock_extraction_llm
+                    return extractor
 
     @pytest.fixture
     def sample_html(self):
@@ -54,9 +72,8 @@ class TestPartyMemberExtractor:
 
     def test_extract_from_pages(self, extractor, mock_llm, sample_html):
         """複数ページからの抽出テスト"""
-        # モックLLMの設定
-        mock_extraction_llm = Mock()
-        mock_extraction_llm.invoke.side_effect = [
+        # モックLLMの設定 - Use the mock from fixture
+        extractor.extraction_llm.invoke.side_effect = [
             PartyMemberList(
                 members=[
                     PartyMemberInfo(
@@ -84,7 +101,6 @@ class TestPartyMemberExtractor:
                 party_name="テスト党",
             ),
         ]
-        extractor.extraction_llm = mock_extraction_llm
 
         # テストデータ
         pages = [
