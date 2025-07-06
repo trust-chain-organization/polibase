@@ -3,8 +3,18 @@
 import logging
 
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.config.database import get_db_engine
+from src.exceptions import (
+    DatabaseError,
+    DeleteError,
+    IntegrityError,
+    QueryError,
+    SaveError,
+    UpdateError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,29 +40,88 @@ class ConferenceRepository:
             self.connection.close()
 
     def get_all_conferences(self) -> list[dict]:
-        """すべての会議体を取得"""
-        if not self.connection:
-            self.connection = self.engine.connect()
+        """すべての会議体を取得
 
-        query = text("""
-            SELECT
-                c.id,
-                c.name,
-                c.type,
-                c.governing_body_id,
-                c.members_introduction_url,
-                gb.name as governing_body_name,
-                gb.type as governing_body_type
-            FROM conferences c
-            JOIN governing_bodies gb ON c.governing_body_id = gb.id
-            ORDER BY gb.name, c.name
-        """)
+        Raises:
+            QueryError: If database query fails
+            ConnectionError: If database connection fails
+        """
+        try:
+            if not self.connection:
+                self.connection = self.engine.connect()
 
-        result = self.connection.execute(query)
-        conferences = []
-        for row in result:
-            conferences.append(
-                {
+            query = text("""
+                SELECT
+                    c.id,
+                    c.name,
+                    c.type,
+                    c.governing_body_id,
+                    c.members_introduction_url,
+                    gb.name as governing_body_name,
+                    gb.type as governing_body_type
+                FROM conferences c
+                JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                ORDER BY gb.name, c.name
+            """)
+
+            result = self.connection.execute(query)
+            conferences = []
+            for row in result:
+                conferences.append(
+                    {
+                        "id": row.id,
+                        "name": row.name,
+                        "type": row.type,
+                        "governing_body_id": row.governing_body_id,
+                        "members_introduction_url": row.members_introduction_url,
+                        "governing_body_name": row.governing_body_name,
+                        "governing_body_type": row.governing_body_type,
+                    }
+                )
+
+            return conferences
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting all conferences: {e}")
+            raise QueryError(
+                "Failed to retrieve conferences",
+                {"error": str(e)},
+            ) from e
+        except Exception as e:
+            logger.error(f"Unexpected error getting all conferences: {e}")
+            raise DatabaseError(
+                "Unexpected error retrieving conferences",
+                {"error": str(e)},
+            ) from e
+
+    def get_conference_by_id(self, conference_id: int) -> dict | None:
+        """IDで会議体を取得
+
+        Raises:
+            QueryError: If database query fails
+        """
+        try:
+            if not self.connection:
+                self.connection = self.engine.connect()
+
+            query = text("""
+                SELECT
+                    c.id,
+                    c.name,
+                    c.type,
+                    c.governing_body_id,
+                    c.members_introduction_url,
+                    gb.name as governing_body_name,
+                    gb.type as governing_body_type
+                FROM conferences c
+                JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                WHERE c.id = :conference_id
+            """)
+
+            result = self.connection.execute(query, {"conference_id": conference_id})
+            row = result.fetchone()
+
+            if row:
+                return {
                     "id": row.id,
                     "name": row.name,
                     "type": row.type,
@@ -61,44 +130,14 @@ class ConferenceRepository:
                     "governing_body_name": row.governing_body_name,
                     "governing_body_type": row.governing_body_type,
                 }
-            )
 
-        return conferences
-
-    def get_conference_by_id(self, conference_id: int) -> dict | None:
-        """IDで会議体を取得"""
-        if not self.connection:
-            self.connection = self.engine.connect()
-
-        query = text("""
-            SELECT
-                c.id,
-                c.name,
-                c.type,
-                c.governing_body_id,
-                c.members_introduction_url,
-                gb.name as governing_body_name,
-                gb.type as governing_body_type
-            FROM conferences c
-            JOIN governing_bodies gb ON c.governing_body_id = gb.id
-            WHERE c.id = :conference_id
-        """)
-
-        result = self.connection.execute(query, {"conference_id": conference_id})
-        row = result.fetchone()
-
-        if row:
-            return {
-                "id": row.id,
-                "name": row.name,
-                "type": row.type,
-                "governing_body_id": row.governing_body_id,
-                "members_introduction_url": row.members_introduction_url,
-                "governing_body_name": row.governing_body_name,
-                "governing_body_type": row.governing_body_type,
-            }
-
-        return None
+            return None
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting conference {conference_id}: {e}")
+            raise QueryError(
+                f"Failed to retrieve conference with ID {conference_id}",
+                {"conference_id": conference_id, "error": str(e)},
+            ) from e
 
     def get_conferences_by_governing_body(self, governing_body_id: int) -> list[dict]:
         """開催主体IDで会議体を取得"""
@@ -163,10 +202,27 @@ class ConferenceRepository:
             logger.info(f"Created conference with ID: {conference_id}")
             return conference_id
 
+        except SQLIntegrityError as e:
+            self.connection.rollback()
+            logger.error(f"Integrity error creating conference: {e}")
+            raise IntegrityError(
+                f"Conference '{name}' may already exist or violates constraints",
+                {"name": name, "governing_body_id": governing_body_id, "error": str(e)},
+            ) from e
+        except SQLAlchemyError as e:
+            self.connection.rollback()
+            logger.error(f"Database error creating conference: {e}")
+            raise SaveError(
+                f"Failed to create conference '{name}'",
+                {"name": name, "governing_body_id": governing_body_id, "error": str(e)},
+            ) from e
         except Exception as e:
             self.connection.rollback()
-            logger.error(f"Error creating conference: {e}")
-            return None
+            logger.error(f"Unexpected error creating conference: {e}")
+            raise SaveError(
+                f"Unexpected error creating conference '{name}'",
+                {"name": name, "error": str(e)},
+            ) from e
 
     def update_conference(
         self, conference_id: int, name: str, type: str | None = None
@@ -190,10 +246,20 @@ class ConferenceRepository:
             logger.info(f"Updated conference ID: {conference_id}")
             return True
 
+        except SQLAlchemyError as e:
+            self.connection.rollback()
+            logger.error(f"Database error updating conference: {e}")
+            raise UpdateError(
+                f"Failed to update conference ID {conference_id}",
+                {"conference_id": conference_id, "error": str(e)},
+            ) from e
         except Exception as e:
             self.connection.rollback()
-            logger.error(f"Error updating conference: {e}")
-            return False
+            logger.error(f"Unexpected error updating conference: {e}")
+            raise UpdateError(
+                f"Unexpected error updating conference ID {conference_id}",
+                {"conference_id": conference_id, "error": str(e)},
+            ) from e
 
     def update_conference_members_url(
         self, conference_id: int, members_introduction_url: str | None
@@ -222,10 +288,13 @@ class ConferenceRepository:
             logger.info(f"Updated members URL for conference ID: {conference_id}")
             return True
 
-        except Exception as e:
+        except SQLAlchemyError as e:
             self.connection.rollback()
-            logger.error(f"Error updating conference members URL: {e}")
-            return False
+            logger.error(f"Database error updating conference members URL: {e}")
+            raise UpdateError(
+                f"Failed to update members URL for conference ID {conference_id}",
+                {"conference_id": conference_id, "error": str(e)},
+            ) from e
 
     def delete_conference(self, conference_id: int) -> bool:
         """会議体を削除"""
@@ -263,25 +332,48 @@ class ConferenceRepository:
             logger.info(f"Deleted conference ID: {conference_id}")
             return True
 
+        except SQLAlchemyError as e:
+            self.connection.rollback()
+            logger.error(f"Database error deleting conference: {e}")
+            raise DeleteError(
+                f"Failed to delete conference ID {conference_id}",
+                {"conference_id": conference_id, "error": str(e)},
+            ) from e
         except Exception as e:
             self.connection.rollback()
-            logger.error(f"Error deleting conference: {e}")
-            return False
+            logger.error(f"Unexpected error deleting conference: {e}")
+            raise DeleteError(
+                f"Unexpected error deleting conference ID {conference_id}",
+                {"conference_id": conference_id, "error": str(e)},
+            ) from e
 
     def get_governing_bodies(self) -> list[dict]:
-        """すべての開催主体を取得"""
-        if not self.connection:
-            self.connection = self.engine.connect()
+        """すべての開催主体を取得
 
-        query = text("""
-            SELECT id, name, type
-            FROM governing_bodies
-            ORDER BY type, name
-        """)
+        Raises:
+            QueryError: If database query fails
+        """
+        try:
+            if not self.connection:
+                self.connection = self.engine.connect()
 
-        result = self.connection.execute(query)
-        governing_bodies = []
-        for row in result:
-            governing_bodies.append({"id": row.id, "name": row.name, "type": row.type})
+            query = text("""
+                SELECT id, name, type
+                FROM governing_bodies
+                ORDER BY type, name
+            """)
 
-        return governing_bodies
+            result = self.connection.execute(query)
+            governing_bodies = []
+            for row in result:
+                governing_bodies.append(
+                    {"id": row.id, "name": row.name, "type": row.type}
+                )
+
+            return governing_bodies
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting governing bodies: {e}")
+            raise QueryError(
+                "Failed to retrieve governing bodies",
+                {"error": str(e)},
+            ) from e

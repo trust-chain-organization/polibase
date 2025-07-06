@@ -4,8 +4,17 @@ import logging
 from datetime import date
 
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.config.database import get_db_engine
+from src.exceptions import (
+    DatabaseError,
+    DuplicateRecordError,
+    QueryError,
+    SaveError,
+    UpdateError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -93,10 +102,31 @@ class PoliticianAffiliationRepository:
             logger.info(f"Created affiliation with ID: {affiliation_id}")
             return affiliation_id
 
+        except SQLIntegrityError as e:
+            self.connection.rollback()
+            logger.error(f"Integrity error creating affiliation: {e}")
+            raise DuplicateRecordError(
+                "PoliticianAffiliation",
+                f"politician_id={politician_id}, conference_id={conference_id}",
+            ) from e
+        except SQLAlchemyError as e:
+            self.connection.rollback()
+            logger.error(f"Database error creating affiliation: {e}")
+            raise SaveError(
+                "Failed to create politician affiliation",
+                {
+                    "politician_id": politician_id,
+                    "conference_id": conference_id,
+                    "error": str(e),
+                },
+            ) from e
         except Exception as e:
             self.connection.rollback()
-            logger.error(f"Error creating affiliation: {e}")
-            return None
+            logger.error(f"Unexpected error creating affiliation: {e}")
+            raise SaveError(
+                "Unexpected error creating politician affiliation",
+                {"politician_id": politician_id, "error": str(e)},
+            ) from e
 
     def update_affiliation_role(self, affiliation_id: int, role: str) -> bool:
         """所属情報の役職を更新"""
@@ -167,43 +197,58 @@ class PoliticianAffiliationRepository:
     def get_active_affiliations_by_politician_and_conference(
         self, politician_id: int, conference_id: int
     ) -> list[dict]:
-        """政治家IDと会議体IDでアクティブな所属情報を取得"""
-        if not self.connection:
-            self.connection = self.engine.connect()
+        """政治家IDと会議体IDでアクティブな所属情報を取得
 
-        query = text("""
-            SELECT
-                pa.id,
-                pa.politician_id,
-                pa.conference_id,
-                pa.start_date,
-                pa.end_date,
-                pa.role
-            FROM politician_affiliations pa
-            WHERE pa.politician_id = :politician_id
-            AND pa.conference_id = :conference_id
-            AND pa.end_date IS NULL
-            ORDER BY pa.start_date DESC
-        """)
+        Raises:
+            QueryError: If database query fails
+        """
+        try:
+            if not self.connection:
+                self.connection = self.engine.connect()
 
-        result = self.connection.execute(
-            query, {"politician_id": politician_id, "conference_id": conference_id}
-        )
+            query = text("""
+                SELECT
+                    pa.id,
+                    pa.politician_id,
+                    pa.conference_id,
+                    pa.start_date,
+                    pa.end_date,
+                    pa.role
+                FROM politician_affiliations pa
+                WHERE pa.politician_id = :politician_id
+                AND pa.conference_id = :conference_id
+                AND pa.end_date IS NULL
+                ORDER BY pa.start_date DESC
+            """)
 
-        affiliations = []
-        for row in result:
-            affiliations.append(
-                {
-                    "id": row.id,
-                    "politician_id": row.politician_id,
-                    "conference_id": row.conference_id,
-                    "start_date": row.start_date,
-                    "end_date": row.end_date,
-                    "role": row.role,
-                }
+            result = self.connection.execute(
+                query, {"politician_id": politician_id, "conference_id": conference_id}
             )
 
-        return affiliations
+            affiliations = []
+            for row in result:
+                affiliations.append(
+                    {
+                        "id": row.id,
+                        "politician_id": row.politician_id,
+                        "conference_id": row.conference_id,
+                        "start_date": row.start_date,
+                        "end_date": row.end_date,
+                        "role": row.role,
+                    }
+                )
+
+            return affiliations
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting active affiliations: {e}")
+            raise QueryError(
+                "Failed to retrieve active affiliations",
+                {
+                    "politician_id": politician_id,
+                    "conference_id": conference_id,
+                    "error": str(e),
+                },
+            ) from e
 
     def get_affiliations_by_politician(self, politician_id: int) -> list[dict]:
         """政治家IDで所属情報を取得"""
@@ -299,7 +344,13 @@ class PoliticianAffiliationRepository:
         end_date: date | None = None,
         role: str | None = None,
     ) -> int:
-        """所属情報をUPSERT（存在すれば更新、なければ作成）"""
+        """所属情報をUPSERT（存在すれば更新、なければ作成）
+
+        Raises:
+            SaveError: If creation fails
+            UpdateError: If update fails
+            DatabaseError: If database operation fails
+        """
         if not self.connection:
             self.connection = self.engine.connect()
 
@@ -345,12 +396,27 @@ class PoliticianAffiliationRepository:
                 logger.info(f"Updated affiliation ID: {existing.id}")
                 return existing.id
             else:
-                # 新規作成
+                # 新規作成 - create_affiliation already has proper exception handling
                 return self.create_affiliation(
                     politician_id, conference_id, start_date, end_date, role
                 )
 
+        except SQLAlchemyError as e:
+            self.connection.rollback()
+            logger.error(f"Database error upserting affiliation: {e}")
+            raise UpdateError(
+                "Failed to upsert politician affiliation",
+                {
+                    "politician_id": politician_id,
+                    "conference_id": conference_id,
+                    "start_date": str(start_date),
+                    "error": str(e),
+                },
+            ) from e
         except Exception as e:
             self.connection.rollback()
-            logger.error(f"Error upserting affiliation: {e}")
-            raise
+            logger.error(f"Unexpected error upserting affiliation: {e}")
+            raise DatabaseError(
+                "Unexpected error upserting politician affiliation",
+                {"politician_id": politician_id, "error": str(e)},
+            ) from e

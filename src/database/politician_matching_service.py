@@ -2,6 +2,7 @@
 LLMを活用した発言者と政治家の高精度マッチングサービス
 """
 
+import logging
 import re
 
 from langchain_core.output_parsers import JsonOutputParser
@@ -9,8 +10,12 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.config.database import get_db_session
+from src.exceptions import DatabaseError, LLMError, QueryError
+
+logger = logging.getLogger(__name__)
 
 
 class PoliticianMatch(BaseModel):
@@ -151,36 +156,53 @@ class PoliticianMatchingService:
 
             return match_result
 
+        except LLMError:
+            # LLM specific errors are already properly handled, re-raise
+            raise
         except Exception as e:
-            print(f"❌ LLM政治家マッチングエラー: {e}")
-            # エラー時はルールベースの結果を返す
-            return rule_based_match
+            logger.error(f"LLM政治家マッチング中の予期しないエラー: {e}")
+            # Wrap unexpected errors as LLMError
+            raise LLMError(
+                "Unexpected error during LLM politician matching",
+                {"speaker_name": speaker_name, "error": str(e)},
+            ) from e
 
     def _get_available_politicians(self) -> list[dict]:
-        """利用可能な政治家リストを取得"""
-        query = text("""
-            SELECT p.id, p.name, p.position, p.prefecture,
-                   p.electoral_district, pp.name as party_name
-            FROM politicians p
-            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
-            ORDER BY p.name
-        """)
-        result = self.session.execute(query)
+        """利用可能な政治家リストを取得
 
-        politicians = []
-        for row in result.fetchall():
-            politicians.append(
-                {
-                    "id": row[0],
-                    "name": row[1],
-                    "position": row[2],
-                    "prefecture": row[3],
-                    "electoral_district": row[4],
-                    "party_name": row[5],
-                }
-            )
+        Raises:
+            QueryError: If database query fails
+        """
+        try:
+            query = text("""
+                SELECT p.id, p.name, p.position, p.prefecture,
+                       p.electoral_district, pp.name as party_name
+                FROM politicians p
+                LEFT JOIN political_parties pp ON p.political_party_id = pp.id
+                ORDER BY p.name
+            """)
+            result = self.session.execute(query)
 
-        return politicians
+            politicians = []
+            for row in result.fetchall():
+                politicians.append(
+                    {
+                        "id": row[0],
+                        "name": row[1],
+                        "position": row[2],
+                        "prefecture": row[3],
+                        "electoral_district": row[4],
+                        "party_name": row[5],
+                    }
+                )
+
+            return politicians
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting available politicians: {e}")
+            raise QueryError(
+                "Failed to retrieve available politicians",
+                {"error": str(e)},
+            ) from e
 
     def _rule_based_matching(
         self,
@@ -338,7 +360,7 @@ class PoliticianMatchingService:
                 speaker_type,
                 speaker_party,
             ) in unlinked_speakers:
-                print(f"🔍 政治家マッチング処理中: {speaker_name}")
+                logger.info(f"政治家マッチング処理中: {speaker_name}")
 
                 match_result = self.find_best_match(
                     speaker_name, speaker_type, speaker_party
@@ -367,30 +389,39 @@ class PoliticianMatchingService:
                     if match_result.confidence >= 0.9:
                         stats["high_confidence_matches"] += 1
 
-                    confidence_emoji = "🟢" if match_result.confidence >= 0.9 else "🟡"
-                    print(
-                        f"  {confidence_emoji} マッチ成功: {speaker_name} → "
+                    logger.info(
+                        f"マッチ成功: {speaker_name} → "
                         f"{match_result.politician_name} "
                         f"({match_result.political_party_name}) "
                         f"(信頼度: {match_result.confidence:.2f})"
                     )
                 else:
                     stats["failed_matches"] += 1
-                    print(f"  🔴 マッチ失敗: {speaker_name} ({match_result.reason})")
+                    logger.info(f"マッチ失敗: {speaker_name} ({match_result.reason})")
 
             self.session.commit()
 
-            print("\n📊 政治家マッチング結果:")
-            print(f"   - 処理総数: {stats['total_processed']}人")
-            print(f"   - マッチ成功: {stats['successfully_matched']}人")
-            print(f"   - 高信頼度マッチ: {stats['high_confidence_matches']}人")
-            print(f"   - マッチ失敗: {stats['failed_matches']}人")
+            logger.info("政治家マッチング結果:")
+            logger.info(f"   - 処理総数: {stats['total_processed']}人")
+            logger.info(f"   - マッチ成功: {stats['successfully_matched']}人")
+            logger.info(f"   - 高信頼度マッチ: {stats['high_confidence_matches']}人")
+            logger.info(f"   - マッチ失敗: {stats['failed_matches']}人")
 
             return stats
 
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            logger.error(f"Database error during batch politician matching: {e}")
+            raise DatabaseError(
+                "Failed to update politician links in batch",
+                {"processed": stats.get("total_processed", 0), "error": str(e)},
+            ) from e
         except Exception as e:
             self.session.rollback()
-            print(f"❌ 一括政治家マッチング更新エラー: {e}")
-            raise
+            logger.error(f"Unexpected error during batch politician matching: {e}")
+            raise DatabaseError(
+                "Unexpected error during batch politician link update",
+                {"error": str(e)},
+            ) from e
         finally:
             self.session.close()

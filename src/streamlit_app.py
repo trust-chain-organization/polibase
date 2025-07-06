@@ -15,6 +15,14 @@ from src.database.parliamentary_group_repository import (
     ParliamentaryGroupMembershipRepository,
     ParliamentaryGroupRepository,
 )
+from src.exceptions import (
+    DatabaseError,
+    ProcessingError,
+    RecordNotFoundError,
+    SaveError,
+    ScrapingError,
+    UpdateError,
+)
 
 # ページ設定
 st.set_page_config(page_title="Polibase - 会議管理", page_icon="🏛️", layout="wide")
@@ -304,8 +312,10 @@ def add_new_meeting():
 
                     # フォームをリセット
                     st.rerun()
+                except (SaveError, DatabaseError) as e:
+                    st.error(f"会議の登録に失敗しました: {str(e)}")
                 except Exception as e:
-                    st.error(f"エラーが発生しました: {str(e)}")
+                    st.error(f"予期しないエラーが発生しました: {str(e)}")
 
     # 登録済み会議体の確認セクション
     with st.expander("登録済み会議体一覧", expanded=False):
@@ -385,8 +395,10 @@ def edit_meeting():
                         st.rerun()
                     else:
                         st.error("会議の更新に失敗しました")
+                except (UpdateError, RecordNotFoundError, DatabaseError) as e:
+                    st.error(f"会議の更新に失敗しました: {str(e)}")
                 except Exception as e:
-                    st.error(f"エラーが発生しました: {str(e)}")
+                    st.error(f"予期しないエラーが発生しました: {str(e)}")
 
         if cancelled:
             st.session_state.edit_mode = False
@@ -953,13 +965,27 @@ def run_command_with_progress(command, process_name):
             with st.expander("実行ログ", expanded=False):
                 st.code("\n".join(output_lines), language="text")
 
+    except subprocess.TimeoutExpired:
+        st.session_state.process_status[process_name] = "timeout"
+        st.session_state.process_output[process_name] = ["処理がタイムアウトしました"]
+        with status_placeholder.container():
+            st.error("❌ 処理がタイムアウトしました")
+        with output_placeholder.container():
+            st.code("処理がタイムアウトしました", language="text")
+    except ProcessingError as e:
+        st.session_state.process_status[process_name] = "error"
+        st.session_state.process_output[process_name] = [f"処理エラー: {str(e)}"]
+        with status_placeholder.container():
+            st.error("❌ 処理エラーが発生しました")
+        with output_placeholder.container():
+            st.code(f"処理エラー: {str(e)}", language="text")
     except Exception as e:
         st.session_state.process_status[process_name] = "error"
-        st.session_state.process_output[process_name] = [f"エラー: {str(e)}"]
+        st.session_state.process_output[process_name] = [f"予期しないエラー: {str(e)}"]
         with status_placeholder.container():
-            st.error("❌ エラーが発生しました")
+            st.error("❌ 予期しないエラーが発生しました")
         with output_placeholder.container():
-            st.code(f"エラー: {str(e)}", language="text")
+            st.code(f"予期しないエラー: {str(e)}", language="text")
 
 
 def execute_minutes_processes():
@@ -2720,8 +2746,12 @@ def manage_parliamentary_groups():
                                         "ドライランを解除して再実行すると、実際にメンバーシップが作成されます。"
                                     )
 
+                    except (ScrapingError, ProcessingError) as e:
+                        st.error(f"メンバー抽出処理に失敗しました: {str(e)}")
+                    except DatabaseError as e:
+                        st.error(f"データベースエラーが発生しました: {str(e)}")
                     except Exception as e:
-                        st.error(f"処理中にエラーが発生しました: {str(e)}")
+                        st.error(f"予期しないエラーが発生しました: {str(e)}")
                         import traceback
 
                         st.text(traceback.format_exc())

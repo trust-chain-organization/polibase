@@ -16,6 +16,7 @@ from src.database.conference_repository import ConferenceRepository
 from src.database.extracted_conference_member_repository import (
     ExtractedConferenceMemberRepository,
 )
+from src.exceptions import DatabaseError, ScrapingError
 
 logger = logging.getLogger(__name__)
 
@@ -144,11 +145,23 @@ class ConferenceMemberCommands(BaseCommand):
                             f"{result['saved_count']}人を保存"
                         )
 
-                except Exception as e:
+                except (ScrapingError, DatabaseError) as e:
                     ConferenceMemberCommands.echo_error(
                         f"  ❌ エラー: {conf['name']} - {str(e)}"
                     )
-                    logger.exception(f"Error processing conference {conf['id']}")
+                    logger.error(f"Error processing conference {conf['id']}: {e}")
+                except Exception as e:
+                    ConferenceMemberCommands.echo_error(
+                        f"  ❌ 予期しないエラー: {conf['name']} - {str(e)}"
+                    )
+                    logger.exception(
+                        f"Unexpected error processing conference {conf['id']}"
+                    )
+                    # Wrap in ScrapingError for proper handling
+                    raise ScrapingError(
+                        f"Failed to extract members from conference {conf['id']}",
+                        {"conference_id": conf["id"], "error": str(e)},
+                    ) from e
 
                 progress.update(1)
 
