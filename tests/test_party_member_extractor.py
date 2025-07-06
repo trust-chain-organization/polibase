@@ -16,25 +16,37 @@ class TestPartyMemberExtractor:
     """PartyMemberExtractorのテストクラス"""
 
     @pytest.fixture
-    def mock_llm(self):
-        """モックLLMのフィクスチャ"""
-        mock = Mock()
-        mock.model_name = "test-model"
-        mock.temperature = 0.1
-        return mock
+    def mock_llm_service(self):
+        """モックLLMServiceのフィクスチャ"""
+        from unittest.mock import patch
+
+        with patch(
+            "src.party_member_extractor.extractor.LLMServiceFactory"
+        ) as mock_factory:
+            mock_service = Mock()
+            mock_extraction_llm = Mock()
+
+            # Setup mock service
+            mock_service.get_structured_llm.return_value = mock_extraction_llm
+
+            # Default return value for invoke_prompt
+            mock_service.invoke_prompt.return_value = PartyMemberList(
+                members=[], total_count=0, party_name="テスト党"
+            )
+
+            # Setup factory to return mock service
+            mock_factory.return_value.create_advanced.return_value = mock_service
+
+            yield mock_service
 
     @pytest.fixture
-    def extractor(self, mock_llm):
+    def extractor(self, mock_llm_service):
         """エクストラクターのフィクスチャ"""
-        # PartyMemberExtractorはLLMServiceを使わず、直接ChatGoogleGenerativeAIを使用
-        extractor = PartyMemberExtractor(llm=mock_llm)
+        # PartyMemberExtractorは内部でLLMServiceFactoryを使用
+        extractor = PartyMemberExtractor()
 
-        # Mock the with_structured_output method
-        mock_extraction_llm = Mock()
-        mock_llm.with_structured_output.return_value = mock_extraction_llm
-
-        # Store reference for test access
-        extractor._mock_extraction_llm = mock_extraction_llm
+        # Store reference for test access (using the actual service mock)
+        extractor._mock_service = mock_llm_service
         return extractor
 
     @pytest.fixture
@@ -64,10 +76,10 @@ class TestPartyMemberExtractor:
         </html>
         """
 
-    def test_extract_from_pages(self, extractor, mock_llm, sample_html):
+    def test_extract_from_pages(self, extractor, sample_html):
         """複数ページからの抽出テスト"""
-        # モックLLMの設定 - Use the mock from fixture
-        extractor.extraction_llm.invoke.side_effect = [
+        # モックLLMの設定 - Use invoke_prompt instead of extraction_llm
+        extractor._mock_service.invoke_prompt.side_effect = [
             PartyMemberList(
                 members=[
                     PartyMemberInfo(
@@ -124,11 +136,10 @@ class TestPartyMemberExtractor:
         names = [m.name for m in result.members]
         assert len(names) == len(set(names))
 
-    def test_extract_from_single_page(self, extractor, mock_llm, sample_html):
+    def test_extract_from_single_page(self, extractor, sample_html):
         """単一ページからの抽出テスト"""
         # モックLLMの設定
-        mock_extraction_llm = Mock()
-        mock_extraction_llm.invoke.return_value = PartyMemberList(
+        extractor._mock_service.invoke_prompt.return_value = PartyMemberList(
             members=[
                 PartyMemberInfo(
                     name="田中三郎",
@@ -141,7 +152,6 @@ class TestPartyMemberExtractor:
             total_count=1,
             party_name="テスト党",
         )
-        extractor.extraction_llm = mock_extraction_llm
 
         # テストデータ
         page = WebPageContent(
@@ -222,12 +232,10 @@ class TestPartyMemberExtractor:
         for url, expected in test_cases:
             assert extractor._get_base_url(url) == expected
 
-    def test_extract_with_error(self, extractor, mock_llm):
+    def test_extract_with_error(self, extractor):
         """エラー処理のテスト"""
         # モックLLMがエラーを発生させる
-        mock_extraction_llm = Mock()
-        mock_extraction_llm.invoke.side_effect = Exception("LLM Error")
-        extractor.extraction_llm = mock_extraction_llm
+        extractor._mock_service.invoke_prompt.side_effect = Exception("LLM Error")
 
         page = WebPageContent(
             url="https://example.com/members",
@@ -241,11 +249,10 @@ class TestPartyMemberExtractor:
         # アサーション
         assert result is None
 
-    def test_duplicate_removal(self, extractor, mock_llm):
+    def test_duplicate_removal(self, extractor):
         """重複除去のテスト"""
         # モックLLMの設定（同じ名前の議員を返す）
-        mock_extraction_llm = Mock()
-        mock_extraction_llm.invoke.side_effect = [
+        extractor._mock_service.invoke_prompt.side_effect = [
             PartyMemberList(
                 members=[PartyMemberInfo(name="重複太郎", position="衆議院議員")],
                 total_count=1,
@@ -258,7 +265,6 @@ class TestPartyMemberExtractor:
                 total_count=2,
             ),
         ]
-        extractor.extraction_llm = mock_extraction_llm
 
         pages = [
             WebPageContent(

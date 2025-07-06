@@ -69,9 +69,9 @@ class TestProcessMinutes:
         assert "GOOGLE_API_KEY not set" in str(exc_info.value)
 
     @patch.dict(os.environ, {"GOOGLE_API_KEY": "test-api-key"})
-    @patch("src.process_minutes.ChatGoogleGenerativeAI")
+    @patch("src.process_minutes.LLMServiceFactory")
     @patch("src.process_minutes.MinutesProcessAgent")
-    def test_process_minutes_agent_error(self, mock_agent_class, mock_llm_class):
+    def test_process_minutes_agent_error(self, mock_agent_class, mock_factory_class):
         """Test handling of agent processing error"""
         # Arrange
         mock_agent = Mock()
