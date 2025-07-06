@@ -7,13 +7,14 @@ import re
 
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.config.database import get_db_session
 from src.exceptions import DatabaseError, LLMError, QueryError
+from src.services.llm_factory import LLMServiceFactory
+from src.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,18 @@ class PoliticianMatch(BaseModel):
 class PoliticianMatchingService:
     """LLMを活用した発言者-政治家マッチングサービス"""
 
-    def __init__(self, llm: ChatGoogleGenerativeAI):
-        self.llm = llm
+    def __init__(self, llm_service: LLMService | None = None):
+        """
+        Initialize PoliticianMatchingService
+
+        Args:
+            llm_service: LLMService instance (creates default if not provided)
+        """
+        if llm_service is None:
+            factory = LLMServiceFactory()
+            llm_service = factory.create_fast_instance(temperature=0.1)
+
+        self.llm_service = llm_service
         self.session = get_db_session()
         self._setup_prompt()
 
@@ -89,7 +100,7 @@ class PoliticianMatchingService:
         """)
 
         self.output_parser = JsonOutputParser(pydantic_object=PoliticianMatch)
-        self.chain = self.prompt | self.llm | self.output_parser
+        self.chain = self.prompt | self.llm_service.llm | self.output_parser
 
     def find_best_match(
         self,
@@ -130,7 +141,8 @@ class PoliticianMatchingService:
                 speaker_name, speaker_party, available_politicians
             )
 
-            result = self.chain.invoke(
+            result = self.llm_service.invoke_with_retry(
+                self.chain,
                 {
                     "speaker_name": speaker_name,
                     "speaker_type": speaker_type or "不明",
@@ -138,7 +150,7 @@ class PoliticianMatchingService:
                     "available_politicians": self._format_politicians_for_llm(
                         filtered_politicians
                     ),
-                }
+                },
             )
 
             # 結果の検証

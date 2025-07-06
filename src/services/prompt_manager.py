@@ -172,7 +172,8 @@ HTMLコンテンツ：
                     # Fallback to local prompt if available
                     fallback_key = prompt_key.replace("_prompt", "")
                     if fallback_key in self.PROMPTS:
-                        return self.get_prompt(fallback_key)
+                        # Return a PromptTemplate from the string
+                        return PromptTemplate.from_template(self.PROMPTS[fallback_key])
                     raise
             else:
                 raise ValueError(f"Unknown hub prompt key: {prompt_key}")

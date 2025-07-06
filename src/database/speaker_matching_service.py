@@ -3,7 +3,6 @@
 import logging
 import re
 
-from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -30,26 +29,21 @@ class SpeakerMatch(BaseModel):
 class SpeakerMatchingService:
     """LLMを活用した発言者名マッチングサービス"""
 
-    def __init__(self, llm: ChatGoogleGenerativeAI | None = None):
+    def __init__(self, llm_service: LLMService | None = None):
         """
         Initialize speaker matching service
 
         Args:
-            llm: Optional LLM instance for backward compatibility
+            llm_service: Optional LLMService instance
         """
         # Initialize services
-        if llm:
-            # Backward compatibility
-            self.llm_service = LLMService(
-                model_name=llm.model_name,
-                temperature=llm.temperature,
-                max_tokens=getattr(llm, "max_tokens", 1000),
-            )
-        else:
+        if llm_service is None:
             # Use fast model with low temperature for consistency
             self.llm_service = LLMService.create_fast_instance(
                 temperature=0.1, max_tokens=1000
             )
+        else:
+            self.llm_service = llm_service
 
         self.chain_factory = ChainFactory(self.llm_service)
         self.session = get_db_session()

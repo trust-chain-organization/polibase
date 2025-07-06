@@ -7,8 +7,6 @@ Processes meeting minutes PDF files and extracts individual conversations.
 import logging
 import sys
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-
 from src.common.app_logic import (
     load_pdf_text,
     print_completion_message,
@@ -25,6 +23,7 @@ from src.exceptions import (
 )
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
+from src.services.llm_factory import LLMServiceFactory
 
 logger = logging.getLogger(__name__)
 
@@ -137,8 +136,11 @@ def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:
                 {"env_var": "GOOGLE_API_KEY"},
             )
 
-        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
-        agent = MinutesProcessAgent(llm=llm)
+        # Create LLM service using factory
+        factory = LLMServiceFactory()
+        llm_service = factory.create_advanced(temperature=0.0)
+
+        agent = MinutesProcessAgent(llm_service=llm_service)
 
         logger.info(f"Processing minutes with {len(extracted_text)} characters")
         results = agent.run(original_minutes=extracted_text)
