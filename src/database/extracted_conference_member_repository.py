@@ -3,8 +3,15 @@
 import logging
 
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.config.database import get_db_engine
+from src.exceptions import (
+    IntegrityError,
+    QueryError,
+    SaveError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,10 +77,35 @@ class ExtractedConferenceMemberRepository:
             logger.info(f"Created extracted member with ID: {member_id}")
             return member_id
 
+        except SQLIntegrityError as e:
+            self.connection.rollback()
+            logger.error(f"Integrity error creating extracted member: {e}")
+            raise IntegrityError(
+                f"Extracted member '{extracted_name}' may already exist",
+                {
+                    "extracted_name": extracted_name,
+                    "conference_id": conference_id,
+                    "error": str(e),
+                },
+            ) from e
+        except SQLAlchemyError as e:
+            self.connection.rollback()
+            logger.error(f"Database error creating extracted member: {e}")
+            raise SaveError(
+                f"Failed to create extracted member '{extracted_name}'",
+                {
+                    "extracted_name": extracted_name,
+                    "conference_id": conference_id,
+                    "error": str(e),
+                },
+            ) from e
         except Exception as e:
             self.connection.rollback()
-            logger.error(f"Error creating extracted member: {e}")
-            return None
+            logger.error(f"Unexpected error creating extracted member: {e}")
+            raise SaveError(
+                f"Unexpected error creating extracted member '{extracted_name}'",
+                {"extracted_name": extracted_name, "error": str(e)},
+            ) from e
 
     def get_pending_members(self, conference_id: int | None = None) -> list[dict]:
         """未処理のメンバー情報を取得"""
@@ -258,31 +290,42 @@ class ExtractedConferenceMemberRepository:
             return 0
 
     def get_extraction_summary(self) -> dict:
-        """抽出状況のサマリーを取得"""
-        if not self.connection:
-            self.connection = self.engine.connect()
+        """抽出状況のサマリーを取得
 
-        query = text("""
-            SELECT
-                matching_status,
-                COUNT(*) as count
-            FROM extracted_conference_members
-            GROUP BY matching_status
-        """)
+        Raises:
+            QueryError: If database query fails
+        """
+        try:
+            if not self.connection:
+                self.connection = self.engine.connect()
 
-        result = self.connection.execute(query)
+            query = text("""
+                SELECT
+                    matching_status,
+                    COUNT(*) as count
+                FROM extracted_conference_members
+                GROUP BY matching_status
+            """)
 
-        summary = {
-            "pending": 0,
-            "matched": 0,
-            "no_match": 0,
-            "needs_review": 0,
-            "total": 0,
-        }
+            result = self.connection.execute(query)
 
-        for row in result:
-            if row.matching_status in summary:
-                summary[row.matching_status] = row.count
-            summary["total"] += row.count
+            summary = {
+                "pending": 0,
+                "matched": 0,
+                "no_match": 0,
+                "needs_review": 0,
+                "total": 0,
+            }
 
-        return summary
+            for row in result:
+                if row.matching_status in summary:
+                    summary[row.matching_status] = row.count
+                summary["total"] += row.count
+
+            return summary
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting extraction summary: {e}")
+            raise QueryError(
+                "Failed to retrieve extraction summary",
+                {"error": str(e)},
+            ) from e

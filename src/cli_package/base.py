@@ -7,6 +7,20 @@ from functools import wraps
 
 import click
 
+from src.exceptions import (
+    APIKeyError,
+    ConfigurationError,
+    ConnectionError,
+    DatabaseError,
+    LLMError,
+    PolibaseError,
+    ProcessingError,
+    RecordNotFoundError,
+    ScrapingError,
+    StorageError,
+    ValidationError,
+)
+
 
 class BaseCommand:
     """Base class for CLI commands with common functionality"""
@@ -29,9 +43,43 @@ class BaseCommand:
         def wrapper(*args, **kwargs):
             try:
                 return f(*args, **kwargs)
-            except Exception as e:
+            except APIKeyError as e:
+                click.echo(f"API Key Error: {str(e)}", err=True)
+                click.echo(
+                    "Please set the required API key in your environment variables.",
+                    err=True,
+                )
+                sys.exit(2)
+            except ConfigurationError as e:
+                click.echo(f"Configuration Error: {str(e)}", err=True)
+                click.echo("Please check your configuration settings.", err=True)
+                sys.exit(2)
+            except ConnectionError as e:
+                click.echo(f"Connection Error: {str(e)}", err=True)
+                click.echo(
+                    "Please check your network connection and database settings.",
+                    err=True,
+                )
+                sys.exit(3)
+            except RecordNotFoundError as e:
+                click.echo(f"Not Found: {str(e)}", err=True)
+                sys.exit(4)
+            except ValidationError as e:
+                click.echo(f"Validation Error: {str(e)}", err=True)
+                sys.exit(5)
+            except PolibaseError as e:
                 click.echo(f"Error: {str(e)}", err=True)
                 sys.exit(1)
+            except KeyboardInterrupt:
+                click.echo("\nOperation cancelled by user", err=True)
+                sys.exit(0)
+            except Exception as e:
+                click.echo(f"Unexpected Error: {str(e)}", err=True)
+                click.echo(
+                    "This is an unexpected error. Please report it.",
+                    err=True,
+                )
+                sys.exit(99)
 
         return wrapper
 
@@ -69,18 +117,76 @@ def with_async_execution(func: Callable) -> Callable:
 
 
 def with_error_handling(func: Callable) -> Callable:
-    """Decorator to handle errors gracefully"""
+    """Decorator to handle errors gracefully with specific error types"""
 
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
+        except APIKeyError as e:
+            click.echo(f"\nAPI Key Error: {str(e)}", err=True)
+            click.echo(
+                "Please set the required API key in your environment variables.",
+                err=True,
+            )
+            sys.exit(2)
+        except ConfigurationError as e:
+            click.echo(f"\nConfiguration Error: {str(e)}", err=True)
+            click.echo("Please check your configuration settings.", err=True)
+            sys.exit(2)
+        except ConnectionError as e:
+            click.echo(f"\nConnection Error: {str(e)}", err=True)
+            click.echo(
+                "Please check your network connection and database settings.", err=True
+            )
+            sys.exit(3)
+        except RecordNotFoundError as e:
+            click.echo(f"\nNot Found: {str(e)}", err=True)
+            sys.exit(4)
+        except ValidationError as e:
+            click.echo(f"\nValidation Error: {str(e)}", err=True)
+            sys.exit(5)
+        except DatabaseError as e:
+            click.echo(f"\nDatabase Error: {str(e)}", err=True)
+            if e.details:
+                click.echo(f"Details: {e.details}", err=True)
+            sys.exit(10)
+        except ScrapingError as e:
+            click.echo(f"\nScraping Error: {str(e)}", err=True)
+            if e.details:
+                click.echo(f"Details: {e.details}", err=True)
+            sys.exit(11)
+        except ProcessingError as e:
+            click.echo(f"\nProcessing Error: {str(e)}", err=True)
+            if e.details:
+                click.echo(f"Details: {e.details}", err=True)
+            sys.exit(12)
+        except LLMError as e:
+            click.echo(f"\nLLM Error: {str(e)}", err=True)
+            if e.details:
+                click.echo(f"Details: {e.details}", err=True)
+            sys.exit(13)
+        except StorageError as e:
+            click.echo(f"\nStorage Error: {str(e)}", err=True)
+            if e.details:
+                click.echo(f"Details: {e.details}", err=True)
+            sys.exit(14)
+        except PolibaseError as e:
+            # Catch any other custom exceptions
+            click.echo(f"\nError: {str(e)}", err=True)
+            if e.details:
+                click.echo(f"Details: {e.details}", err=True)
+            sys.exit(1)
         except KeyboardInterrupt:
             click.echo("\nOperation cancelled by user", err=True)
             sys.exit(0)
         except Exception as e:
-            click.echo(f"\nError: {str(e)}", err=True)
-            sys.exit(1)
+            click.echo(f"\nUnexpected Error: {str(e)}", err=True)
+            click.echo(
+                "This is an unexpected error. Please report it.",
+                err=True,
+            )
+            sys.exit(99)
 
     return wrapper
 

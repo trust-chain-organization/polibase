@@ -60,15 +60,18 @@ class TestExtractedConferenceMemberRepository:
         # Setup
         repository.connection.execute.side_effect = Exception("DB Error")
 
-        # Execute
-        result = repository.create_extracted_member(
-            conference_id=1,
-            extracted_name="山田太郎",
-            source_url="https://example.com/members",
-        )
+        # Execute and expect SaveError to be raised
+        from src.exceptions import SaveError
+
+        with pytest.raises(SaveError) as exc_info:
+            repository.create_extracted_member(
+                conference_id=1,
+                extracted_name="山田太郎",
+                source_url="https://example.com/members",
+            )
 
         # Assert
-        assert result is None
+        assert "Unexpected error creating extracted member" in str(exc_info.value)
         repository.connection.rollback.assert_called_once()
 
     def test_get_pending_members(self, repository):

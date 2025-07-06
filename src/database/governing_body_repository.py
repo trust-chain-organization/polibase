@@ -3,8 +3,18 @@
 import logging
 
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 
 from src.config.database import get_db_engine
+from src.exceptions import (
+    DatabaseError,
+    DeleteError,
+    IntegrityError,
+    QueryError,
+    SaveError,
+    UpdateError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,89 +40,133 @@ class GoverningBodyRepository:
             self.connection.close()
 
     def get_all_governing_bodies(self) -> list[dict]:
-        """すべての開催主体を取得"""
-        if not self.connection:
-            self.connection = self.engine.connect()
+        """すべての開催主体を取得
 
-        query = text("""
-            SELECT gb.id, gb.name, gb.type,
-                   COUNT(DISTINCT c.id) as conference_count
-            FROM governing_bodies gb
-            LEFT JOIN conferences c ON gb.id = c.governing_body_id
-            GROUP BY gb.id, gb.name, gb.type
-            ORDER BY
-                CASE gb.type
-                    WHEN '国' THEN 1
-                    WHEN '都道府県' THEN 2
-                    WHEN '市町村' THEN 3
-                    ELSE 4
-                END,
-                gb.name
-        """)
+        Raises:
+            QueryError: If database query fails
+            ConnectionError: If database connection fails
+        """
+        try:
+            if not self.connection:
+                self.connection = self.engine.connect()
 
-        result = self.connection.execute(query)
-        governing_bodies = []
-        for row in result:
-            governing_bodies.append(
-                {
-                    "id": row.id,
-                    "name": row.name,
-                    "type": row.type,
-                    "conference_count": row.conference_count,
-                }
-            )
+            query = text("""
+                SELECT gb.id, gb.name, gb.type,
+                       COUNT(DISTINCT c.id) as conference_count
+                FROM governing_bodies gb
+                LEFT JOIN conferences c ON gb.id = c.governing_body_id
+                GROUP BY gb.id, gb.name, gb.type
+                ORDER BY
+                    CASE gb.type
+                        WHEN '国' THEN 1
+                        WHEN '都道府県' THEN 2
+                        WHEN '市町村' THEN 3
+                        ELSE 4
+                    END,
+                    gb.name
+            """)
 
-        return governing_bodies
+            result = self.connection.execute(query)
+            governing_bodies = []
+            for row in result:
+                governing_bodies.append(
+                    {
+                        "id": row.id,
+                        "name": row.name,
+                        "type": row.type,
+                        "conference_count": row.conference_count,
+                    }
+                )
+
+            return governing_bodies
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting all governing bodies: {e}")
+            raise QueryError(
+                "Failed to retrieve governing bodies",
+                {"error": str(e)},
+            ) from e
+        except Exception as e:
+            logger.error(f"Unexpected error getting all governing bodies: {e}")
+            raise DatabaseError(
+                "Unexpected error retrieving governing bodies",
+                {"error": str(e)},
+            ) from e
 
     def get_governing_body_by_id(self, governing_body_id: int) -> dict | None:
-        """IDで開催主体を取得"""
-        if not self.connection:
-            self.connection = self.engine.connect()
+        """IDで開催主体を取得
 
-        query = text("""
-            SELECT id, name, type
-            FROM governing_bodies
-            WHERE id = :governing_body_id
-        """)
+        Raises:
+            QueryError: If database query fails
+        """
+        try:
+            if not self.connection:
+                self.connection = self.engine.connect()
 
-        result = self.connection.execute(
-            query, {"governing_body_id": governing_body_id}
-        )
-        row = result.fetchone()
+            query = text("""
+                SELECT id, name, type
+                FROM governing_bodies
+                WHERE id = :governing_body_id
+            """)
 
-        if row:
-            return {"id": row.id, "name": row.name, "type": row.type}
+            result = self.connection.execute(
+                query, {"governing_body_id": governing_body_id}
+            )
+            row = result.fetchone()
 
-        return None
+            if row:
+                return {"id": row.id, "name": row.name, "type": row.type}
+
+            return None
+        except SQLAlchemyError as e:
+            logger.error(
+                f"Database error getting governing body {governing_body_id}: {e}"
+            )
+            raise QueryError(
+                f"Failed to retrieve governing body with ID {governing_body_id}",
+                {"governing_body_id": governing_body_id, "error": str(e)},
+            ) from e
 
     def get_governing_bodies_by_type(self, gb_type: str) -> list[dict]:
-        """種別で開催主体を取得"""
-        if not self.connection:
-            self.connection = self.engine.connect()
+        """種別で開催主体を取得
 
-        query = text("""
-            SELECT gb.id, gb.name, gb.type,
-                   COUNT(DISTINCT c.id) as conference_count
-            FROM governing_bodies gb
-            LEFT JOIN conferences c ON gb.id = c.governing_body_id
-            WHERE gb.type = :type
-            GROUP BY gb.id, gb.name, gb.type
-            ORDER BY gb.name
-        """)
+        Raises:
+            QueryError: If database query fails
+        """
+        try:
+            if not self.connection:
+                self.connection = self.engine.connect()
 
-        result = self.connection.execute(query, {"type": gb_type})
-        governing_bodies = []
-        for row in result:
-            governing_bodies.append(
-                {
-                    "id": row.id,
-                    "name": row.name,
-                    "type": row.type,
-                    "conference_count": row.conference_count,
-                }
+            query = text("""
+                SELECT gb.id, gb.name, gb.type,
+                       COUNT(DISTINCT c.id) as conference_count
+                FROM governing_bodies gb
+                LEFT JOIN conferences c ON gb.id = c.governing_body_id
+                WHERE gb.type = :type
+                GROUP BY gb.id, gb.name, gb.type
+                ORDER BY gb.name
+            """)
+
+            result = self.connection.execute(query, {"type": gb_type})
+            governing_bodies = []
+            for row in result:
+                governing_bodies.append(
+                    {
+                        "id": row.id,
+                        "name": row.name,
+                        "type": row.type,
+                        "conference_count": row.conference_count,
+                    }
+                )
+
+            return governing_bodies
+        except SQLAlchemyError as e:
+            logger.error(
+                f"Database error getting governing bodies by type '{gb_type}': {e}"
             )
-
-        return governing_bodies
+            raise QueryError(
+                f"Failed to retrieve governing bodies of type '{gb_type}'",
+                {"type": gb_type, "error": str(e)},
+            ) from e
 
     def create_governing_body(self, name: str, gb_type: str) -> int | None:
         """新しい開催主体を作成"""
@@ -146,10 +200,27 @@ class GoverningBodyRepository:
             logger.info(f"Created governing body with ID: {governing_body_id}")
             return governing_body_id
 
+        except SQLIntegrityError as e:
+            self.connection.rollback()
+            logger.error(f"Integrity error creating governing body: {e}")
+            raise IntegrityError(
+                f"Governing body '{name}' of type '{gb_type}' may already exist",
+                {"name": name, "type": gb_type, "error": str(e)},
+            ) from e
+        except SQLAlchemyError as e:
+            self.connection.rollback()
+            logger.error(f"Database error creating governing body: {e}")
+            raise SaveError(
+                f"Failed to create governing body '{name}'",
+                {"name": name, "type": gb_type, "error": str(e)},
+            ) from e
         except Exception as e:
             self.connection.rollback()
-            logger.error(f"Error creating governing body: {e}")
-            return None
+            logger.error(f"Unexpected error creating governing body: {e}")
+            raise SaveError(
+                f"Unexpected error creating governing body '{name}'",
+                {"name": name, "type": gb_type, "error": str(e)},
+            ) from e
 
     def update_governing_body(
         self, governing_body_id: int, name: str, gb_type: str
@@ -190,10 +261,20 @@ class GoverningBodyRepository:
             logger.info(f"Updated governing body ID: {governing_body_id}")
             return True
 
+        except SQLAlchemyError as e:
+            self.connection.rollback()
+            logger.error(f"Database error updating governing body: {e}")
+            raise UpdateError(
+                f"Failed to update governing body with ID {governing_body_id}",
+                {"governing_body_id": governing_body_id, "error": str(e)},
+            ) from e
         except Exception as e:
             self.connection.rollback()
-            logger.error(f"Error updating governing body: {e}")
-            return False
+            logger.error(f"Unexpected error updating governing body: {e}")
+            raise UpdateError(
+                f"Unexpected error updating governing body with ID {governing_body_id}",
+                {"governing_body_id": governing_body_id, "error": str(e)},
+            ) from e
 
     def delete_governing_body(self, governing_body_id: int) -> bool:
         """開催主体を削除"""
@@ -233,10 +314,20 @@ class GoverningBodyRepository:
             logger.info(f"Deleted governing body ID: {governing_body_id}")
             return True
 
+        except SQLAlchemyError as e:
+            self.connection.rollback()
+            logger.error(f"Database error deleting governing body: {e}")
+            raise DeleteError(
+                f"Failed to delete governing body with ID {governing_body_id}",
+                {"governing_body_id": governing_body_id, "error": str(e)},
+            ) from e
         except Exception as e:
             self.connection.rollback()
-            logger.error(f"Error deleting governing body: {e}")
-            return False
+            logger.error(f"Unexpected error deleting governing body: {e}")
+            raise DeleteError(
+                f"Unexpected error deleting governing body with ID {governing_body_id}",
+                {"governing_body_id": governing_body_id, "error": str(e)},
+            ) from e
 
     def get_type_options(self) -> list[str]:
         """開催主体の種別オプションを取得"""

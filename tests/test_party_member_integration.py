@@ -246,7 +246,7 @@ class TestPartyMemberIntegration:
                 PoliticianRepository, "find_by_name_and_party"
             ) as mock_find:
                 with patch.object(PoliticianRepository, "create") as mock_create:
-                    with patch.object(PoliticianRepository, "update") as mock_update:
+                    with patch.object(PoliticianRepository, "update_v2") as mock_update:
                         from src.models.politician import Politician
 
                         # 初回: 新規作成

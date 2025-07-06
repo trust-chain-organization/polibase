@@ -6,8 +6,10 @@ import re
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..config.database import get_db_session
+from ..exceptions import DatabaseError, LLMError, QueryError
 from ..services import ChainFactory, LLMService
 
 logger = logging.getLogger(__name__)
@@ -129,21 +131,37 @@ class SpeakerMatchingService:
 
             return match_result
 
+        except LLMError:
+            # LLM specific errors are already properly handled, re-raise
+            raise
         except Exception as e:
-            logger.error(f"LLMマッチングエラー: {e}")
-            # エラー時はルールベースの結果を返す
-            return rule_based_match
+            logger.error(f"LLMマッチング中の予期しないエラー: {e}")
+            # Wrap unexpected errors as LLMError
+            raise LLMError(
+                "Unexpected error during LLM matching",
+                {"error": str(e)},
+            ) from e
 
     def _get_available_speakers(self) -> list[dict]:
-        """利用可能な発言者リストを取得"""
-        query = text("SELECT id, name FROM speakers ORDER BY name")
-        result = self.session.execute(query)
+        """利用可能な発言者リストを取得
 
-        speakers = []
-        for row in result.fetchall():
-            speakers.append({"id": row[0], "name": row[1]})
+        Raises:
+            QueryError: If database query fails
+        """
+        try:
+            query = text("SELECT id, name FROM speakers ORDER BY name")
+            result = self.session.execute(query)
 
-        return speakers
+            speakers = []
+            for row in result.fetchall():
+                speakers.append({"id": row[0], "name": row[1]})
+
+            return speakers
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting available speakers: {e}")
+            raise QueryError(
+                "Failed to retrieve available speakers", {"error": str(e)}
+            ) from e
 
     def _get_affiliated_speakers(
         self, meeting_date: str, conference_id: int
@@ -157,40 +175,55 @@ class SpeakerMatchingService:
 
         Returns:
             List[dict]: アフィリエーション情報を含む発言者リスト
+
+        Raises:
+            QueryError: If database query fails
         """
-        query = text("""
-            SELECT DISTINCT
-                s.id as speaker_id,
-                s.name as speaker_name,
-                p.id as politician_id,
-                p.name as politician_name,
-                pa.role as role
-            FROM politician_affiliations pa
-            JOIN politicians p ON pa.politician_id = p.id
-            JOIN speakers s ON p.speaker_id = s.id
-            WHERE pa.conference_id = :conference_id
-                AND pa.start_date <= CAST(:meeting_date AS date)
-                AND (pa.end_date IS NULL OR pa.end_date >= CAST(:meeting_date AS date))
-            ORDER BY s.name
-        """)
+        try:
+            query = text("""
+                SELECT DISTINCT
+                    s.id as speaker_id,
+                    s.name as speaker_name,
+                    p.id as politician_id,
+                    p.name as politician_name,
+                    pa.role as role
+                FROM politician_affiliations pa
+                JOIN politicians p ON pa.politician_id = p.id
+                JOIN speakers s ON p.speaker_id = s.id
+                WHERE pa.conference_id = :conference_id
+                    AND pa.start_date <= CAST(:meeting_date AS date)
+                    AND (pa.end_date IS NULL OR
+                         pa.end_date >= CAST(:meeting_date AS date))
+                ORDER BY s.name
+            """)
 
-        result = self.session.execute(
-            query, {"conference_id": conference_id, "meeting_date": meeting_date}
-        )
-
-        affiliated_speakers = []
-        for row in result.fetchall():
-            affiliated_speakers.append(
-                {
-                    "speaker_id": row[0],
-                    "speaker_name": row[1],
-                    "politician_id": row[2],
-                    "politician_name": row[3],
-                    "role": row[4],
-                }
+            result = self.session.execute(
+                query, {"conference_id": conference_id, "meeting_date": meeting_date}
             )
 
-        return affiliated_speakers
+            affiliated_speakers = []
+            for row in result.fetchall():
+                affiliated_speakers.append(
+                    {
+                        "speaker_id": row[0],
+                        "speaker_name": row[1],
+                        "politician_id": row[2],
+                        "politician_name": row[3],
+                        "role": row[4],
+                    }
+                )
+
+            return affiliated_speakers
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting affiliated speakers: {e}")
+            raise QueryError(
+                "Failed to retrieve affiliated speakers",
+                {
+                    "conference_id": conference_id,
+                    "meeting_date": meeting_date,
+                    "error": str(e),
+                },
+            ) from e
 
     def _rule_based_matching(
         self, speaker_name: str, available_speakers: list[dict]
@@ -401,9 +434,19 @@ class SpeakerMatchingService:
 
             return stats
 
+        except SQLAlchemyError as e:
+            self.session.rollback()
+            logger.error(f"Database error during batch matching update: {e}")
+            raise DatabaseError(
+                "Failed to update speaker links in batch",
+                {"processed": stats.get("total_processed", 0), "error": str(e)},
+            ) from e
         except Exception as e:
             self.session.rollback()
-            logger.error(f"一括マッチング更新エラー: {e}")
-            raise
+            logger.error(f"Unexpected error during batch matching update: {e}")
+            raise DatabaseError(
+                "Unexpected error during batch speaker link update",
+                {"error": str(e)},
+            ) from e
         finally:
             self.session.close()

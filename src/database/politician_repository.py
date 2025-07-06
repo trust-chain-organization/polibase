@@ -3,7 +3,15 @@
 import logging
 from difflib import SequenceMatcher
 
+from sqlalchemy.exc import IntegrityError as SQLIntegrityError
+from sqlalchemy.exc import SQLAlchemyError
+
 from src.database.base_repository import BaseRepository
+from src.exceptions import (
+    DatabaseError,
+    DuplicateRecordError,
+    SaveError,
+)
 from src.models.politician import Politician, PoliticianCreate, PoliticianUpdate
 
 logger = logging.getLogger(__name__)
@@ -21,69 +29,103 @@ class PoliticianRepository(BaseRepository):
             super().__init__(use_session=False)
 
     def create_politician(self, politician: PoliticianCreate) -> Politician | None:
-        """新しい政治家を作成（既存の場合は更新）"""
-        # 既存の政治家をチェック（名前と政党でマッチング）
-        existing = self.get_by_name_and_party(
-            politician.name, politician.political_party_id
-        )
+        """新しい政治家を作成（既存の場合は更新）
 
-        if existing:
-            # 既存レコードがある場合、更新が必要かチェック
-            update_data = PoliticianUpdate()
-            needs_update = False
+        Raises:
+            SaveError: If creating or updating politician fails
+            DatabaseError: If database operation fails
+        """
+        try:
+            # 既存の政治家をチェック（名前と政党でマッチング）
+            existing = self.get_by_name_and_party(
+                politician.name, politician.political_party_id
+            )
 
-            # 各フィールドを比較
-            if politician.position and politician.position != existing.position:
-                update_data.position = politician.position
-                needs_update = True
-            if politician.prefecture and politician.prefecture != existing.prefecture:
-                update_data.prefecture = politician.prefecture
-                needs_update = True
-            if (
-                politician.electoral_district
-                and politician.electoral_district != existing.electoral_district
-            ):
-                update_data.electoral_district = politician.electoral_district
-                needs_update = True
-            if (
-                politician.profile_url
-                and politician.profile_url != existing.profile_url
-            ):
-                update_data.profile_url = politician.profile_url
-                needs_update = True
-            if (
-                politician.party_position
-                and politician.party_position != existing.party_position
-            ):
-                update_data.party_position = politician.party_position
-                needs_update = True
-            if politician.speaker_id and politician.speaker_id != existing.speaker_id:
-                update_data.speaker_id = politician.speaker_id
-                needs_update = True
+            if existing:
+                # 既存レコードがある場合、更新が必要かチェック
+                update_data = PoliticianUpdate()
+                needs_update = False
 
-            if needs_update:
-                self.update_politician(existing.id, update_data)
-                logger.info(
-                    f"政治家情報を更新しました: {politician.name} (ID: {existing.id})"
-                )
-                # 更新後のデータを取得
-                return self.get_by_id(existing.id)
+                # 各フィールドを比較
+                if politician.position and politician.position != existing.position:
+                    update_data.position = politician.position
+                    needs_update = True
+                if (
+                    politician.prefecture
+                    and politician.prefecture != existing.prefecture
+                ):
+                    update_data.prefecture = politician.prefecture
+                    needs_update = True
+                if (
+                    politician.electoral_district
+                    and politician.electoral_district != existing.electoral_district
+                ):
+                    update_data.electoral_district = politician.electoral_district
+                    needs_update = True
+                if (
+                    politician.profile_url
+                    and politician.profile_url != existing.profile_url
+                ):
+                    update_data.profile_url = politician.profile_url
+                    needs_update = True
+                if (
+                    politician.party_position
+                    and politician.party_position != existing.party_position
+                ):
+                    update_data.party_position = politician.party_position
+                    needs_update = True
+                if (
+                    politician.speaker_id
+                    and politician.speaker_id != existing.speaker_id
+                ):
+                    update_data.speaker_id = politician.speaker_id
+                    needs_update = True
+
+                if needs_update:
+                    self.update_politician(existing.id, update_data)
+                    logger.info(
+                        f"政治家情報を更新しました: {politician.name} "
+                        f"(ID: {existing.id})"
+                    )
+                    # 更新後のデータを取得
+                    return self.get_by_id(existing.id)
+                else:
+                    logger.info(
+                        f"政治家は既に存在し、更新の必要はありません: "
+                        f"{politician.name} (ID: {existing.id})"
+                    )
+                    return existing
             else:
-                logger.info(
-                    f"政治家は既に存在し、更新の必要はありません: "
-                    f"{politician.name} (ID: {existing.id})"
+                # 新規作成
+                politician_id = self.insert_model("politicians", politician, "id")
+                if politician_id:
+                    logger.info(
+                        f"新しい政治家を作成しました: {politician.name} "
+                        f"(ID: {politician_id})"
+                    )
+                    return self.get_by_id(politician_id)
+                raise SaveError(
+                    f"Failed to create politician: {politician.name}",
+                    {"politician_data": politician.model_dump()},
                 )
-                return existing
-        else:
-            # 新規作成
-            politician_id = self.insert_model("politicians", politician, "id")
-            if politician_id:
-                logger.info(
-                    f"新しい政治家を作成しました: {politician.name} "
-                    f"(ID: {politician_id})"
-                )
-                return self.get_by_id(politician_id)
-            return None
+        except SQLIntegrityError as e:
+            logger.error(f"Integrity error creating politician {politician.name}: {e}")
+            raise DuplicateRecordError("Politician", politician.name) from e
+        except SQLAlchemyError as e:
+            logger.error(f"Database error creating politician {politician.name}: {e}")
+            raise DatabaseError(
+                f"Failed to create politician: {politician.name}",
+                {"error": str(e), "politician_data": politician.model_dump()},
+            ) from e
+        except (SaveError, DuplicateRecordError, DatabaseError):
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error creating politician {politician.name}: {e}")
+            raise SaveError(
+                f"Unexpected error creating politician: {politician.name}",
+                {"error": str(e), "politician_data": politician.model_dump()},
+            ) from e
 
     def get_by_id(self, politician_id: int) -> Politician | None:
         """IDで政治家を取得"""
@@ -183,7 +225,7 @@ class PoliticianRepository(BaseRepository):
         """新しい政治家を作成（v2インターフェース）"""
         return self.create_politician(politician)
 
-    def update(
+    def update_v2(
         self, politician_id: int, update_data: PoliticianUpdate
     ) -> Politician | None:
         """政治家情報を更新（v2インターフェース）"""
@@ -237,7 +279,7 @@ class PoliticianRepository(BaseRepository):
                             needs_update = True
 
                     if needs_update:
-                        updated_politician = self.update(existing.id, update_data)
+                        updated_politician = self.update_v2(existing.id, update_data)
                         if updated_politician:
                             updated.append(updated_politician)
                 else:
@@ -246,9 +288,26 @@ class PoliticianRepository(BaseRepository):
                     if new_politician:
                         created.append(new_politician)
 
+            except SQLIntegrityError as e:
+                logger.error(
+                    f"Integrity error processing politician {data.get('name')}: {e}"
+                )
+                errors.append(
+                    {
+                        "data": data,
+                        "error": f"Duplicate or constraint violation: {str(e)}",
+                    }
+                )
+            except SQLAlchemyError as e:
+                logger.error(
+                    f"Database error processing politician {data.get('name')}: {e}"
+                )
+                errors.append({"data": data, "error": f"Database error: {str(e)}"})
             except Exception as e:
-                logger.error(f"Error processing politician {data.get('name')}: {e}")
-                errors.append({"data": data, "error": str(e)})
+                logger.error(
+                    f"Unexpected error processing politician {data.get('name')}: {e}"
+                )
+                errors.append({"data": data, "error": f"Unexpected error: {str(e)}"})
 
         return {"created": created, "updated": updated, "errors": errors}
 

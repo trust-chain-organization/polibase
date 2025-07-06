@@ -93,7 +93,7 @@ class TestPoliticianRepositoryV2:
         # モックの設定
         with patch.object(repository, "find_by_name_and_party") as mock_find:
             with patch.object(repository, "create") as mock_create:
-                with patch.object(repository, "update") as mock_update:
+                with patch.object(repository, "update_v2") as mock_update:
                     # 1人目: 新規、2人目: 既存（更新あり）、3人目: エラー
                     mock_find.side_effect = [
                         None,  # 1人目: 新規

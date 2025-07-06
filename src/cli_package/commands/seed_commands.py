@@ -6,6 +6,7 @@ import click
 from click import Command
 
 from src.cli_package.base import BaseCommand
+from src.exceptions import DatabaseError, FileNotFoundError, PermissionError
 from src.seed_generator import generate_all_seeds
 
 
@@ -56,11 +57,15 @@ class SeedCommands(BaseCommand):
                 "必要に応じて既存のSEEDファイルと置き換えてください。"
             )
 
+        except (DatabaseError, FileNotFoundError, PermissionError):
+            # These exceptions will be properly handled by the error handler
+            raise
         except Exception as e:
-            click.echo(
-                click.style(f"❌ エラーが発生しました: {str(e)}", fg="red"), err=True
-            )
-            raise click.Abort() from e
+            # Wrap unexpected exceptions
+            raise DatabaseError(
+                f"SEEDファイル生成中に予期しないエラーが発生しました: {str(e)}",
+                {"output_dir": output_dir},
+            ) from e
 
 
 def get_seed_commands() -> list[Command]:
