@@ -1,7 +1,7 @@
 ---
 description: GitHub Issueを自動的に解決するコマンド
 ---
-
+ultrathink
 # Issue解決ワークフロー
 
 Issue番号: $ARGUMENTS
