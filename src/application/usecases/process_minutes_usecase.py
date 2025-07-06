@@ -16,6 +16,8 @@ from src.domain.repositories.minutes_repository import MinutesRepository
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.minutes_domain_service import MinutesDomainService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
+from src.infrastructure.interfaces.pdf_processor_service import IPDFProcessorService
+from src.infrastructure.interfaces.text_extractor_service import ITextExtractorService
 
 
 class ProcessMinutesUseCase:
@@ -29,8 +31,8 @@ class ProcessMinutesUseCase:
         speaker_repository: SpeakerRepository,
         minutes_domain_service: MinutesDomainService,
         speaker_domain_service: SpeakerDomainService,
-        pdf_processor,  # External service interface
-        text_extractor,  # External service interface
+        pdf_processor: IPDFProcessorService,
+        text_extractor: ITextExtractorService,
     ):
         self.meeting_repo = meeting_repository
         self.minutes_repo = minutes_repository
@@ -52,6 +54,8 @@ class ProcessMinutesUseCase:
             raise ValueError(f"Meeting {request.meeting_id} not found")
 
         # Check if minutes already exist
+        if meeting.id is None:
+            raise ValueError("Meeting must have an ID")
         existing_minutes = await self.minutes_repo.get_by_meeting(meeting.id)
         if existing_minutes and not request.force_reprocess:
             if self.minutes_service.is_minutes_processed(existing_minutes):
@@ -59,6 +63,8 @@ class ProcessMinutesUseCase:
 
         # Create or get minutes record
         if not existing_minutes:
+            if meeting.id is None:
+                raise ValueError("Meeting must have an ID")
             minutes = Minutes(
                 meeting_id=meeting.id,
                 url=request.pdf_url or meeting.url,
@@ -74,6 +80,8 @@ class ProcessMinutesUseCase:
             )
 
             # Create conversations from speeches
+            if minutes.id is None:
+                raise ValueError("Minutes must have an ID")
             conversations = self.minutes_service.create_conversations_from_speeches(
                 speeches, minutes.id
             )
@@ -89,6 +97,8 @@ class ProcessMinutesUseCase:
             )
 
             # Mark minutes as processed
+            if minutes.id is None:
+                raise ValueError("Minutes must have an ID")
             await self.minutes_repo.mark_processed(minutes.id)
 
             # Calculate processing time
@@ -98,8 +108,8 @@ class ProcessMinutesUseCase:
             )
 
             return MinutesProcessingResultDTO(
-                minutes_id=minutes.id,
-                meeting_id=meeting.id,
+                minutes_id=minutes.id if minutes.id is not None else 0,
+                meeting_id=meeting.id if meeting.id is not None else 0,
                 total_conversations=len(saved_conversations),
                 unique_speakers=unique_speakers,
                 processing_time_seconds=processing_time,
