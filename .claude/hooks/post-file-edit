@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Post file edit hook - runs pytest after Python file changes
+# Only runs for files in src/ or tests/ directories
+
+# Read JSON input from stdin
+json_input=$(cat)
+
+# Extract the file path from the JSON input
+# The JSON structure includes tool_output.file_path for Edit/MultiEdit/Write tools
+file_path=$(echo "$json_input" | jq -r '.tool_output.file_path // empty')
+
+# Check if the edited file is a Python file in src/ or tests/
+if [[ "$file_path" == *.py ]] && ([[ "$file_path" == */src/* ]] || [[ "$file_path" == */tests/* ]]); then
+    echo "🧪 Running tests after editing: ${file_path##*/}"
+
+    # Navigate to project root
+    cd "$(dirname "$0")/../.." || exit 1
+
+    # Run pytest with docker compose
+    docker compose -f docker/docker-compose.yml exec -T polibase uv run pytest -x --tb=short
+
+    # Check exit code
+    if [ $? -eq 0 ]; then
+        echo "✅ All tests passed!"
+    else
+        echo "❌ Tests failed. Please check the output above."
+        exit 1  # Return non-zero to indicate failure
+    fi
+fi
