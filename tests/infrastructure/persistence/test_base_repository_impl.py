@@ -85,7 +85,6 @@ class TestBaseRepositoryImpl:
         mock_session.get.assert_called_once_with(MockModel, 999)
 
     @pytest.mark.asyncio
-    @pytest.mark.skip("SQLAlchemy mock implementation needed")
     async def test_get_all(self, repository, mock_session):
         """Test get_all method."""
         # Setup
@@ -93,8 +92,16 @@ class TestBaseRepositoryImpl:
             MockModel(id=1, name="Test1"),
             MockModel(id=2, name="Test2"),
         ]
+
+        # Create a mock scalars result
+        mock_scalars = AsyncMock()
+        mock_scalars.all.return_value = mock_models
+
+        # Create a mock result
         mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = mock_models
+        mock_result.scalars.return_value = mock_scalars
+
+        # Configure the session's execute to return our mock result
         mock_session.execute.return_value = mock_result
 
         # Execute
@@ -107,14 +114,24 @@ class TestBaseRepositoryImpl:
         assert result[1].id == 2
         assert result[1].name == "Test2"
 
+        # Verify the query was executed
+        mock_session.execute.assert_called_once()
+
     @pytest.mark.asyncio
-    @pytest.mark.skip("SQLAlchemy mock implementation needed")
     async def test_get_all_with_pagination(self, repository, mock_session):
         """Test get_all with limit and offset."""
         # Setup
         mock_models = [MockModel(id=3, name="Test3")]
+
+        # Create a mock scalars result
+        mock_scalars = AsyncMock()
+        mock_scalars.all.return_value = mock_models
+
+        # Create a mock result
         mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = mock_models
+        mock_result.scalars.return_value = mock_scalars
+
+        # Configure the session's execute to return our mock result
         mock_session.execute.return_value = mock_result
 
         # Execute
@@ -122,9 +139,15 @@ class TestBaseRepositoryImpl:
 
         # Verify
         assert len(result) == 1
-        # Check that query was built with limit and offset
-        executed_query = mock_session.execute.call_args[0][0]
-        assert executed_query is not None
+        assert result[0].id == 3
+        assert result[0].name == "Test3"
+
+        # Verify the query was executed
+        mock_session.execute.assert_called_once()
+
+        # Note: In a real implementation, we would check that limit/offset
+        # were properly applied to the query, but with mocks we just verify
+        # the method works correctly
 
     @pytest.mark.asyncio
     async def test_create(self, repository, mock_session):
