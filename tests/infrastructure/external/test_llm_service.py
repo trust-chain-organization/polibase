@@ -103,3 +103,8 @@ class TestGeminiLLMService:
         service2 = GeminiLLMService(api_key="key2", model_name="gemini-1.5-pro")
         assert service2.api_key == "key2"
         assert service2.model_name == "gemini-1.5-pro"
+
+        # Test with another model variant
+        service3 = GeminiLLMService(api_key="key3", model_name="gemini-1.5-flash")
+        assert service3.api_key == "key3"
+        assert service3.model_name == "gemini-1.5-flash"
