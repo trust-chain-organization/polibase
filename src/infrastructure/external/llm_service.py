@@ -42,13 +42,13 @@ class GeminiLLMService(ILLMService):
         """Match speaker to politician using Gemini."""
         # Implementation would call Gemini API
         # This is a placeholder
-        return LLMMatchResult(
-            matched=True,
-            confidence=0.85,
-            reason="Sample match",
-            matched_id=1,
-            metadata={"politician_name": "Sample Politician"},
-        )
+        return {
+            "matched": True,
+            "confidence": 0.85,
+            "reason": "Sample match",
+            "matched_id": 1,
+            "metadata": {"politician_name": "Sample Politician"},
+        }
 
     async def extract_party_members(
         self, html_content: str, party_id: int
@@ -56,9 +56,9 @@ class GeminiLLMService(ILLMService):
         """Extract politician information from HTML using Gemini."""
         # Implementation would call Gemini API
         # This is a placeholder
-        return LLMExtractResult(
-            success=True,
-            extracted_data=[
+        return {
+            "success": True,
+            "extracted_data": [
                 {
                     "name": "Sample Politician",
                     "furigana": "サンプル セイジカ",
@@ -66,9 +66,9 @@ class GeminiLLMService(ILLMService):
                     "district": "東京1区",
                 }
             ],
-            error=None,
-            metadata={"party_id": str(party_id)},
-        )
+            "error": None,
+            "metadata": {"party_id": str(party_id)},
+        }
 
     async def match_conference_member(
         self, member_name: str, party_name: str | None, candidates: list[PoliticianDTO]
