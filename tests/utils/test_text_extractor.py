@@ -31,7 +31,6 @@ class TestExtractTextFromPdf:
             extract_text_from_pdf(b"dummy content")
 
         # Check that the error message contains the expected text
-        # The actual error may be wrapped, so check the original message
         assert "PDF document has no pages" in str(exc_info.value)
         mock_pdf.close.assert_called_once()
 
@@ -192,7 +191,7 @@ class TestExtractTextFromFile:
         error_msg = str(exc_info.value)
         assert (
             "Unsupported file format" in error_msg
-            or "Failed to extract text from file" in error_msg
+            or "Failed to extract text" in error_msg
         )
 
     @patch("os.path.exists")

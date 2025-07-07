@@ -69,6 +69,9 @@ def extract_text_from_pdf(file_content: bytes) -> str:
         raise PDFProcessingError(
             "Failed to process PDF document", {"error": str(e)}
         ) from e
+    except (PDFProcessingError, TextExtractionError):
+        # Re-raise our own exceptions without wrapping
+        raise
     except Exception as e:
         logger.error(f"Unexpected error during text extraction: {e}")
         raise TextExtractionError(

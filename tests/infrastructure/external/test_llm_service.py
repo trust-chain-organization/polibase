@@ -47,12 +47,12 @@ class TestGeminiLLMService:
 
         # Verify
         assert result is not None
-        assert result.matched is True
-        assert result.confidence > 0.0
-        assert result.confidence <= 1.0
-        assert result.reason is not None
-        assert result.matched_id is not None
-        assert result.metadata is not None
+        assert result["matched"] is True
+        assert result["confidence"] > 0.0
+        assert result["confidence"] <= 1.0
+        assert result["reason"] is not None
+        assert result["matched_id"] is not None
+        assert result["metadata"] is not None
 
     @pytest.mark.asyncio
     async def test_extract_party_members(self, service):
@@ -77,19 +77,19 @@ class TestGeminiLLMService:
         result = await service.extract_party_members(html_content, party_id=1)
 
         # Verify
-        assert result.success is True
-        assert result.error is None
-        assert result.extracted_data is not None
-        assert len(result.extracted_data) > 0
+        assert result["success"] is True
+        assert result["error"] is None
+        assert result["extracted_data"] is not None
+        assert len(result["extracted_data"]) > 0
 
         # Check first extracted member
-        first_member = result.extracted_data[0]
+        first_member = result["extracted_data"][0]
         assert "name" in first_member
         assert first_member["name"] is not None
 
         # Check metadata
-        assert result.metadata is not None
-        assert result.metadata.get("party_id") == "1"
+        assert result["metadata"] is not None
+        assert result["metadata"].get("party_id") == "1"
 
     @pytest.mark.asyncio
     async def test_initialization(self):
