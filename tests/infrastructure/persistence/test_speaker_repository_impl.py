@@ -1,6 +1,6 @@
 """Tests for SpeakerRepositoryImpl."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,30 +9,33 @@ from src.domain.entities.speaker import Speaker
 from src.infrastructure.persistence.speaker_repository_impl import SpeakerRepositoryImpl
 
 
+class MockColumn:
+    """Mock SQLAlchemy column descriptor."""
+
+    def __init__(self, name):
+        self.name = name
+
+    def __eq__(self, other):
+        """Mock equality comparison for SQLAlchemy filters."""
+        return f"{self.name} == {other}"
+
+    def ilike(self, pattern):
+        """Mock ilike for pattern matching."""
+        return f"{self.name} ILIKE {pattern}"
+
+
 class MockSpeakerModel:
     """Mock speaker model for testing."""
 
-    # Mock SQLAlchemy column attributes
-    class NameDescriptor:
-        def __eq__(self, other):
-            return lambda obj: obj.name == other
+    # Add __tablename__ to make it look like a SQLAlchemy model
+    __tablename__ = "speakers"
 
-    class PoliticalPartyNameDescriptor:
-        def __eq__(self, other):
-            return lambda obj: obj.political_party_name == other
-
-    class PositionDescriptor:
-        def __eq__(self, other):
-            return lambda obj: obj.position == other
-
-    class IsPoliticianDescriptor:
-        def __bool__(self):
-            return True
-
-    name = NameDescriptor()
-    political_party_name = PoliticalPartyNameDescriptor()
-    position = PositionDescriptor()
-    is_politician = IsPoliticianDescriptor()
+    # Mock SQLAlchemy columns
+    name = MockColumn("name")
+    type = MockColumn("type")
+    political_party_name = MockColumn("political_party_name")
+    position = MockColumn("position")
+    is_politician = MockColumn("is_politician")
 
     def __init__(
         self,
@@ -66,7 +69,11 @@ class TestSpeakerRepositoryImpl:
         return SpeakerRepositoryImpl(mock_session, MockSpeakerModel)
 
     @pytest.mark.asyncio
-    async def test_get_by_name_party_position_found(self, repository, mock_session):
+    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
+    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
+    async def test_get_by_name_party_position_found(
+        self, mock_and, mock_select, repository, mock_session
+    ):
         """Test get_by_name_party_position when speaker is found."""
         # Setup
         mock_model = MockSpeakerModel(
@@ -78,12 +85,16 @@ class TestSpeakerRepositoryImpl:
             is_politician=True,
         )
 
-        # Create an async mock for scalar_one_or_none
-        async def async_scalar_one_or_none():
-            return mock_model
+        # Mock the query chain
+        mock_query = MagicMock()
+        mock_where_result = MagicMock()
+        mock_query.where.return_value = mock_where_result
+        mock_select.return_value = mock_query
+        mock_and.return_value = MagicMock()
 
+        # Create a mock result
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none = async_scalar_one_or_none
+        mock_result.scalar_one_or_none = MagicMock(return_value=mock_model)
 
         # Create async mock for execute
         async def async_execute(query):
@@ -106,16 +117,27 @@ class TestSpeakerRepositoryImpl:
         assert result.position == "議長"
         assert result.is_politician is True
 
+        # Verify select was called with the model class
+        mock_select.assert_called_once_with(MockSpeakerModel)
+
     @pytest.mark.asyncio
-    async def test_get_by_name_party_position_not_found(self, repository, mock_session):
+    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
+    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
+    async def test_get_by_name_party_position_not_found(
+        self, mock_and, mock_select, repository, mock_session
+    ):
         """Test get_by_name_party_position when speaker is not found."""
 
-        # Setup
-        async def async_scalar_one_or_none():
-            return None
+        # Mock the query chain
+        mock_query = MagicMock()
+        mock_where_result = MagicMock()
+        mock_query.where.return_value = mock_where_result
+        mock_select.return_value = mock_query
+        mock_and.return_value = MagicMock()
 
+        # Setup
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none = async_scalar_one_or_none
+        mock_result.scalar_one_or_none = MagicMock(return_value=None)
 
         async def async_execute(query):
             return mock_result
@@ -129,8 +151,10 @@ class TestSpeakerRepositoryImpl:
         assert result is None
 
     @pytest.mark.asyncio
+    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
+    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
     async def test_get_by_name_party_position_partial_match(
-        self, repository, mock_session
+        self, mock_and, mock_select, repository, mock_session
     ):
         """Test get_by_name_party_position with only name."""
         # Setup
@@ -141,11 +165,15 @@ class TestSpeakerRepositoryImpl:
             is_politician=True,
         )
 
-        async def async_scalar_one_or_none():
-            return mock_model
+        # Mock the query chain
+        mock_query = MagicMock()
+        mock_where_result = MagicMock()
+        mock_query.where.return_value = mock_where_result
+        mock_select.return_value = mock_query
+        mock_and.return_value = MagicMock()
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none = async_scalar_one_or_none
+        mock_result.scalar_one_or_none = MagicMock(return_value=mock_model)
 
         async def async_execute(query):
             return mock_result
@@ -162,7 +190,8 @@ class TestSpeakerRepositoryImpl:
         assert result.position is None
 
     @pytest.mark.asyncio
-    async def test_get_politicians(self, repository, mock_session):
+    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
+    async def test_get_politicians(self, mock_select, repository, mock_session):
         """Test get_politicians method."""
         # Setup
         mock_models = [
@@ -179,6 +208,12 @@ class TestSpeakerRepositoryImpl:
                 is_politician=True,
             ),
         ]
+
+        # Mock the query chain
+        mock_query = MagicMock()
+        mock_where_result = MagicMock()
+        mock_query.where.return_value = mock_where_result
+        mock_select.return_value = mock_query
 
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = mock_models
@@ -201,7 +236,8 @@ class TestSpeakerRepositoryImpl:
         assert result[1].name == "鈴木花子"
 
     @pytest.mark.asyncio
-    async def test_search_by_name(self, repository, mock_session):
+    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
+    async def test_search_by_name(self, mock_select, repository, mock_session):
         """Test search_by_name method."""
         # Setup
         mock_models = [
@@ -216,6 +252,12 @@ class TestSpeakerRepositoryImpl:
                 type="議員",
             ),
         ]
+
+        # Mock the query chain
+        mock_query = MagicMock()
+        mock_where_result = MagicMock()
+        mock_query.where.return_value = mock_where_result
+        mock_select.return_value = mock_query
 
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = mock_models
@@ -236,7 +278,11 @@ class TestSpeakerRepositoryImpl:
         assert all("山田" in speaker.name for speaker in result)
 
     @pytest.mark.asyncio
-    async def test_upsert_create_new(self, repository, mock_session):
+    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
+    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
+    async def test_upsert_create_new(
+        self, mock_and, mock_select, repository, mock_session
+    ):
         """Test upsert when creating new speaker."""
         # Setup
         new_speaker = Speaker(
@@ -246,12 +292,16 @@ class TestSpeakerRepositoryImpl:
             is_politician=True,
         )
 
-        # Mock get_by_name_party_position to return None (not found)
-        async def async_scalar_one_or_none():
-            return None
+        # Mock the query chain for get_by_name_party_position
+        mock_query = MagicMock()
+        mock_where_result = MagicMock()
+        mock_query.where.return_value = mock_where_result
+        mock_select.return_value = mock_query
+        mock_and.return_value = MagicMock()
 
+        # Mock get_by_name_party_position to return None (not found)
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none = async_scalar_one_or_none
+        mock_result.scalar_one_or_none = MagicMock(return_value=None)
 
         async def async_execute(query):
             return mock_result
@@ -279,7 +329,11 @@ class TestSpeakerRepositoryImpl:
         mock_session.add.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_upsert_update_existing(self, repository, mock_session):
+    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
+    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
+    async def test_upsert_update_existing(
+        self, mock_and, mock_select, repository, mock_session
+    ):
         """Test upsert when updating existing speaker."""
         # Setup
         speaker = Speaker(
@@ -289,6 +343,13 @@ class TestSpeakerRepositoryImpl:
             position="新役職",  # New position
             is_politician=True,
         )
+
+        # Mock the query chain for get_by_name_party_position
+        mock_query = MagicMock()
+        mock_where_result = MagicMock()
+        mock_query.where.return_value = mock_where_result
+        mock_select.return_value = mock_query
+        mock_and.return_value = MagicMock()
 
         # Mock get_by_name_party_position to return existing speaker
         existing_model = MockSpeakerModel(
@@ -300,11 +361,8 @@ class TestSpeakerRepositoryImpl:
             is_politician=True,
         )
 
-        async def async_scalar_one_or_none():
-            return existing_model
-
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none = async_scalar_one_or_none
+        mock_result.scalar_one_or_none = MagicMock(return_value=existing_model)
 
         async def async_execute(query):
             return mock_result
