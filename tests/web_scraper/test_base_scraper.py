@@ -15,11 +15,14 @@ class ConcreteScraperForTesting(BaseScraper):
 
     async def fetch_minutes(self, url: str) -> MinutesData | None:
         return MinutesData(
-            council_name="Test Council",
-            meeting_name="Test Meeting",
-            meeting_date=datetime(2024, 1, 1),
+            council_id="test-council-001",
+            schedule_id="test-schedule-001",
+            title="Test Meeting",
+            date=datetime(2024, 1, 1),
             content="Test content",
+            speakers=[],
             url=url,
+            scraped_at=datetime.now(),
         )
 
     async def extract_minutes_text(self, html_content: str) -> str:
@@ -58,7 +61,9 @@ class TestBaseScraper:
         # Test fetch_minutes
         result = await scraper.fetch_minutes("http://test.com")
         assert isinstance(result, MinutesData)
-        assert result.council_name == "Test Council"
+        assert result.council_id == "test-council-001"
+        assert result.schedule_id == "test-schedule-001"
+        assert result.title == "Test Meeting"
 
         # Test extract_minutes_text
         text = await scraper.extract_minutes_text("<html>Test</html>")

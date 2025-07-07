@@ -1,6 +1,6 @@
 """Tests for BaseRepositoryImpl."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -85,13 +85,18 @@ class TestBaseRepositoryImpl:
         mock_session.get.assert_called_once_with(MockModel, 999)
 
     @pytest.mark.asyncio
-    async def test_get_all(self, repository, mock_session):
+    @patch("src.infrastructure.persistence.base_repository_impl.select")
+    async def test_get_all(self, mock_select, repository, mock_session):
         """Test get_all method."""
         # Setup
         mock_models = [
             MockModel(id=1, name="Test1"),
             MockModel(id=2, name="Test2"),
         ]
+
+        # Create a mock query
+        mock_query = MagicMock()
+        mock_select.return_value = mock_query
 
         # Create a mock scalars result
         mock_scalars = AsyncMock()
@@ -115,13 +120,21 @@ class TestBaseRepositoryImpl:
         assert result[1].name == "Test2"
 
         # Verify the query was executed
+        mock_select.assert_called_once_with(MockModel)
         mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_all_with_pagination(self, repository, mock_session):
+    @patch("src.infrastructure.persistence.base_repository_impl.select")
+    async def test_get_all_with_pagination(self, mock_select, repository, mock_session):
         """Test get_all with limit and offset."""
         # Setup
         mock_models = [MockModel(id=3, name="Test3")]
+
+        # Create a mock query with chaining methods
+        mock_query = MagicMock()
+        mock_query.offset.return_value = mock_query
+        mock_query.limit.return_value = mock_query
+        mock_select.return_value = mock_query
 
         # Create a mock scalars result
         mock_scalars = AsyncMock()
@@ -142,12 +155,11 @@ class TestBaseRepositoryImpl:
         assert result[0].id == 3
         assert result[0].name == "Test3"
 
-        # Verify the query was executed
+        # Verify the query was built correctly
+        mock_select.assert_called_once_with(MockModel)
+        mock_query.offset.assert_called_once_with(20)
+        mock_query.limit.assert_called_once_with(10)
         mock_session.execute.assert_called_once()
-
-        # Note: In a real implementation, we would check that limit/offset
-        # were properly applied to the query, but with mocks we just verify
-        # the method works correctly
 
     @pytest.mark.asyncio
     async def test_create(self, repository, mock_session):
