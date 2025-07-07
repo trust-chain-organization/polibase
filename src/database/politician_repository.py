@@ -124,17 +124,12 @@ class PoliticianRepository(TypedRepository[Politician]):
                     return existing
             else:
                 # 新規作成
-                politician_id = self.insert_model("politicians", politician, "id")
-                if politician_id:
-                    logger.info(
-                        f"新しい政治家を作成しました: {politician.name} "
-                        f"(ID: {politician_id})"
-                    )
-                    return self.get_by_id(politician_id)
-                raise SaveError(
-                    f"Failed to create politician: {politician.name}",
-                    {"politician_data": politician.model_dump()},
+                created_politician = self.create_from_model(politician)
+                logger.info(
+                    f"新しい政治家を作成しました: {politician.name} "
+                    f"(ID: {created_politician.id})"
                 )
+                return created_politician
         except SQLIntegrityError as e:
             logger.error(f"Integrity error creating politician {politician.name}: {e}")
             raise DuplicateRecordError("Politician", politician.name) from e
@@ -195,15 +190,12 @@ class PoliticianRepository(TypedRepository[Politician]):
         self, politician_id: int, update_data: PoliticianUpdate
     ) -> bool:
         """政治家情報を更新"""
-        rows_affected = self.update_model(
-            "politicians", update_data, {"id": politician_id}
-        )
-        return rows_affected > 0
+        result = self.update_from_model(politician_id, update_data)
+        return result is not None
 
     def delete_politician(self, politician_id: int) -> bool:
         """政治家を削除"""
-        rows_affected = self.delete("politicians", {"id": politician_id})
-        return rows_affected > 0
+        return self.delete(politician_id)
 
     def search_by_name(self, name: str, threshold: float = 0.8) -> list[dict]:
         """

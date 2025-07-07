@@ -1,6 +1,6 @@
 """Tests for MeetingRepository"""
 
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
 from src.database.meeting_repository import MeetingRepository
@@ -107,72 +107,82 @@ class TestMeetingRepository:
 
     def test_create_meeting(self):
         """Test creating a new meeting"""
-        # Mock data
-        mock_result = MagicMock()
-        mock_result.fetchone.return_value = (123,)
-        self.mock_session.execute.return_value = mock_result
-
-        # Execute
-        meeting_id = self.repo.create_meeting(
+        # Mock the create_from_model method to return a Meeting object
+        mock_meeting = Meeting(
+            id=123,
             conference_id=1,
-            meeting_date=date(2024, 6, 1),
+            date=date(2024, 6, 1),
             url="https://example.com/meeting.pdf",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
         )
 
-        # Assert
-        assert meeting_id == 123
-        self.mock_session.commit.assert_called_once()
+        with patch.object(self.repo, "create_from_model", return_value=mock_meeting):
+            # Execute
+            result = self.repo.create_meeting(
+                conference_id=1,
+                meeting_date=date(2024, 6, 1),
+                url="https://example.com/meeting.pdf",
+            )
+
+            # Assert
+            assert result is not None
+            assert result.id == 123
+            assert result.conference_id == 1
+            assert result.url == "https://example.com/meeting.pdf"
 
     def test_update_meeting(self):
         """Test updating a meeting"""
-        # Mock data
-        mock_result = MagicMock()
-        mock_result.rowcount = 1
-        self.mock_session.execute.return_value = mock_result
-
-        # Execute
-        success = self.repo.update_meeting(
-            meeting_id=1,
-            meeting_date=date(2024, 6, 2),
+        # Mock the update_from_model method to return a Meeting object
+        updated_meeting = Meeting(
+            id=1,
+            conference_id=1,
+            date=date(2024, 6, 2),
             url="https://example.com/updated.pdf",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
         )
 
-        # Assert
-        assert success is True
-        self.mock_session.commit.assert_called_once()
+        with patch.object(self.repo, "update_from_model", return_value=updated_meeting):
+            # Execute
+            result = self.repo.update_meeting(
+                meeting_id=1,
+                meeting_date=date(2024, 6, 2),
+                url="https://example.com/updated.pdf",
+            )
+
+            # Assert
+            assert result is not None
+            assert result.date == date(2024, 6, 2)
+            assert result.url == "https://example.com/updated.pdf"
 
     def test_delete_meeting_success(self):
         """Test deleting a meeting successfully"""
         # Mock data - no related minutes
         check_result = MagicMock()
-        check_result.fetchone.return_value = (0,)
+        check_result.scalar.return_value = 0
 
-        delete_result = MagicMock()
-        delete_result.rowcount = 1
+        with patch.object(self.repo, "execute_query", return_value=check_result):
+            with patch.object(self.repo, "delete", return_value=True) as mock_delete:
+                # Execute
+                success = self.repo.delete_meeting(1)
 
-        self.mock_session.execute.side_effect = [check_result, delete_result]
-
-        # Execute
-        success = self.repo.delete_meeting(1)
-
-        # Assert
-        assert success is True
-        self.mock_session.commit.assert_called_once()
+                # Assert
+                assert success is True
+                mock_delete.assert_called_once_with(1)
 
     def test_delete_meeting_with_related_minutes(self):
         """Test deleting a meeting with related minutes"""
         # Mock data - has related minutes
         check_result = MagicMock()
-        check_result.fetchone.return_value = (2,)
+        check_result.scalar.return_value = 2
 
-        self.mock_session.execute.return_value = check_result
+        with patch.object(self.repo, "execute_query", return_value=check_result):
+            # Execute
+            success = self.repo.delete_meeting(1)
 
-        # Execute
-        success = self.repo.delete_meeting(1)
-
-        # Assert
-        assert success is False
-        self.mock_session.commit.assert_not_called()
+            # Assert
+            assert success is False
 
     def test_get_meeting_by_id(self):
         """Test getting a meeting by ID"""
@@ -182,11 +192,13 @@ class TestMeetingRepository:
             conference_id=2,
             date=date(2024, 6, 1),
             url="https://example.com/meeting.pdf",
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
         )
 
-        with patch.object(self.repo, "get", return_value=mock_meeting):
+        with patch.object(self.repo, "get_by_id", return_value=mock_meeting):
             # Execute
-            meeting = self.repo.get(1)  # Use get method instead of get_meeting_by_id
+            meeting = self.repo.get_by_id(1)  # Use get_by_id method
 
         # Assert
         assert meeting is not None
