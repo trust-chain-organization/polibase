@@ -86,6 +86,28 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
 
+      - name: Check coverage threshold
+        run: |
+          # Extract coverage percentage from XML report
+          COVERAGE=$(uv run python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); root = tree.getroot(); print(f\"{float(root.attrib['line-rate']) * 100:.1f}\")")
+          echo "Current coverage: ${COVERAGE}%"
+
+          # Check if coverage meets minimum threshold
+          THRESHOLD=80
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "::warning::Coverage ${COVERAGE}% is below recommended threshold ${THRESHOLD}%"
+          else
+            echo "::notice::Coverage ${COVERAGE}% meets threshold ${THRESHOLD}%"
+          fi
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 85
+          MINIMUM_ORANGE: 70
+
       - name: Check code formatting
         run: |
           uv run ruff format --check src/ tests/
