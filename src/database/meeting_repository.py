@@ -16,6 +16,14 @@ class MeetingRepository(TypedRepository[Meeting]):
     def __init__(self):
         super().__init__(Meeting, "meetings", use_session=True)
 
+    def fetch_as_dict(
+        self, query: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Execute query and return results as list of dictionaries"""
+        result = self.execute_query(query, params)
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
+
     def get_governing_bodies(self) -> list[dict[str, Any]]:
         """Get all governing bodies - DEPRECATED: Use GoverningBodyRepository instead"""
         query = """

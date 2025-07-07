@@ -2,6 +2,7 @@
 
 import logging
 from difflib import SequenceMatcher
+from typing import Any
 
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
@@ -27,6 +28,32 @@ class PoliticianRepository(TypedRepository[Politician]):
             self._session = db  # Set internal _session attribute
         else:
             super().__init__(Politician, "politicians", use_session=False)
+
+    def fetch_as_model(
+        self,
+        model_class: type[Politician],
+        query: str,
+        params: dict[str, Any] | None = None,
+    ) -> Politician | None:
+        """Fetch single row as model - wrapper for TypedRepository.fetch_one"""
+        return self.fetch_one(query, params)
+
+    def fetch_all_as_models(
+        self,
+        model_class: type[Politician],
+        query: str,
+        params: dict[str, Any] | None = None,
+    ) -> list[Politician]:
+        """Fetch all rows as models - wrapper for TypedRepository.fetch_all"""
+        return list(self.fetch_all(query, params))
+
+    def fetch_as_dict(
+        self, query: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Execute query and return results as list of dictionaries"""
+        result = self.execute_query(query, params)
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
 
     def create_politician(self, politician: PoliticianCreate) -> Politician | None:
         """新しい政治家を作成（既存の場合は更新）
