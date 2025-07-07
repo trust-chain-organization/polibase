@@ -1,14 +1,21 @@
 """LLM service interface definition."""
 
-from typing import Any, Protocol
+from typing import Protocol
+
+from src.domain.types import (
+    LLMExtractResult,
+    LLMMatchResult,
+    LLMSpeakerMatchContext,
+    PoliticianDTO,
+)
 
 
 class ILLMService(Protocol):
     """Interface for LLM services."""
 
     async def match_speaker_to_politician(
-        self, context: dict[str, Any]
-    ) -> dict[str, Any] | None:
+        self, context: LLMSpeakerMatchContext
+    ) -> LLMMatchResult | None:
         """Match a speaker to a politician using LLM.
 
         Args:
@@ -32,7 +39,7 @@ class ILLMService(Protocol):
 
     async def extract_party_members(
         self, html_content: str, party_id: int
-    ) -> list[dict[str, Any]]:
+    ) -> LLMExtractResult:
         """Extract party member information from HTML.
 
         Args:
@@ -40,13 +47,13 @@ class ILLMService(Protocol):
             party_id: ID of the political party
 
         Returns:
-            List of extracted member information
+            Extraction result with member information
         """
         ...
 
     async def match_conference_member(
-        self, member_name: str, party_name: str | None, candidates: list[dict[str, Any]]
-    ) -> dict[str, Any] | None:
+        self, member_name: str, party_name: str | None, candidates: list[PoliticianDTO]
+    ) -> LLMMatchResult | None:
         """Match a conference member to a politician.
 
         Args:

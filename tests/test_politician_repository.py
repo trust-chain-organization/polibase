@@ -24,38 +24,37 @@ class TestPoliticianRepositoryV2:
     def test_create_politician_new(self, repository):
         """新規政治家作成のテスト"""
         # モックの設定
-        with patch.object(repository, "get_by_name_and_party", return_value=None):
-            with patch.object(repository, "insert_model", return_value=1):
-                with patch.object(
-                    repository,
-                    "get_by_id",
-                    return_value=Politician(
-                        id=1,
-                        name="テスト太郎",
-                        political_party_id=1,
-                        position="衆議院議員",
-                        prefecture="東京都",
-                        electoral_district="東京1区",
-                        profile_url="https://example.com/test",
-                        party_position="幹事長",
-                    ),
-                ):
-                    # テスト実行
-                    politician_data = PoliticianCreate(
-                        name="テスト太郎",
-                        political_party_id=1,
-                        position="衆議院議員",
-                        prefecture="東京都",
-                        electoral_district="東京1区",
-                        profile_url="https://example.com/test",
-                        party_position="幹事長",
-                    )
-                    result = repository.create_politician(politician_data)
+        new_politician = Politician(
+            id=1,
+            name="テスト太郎",
+            political_party_id=1,
+            position="衆議院議員",
+            prefecture="東京都",
+            electoral_district="東京1区",
+            profile_url="https://example.com/test",
+            party_position="幹事長",
+        )
 
-                    # アサーション
-                    assert result is not None
-                    assert result.id == 1
-                    assert result.name == "テスト太郎"
+        with patch.object(repository, "get_by_name_and_party", return_value=None):
+            with patch.object(
+                repository, "create_from_model", return_value=new_politician
+            ):
+                # テスト実行
+                politician_data = PoliticianCreate(
+                    name="テスト太郎",
+                    political_party_id=1,
+                    position="衆議院議員",
+                    prefecture="東京都",
+                    electoral_district="東京1区",
+                    profile_url="https://example.com/test",
+                    party_position="幹事長",
+                )
+                result = repository.create_politician(politician_data)
+
+                # アサーション
+                assert result is not None
+                assert result.id == 1
+                assert result.name == "テスト太郎"
 
     def test_create_politician_existing_no_update(self, repository):
         """既存政治家・更新不要のテスト"""
@@ -187,14 +186,25 @@ class TestPoliticianRepositoryV2:
 
     def test_update_politician(self, repository):
         """政治家情報更新のテスト"""
-        with patch.object(repository, "update_model", return_value=1):
+        # Mock the update_from_model method which is from TypedRepository
+        updated_politician = Politician(
+            id=1,
+            name="更新太郎",
+            political_party_id=1,
+            position="参議院議員",
+            prefecture="大阪府",
+        )
+
+        with patch.object(
+            repository, "update_from_model", return_value=updated_politician
+        ) as mock_update:
             # テスト実行
             update_data = PoliticianUpdate(position="参議院議員", prefecture="大阪府")
             result = repository.update_politician(1, update_data)
 
             # アサーション
             assert result is True
-            repository.update_model.assert_called_once()
+            mock_update.assert_called_once_with(1, update_data)
 
     def test_get_by_party(self, repository):
         """政党別取得のテスト"""

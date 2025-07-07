@@ -2,11 +2,12 @@
 
 import logging
 from difflib import SequenceMatcher
+from typing import Any
 
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.database.base_repository import BaseRepository
+from src.database.typed_repository import TypedRepository
 from src.exceptions import (
     DatabaseError,
     DuplicateRecordError,
@@ -17,16 +18,42 @@ from src.models.politician import Politician, PoliticianCreate, PoliticianUpdate
 logger = logging.getLogger(__name__)
 
 
-class PoliticianRepository(BaseRepository):
+class PoliticianRepository(TypedRepository[Politician]):
     """Politician repository with Pydantic model support"""
 
     def __init__(self, db=None):
         # If db session is provided, use it; otherwise fall back to engine
         if db:
-            super().__init__(use_session=True)
+            super().__init__(Politician, "politicians", use_session=True)
             self._session = db  # Set internal _session attribute
         else:
-            super().__init__(use_session=False)
+            super().__init__(Politician, "politicians", use_session=False)
+
+    def fetch_as_model(
+        self,
+        model_class: type[Politician],
+        query: str,
+        params: dict[str, Any] | None = None,
+    ) -> Politician | None:
+        """Fetch single row as model - wrapper for TypedRepository.fetch_one"""
+        return self.fetch_one(query, params)
+
+    def fetch_all_as_models(
+        self,
+        model_class: type[Politician],
+        query: str,
+        params: dict[str, Any] | None = None,
+    ) -> list[Politician]:
+        """Fetch all rows as models - wrapper for TypedRepository.fetch_all"""
+        return list(self.fetch_all(query, params))
+
+    def fetch_as_dict(
+        self, query: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Execute query and return results as list of dictionaries"""
+        result = self.execute_query(query, params)
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
 
     def create_politician(self, politician: PoliticianCreate) -> Politician | None:
         """新しい政治家を作成（既存の場合は更新）
@@ -97,17 +124,12 @@ class PoliticianRepository(BaseRepository):
                     return existing
             else:
                 # 新規作成
-                politician_id = self.insert_model("politicians", politician, "id")
-                if politician_id:
-                    logger.info(
-                        f"新しい政治家を作成しました: {politician.name} "
-                        f"(ID: {politician_id})"
-                    )
-                    return self.get_by_id(politician_id)
-                raise SaveError(
-                    f"Failed to create politician: {politician.name}",
-                    {"politician_data": politician.model_dump()},
+                created_politician = self.create_from_model(politician)
+                logger.info(
+                    f"新しい政治家を作成しました: {politician.name} "
+                    f"(ID: {created_politician.id})"
                 )
+                return created_politician
         except SQLIntegrityError as e:
             logger.error(f"Integrity error creating politician {politician.name}: {e}")
             raise DuplicateRecordError("Politician", politician.name) from e
@@ -168,15 +190,12 @@ class PoliticianRepository(BaseRepository):
         self, politician_id: int, update_data: PoliticianUpdate
     ) -> bool:
         """政治家情報を更新"""
-        rows_affected = self.update_model(
-            "politicians", update_data, {"id": politician_id}
-        )
-        return rows_affected > 0
+        result = self.update_from_model(politician_id, update_data)
+        return result is not None
 
     def delete_politician(self, politician_id: int) -> bool:
         """政治家を削除"""
-        rows_affected = self.delete("politicians", {"id": politician_id})
-        return rows_affected > 0
+        return self.delete(politician_id)
 
     def search_by_name(self, name: str, threshold: float = 0.8) -> list[dict]:
         """

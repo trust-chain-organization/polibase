@@ -36,5 +36,19 @@
       "Bash(true)"
     ],
     "deny": []
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/okodoon/project/polibase/.claude/hooks/post-file-edit",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
   }
 }

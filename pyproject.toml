@@ -52,13 +52,15 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v"
+addopts = "-v --cov=src --cov-report=html --cov-report=xml --cov-report=term-missing"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
 [dependency-groups]
 dev = [
     "pytest-asyncio>=1.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
     "ruff>=0.8.0",
     "pyright>=1.1.387",
     "pre-commit>=3.5.0",
@@ -84,19 +86,4 @@ ignore = []
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
 
-[tool.pyright]
-pythonVersion = "3.13"
-typeCheckingMode = "standard"
-reportMissingImports = true
-reportMissingTypeStubs = false
-reportUnknownParameterType = "warning"
-reportMissingParameterType = "warning"
-reportMissingTypeArgument = "warning"
-reportPrivateUsage = "warning"
-reportUnknownMemberType = "warning"
-reportUnknownVariableType = "warning"
-reportUnknownArgumentType = "warning"
-reportGeneralTypeIssues = "error"
-reportOptionalMemberAccess = "error"
-reportOptionalOperand = "error"
-strictParameterNoneValue = true
+# Pyright configuration moved to pyrightconfig.json

@@ -28,7 +28,10 @@ def test_pyright_type_checking():
         print(result.stdout)
 
     # Assert no errors (can be adjusted to allow some errors during transition)
-    assert error_count <= 200, f"Too many type errors: {error_count}"
+    # Phase 2 target: reduce errors below 50
+    assert error_count <= 50, (
+        f"Too many type errors: {error_count}. Target is 50 or less."
+    )
 
 
 def test_no_any_types_in_core_modules():
@@ -70,7 +73,10 @@ def test_no_any_types_in_core_modules():
     any_percentage = (any_count / total_types * 100) if total_types > 0 else 0
 
     # Assert Any usage is below threshold
-    assert any_percentage <= 10, f"Any type usage too high: {any_percentage:.1f}%"
+    # Phase 2 target: reduce Any usage below 5%
+    assert any_percentage <= 5, (
+        f"Any type usage too high: {any_percentage:.1f}%. Target is 5% or less."
+    )
 
 
 def test_all_functions_have_return_types():

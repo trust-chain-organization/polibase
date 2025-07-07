@@ -1,0 +1,30 @@
+{
+  "include": ["src"],
+  "exclude": [
+    "src/web_scraper/**",
+    "src/minutes_divide_processor/**",
+    "src/party_member_extractor/**",
+    "src/update_speaker_links_llm.py",
+    "src/process_minutes.py",
+    "src/streamlit_app.py",
+    "**/__pycache__",
+    "**/*.pyc"
+  ],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "standard",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false,
+  "reportUnknownParameterType": "error",
+  "reportMissingParameterType": "error",
+  "reportMissingTypeArgument": "error",
+  "reportPrivateUsage": "error",
+  "reportUnknownMemberType": "error",
+  "reportUnknownVariableType": "error",
+  "reportUnknownArgumentType": "error",
+  "reportGeneralTypeIssues": "error",
+  "reportOptionalMemberAccess": "error",
+  "reportOptionalOperand": "error",
+  "strictParameterNoneValue": true,
+  "reportUnnecessaryTypeIgnoreComment": "warning",
+  "reportImplicitStringConcatenation": "warning"
+}
