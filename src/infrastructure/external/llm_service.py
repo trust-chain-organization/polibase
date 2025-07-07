@@ -1,5 +1,7 @@
 """LLM service interface and implementation."""
 
+from abc import ABC, abstractmethod
+
 from src.domain.types import (
     LLMExtractResult,
     LLMMatchResult,
@@ -8,7 +10,25 @@ from src.domain.types import (
 )
 
 
-class GeminiLLMService:
+class ILLMService(ABC):
+    """Interface for LLM service."""
+
+    @abstractmethod
+    async def match_speaker_to_politician(
+        self, context: LLMSpeakerMatchContext
+    ) -> LLMMatchResult | None:
+        """Match speaker to politician using LLM."""
+        pass
+
+    @abstractmethod
+    async def extract_party_members(
+        self, html_content: str, party_id: int
+    ) -> LLMExtractResult:
+        """Extract politician information from HTML using LLM."""
+        pass
+
+
+class GeminiLLMService(ILLMService):
     """Gemini-based implementation of LLM service."""
 
     def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash"):
