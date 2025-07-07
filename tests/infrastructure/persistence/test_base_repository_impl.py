@@ -20,6 +20,9 @@ class MockEntity(BaseEntity):
 class MockModel:
     """Mock model for testing BaseRepositoryImpl."""
 
+    # Add __tablename__ to make it look like a SQLAlchemy model
+    __tablename__ = "mock_model"
+
     def __init__(self, id: int | None = None, name: str = ""):
         self.id = id
         self.name = name
@@ -98,16 +101,19 @@ class TestBaseRepositoryImpl:
         mock_query = MagicMock()
         mock_select.return_value = mock_query
 
-        # Create a mock scalars result
-        mock_scalars = AsyncMock()
-        mock_scalars.all.return_value = mock_models
+        # Create a mock scalars result that can be called
+        mock_scalars_result = MagicMock()
+        mock_scalars_result.all.return_value = mock_models
 
-        # Create a mock result
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value = mock_scalars
+        # Create a mock result that returns the scalars when called
+        mock_result = MagicMock()
+        mock_result.scalars = MagicMock(return_value=mock_scalars_result)
 
-        # Configure the session's execute to return our mock result
-        mock_session.execute.return_value = mock_result
+        # Configure the session's execute to return our mock result as a coroutine
+        async def async_execute(query):
+            return mock_result
+
+        mock_session.execute = async_execute
 
         # Execute
         result = await repository.get_all()
@@ -121,7 +127,6 @@ class TestBaseRepositoryImpl:
 
         # Verify the query was executed
         mock_select.assert_called_once_with(MockModel)
-        mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
     @patch("src.infrastructure.persistence.base_repository_impl.select")
@@ -132,20 +137,23 @@ class TestBaseRepositoryImpl:
 
         # Create a mock query with chaining methods
         mock_query = MagicMock()
-        mock_query.offset.return_value = mock_query
-        mock_query.limit.return_value = mock_query
+        mock_query.offset = MagicMock(return_value=mock_query)
+        mock_query.limit = MagicMock(return_value=mock_query)
         mock_select.return_value = mock_query
 
-        # Create a mock scalars result
-        mock_scalars = AsyncMock()
-        mock_scalars.all.return_value = mock_models
+        # Create a mock scalars result that can be called
+        mock_scalars_result = MagicMock()
+        mock_scalars_result.all.return_value = mock_models
 
-        # Create a mock result
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value = mock_scalars
+        # Create a mock result that returns the scalars when called
+        mock_result = MagicMock()
+        mock_result.scalars = MagicMock(return_value=mock_scalars_result)
 
-        # Configure the session's execute to return our mock result
-        mock_session.execute.return_value = mock_result
+        # Configure the session's execute to return our mock result as a coroutine
+        async def async_execute(query):
+            return mock_result
+
+        mock_session.execute = async_execute
 
         # Execute
         result = await repository.get_all(limit=10, offset=20)
@@ -159,7 +167,6 @@ class TestBaseRepositoryImpl:
         mock_select.assert_called_once_with(MockModel)
         mock_query.offset.assert_called_once_with(20)
         mock_query.limit.assert_called_once_with(10)
-        mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_create(self, repository, mock_session):

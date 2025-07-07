@@ -32,7 +32,7 @@ class ConcreteScraperForTesting(BaseScraper):
         return [
             SpeakerData(
                 name="Speaker 1",
-                affiliation="Party A",
+                content="Test speaker content",
                 role="議員",
             )
         ]
