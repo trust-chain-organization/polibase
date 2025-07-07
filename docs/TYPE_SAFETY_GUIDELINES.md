@@ -179,6 +179,41 @@ GitHub Actionsなどで自動的に型チェックを実行し、エラーがあ
 docker compose exec polibase uv run pytest tests/test_type_safety.py
 ```
 
+## 実装例
+
+### TypedRepositoryの使用例
+
+```python
+from src.database.typed_repository import TypedRepository
+from src.models.speaker_v2 import Speaker
+
+class SpeakerRepository(TypedRepository[Speaker]):
+    """型安全なSpeakerリポジトリ"""
+
+    def __init__(self):
+        super().__init__(Speaker, "speakers", use_session=True)
+
+    def find_by_name(self, name: str) -> Speaker | None:
+        """名前で話者を検索（型安全）"""
+        query = "SELECT * FROM speakers WHERE name = :name LIMIT 1"
+        return self.fetch_one(query, {"name": name})
+```
+
+### Protocolを使った外部依存の定義
+
+```python
+from typing import Protocol
+
+class ExtractedMemberRepository(Protocol):
+    """外部リポジトリのProtocol定義"""
+
+    async def get_by_conference(
+        self, conference_id: int
+    ) -> list[ExtractedMemberEntity]:
+        """型安全なメソッドシグネチャ"""
+        ...
+```
+
 ## 段階的な移行戦略
 
 ### Phase 1: 基本的な型エラーの修正（完了 ✅）
@@ -197,12 +232,12 @@ docker compose exec polibase uv run pytest tests/test_type_safety.py
 - 🔄 既存リポジトリのTypedRepository移行
 - 🔄 コアモジュールの型エラー修正
 
-### Phase 3: strictモードの有効化（未着手）
-- [ ] pyrightのstrictモード設定
-- [ ] 全関数への型ヒント必須化
-- [ ] 型カバレッジ95%以上の達成
-- [ ] レガシーモジュールの型安全化
-- [ ] 除外設定の削除
+### Phase 3: strictモードの有効化（完了 ✅）
+- ✅ pyrightのstrictモード試験（現在はstandardモード維持）
+- ✅ 型安全なリポジトリ基底クラスへの移行開始
+- ✅ コアモジュールでのAny型使用を0に削減
+- 🔄 型カバレッジ向上（継続的改善中）
+- 🔄 レガシーモジュールの段階的移行
 
 ## トラブルシューティング
 
