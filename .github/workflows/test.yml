@@ -70,7 +70,26 @@ jobs:
         env:
           CI: true
         run: |
-          uv run pytest tests/ -v --tb=short --cov=src --cov-report=html --cov-report=term --cov-report=xml
+          uv run pytest -v --tb=short --cov=src --cov-report=html --cov-report=term --cov-report=xml
+
+      - name: Check coverage threshold
+        run: |
+          # Extract coverage percentage from the XML report
+          coverage_percent=$(python -c "
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('coverage.xml')
+          root = tree.getroot()
+          coverage = float(root.attrib['line-rate']) * 100
+          print(f'{coverage:.1f}')
+          ")
+          echo "Current coverage: ${coverage_percent}%"
+
+          # Set threshold (can be adjusted as needed)
+          threshold=40
+          if (( $(echo "$coverage_percent < $threshold" | bc -l) )); then
+            echo "Coverage ${coverage_percent}% is below threshold ${threshold}%"
+            exit 1
+          fi
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
@@ -85,20 +104,6 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
-
-      - name: Check coverage threshold
-        run: |
-          # Extract coverage percentage from XML report
-          COVERAGE=$(uv run python -c "import xml.etree.ElementTree as ET; tree = ET.parse('coverage.xml'); root = tree.getroot(); print(f\"{float(root.attrib['line-rate']) * 100:.1f}\")")
-          echo "Current coverage: ${COVERAGE}%"
-
-          # Check if coverage meets minimum threshold
-          THRESHOLD=80
-          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
-            echo "::warning::Coverage ${COVERAGE}% is below recommended threshold ${THRESHOLD}%"
-          else
-            echo "::notice::Coverage ${COVERAGE}% meets threshold ${THRESHOLD}%"
-          fi
 
       - name: Comment PR with coverage
         if: github.event_name == 'pull_request'
