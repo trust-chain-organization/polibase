@@ -3,8 +3,8 @@
 from typing import Any
 
 from src.application.dtos.conference_dto import (
+    AffiliationDTO,
     ConferenceDTO,
-    ConferenceMemberDTO,
     ExtractedConferenceMemberDTO,
 )
 from src.application.dtos.minutes_dto import (
@@ -136,20 +136,20 @@ def create_conference_dto(**kwargs: Any) -> ConferenceDTO:
     return ConferenceDTO(**defaults)
 
 
-def create_conference_member_dto(**kwargs: Any) -> ConferenceMemberDTO:
-    """Create a test ConferenceMemberDTO."""
+def create_affiliation_dto(**kwargs: Any) -> AffiliationDTO:
+    """Create a test AffiliationDTO."""
     defaults = {
+        "id": 1,
         "politician_id": 1,
         "politician_name": "山田太郎",
         "conference_id": 1,
         "conference_name": "議会全体",
-        "role": None,
         "start_date": "2023-01-01",
         "end_date": None,
-        "party_name": None,
+        "role": None,
     }
     defaults.update(kwargs)
-    return ConferenceMemberDTO(**defaults)
+    return AffiliationDTO(**defaults)
 
 
 def create_extracted_conference_member_dto(
