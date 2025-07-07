@@ -1,31 +1,39 @@
-"""Governing body model definitions"""
+"""Governing body model definitions."""
 
+from datetime import datetime
+
+from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Field
 
-from .base import BaseModel, DBModel
 
+class GoverningBodyBase(PydanticBaseModel):
+    """Base governing body model with common fields."""
 
-class GoverningBodyBase(BaseModel):
-    """Base governing body model with common fields"""
-
-    name: str = Field(..., description="開催主体名")
-    type: str | None = Field(None, description="開催主体タイプ（国、都道府県、市町村）")
+    name: str = Field(..., description="組織名")
+    type: str | None = Field(None, description="組織タイプ（国、都道府県、市町村）")
 
 
 class GoverningBodyCreate(GoverningBodyBase):
-    """Model for creating a governing body"""
+    """Model for creating a governing body."""
 
     pass
 
 
-class GoverningBodyUpdate(BaseModel):
-    """Model for updating a governing body"""
+class GoverningBodyUpdate(PydanticBaseModel):
+    """Model for updating a governing body."""
 
-    name: str | None = Field(None, description="開催主体名")
-    type: str | None = Field(None, description="開催主体タイプ（国、都道府県、市町村）")
+    name: str | None = Field(None, description="組織名")
+    type: str | None = Field(None, description="組織タイプ（国、都道府県、市町村）")
 
 
-class GoverningBody(GoverningBodyBase, DBModel):
-    """Complete governing body model with all fields"""
+class GoverningBody(GoverningBodyBase):
+    """Complete governing body model with all fields."""
 
-    pass
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        """Pydantic configuration."""
+
+        from_attributes = True

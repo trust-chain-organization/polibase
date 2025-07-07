@@ -2,22 +2,24 @@
 
 import logging
 from datetime import date
+from typing import Any
 
-from src.database.base_repository import BaseRepository
+from src.database.typed_repository import TypedRepository
+from src.models.meeting_v2 import Meeting, MeetingCreate, MeetingUpdate
 
 logger = logging.getLogger(__name__)
 
 
-class MeetingRepository(BaseRepository):
+class MeetingRepository(TypedRepository[Meeting]):
     """Repository class for Meeting-related database operations"""
 
     def __init__(self):
-        super().__init__(use_session=True)
+        super().__init__(Meeting, "meetings", use_session=True)
 
-    def get_governing_bodies(self) -> list[dict]:
-        """Get all governing bodies"""
+    def get_governing_bodies(self) -> list[dict[str, Any]]:
+        """Get all governing bodies - DEPRECATED: Use GoverningBodyRepository instead"""
         query = """
-        SELECT id, name, type
+        SELECT id, name, type, created_at, updated_at
         FROM governing_bodies
         ORDER BY
             CASE type
@@ -28,20 +30,32 @@ class MeetingRepository(BaseRepository):
             END,
             name
         """
-        return self.fetch_as_dict(query)
+        # TODO: Move to GoverningBodyRepository
+        result = self.execute_query(query)
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
 
-    def get_conferences_by_governing_body(self, governing_body_id: int) -> list[dict]:
-        """Get conferences for a specific governing body"""
+    def get_conferences_by_governing_body(
+        self, governing_body_id: int
+    ) -> list[dict[str, Any]]:
+        """Get conferences for a specific governing body.
+
+        DEPRECATED: Use ConferenceRepository instead"""
         query = """
-        SELECT id, name, type
+        SELECT id, name, type, governing_body_id, created_at, updated_at
         FROM conferences
         WHERE governing_body_id = :governing_body_id
         ORDER BY name
         """
-        return self.fetch_as_dict(query, {"governing_body_id": governing_body_id})
+        # TODO: Move to ConferenceRepository
+        result = self.execute_query(query, {"governing_body_id": governing_body_id})
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
 
-    def get_all_conferences(self) -> list[dict]:
-        """Get all conferences with their governing bodies"""
+    def get_all_conferences(self) -> list[dict[str, Any]]:
+        """Get all conferences with their governing bodies.
+
+        DEPRECATED: Use ConferenceRepository instead"""
         query = """
         SELECT
             c.id,
@@ -54,11 +68,14 @@ class MeetingRepository(BaseRepository):
         JOIN governing_bodies gb ON c.governing_body_id = gb.id
         ORDER BY gb.type, gb.name, c.name
         """
-        return self.fetch_as_dict(query)
+        # TODO: Move to ConferenceRepository
+        result = self.execute_query(query)
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
 
     def get_meetings(
         self, conference_id: int | None = None, limit: int = 100
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Get meetings, optionally filtered by conference"""
         if conference_id:
             query = """
@@ -96,7 +113,9 @@ class MeetingRepository(BaseRepository):
             """
             params = {"limit": limit}
 
-        return self.fetch_as_dict(query, params)
+        result = self.execute_query(query, params)
+        columns = result.keys()
+        return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
 
     def create_meeting(
         self,
@@ -105,14 +124,17 @@ class MeetingRepository(BaseRepository):
         url: str,
         gcs_pdf_uri: str | None = None,
         gcs_text_uri: str | None = None,
-    ) -> int:
+    ) -> Meeting:
         """Create a new meeting"""
-        data = {"conference_id": conference_id, "date": meeting_date, "url": url}
-        if gcs_pdf_uri:
-            data["gcs_pdf_uri"] = gcs_pdf_uri
-        if gcs_text_uri:
-            data["gcs_text_uri"] = gcs_text_uri
-        return self.insert(table="meetings", data=data, returning="id")
+        meeting = MeetingCreate(
+            conference_id=conference_id,
+            date=meeting_date,
+            url=url,
+            name=None,
+            gcs_pdf_uri=gcs_pdf_uri,
+            gcs_text_uri=gcs_text_uri,
+        )
+        return self.create_from_model(meeting)
 
     def update_meeting(
         self,
@@ -121,42 +143,41 @@ class MeetingRepository(BaseRepository):
         url: str | None = None,
         gcs_pdf_uri: str | None = None,
         gcs_text_uri: str | None = None,
-    ) -> bool:
+    ) -> Meeting | None:
         """Update an existing meeting"""
-        data = {}
+        update_dict: dict[str, Any] = {}
         if meeting_date is not None:
-            data["date"] = meeting_date
+            update_dict["date"] = meeting_date
         if url is not None:
-            data["url"] = url
+            update_dict["url"] = url
         if gcs_pdf_uri is not None:
-            data["gcs_pdf_uri"] = gcs_pdf_uri
+            update_dict["gcs_pdf_uri"] = gcs_pdf_uri
         if gcs_text_uri is not None:
-            data["gcs_text_uri"] = gcs_text_uri
+            update_dict["gcs_text_uri"] = gcs_text_uri
+        if not update_dict:
+            return None
 
-        if not data:
-            return False
-
-        rows_affected = self.update(
-            table="meetings", data=data, where={"id": meeting_id}
-        )
-        return rows_affected > 0
+        update_data = MeetingUpdate(**update_dict)
+        return self.update_from_model(meeting_id, update_data)
 
     def delete_meeting(self, meeting_id: int) -> bool:
         """Delete a meeting"""
         # First check if there are related minutes
-        count = self.count("minutes", {"meeting_id": meeting_id})
+        # TODO: Use MinutesRepository instead
+        query = "SELECT COUNT(*) FROM minutes WHERE meeting_id = :meeting_id"
+        result = self.execute_query(query, {"meeting_id": meeting_id})
+        count = result.scalar()
 
-        if count > 0:
+        if count and count > 0:
             logger.warning(
                 f"Cannot delete meeting {meeting_id}: has {count} related minutes"
             )
             return False
 
-        rows_affected = self.delete("meetings", {"id": meeting_id})
-        return rows_affected > 0
+        return self.delete(meeting_id)
 
-    def get_meeting_by_id(self, meeting_id: int) -> dict | None:
-        """Get a specific meeting by ID"""
+    def get_meeting_by_id_with_info(self, meeting_id: int) -> dict[str, Any] | None:
+        """Get a specific meeting by ID with conference and governing body info"""
         query = """
         SELECT
             m.id,
@@ -173,25 +194,32 @@ class MeetingRepository(BaseRepository):
         JOIN governing_bodies gb ON c.governing_body_id = gb.id
         WHERE m.id = :id
         """
-        results = self.fetch_as_dict(query, {"id": meeting_id})
-        return results[0] if results else None
+        result = self.execute_query(query, {"id": meeting_id})
+        row = result.fetchone()
+        if row:
+            columns = result.keys()
+            return dict(zip(columns, row, strict=False))
+        return None
+
+    def get_meeting_by_id(self, meeting_id: int) -> Meeting | None:
+        """Get a specific meeting by ID (without join info)"""
+        return self.get_by_id(meeting_id)
 
     def update_meeting_gcs_uris(
         self, meeting_id: int, gcs_pdf_uri: str | None, gcs_text_uri: str | None
-    ) -> bool:
+    ) -> Meeting | None:
         """Update GCS URIs for a meeting"""
-        data = {}
+        update_dict: dict[str, Any] = {}
         if gcs_pdf_uri is not None:
-            data["gcs_pdf_uri"] = gcs_pdf_uri
+            update_dict["gcs_pdf_uri"] = gcs_pdf_uri
         if gcs_text_uri is not None:
-            data["gcs_text_uri"] = gcs_text_uri
+            update_dict["gcs_text_uri"] = gcs_text_uri
 
-        if not data:
-            return False
+        # Only update if there's data to update
+        if not update_dict:
+            return None
 
-        rows_affected = self.update(
-            table="meetings", data=data, where={"id": meeting_id}
-        )
-        return rows_affected > 0
+        update_data = MeetingUpdate(**update_dict)
+        return self.update_from_model(meeting_id, update_data)
 
-    # close() method is inherited from BaseRepository
+    # close() method is inherited from TypedRepository

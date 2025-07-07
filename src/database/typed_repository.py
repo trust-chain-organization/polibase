@@ -5,15 +5,15 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from typing import Any, Generic, TypeVar
 
+from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy import Engine, Result, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.config.database import get_db_engine, get_db_session
-from src.models.base import BaseModel, to_dict
 
 # Type variable for generic repository pattern
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=PydanticBaseModel)
 
 logger = logging.getLogger(__name__)
 
@@ -126,9 +126,9 @@ class TypedRepository(Generic[T]):
         query = f"SELECT * FROM {self.table_name} ORDER BY id"
         return self.fetch_all(query)
 
-    def create(self, model: T) -> T:
-        """Create a new record and return it with ID."""
-        data = to_dict(model)
+    def create_from_model(self, model: PydanticBaseModel) -> T:
+        """Create a new record from a model and return it with ID."""
+        data = model.model_dump(exclude_unset=True)
         # Remove id if it's None to let database generate it
         if "id" in data and data["id"] is None:
             del data["id"]
@@ -150,9 +150,9 @@ class TypedRepository(Generic[T]):
                 return self.model_class(**data)
             raise RuntimeError("Failed to create record")
 
-    def update(self, id: int, model: T) -> T | None:
-        """Update a record by ID."""
-        data = to_dict(model)
+    def update_from_model(self, id: int, model: PydanticBaseModel) -> T | None:
+        """Update a record by ID using a model."""
+        data = model.model_dump(exclude_unset=True)
         # Remove id from update data
         if "id" in data:
             del data["id"]

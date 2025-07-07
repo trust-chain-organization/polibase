@@ -1,6 +1,7 @@
 """Use case for managing conference members."""
 
 from datetime import date
+from typing import Any, Protocol
 
 from src.application.dtos.conference_dto import (
     ConferenceMemberMatchingDTO,
@@ -10,6 +11,52 @@ from src.application.dtos.conference_dto import (
 from src.domain.repositories.conference_repository import ConferenceRepository
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.services.conference_domain_service import ConferenceDomainService
+from src.infrastructure.interfaces.llm_service import ILLMService
+from src.infrastructure.interfaces.web_scraper_service import IWebScraperService
+
+
+# Protocol for external repositories
+class ExtractedMemberEntity:
+    """Minimal entity for extracted member."""
+
+    id: int
+    name: str
+    conference_id: int
+    party_affiliation: str | None
+    role: str | None
+    matching_status: str
+    matched_politician_id: int | None
+    confidence_score: float | None
+
+
+class ExtractedMemberRepository(Protocol):
+    """Protocol for extracted member repository."""
+
+    async def get_by_conference(
+        self, conference_id: int
+    ) -> list[ExtractedMemberEntity]:
+        """Get extracted members by conference."""
+        ...
+
+    async def create(
+        self, member: ExtractedConferenceMemberDTO
+    ) -> ExtractedMemberEntity:
+        """Create extracted member."""
+        ...
+
+    async def update(
+        self, member_id: int, data: dict[str, Any]
+    ) -> ExtractedMemberEntity:
+        """Update extracted member."""
+        ...
+
+
+class AffiliationRepository(Protocol):
+    """Protocol for affiliation repository."""
+
+    async def create(self, affiliation: Any) -> Any:
+        """Create affiliation."""
+        ...
 
 
 class ManageConferenceMembersUseCase:
@@ -20,10 +67,10 @@ class ManageConferenceMembersUseCase:
         conference_repository: ConferenceRepository,
         politician_repository: PoliticianRepository,
         conference_domain_service: ConferenceDomainService,
-        extracted_member_repository,  # External repository
-        affiliation_repository,  # External repository
-        web_scraper_service,  # External service
-        llm_service,  # External service
+        extracted_member_repository: ExtractedMemberRepository,
+        affiliation_repository: AffiliationRepository,
+        web_scraper_service: IWebScraperService,
+        llm_service: ILLMService,
     ):
         self.conference_repo = conference_repository
         self.politician_repo = politician_repository
@@ -233,12 +280,14 @@ class ManageConferenceMembersUseCase:
             status=status,
         )
 
-    def _to_extracted_dto(self, entity) -> ExtractedConferenceMemberDTO:
+    def _to_extracted_dto(
+        self, entity: ExtractedMemberEntity
+    ) -> ExtractedConferenceMemberDTO:
         """Convert entity to DTO."""
         return ExtractedConferenceMemberDTO(
             name=entity.name,
             conference_id=entity.conference_id,
-            party_name=entity.party_name,
+            party_name=entity.party_affiliation,
             role=entity.role,
-            profile_url=entity.profile_url,
+            profile_url=None,  # Not available in ExtractedMemberEntity
         )

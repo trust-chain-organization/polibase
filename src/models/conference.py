@@ -1,39 +1,41 @@
-"""Conference model definitions"""
+"""Conference model definitions."""
 
+from datetime import datetime
+
+from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Field
 
-from .base import BaseModel, DBModel
 
-
-class ConferenceBase(BaseModel):
-    """Base conference model with common fields"""
+class ConferenceBase(PydanticBaseModel):
+    """Base conference model with common fields."""
 
     name: str = Field(..., description="会議体名")
-    type: str | None = Field(
-        None, description="会議体タイプ（国会全体、議院、地方議会全体、常任委員会）"
-    )
+    type: str | None = Field(None, description="会議体タイプ")
     governing_body_id: int = Field(..., description="開催主体ID")
-    members_introduction_url: str | None = Field(None, description="議員紹介ページURL")
 
 
 class ConferenceCreate(ConferenceBase):
-    """Model for creating a conference"""
+    """Model for creating a conference."""
 
     pass
 
 
-class ConferenceUpdate(BaseModel):
-    """Model for updating a conference"""
+class ConferenceUpdate(PydanticBaseModel):
+    """Model for updating a conference."""
 
     name: str | None = Field(None, description="会議体名")
-    type: str | None = Field(
-        None, description="会議体タイプ（国会全体、議院、地方議会全体、常任委員会）"
-    )
+    type: str | None = Field(None, description="会議体タイプ")
     governing_body_id: int | None = Field(None, description="開催主体ID")
-    members_introduction_url: str | None = Field(None, description="議員紹介ページURL")
 
 
-class Conference(ConferenceBase, DBModel):
-    """Complete conference model with all fields"""
+class Conference(ConferenceBase):
+    """Complete conference model with all fields."""
 
-    pass
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        """Pydantic configuration."""
+
+        from_attributes = True
