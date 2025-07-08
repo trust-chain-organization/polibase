@@ -48,6 +48,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ./docker/Dockerfile
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -76,28 +77,28 @@ jobs:
 
       - name: Start services
         run: |
-          docker compose up -d
-          docker compose ps
+          docker compose -f docker/docker-compose.yml up -d
+          docker compose -f docker/docker-compose.yml ps
 
       - name: Wait for services
         run: |
-          timeout 60s bash -c 'until docker compose exec -T postgres pg_isready; do sleep 2; done'
+          timeout 60s bash -c 'until docker compose -f docker/docker-compose.yml exec -T postgres pg_isready; do sleep 2; done'
           echo "PostgreSQL is ready"
 
       - name: Run database setup
         run: |
-          docker compose exec -T polibase ./test-setup.sh
+          docker compose -f docker/docker-compose.yml exec -T polibase ./test-setup.sh
 
       - name: Test CLI
         run: |
-          docker compose exec -T polibase uv run polibase --help
-          docker compose exec -T polibase uv run polibase test-connection
+          docker compose -f docker/docker-compose.yml exec -T polibase uv run polibase --help
+          docker compose -f docker/docker-compose.yml exec -T polibase uv run polibase test-connection
 
       - name: Run tests in container
         run: |
-          docker compose exec -T polibase uv run pytest -v
+          docker compose -f docker/docker-compose.yml exec -T polibase uv run pytest -v
 
       - name: Stop services
         if: always()
         run: |
-          docker compose down -v
+          docker compose -f docker/docker-compose.yml down -v
