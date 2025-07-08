@@ -85,9 +85,22 @@ jobs:
           timeout 60s bash -c 'until docker compose -f docker/docker-compose.yml exec -T postgres pg_isready; do sleep 2; done'
           echo "PostgreSQL is ready"
 
-      - name: Run database setup
+      - name: Run database setup and test connection
         run: |
-          docker compose -f docker/docker-compose.yml exec -T polibase ./scripts/test-setup.sh
+          # データベース接続テスト
+          docker compose -f docker/docker-compose.yml exec -T polibase uv run python -c "
+          from src.config.database import test_connection
+          import sys
+          if test_connection():
+              print('✅ データベース接続成功')
+              sys.exit(0)
+          else:
+              print('❌ データベース接続失敗')
+              sys.exit(1)
+          "
+
+          # データベース構造を確認
+          docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
 
       - name: Test CLI
         run: |
