@@ -87,7 +87,7 @@ jobs:
 
       - name: Run database setup
         run: |
-          docker compose -f docker/docker-compose.yml exec -T polibase ./test-setup.sh
+          docker compose -f docker/docker-compose.yml exec -T polibase ./scripts/test-setup.sh
 
       - name: Test CLI
         run: |
