@@ -37,12 +37,14 @@ jobs:
         run: |
           uv run python -c "
           import sys
-          sys.path.insert(0, 'src')
+          sys.path.insert(0, '.')
           try:
-              import polibase
-              import database
-              import application
-              import domain
+              # srcディレクトリ内のモジュールを確認
+              from src import exceptions
+              from src import cli
+              from src.database import base_repository
+              from src.application import usecases
+              from src.domain import entities
               print('✅ Basic imports successful')
           except ImportError as e:
               print(f'❌ Import error: {e}')
