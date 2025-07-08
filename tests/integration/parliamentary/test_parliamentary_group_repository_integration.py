@@ -47,6 +47,25 @@ def db_session():
     session_factory = sessionmaker(bind=connection)
     session = session_factory()
 
+    # Clean up any existing test data before yielding
+    try:
+        # Delete in correct order to respect foreign key constraints
+        session.execute(
+            text("DELETE FROM parliamentary_group_memberships WHERE id > 0")
+        )
+        session.execute(text("DELETE FROM parliamentary_groups WHERE id > 0"))
+        session.execute(text("DELETE FROM politician_affiliations WHERE id > 0"))
+        session.execute(text("DELETE FROM politicians WHERE name LIKE 'テスト議員%'"))
+        session.execute(text("DELETE FROM speakers WHERE name LIKE 'テスト議員%'"))
+        session.execute(
+            text("DELETE FROM political_parties WHERE name LIKE 'テスト党%'")
+        )
+        session.execute(text("DELETE FROM conferences WHERE name LIKE 'テスト%'"))
+        session.commit()
+    except Exception:
+        # If cleanup fails, still continue with test
+        session.rollback()
+
     yield session
 
     session.close()
@@ -58,6 +77,17 @@ def db_session():
 @pytest.fixture
 def setup_test_data(db_session):
     """Set up test data for parliamentary groups"""
+    # First check if governing body exists, if not create one
+    gb_check = db_session.execute(text("SELECT id FROM governing_bodies WHERE id = 1"))
+    if not gb_check.scalar():
+        db_session.execute(
+            text("""
+            INSERT INTO governing_bodies (id, name, type)
+            VALUES (1, 'テスト市', '市区町村')
+            """)
+        )
+        db_session.commit()
+
     # Insert test conference
     result = db_session.execute(
         text("""
