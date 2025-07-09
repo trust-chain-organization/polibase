@@ -92,7 +92,7 @@ class PDFHandler:
         # デフォルトのファイル名を生成
         import hashlib
 
-        url_hash = hashlib.md5(pdf_url.encode()).hexdigest()[:8]
+        url_hash = hashlib.md5(pdf_url.encode(), usedforsecurity=False).hexdigest()[:8]
         return f"document_{url_hash}.pdf"
 
     async def download_with_metadata(

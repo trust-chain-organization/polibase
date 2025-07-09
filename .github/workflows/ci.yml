@@ -61,6 +61,6 @@ jobs:
 
       - name: Check for security issues with bandit
         run: |
-          uv run bandit -r src/ -ll -i -x "*/tests/*"
-        # TODO: Remove continue-on-error once Issue #176 is resolved
-        continue-on-error: true
+          # Skip B608: SQL injection (all queries use parameterized queries, table names are hardcoded)
+          # Skip B104: Hardcoded bind to 0.0.0.0 (required for Docker environment)
+          uv run bandit -r src/ -ll -i -x "*/tests/*" -s B608,B104
