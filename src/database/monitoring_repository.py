@@ -11,6 +11,14 @@ from src.database.base_repository import BaseRepository
 class MonitoringRepository(BaseRepository):
     """監視ダッシュボード用のデータアクセスリポジトリ"""
 
+    def __init__(self, session=None):
+        """Initialize repository with optional session"""
+        if session:
+            super().__init__(use_session=True)
+            self._session = session
+        else:
+            super().__init__(use_session=False)
+
     def get_overall_metrics(self) -> dict[str, Any]:
         """全体的なメトリクスを取得"""
         # 基本的な統計情報を取得
@@ -30,8 +38,7 @@ class MonitoringRepository(BaseRepository):
 
                     -- 議事録統計
                     (SELECT COUNT(*) FROM minutes) as total_minutes,
-                    (SELECT COUNT(*) FROM minutes
-                     WHERE processed_at IS NOT NULL) as processed_minutes,
+                    (SELECT COUNT(*) FROM minutes) as processed_minutes,
 
                     -- 発言者統計
                     (SELECT COUNT(*) FROM speakers) as total_speakers,
@@ -99,17 +106,17 @@ class MonitoringRepository(BaseRepository):
 
                 UNION ALL
 
-                -- 最近処理された議事録
+                -- 最近追加された議事録
                 SELECT
                     'Minutes' as activity_type,
                     COALESCE(m.name, 'Minutes #' || min.id) as item_name,
-                    min.processed_at::date as activity_date,
-                    min.processed_at as created_at,
+                    min.created_at::date as activity_date,
+                    min.created_at as created_at,
                     c.name as conference_name
                 FROM minutes min
                 LEFT JOIN meetings m ON min.meeting_id = m.id
                 LEFT JOIN conferences c ON m.conference_id = c.id
-                WHERE min.processed_at >= :start_date
+                WHERE min.created_at >= :start_date
 
                 UNION ALL
 
@@ -223,12 +230,12 @@ class MonitoringRepository(BaseRepository):
         if data_type in ["議事録数", "すべて"]:
             queries.append("""
                 SELECT
-                    DATE(processed_at) as date,
+                    DATE(created_at) as date,
                     '議事録' as data_type,
                     COUNT(*) as count
                 FROM minutes
-                WHERE processed_at >= :start_date
-                GROUP BY DATE(processed_at)
+                WHERE created_at >= :start_date
+                GROUP BY DATE(created_at)
             """)
 
         if data_type in ["発言数", "すべて"]:
@@ -314,7 +321,7 @@ class MonitoringRepository(BaseRepository):
                 LEFT JOIN politician_affiliations pa ON c.id = pa.conference_id
                     AND pa.end_date IS NULL  -- 現職のみ
                 LEFT JOIN parliamentary_groups pg ON c.id = pg.conference_id
-                    AND pg.end_date IS NULL  -- 現在の議員団のみ
+                    AND pg.is_active = TRUE  -- 現在の議員団のみ
                 WHERE gb.type = '都道府県'
                 GROUP BY gb.id, gb.name
             )
