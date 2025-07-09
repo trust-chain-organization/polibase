@@ -914,14 +914,21 @@ def run_command_with_progress(command, process_name):
     try:
         # Streamlitから実行されていることを示す環境変数を設定
         import os
+        import shlex
 
         env = os.environ.copy()
         env["STREAMLIT_RUNNING"] = "true"
 
-        # プロセスを開始
+        # コマンドを安全に分割（文字列の場合）
+        if isinstance(command, str):
+            command_list = shlex.split(command)
+        else:
+            command_list = command
+
+        # プロセスを開始（shell=Falseで安全に実行）
         process = subprocess.Popen(
-            command,
-            shell=True,
+            command_list,
+            shell=False,  # セキュリティ向上のためshell=False
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

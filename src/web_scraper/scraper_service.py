@@ -104,7 +104,7 @@ class ScraperService:
         """URLからキャッシュキーを生成"""
         import hashlib
 
-        return hashlib.md5(url.encode()).hexdigest()
+        return hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()
 
     def _get_from_cache(self, url: str) -> MinutesData | None:
         """キャッシュから取得"""
