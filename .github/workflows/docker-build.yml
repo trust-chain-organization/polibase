@@ -104,7 +104,8 @@ jobs:
           for file in database/migrations/*.sql; do
             if [ -f "$file" ]; then
               echo "Applying migration: $file"
-              docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -f "/app/$file"
+              filename=$(basename "$file")
+              docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -f "/docker-entrypoint-initdb.d/migrations/$filename"
             fi
           done
 
