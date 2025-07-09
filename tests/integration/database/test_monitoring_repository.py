@@ -73,8 +73,8 @@ def setup_test_data(db_session):
     # Insert test minutes
     minutes_result = db_session.execute(
         text("""
-        INSERT INTO minutes (meeting_id, title, content, processed_at)
-        VALUES (:meeting_id, 'テスト議事録', 'テスト内容', CURRENT_TIMESTAMP)
+        INSERT INTO minutes (meeting_id, url)
+        VALUES (:meeting_id, 'http://test.example.com/minutes')
         RETURNING id
         """),
         {"meeting_id": meeting_id},
