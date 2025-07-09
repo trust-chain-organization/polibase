@@ -410,4 +410,8 @@ Polibase follows these core design principles:
   - Take screenshots to verify UI changes
   - Interact with UI elements to test functionality
   - Capture and verify error messages or success notifications
-  - Ensure UI updates are properly rendered after data modifications
+- **CI/CDでのテストスキップ**: テストやチェックを`continue-on-error: true`でスキップする場合は、必ず対応するIssueを作成すること
+  - スキップした理由を明確に記載
+  - 修正方法を具体的に記述
+  - 関連するPRやIssueをリンク
+  - 優先度を適切に設定（通常は高優先度）

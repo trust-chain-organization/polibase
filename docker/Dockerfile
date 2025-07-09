@@ -66,8 +66,8 @@ COPY database/ database/
 COPY scripts/ scripts/
 
 # Docker内でのuv実行用ラッパーを設定
-RUN chmod +x scripts/docker-uv-wrapper.sh scripts/docker-entrypoint.sh
-RUN ln -sf /app/scripts/docker-uv-wrapper.sh /usr/local/bin/uv-wrapper
+RUN chmod +x scripts/docker-uv-wrapper.sh scripts/docker-entrypoint.sh && \
+    ln -sf /app/scripts/docker-uv-wrapper.sh /usr/local/bin/uv-wrapper
 
 # エントリーポイントを設定
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]

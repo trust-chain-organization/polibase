@@ -1,0 +1,17 @@
+[bandit]
+# スキップするテスト
+skips = B101,B601,B603,B607
+
+# 除外するディレクトリ
+exclude = tests/,*/test_*.py,*/conftest.py
+
+# レポートフォーマット
+format = json
+
+# セキュリティレベル
+# low, medium, high から選択
+severity = low
+
+# 信頼度レベル
+# low, medium, high から選択
+confidence = low

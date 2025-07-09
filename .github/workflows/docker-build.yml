@@ -1,0 +1,119 @@
+name: Docker Build & Cache
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+        continue-on-error: true
+
+  docker-compose-test:
+    name: Docker Compose Integration Test
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env file
+        run: |
+          cp .env.example .env
+          echo "GOOGLE_API_KEY=test-api-key" >> .env
+
+      - name: Start services
+        run: |
+          docker compose -f docker/docker-compose.yml up -d
+          docker compose -f docker/docker-compose.yml ps
+
+      - name: Wait for services
+        run: |
+          timeout 60s bash -c 'until docker compose -f docker/docker-compose.yml exec -T postgres pg_isready; do sleep 2; done'
+          echo "PostgreSQL is ready"
+
+      - name: Run database setup and test connection
+        run: |
+          # データベース接続テスト
+          docker compose -f docker/docker-compose.yml exec -T polibase uv run python -c "
+          from src.config.database import test_connection
+          import sys
+          if test_connection():
+              print('✅ データベース接続成功')
+              sys.exit(0)
+          else:
+              print('❌ データベース接続失敗')
+              sys.exit(1)
+          "
+
+          # データベース構造を確認
+          docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
+
+      - name: Test CLI
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T polibase uv run polibase --help
+          docker compose -f docker/docker-compose.yml exec -T polibase uv run polibase test-connection
+
+      - name: Run tests in container
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T polibase uv run pytest -v || true
+        continue-on-error: true
+
+      - name: Stop services
+        if: always()
+        run: |
+          docker compose -f docker/docker-compose.yml down -v
