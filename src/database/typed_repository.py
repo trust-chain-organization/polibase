@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Sequence
 from contextlib import contextmanager
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy import Engine, Result, text
@@ -12,13 +12,10 @@ from sqlalchemy.orm import Session
 
 from src.config.database import get_db_engine, get_db_session
 
-# Type variable for generic repository pattern
-T = TypeVar("T", bound=PydanticBaseModel)
-
 logger = logging.getLogger(__name__)
 
 
-class TypedRepository(Generic[T]):
+class TypedRepository[T: PydanticBaseModel]:
     """Type-safe repository base class with common database operations."""
 
     def __init__(self, model_class: type[T], table_name: str, use_session: bool = True):

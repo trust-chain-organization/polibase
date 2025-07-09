@@ -31,7 +31,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --frozen
+          uv sync --frozen --extra dev
 
       - name: Check imports and basic structure
         run: |
@@ -58,9 +58,9 @@ jobs:
       - name: Run Ruff linter
         run: |
           uv run ruff check src/ tests/
-        continue-on-error: true
 
       - name: Check for security issues with bandit
         run: |
           uv run bandit -r src/ -ll -i -x "*/tests/*"
+        # TODO: Remove continue-on-error once Issue #176 is resolved
         continue-on-error: true

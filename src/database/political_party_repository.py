@@ -10,8 +10,12 @@ logger = logging.getLogger(__name__)
 class PoliticalPartyRepository(BaseRepository):
     """Repository for managing political party data"""
 
-    def __init__(self):
-        super().__init__(use_session=False)
+    def __init__(self, session=None):
+        if session:
+            super().__init__(use_session=True)
+            self._session = session
+        else:
+            super().__init__(use_session=False)
 
     def create_party_if_not_exists(self, party_name: str) -> int | None:
         """政党が存在しない場合のみ作成"""

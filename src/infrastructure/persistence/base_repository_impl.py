@@ -1,17 +1,13 @@
 """Base repository implementation for infrastructure layer."""
 
-from typing import Generic, TypeVar
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from src.domain.entities.base import BaseEntity
 from src.domain.repositories.base import BaseRepository
 
-T = TypeVar("T", bound=BaseEntity)
 
-
-class BaseRepositoryImpl(BaseRepository[T], Generic[T]):
+class BaseRepositoryImpl[T: BaseEntity](BaseRepository[T]):
     """Base implementation of repository using SQLAlchemy."""
 
     def __init__(self, session: AsyncSession, entity_class: type[T], model_class):
