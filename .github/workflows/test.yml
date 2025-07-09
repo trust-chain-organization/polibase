@@ -223,12 +223,29 @@ jobs:
           name: bandit-report
           path: bandit-report.json
 
-      - name: Check for hardcoded secrets
+      - name: Check for hardcoded secrets (PR)
+        if: github.event_name == 'pull_request'
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '' || github.event.repository.default_branch }}
-          head: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '' || 'HEAD' }}
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+      - name: Check for hardcoded secrets (Push to main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          # main branchへのpushは最新コミットのみスキャン
+          extra_args: --max-depth=1
+
+      - name: Check for hardcoded secrets (Other pushes)
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
 
       - name: Run pip-audit for dependency vulnerabilities
         run: |
