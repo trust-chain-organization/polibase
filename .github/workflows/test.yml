@@ -169,12 +169,10 @@ jobs:
       - name: Check code style
         run: |
           uv run ruff check src/ tests/
-        continue-on-error: true
 
       - name: Run type checking
         run: |
           uv run pyright src/
-        continue-on-error: true
 
       - name: Generate type checking report
         if: always()
@@ -213,7 +211,6 @@ jobs:
       - name: Run bandit security scan
         run: |
           uv run bandit -r src/ -f json -o bandit-report.json -ll -i
-        continue-on-error: true
 
       - name: Upload bandit results
         if: always()
@@ -228,13 +225,11 @@ jobs:
           path: ./
           base: ${{ github.event.repository.default_branch }}
           head: HEAD
-        continue-on-error: true
 
       - name: Run pip-audit for dependency vulnerabilities
         run: |
           uv pip compile pyproject.toml -o requirements.txt
           uv run pip-audit -r requirements.txt --format json --output pip-audit-report.json
-        continue-on-error: true
 
       - name: Upload pip-audit results
         if: always()

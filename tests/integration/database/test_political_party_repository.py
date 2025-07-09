@@ -42,9 +42,9 @@ def db_session():
 
 
 @pytest.fixture
-def repository():
-    """Create PoliticalPartyRepository instance"""
-    return PoliticalPartyRepository()
+def repository(db_session):
+    """Create PoliticalPartyRepository instance with test session"""
+    return PoliticalPartyRepository(session=db_session)
 
 
 class TestPoliticalPartyRepository:

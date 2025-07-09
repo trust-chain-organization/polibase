@@ -58,9 +58,7 @@ jobs:
       - name: Run Ruff linter
         run: |
           uv run ruff check src/ tests/
-        continue-on-error: true
 
       - name: Check for security issues with bandit
         run: |
           uv run bandit -r src/ -ll -i -x "*/tests/*"
-        continue-on-error: true

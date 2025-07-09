@@ -1,14 +1,11 @@
 """Base repository interface."""
 
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
 
 from src.domain.entities.base import BaseEntity
 
-T = TypeVar("T", bound=BaseEntity)
 
-
-class BaseRepository(ABC, Generic[T]):
+class BaseRepository[T: BaseEntity](ABC):
     """Base repository interface for all repositories."""
 
     @abstractmethod
