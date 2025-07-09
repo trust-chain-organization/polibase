@@ -99,6 +99,15 @@ jobs:
               sys.exit(1)
           "
 
+          # Apply database migrations
+          echo "Applying database migrations..."
+          for file in database/migrations/*.sql; do
+            if [ -f "$file" ]; then
+              echo "Applying migration: $file"
+              docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -f "/app/$file"
+            fi
+          done
+
           # データベース構造を確認
           docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
 
