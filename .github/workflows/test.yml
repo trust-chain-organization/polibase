@@ -227,8 +227,8 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
+          base: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '' || github.event.repository.default_branch }}
+          head: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '' || 'HEAD' }}
 
       - name: Run pip-audit for dependency vulnerabilities
         run: |
