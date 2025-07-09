@@ -1,5 +1,7 @@
 """Base repository implementation for infrastructure layer."""
 
+from typing import Any
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -10,7 +12,9 @@ from src.domain.repositories.base import BaseRepository
 class BaseRepositoryImpl[T: BaseEntity](BaseRepository[T]):
     """Base implementation of repository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession, entity_class: type[T], model_class):
+    def __init__(
+        self, session: AsyncSession, entity_class: type[T], model_class: type[Any]
+    ):
         self.session = session
         self.entity_class = entity_class
         self.model_class = model_class
@@ -73,14 +77,14 @@ class BaseRepositoryImpl[T: BaseEntity](BaseRepository[T]):
         await self.session.commit()
         return True
 
-    def _to_entity(self, model) -> T:
+    def _to_entity(self, model: Any) -> T:
         """Convert database model to domain entity."""
         raise NotImplementedError("Subclass must implement _to_entity")
 
-    def _to_model(self, entity: T):
+    def _to_model(self, entity: T) -> Any:
         """Convert domain entity to database model."""
         raise NotImplementedError("Subclass must implement _to_model")
 
-    def _update_model(self, model, entity: T):
+    def _update_model(self, model: Any, entity: T) -> None:
         """Update model fields from entity."""
         raise NotImplementedError("Subclass must implement _update_model")

@@ -124,7 +124,7 @@ class TestMatchSpeakersUseCase:
         mock_politician_repo.get_by_id.return_value = politician
 
         mock_llm_service.match_speaker_to_politician.return_value = {
-            "politician_id": 30,
+            "matched_id": 30,
             "confidence": 0.85,
         }
 
