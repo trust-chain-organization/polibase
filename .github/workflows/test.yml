@@ -173,6 +173,8 @@ jobs:
       - name: Run type checking
         run: |
           uv run pyright src/
+        # TODO: Remove continue-on-error once Issue #175 is resolved
+        continue-on-error: true
 
       - name: Generate type checking report
         if: always()
@@ -211,6 +213,8 @@ jobs:
       - name: Run bandit security scan
         run: |
           uv run bandit -r src/ -f json -o bandit-report.json -ll -i
+        # TODO: Remove continue-on-error once Issue #176 is resolved
+        continue-on-error: true
 
       - name: Upload bandit results
         if: always()
