@@ -110,7 +110,7 @@ class BaseCommand:
         return click.confirm(message)
 
 
-def with_async_execution[P, T](func: Callable[P, T]) -> Callable[P, T]:
+def with_async_execution(func: Callable[P, T]) -> Callable[P, T]:  # noqa: UP047
     """Decorator to execute async functions in sync context"""
 
     @wraps(func)
@@ -120,7 +120,7 @@ def with_async_execution[P, T](func: Callable[P, T]) -> Callable[P, T]:
     return wrapper
 
 
-def with_error_handling[P, T](func: Callable[P, T]) -> Callable[P, T]:
+def with_error_handling(func: Callable[P, T]) -> Callable[P, T]:  # noqa: UP047
     """Decorator to handle errors gracefully with specific error types"""
 
     @wraps(func)
