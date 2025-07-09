@@ -4,6 +4,7 @@ import asyncio
 import sys
 from collections.abc import Callable
 from functools import wraps
+from typing import ParamSpec, TypeVar
 
 import click
 
@@ -21,26 +22,29 @@ from src.exceptions import (
     ValidationError,
 )
 
+P = ParamSpec("P")
+T = TypeVar("T")
+
 
 class BaseCommand:
     """Base class for CLI commands with common functionality"""
 
     @staticmethod
-    def async_command(f):
+    def async_command(f: Callable[P, T]) -> Callable[P, T]:
         """Decorator to run async functions in CLI commands"""
 
         @wraps(f)
-        def wrapper(*args, **kwargs):
-            return asyncio.run(f(*args, **kwargs))
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            return asyncio.run(f(*args, **kwargs))  # type: ignore
 
         return wrapper
 
     @staticmethod
-    def handle_errors(f):
+    def handle_errors(f: Callable[P, T]) -> Callable[P, T]:
         """Decorator to handle common errors in CLI commands"""
 
         @wraps(f)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             try:
                 return f(*args, **kwargs)
             except APIKeyError as e:
@@ -106,21 +110,21 @@ class BaseCommand:
         return click.confirm(message)
 
 
-def with_async_execution(func: Callable) -> Callable:
+def with_async_execution(func: Callable[P, T]) -> Callable[P, T]:  # noqa: UP047
     """Decorator to execute async functions in sync context"""
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
-        return asyncio.run(func(*args, **kwargs))
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        return asyncio.run(func(*args, **kwargs))  # type: ignore
 
     return wrapper
 
 
-def with_error_handling(func: Callable) -> Callable:
+def with_error_handling(func: Callable[P, T]) -> Callable[P, T]:  # noqa: UP047
     """Decorator to handle errors gracefully with specific error types"""
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         try:
             return func(*args, **kwargs)
         except APIKeyError as e:

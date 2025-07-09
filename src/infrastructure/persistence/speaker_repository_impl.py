@@ -1,5 +1,7 @@
 """Speaker repository implementation."""
 
+from typing import Any
+
 from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -12,7 +14,7 @@ from src.infrastructure.persistence.base_repository_impl import BaseRepositoryIm
 class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
     """Implementation of speaker repository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession, model_class):
+    def __init__(self, session: AsyncSession, model_class: type[Any]):
         super().__init__(session, Speaker, model_class)
 
     async def get_by_name_party_position(
@@ -74,7 +76,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             # Create new
             return await self.create(speaker)
 
-    def _to_entity(self, model) -> Speaker:
+    def _to_entity(self, model: Any) -> Speaker:
         """Convert database model to domain entity."""
         return Speaker(
             name=model.name,
@@ -85,7 +87,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             id=model.id,
         )
 
-    def _to_model(self, entity: Speaker):
+    def _to_model(self, entity: Speaker) -> Any:
         """Convert domain entity to database model."""
         return self.model_class(
             name=entity.name,
@@ -95,7 +97,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             is_politician=entity.is_politician,
         )
 
-    def _update_model(self, model, entity: Speaker):
+    def _update_model(self, model: Any, entity: Speaker) -> None:
         """Update model fields from entity."""
         model.name = entity.name
         model.type = entity.type

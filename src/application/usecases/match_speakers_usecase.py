@@ -1,10 +1,12 @@
 """Use case for matching speakers to politicians."""
 
 from src.application.dtos.speaker_dto import SpeakerMatchingDTO
+from src.domain.entities.speaker import Speaker
 from src.domain.repositories.conversation_repository import ConversationRepository
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.speaker_domain_service import SpeakerDomainService
+from src.domain.types.llm import LLMSpeakerMatchContext
 from src.infrastructure.interfaces.llm_service import ILLMService
 
 
@@ -33,8 +35,8 @@ class MatchSpeakersUseCase:
     ) -> list[SpeakerMatchingDTO]:
         """Execute the speaker matching use case."""
         # Get speakers to process
+        speakers: list[Speaker] = []
         if speaker_ids:
-            speakers = []
             for speaker_id in speaker_ids:
                 speaker = await self.speaker_repo.get_by_id(speaker_id)
                 if speaker:
@@ -45,7 +47,7 @@ class MatchSpeakersUseCase:
             if limit:
                 speakers = speakers[:limit]
 
-        results = []
+        results: list[SpeakerMatchingDTO] = []
 
         for speaker in speakers:
             # Skip if already linked
@@ -91,7 +93,7 @@ class MatchSpeakersUseCase:
 
         return results
 
-    async def _rule_based_matching(self, speaker) -> SpeakerMatchingDTO | None:
+    async def _rule_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
         """Perform rule-based speaker matching."""
         # Normalize speaker name
         normalized_name = self.speaker_service.normalize_speaker_name(speaker.name)
@@ -129,7 +131,7 @@ class MatchSpeakersUseCase:
 
         return None
 
-    async def _llm_based_matching(self, speaker) -> SpeakerMatchingDTO | None:
+    async def _llm_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
         """Perform LLM-based speaker matching."""
         # Get potential candidates
         candidates = await self.politician_repo.get_all(limit=100)
@@ -138,27 +140,28 @@ class MatchSpeakersUseCase:
             return None
 
         # Prepare context for LLM
-        context = {
-            "speaker_name": speaker.name,
-            "speaker_party": speaker.political_party_name,
-            "speaker_position": speaker.position,
-            "candidates": [
+        context = LLMSpeakerMatchContext(
+            speaker_name=speaker.name,
+            normalized_name=self.speaker_service.normalize_speaker_name(speaker.name),
+            party_affiliation=speaker.political_party_name,
+            position=speaker.position,
+            meeting_date="",  # Not available in this context
+            candidates=[
                 {
-                    "id": c.id,
+                    "id": str(c.id),
                     "name": c.name,
-                    "party_id": c.political_party_id,
-                    "position": c.position,
+                    "party": "",  # Would need party name lookup
                 }
                 for c in candidates
             ],
-        }
+        )
 
         # Call LLM service
         match_result = await self.llm_service.match_speaker_to_politician(context)
 
-        if match_result and match_result.get("politician_id"):
+        if match_result and match_result.get("matched_id"):
             politician = await self.politician_repo.get_by_id(
-                match_result["politician_id"]
+                match_result["matched_id"]
             )
 
             if politician:

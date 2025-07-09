@@ -46,7 +46,7 @@ class ProcessMinutesUseCase:
     async def execute(self, request: ProcessMinutesDTO) -> MinutesProcessingResultDTO:
         """Execute the minutes processing use case."""
         start_time = datetime.now()
-        errors = []
+        errors: list[str] = []
 
         # Get meeting
         meeting = await self.meeting_repo.get_by_id(request.meeting_id)
@@ -135,6 +135,8 @@ class ProcessMinutesUseCase:
         elif pdf_url or meeting.gcs_pdf_uri:
             # Extract from PDF
             url = pdf_url or meeting.gcs_pdf_uri
+            if url is None:
+                raise ValueError("No PDF URL available")
             speeches = await self.pdf_processor.process_pdf(url)
         else:
             raise ValueError("No valid source for minutes processing")
@@ -153,7 +155,7 @@ class ProcessMinutesUseCase:
         self, conversations: list[Conversation]
     ) -> int:
         """Extract unique speakers and create speaker records."""
-        speaker_names = set()
+        speaker_names: set[tuple[str, str | None]] = set()
 
         for conv in conversations:
             if conv.speaker_name:

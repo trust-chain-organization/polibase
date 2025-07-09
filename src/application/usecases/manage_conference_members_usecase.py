@@ -38,6 +38,26 @@ class ExtractedMemberRepository(Protocol):
         """Get extracted members by conference."""
         ...
 
+    async def get_pending_by_conference(
+        self, conference_id: int
+    ) -> list[ExtractedMemberEntity]:
+        """Get pending extracted members by conference."""
+        ...
+
+    async def get_all_pending(self) -> list[ExtractedMemberEntity]:
+        """Get all pending extracted members."""
+        ...
+
+    async def get_by_conference_and_status(
+        self, conference_id: int, status: str | None
+    ) -> list[ExtractedMemberEntity]:
+        """Get extracted members by conference and status."""
+        ...
+
+    async def get_by_status(self, status: str | None) -> list[ExtractedMemberEntity]:
+        """Get extracted members by status."""
+        ...
+
     async def create(
         self, member: ExtractedConferenceMemberDTO
     ) -> ExtractedMemberEntity:
@@ -50,12 +70,43 @@ class ExtractedMemberRepository(Protocol):
         """Update extracted member."""
         ...
 
+    async def update_matching_status(
+        self,
+        member_id: int,
+        status: str,
+        matched_politician_id: int | None,
+        confidence_score: float,
+    ) -> None:
+        """Update member matching status."""
+        ...
+
+    async def mark_processed(self, member_id: int) -> None:
+        """Mark member as processed."""
+        ...
+
+
+class AffiliationEntity:
+    """Minimal entity for affiliation."""
+
+    id: int
+    politician_id: int
+    conference_id: int
+    start_date: date
+    end_date: date | None
+    role: str | None
+
 
 class AffiliationRepository(Protocol):
     """Protocol for affiliation repository."""
 
-    async def create(self, affiliation: Any) -> Any:
+    async def create(self, affiliation: CreateAffiliationDTO) -> AffiliationEntity:
         """Create affiliation."""
+        ...
+
+    async def get_by_politician_and_conference(
+        self, politician_id: int, conference_id: int
+    ) -> list[AffiliationEntity]:
+        """Get affiliations by politician and conference."""
         ...
 
 
@@ -108,7 +159,7 @@ class ManageConferenceMembersUseCase:
         )
 
         # Save to staging table
-        extracted = []
+        extracted: list[ExtractedConferenceMemberDTO] = []
         for raw in raw_members:
             member = ExtractedConferenceMemberDTO(
                 name=raw["name"],
@@ -136,7 +187,7 @@ class ManageConferenceMembersUseCase:
         else:
             members = await self.extracted_repo.get_all_pending()
 
-        results = []
+        results: list[ConferenceMemberMatchingDTO] = []
 
         for member in members:
             # Try to find matching politician
@@ -173,7 +224,7 @@ class ManageConferenceMembersUseCase:
         if not start_date:
             start_date = date.today()
 
-        created = []
+        created: list[CreateAffiliationDTO] = []
 
         for member in members:
             if not member.matched_politician_id:
@@ -215,12 +266,12 @@ class ManageConferenceMembersUseCase:
         return created
 
     async def _match_member_to_politician(
-        self, member, threshold: float
+        self, member: ExtractedMemberEntity, threshold: float
     ) -> ConferenceMemberMatchingDTO:
         """Match a single member to a politician."""
         # Normalize party name
         normalized_party = self.conference_service.normalize_party_name(
-            member.party_name or ""
+            member.party_affiliation or ""
         )
 
         # Search for candidates
@@ -228,18 +279,36 @@ class ManageConferenceMembersUseCase:
 
         if not candidates:
             # Try LLM matching with broader search
+            # Search more broadly for politicians
+            all_politicians = await self.politician_repo.get_all()
+            politician_dtos = [
+                {
+                    "id": str(p.id),
+                    "name": p.name,
+                    "party": p.political_party.name if p.political_party else None,
+                }
+                for p in all_politicians
+            ]
+
             llm_result = await self.llm.match_conference_member(
                 member.name,
                 normalized_party,
-                member.role,
+                politician_dtos,
             )
 
             if llm_result and llm_result["confidence"] >= threshold:
+                # Get politician details if matched
+                politician = None
+                if llm_result["matched_id"]:
+                    politician = await self.politician_repo.get_by_id(
+                        llm_result["matched_id"]
+                    )
+
                 return ConferenceMemberMatchingDTO(
                     extracted_member_id=member.id,
                     member_name=member.name,
-                    matched_politician_id=llm_result["politician_id"],
-                    matched_politician_name=llm_result["politician_name"],
+                    matched_politician_id=llm_result["matched_id"],
+                    matched_politician_name=politician.name if politician else None,
                     confidence_score=llm_result["confidence"],
                     status="matched"
                     if llm_result["confidence"] >= 0.7
@@ -253,7 +322,9 @@ class ManageConferenceMembersUseCase:
         for candidate in candidates:
             # Calculate confidence score
             party_match = False  # Would need party name lookup
-            role_match = member.role == candidate.position
+            role_match = (
+                False  # Candidate doesn't have position attribute in base entity
+            )
 
             score = self.conference_service.calculate_member_confidence_score(
                 member.name,
