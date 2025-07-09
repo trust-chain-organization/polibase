@@ -98,6 +98,13 @@ def setup_test_data(db_session):
     )
     conference_id = result.scalar()
 
+    # Verify conference was created
+    if not conference_id:
+        pytest.fail("Failed to create test conference")
+
+    # Debug: Check what conference_id we got
+    print(f"DEBUG: Created conference with ID: {conference_id}")
+
     # Insert test political parties
     party_result1 = db_session.execute(
         text("INSERT INTO political_parties (name) VALUES ('テスト党A') RETURNING id")
@@ -179,7 +186,7 @@ class TestParliamentaryGroupRepositoryIntegration:
 
     def test_create_parliamentary_group(self, db_session, setup_test_data):
         """Test creating a parliamentary group"""
-        repo = ParliamentaryGroupRepository()
+        repo = ParliamentaryGroupRepository(session=db_session)
 
         # Create a parliamentary group
         group = repo.create_parliamentary_group(
@@ -201,7 +208,7 @@ class TestParliamentaryGroupRepositoryIntegration:
 
     def test_get_parliamentary_group_by_id(self, db_session, setup_test_data):
         """Test retrieving a parliamentary group by ID"""
-        repo = ParliamentaryGroupRepository()
+        repo = ParliamentaryGroupRepository(session=db_session)
 
         # Create a group
         created_group = repo.create_parliamentary_group(
@@ -223,7 +230,7 @@ class TestParliamentaryGroupRepositoryIntegration:
 
     def test_get_parliamentary_groups_by_conference(self, db_session, setup_test_data):
         """Test retrieving parliamentary groups by conference"""
-        repo = ParliamentaryGroupRepository()
+        repo = ParliamentaryGroupRepository(session=db_session)
         conference_id = setup_test_data["conference_id"]
 
         # Create multiple groups
@@ -247,7 +254,7 @@ class TestParliamentaryGroupRepositoryIntegration:
 
     def test_search_parliamentary_groups(self, db_session, setup_test_data):
         """Test searching parliamentary groups"""
-        repo = ParliamentaryGroupRepository()
+        repo = ParliamentaryGroupRepository(session=db_session)
         conference_id = setup_test_data["conference_id"]
 
         # Create test groups
@@ -273,7 +280,7 @@ class TestParliamentaryGroupRepositoryIntegration:
 
     def test_update_parliamentary_group(self, db_session, setup_test_data):
         """Test updating parliamentary group information"""
-        repo = ParliamentaryGroupRepository()
+        repo = ParliamentaryGroupRepository(session=db_session)
 
         # Create a group
         group = repo.create_parliamentary_group(
@@ -309,64 +316,75 @@ class TestParliamentaryGroupRepositoryIntegration:
         assert updated["name"] == "更新後会派"  # Unchanged
 
 
+@pytest.fixture
+def setup_membership_group(db_session, setup_test_data):
+    """Create a parliamentary group for membership tests"""
+    group_repo = ParliamentaryGroupRepository(session=db_session)
+    # Ensure we have a valid conference_id from setup_test_data
+    conference_id = setup_test_data["conference_id"]
+    if not conference_id:
+        pytest.fail("No conference_id available from setup_test_data")
+
+    # Debug: Print conference_id
+    print(f"DEBUG: Using conference_id: {conference_id} for membership group")
+
+    group = group_repo.create_parliamentary_group(
+        name="メンバーシップテスト会派",
+        conference_id=conference_id,
+    )
+    return group
+
+
 class TestParliamentaryGroupMembershipRepositoryIntegration:
     """Integration tests for ParliamentaryGroupMembershipRepository"""
 
-    @pytest.fixture
-    def setup_group(self, db_session, setup_test_data):
-        """Create a parliamentary group for membership tests"""
-        group_repo = ParliamentaryGroupRepository()
-        group = group_repo.create_parliamentary_group(
-            name="メンバーシップテスト会派",
-            conference_id=setup_test_data["conference_id"],
-        )
-        return group
-
-    def test_add_membership(self, db_session, setup_test_data, setup_group):
+    def test_add_membership(self, db_session, setup_test_data, setup_membership_group):
         """Test adding a membership"""
-        repo = ParliamentaryGroupMembershipRepository()
+        repo = ParliamentaryGroupMembershipRepository(session=db_session)
 
         membership = repo.add_membership(
             politician_id=setup_test_data["politician_ids"][0],
-            parliamentary_group_id=setup_group["id"],
+            parliamentary_group_id=setup_membership_group["id"],
             start_date=date(2024, 1, 1),
             role="会長",
         )
 
         assert membership["politician_id"] == setup_test_data["politician_ids"][0]
-        assert membership["parliamentary_group_id"] == setup_group["id"]
+        assert membership["parliamentary_group_id"] == setup_membership_group["id"]
         assert membership["start_date"] == date(2024, 1, 1)
         assert membership["end_date"] is None
         assert membership["role"] == "会長"
         assert "id" in membership
 
-    def test_get_current_members(self, db_session, setup_test_data, setup_group):
+    def test_get_current_members(
+        self, db_session, setup_test_data, setup_membership_group
+    ):
         """Test getting current members of a group"""
-        repo = ParliamentaryGroupMembershipRepository()
+        repo = ParliamentaryGroupMembershipRepository(session=db_session)
 
         # Add current members
         repo.add_membership(
             setup_test_data["politician_ids"][0],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2024, 1, 1),
             role="会長",
         )
         repo.add_membership(
             setup_test_data["politician_ids"][1],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2024, 1, 15),
         )
 
         # Add past member
         repo.add_membership(
             setup_test_data["politician_ids"][2],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2023, 1, 1),
             end_date=date(2023, 12, 31),
         )
 
         # Get current members
-        current_members = repo.get_current_members(setup_group["id"])
+        current_members = repo.get_current_members(setup_membership_group["id"])
 
         assert len(current_members) == 2
         assert all(m["end_date"] is None for m in current_members)
@@ -377,36 +395,44 @@ class TestParliamentaryGroupMembershipRepositoryIntegration:
         leader = [m for m in current_members if m["role"] == "会長"]
         assert len(leader) == 1
 
-    def test_get_member_history(self, db_session, setup_test_data, setup_group):
+    def test_get_member_history(
+        self, db_session, setup_test_data, setup_membership_group
+    ):
         """Test getting member history"""
-        repo = ParliamentaryGroupMembershipRepository()
+        repo = ParliamentaryGroupMembershipRepository(session=db_session)
 
         # Add members with history
         repo.add_membership(
             setup_test_data["politician_ids"][0],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2024, 1, 1),
         )
         repo.add_membership(
             setup_test_data["politician_ids"][1],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2023, 1, 1),
             end_date=date(2023, 12, 31),
         )
 
         # Get all history
-        all_history = repo.get_member_history(setup_group["id"], include_past=True)
+        all_history = repo.get_member_history(
+            setup_membership_group["id"], include_past=True
+        )
         assert len(all_history) == 2
 
         # Get current only
-        current_only = repo.get_member_history(setup_group["id"], include_past=False)
+        current_only = repo.get_member_history(
+            setup_membership_group["id"], include_past=False
+        )
         assert len(current_only) == 1
         assert current_only[0]["politician_id"] == setup_test_data["politician_ids"][0]
 
-    def test_get_politician_groups(self, db_session, setup_test_data, setup_group):
+    def test_get_politician_groups(
+        self, db_session, setup_test_data, setup_membership_group
+    ):
         """Test getting groups a politician belongs to"""
-        repo = ParliamentaryGroupMembershipRepository()
-        group_repo = ParliamentaryGroupRepository()
+        repo = ParliamentaryGroupMembershipRepository(session=db_session)
+        group_repo = ParliamentaryGroupRepository(session=db_session)
 
         # Create another group
         another_group = group_repo.create_parliamentary_group(
@@ -419,7 +445,7 @@ class TestParliamentaryGroupMembershipRepositoryIntegration:
         # Add memberships
         repo.add_membership(
             politician_id,
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2024, 1, 1),
         )
         repo.add_membership(
@@ -439,85 +465,91 @@ class TestParliamentaryGroupMembershipRepositoryIntegration:
         assert len(all_groups) == 2
         assert "conference_name" in all_groups[0]  # Join field
 
-    def test_end_membership(self, db_session, setup_test_data, setup_group):
+    def test_end_membership(self, db_session, setup_test_data, setup_membership_group):
         """Test ending a membership"""
-        repo = ParliamentaryGroupMembershipRepository()
+        repo = ParliamentaryGroupMembershipRepository(session=db_session)
 
         # Add membership
         politician_id = setup_test_data["politician_ids"][0]
         repo.add_membership(
             politician_id,
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2024, 1, 1),
         )
 
         # End membership
         success = repo.end_membership(
             politician_id,
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2024, 6, 30),
         )
         assert success is True
 
         # Verify membership ended
-        current_members = repo.get_current_members(setup_group["id"])
+        current_members = repo.get_current_members(setup_membership_group["id"])
         assert len(current_members) == 0
 
         # Check history shows ended membership
-        history = repo.get_member_history(setup_group["id"])
+        history = repo.get_member_history(setup_membership_group["id"])
         assert len(history) == 1
         assert history[0]["end_date"] == date(2024, 6, 30)
 
-    def test_get_group_members_at_date(self, db_session, setup_test_data, setup_group):
+    def test_get_group_members_at_date(
+        self, db_session, setup_test_data, setup_membership_group
+    ):
         """Test getting group members at a specific date"""
-        repo = ParliamentaryGroupMembershipRepository()
+        repo = ParliamentaryGroupMembershipRepository(session=db_session)
 
         # Add members with different periods
         repo.add_membership(
             setup_test_data["politician_ids"][0],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2023, 1, 1),
             end_date=date(2023, 6, 30),
         )
         repo.add_membership(
             setup_test_data["politician_ids"][1],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2023, 4, 1),
             end_date=date(2023, 12, 31),
         )
         repo.add_membership(
             setup_test_data["politician_ids"][2],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2023, 7, 1),
         )
 
         # Check members at different dates
         members_jan = repo.get_group_members_at_date(
-            setup_group["id"], date(2023, 1, 15)
+            setup_membership_group["id"], date(2023, 1, 15)
         )
         assert len(members_jan) == 1  # Only politician 0
 
         members_may = repo.get_group_members_at_date(
-            setup_group["id"], date(2023, 5, 15)
+            setup_membership_group["id"], date(2023, 5, 15)
         )
         assert len(members_may) == 2  # Politicians 0 and 1
 
         members_aug = repo.get_group_members_at_date(
-            setup_group["id"], date(2023, 8, 15)
+            setup_membership_group["id"], date(2023, 8, 15)
         )
         assert len(members_aug) == 2  # Politicians 1 and 2
 
-        members_now = repo.get_group_members_at_date(setup_group["id"], date.today())
+        members_now = repo.get_group_members_at_date(
+            setup_membership_group["id"], date.today()
+        )
         assert len(members_now) == 1  # Only politician 2 (no end date)
 
-    def test_membership_constraints(self, db_session, setup_test_data, setup_group):
+    def test_membership_constraints(
+        self, db_session, setup_test_data, setup_membership_group
+    ):
         """Test database constraints and edge cases"""
-        repo = ParliamentaryGroupMembershipRepository()
+        repo = ParliamentaryGroupMembershipRepository(session=db_session)
 
         # Add a membership
         repo.add_membership(
             setup_test_data["politician_ids"][0],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2024, 1, 1),
         )
 
@@ -526,7 +558,7 @@ class TestParliamentaryGroupMembershipRepositoryIntegration:
         # This tests that the repository doesn't enforce uniqueness at DB level
         duplicate = repo.add_membership(
             setup_test_data["politician_ids"][0],
-            setup_group["id"],
+            setup_membership_group["id"],
             date(2024, 2, 1),
         )
         assert duplicate["id"] is not None
@@ -534,7 +566,7 @@ class TestParliamentaryGroupMembershipRepositoryIntegration:
         # Test with future dates
         future_membership = repo.add_membership(
             setup_test_data["politician_ids"][1],
-            setup_group["id"],
+            setup_membership_group["id"],
             date.today() + timedelta(days=30),
         )
         assert future_membership["start_date"] > date.today()

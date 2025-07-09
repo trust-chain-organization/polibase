@@ -8,6 +8,14 @@ from src.database.base_repository import BaseRepository
 class ParliamentaryGroupRepository(BaseRepository):
     """議員団のリポジトリ"""
 
+    def __init__(self, session=None):
+        """Initialize repository with optional session"""
+        if session:
+            super().__init__(use_session=True)
+            self._session = session
+        else:
+            super().__init__(use_session=False)
+
     def _row_to_dict(self, row, columns) -> dict:
         """Rowオブジェクトを辞書に変換する"""
         if row is None:
@@ -183,6 +191,14 @@ class ParliamentaryGroupRepository(BaseRepository):
 
 class ParliamentaryGroupMembershipRepository(BaseRepository):
     """議員団所属履歴のリポジトリ"""
+
+    def __init__(self, session=None):
+        """Initialize repository with optional session"""
+        if session:
+            super().__init__(use_session=True)
+            self._session = session
+        else:
+            super().__init__(use_session=False)
 
     def _row_to_dict(self, row, columns) -> dict:
         """Rowオブジェクトを辞書に変換する"""
