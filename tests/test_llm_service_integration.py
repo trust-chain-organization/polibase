@@ -4,6 +4,7 @@ import pytest
 from pydantic import BaseModel
 
 from src.party_member_extractor.models import PartyMemberInfo, PartyMemberList
+from src.services.instrumented_llm_service import InstrumentedLLMService
 from src.services.llm_errors import LLMError, LLMRateLimitError
 from src.services.llm_factory import LLMServiceFactory
 from src.services.llm_service import LLMService
@@ -20,17 +21,19 @@ class TestLLMService:
 
         # Test different presets
         fast_service = factory.create_fast()
-        assert isinstance(fast_service, LLMService)
+        assert isinstance(fast_service, InstrumentedLLMService)
         assert fast_service.model_name == "gemini-1.5-flash"
 
         advanced_service = factory.create_advanced()
-        assert isinstance(advanced_service, LLMService)
+        assert isinstance(advanced_service, InstrumentedLLMService)
         assert advanced_service.model_name == "gemini-2.0-flash-exp"
 
         creative_service = factory.create_creative()
+        assert isinstance(creative_service, InstrumentedLLMService)
         assert creative_service.temperature == 0.7
 
         precise_service = factory.create_precise()
+        assert isinstance(precise_service, InstrumentedLLMService)
         assert precise_service.temperature == 0.0
 
     def test_prompt_loader(self):

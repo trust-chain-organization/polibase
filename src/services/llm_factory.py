@@ -1,12 +1,14 @@
 """Factory pattern for creating LLMService instances"""
 
-import logging
 from typing import Any
 
+from src.common.logging import get_logger
+
+from .instrumented_llm_service import InstrumentedLLMService
 from .llm_service import LLMService
 from .prompt_loader import PromptLoader
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class LLMServiceFactory:
@@ -59,6 +61,7 @@ class LLMServiceFactory:
         max_tokens: int | None = None,
         api_key: str | None = None,
         use_cache: bool = True,
+        enable_metrics: bool = True,
     ) -> LLMService:
         """
         Create LLMService instance
@@ -103,6 +106,10 @@ class LLMServiceFactory:
 
         # Create new instance
         instance = LLMService(**config)
+
+        # Wrap with instrumentation if enabled
+        if enable_metrics:
+            instance = InstrumentedLLMService(instance)
 
         # Cache if requested
         if cache_key:

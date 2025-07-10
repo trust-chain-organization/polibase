@@ -4,8 +4,8 @@ import os
 
 import pytest
 
+from src.services.instrumented_llm_service import InstrumentedLLMService
 from src.services.llm_factory import LLMServiceFactory
-from src.services.llm_service import LLMService
 from src.services.prompt_loader import PromptLoader
 
 
@@ -21,11 +21,11 @@ class TestLLMServiceBasic:
 
         # Test different presets
         fast_service = factory.create_fast()
-        assert isinstance(fast_service, LLMService)
+        assert isinstance(fast_service, InstrumentedLLMService)
         assert fast_service.model_name == "gemini-1.5-flash"
 
         advanced_service = factory.create_advanced()
-        assert isinstance(advanced_service, LLMService)
+        assert isinstance(advanced_service, InstrumentedLLMService)
         assert advanced_service.model_name == "gemini-2.0-flash-exp"
 
     def test_prompt_loader(self):

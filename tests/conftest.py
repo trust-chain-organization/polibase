@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.common.metrics import setup_metrics
 from tests.fixtures.dto_factories import (
     create_extracted_speech_dto,
     create_politician_dto,
@@ -22,6 +23,21 @@ from tests.fixtures.entity_factories import (
     create_politician,
     create_speaker,
 )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_metrics():
+    """Setup metrics for all test sessions.
+
+    This fixture runs automatically for all tests to ensure metrics
+    are initialized before any LLM services are created.
+    """
+    setup_metrics(
+        service_name="polibase-test",
+        service_version="0.1.0",
+        enable_prometheus=False,  # Don't start Prometheus server in tests
+    )
+    yield
 
 
 # Entity fixtures
