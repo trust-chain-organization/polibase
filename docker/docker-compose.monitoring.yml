@@ -1,0 +1,107 @@
+services:
+  # Grafana - ダッシュボードとビジュアライゼーション
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: polibase-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - polibase-network
+
+  # Prometheus - メトリクス収集とストレージ
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: polibase-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.retention.time=30d"
+    ports:
+      - "9091:9090" # 9090がアプリケーションで使用されているため9091に変更
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    networks:
+      - polibase-network
+
+  # Loki - ログ集約とストレージ
+  loki:
+    image: grafana/loki:2.9.3
+    container_name: polibase-loki
+    command: -config.file=/etc/loki/loki-config.yaml
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./monitoring/loki:/etc/loki
+      - loki_data:/loki
+    networks:
+      - polibase-network
+
+  # Promtail - ログ収集エージェント
+  promtail:
+    image: grafana/promtail:2.9.3
+    container_name: polibase-promtail
+    command: -config.file=/etc/promtail/promtail-config.yaml
+    volumes:
+      - ./monitoring/promtail:/etc/promtail
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - loki
+    networks:
+      - polibase-network
+
+  # Node Exporter - システムメトリクス収集
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: polibase-node-exporter
+    command:
+      - "--path.rootfs=/host"
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    volumes:
+      - /:/host:ro,rslave
+    ports:
+      - "9100:9100"
+    networks:
+      - polibase-network
+
+  # PostgreSQL Exporter - データベースメトリクス収集
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: polibase-postgres-exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+    networks:
+      - polibase-network
+
+volumes:
+  grafana_data:
+  prometheus_data:
+  loki_data:
+
+networks:
+  polibase-network:
+    external: true
+    name: docker_default

@@ -1,0 +1,211 @@
+groups:
+  - name: polibase_availability
+    interval: 30s
+    rules:
+      # システム可用性のアラート
+      - alert: PolibaseServiceDown
+        expr: up{job=~"polibase.*"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Polibaseサービスが停止しています"
+          description: "{{ $labels.job }} (instance: {{ $labels.instance }}) が2分以上停止しています。"
+          runbook: "https://wiki.example.com/runbooks/polibase-service-down"
+
+      # エラー率のアラート（SLO: エラー率 < 1%）
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(minutes_processing_errors_total[5m])) /
+            sum(rate(minutes_processed_total[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "議事録処理のエラー率が高い"
+          description: "エラー率が {{ $value | humanizePercentage }} で、SLO (1%) を超えています。"
+          grafana_dashboard: "http://localhost:3000/d/polibase-error-tracking"
+
+      - alert: VeryHighErrorRate
+        expr: |
+          (
+            sum(rate(minutes_processing_errors_total[5m])) /
+            sum(rate(minutes_processed_total[5m]))
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "議事録処理のエラー率が非常に高い"
+          description: "エラー率が {{ $value | humanizePercentage }} で、5%を超えています。即座の対応が必要です。"
+
+  - name: polibase_performance
+    interval: 30s
+    rules:
+      # レスポンスタイムのアラート（SLO: P95 < 2秒）
+      - alert: SlowResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "APIレスポンスタイムが遅い"
+          description: "P95レスポンスタイムが {{ $value | humanizeDuration }} で、SLO (2秒) を超えています。"
+          grafana_dashboard: "http://localhost:3000/d/polibase-performance"
+
+      # データベース接続数のアラート
+      - alert: HighDatabaseConnections
+        expr: db_connections_active > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: database
+        annotations:
+          summary: "データベース接続数が多い"
+          description: "アクティブなDB接続数が {{ $value }} で、閾値（80）を超えています。"
+
+      # 議事録処理時間のアラート
+      - alert: SlowMinutesProcessing
+        expr: |
+          histogram_quantile(0.95,
+            rate(minutes_processing_duration_seconds_bucket[5m])
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "議事録処理が遅い"
+          description: "議事録処理のP95が {{ $value | humanizeDuration }} で、30秒を超えています。"
+
+  - name: polibase_resources
+    interval: 30s
+    rules:
+      # CPU使用率のアラート
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "CPU使用率が高い"
+          description: "{{ $labels.instance }} のCPU使用率が {{ $value | humanize }}% です。"
+
+      # メモリ使用率のアラート
+      - alert: HighMemoryUsage
+        expr: |
+          (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) /
+          node_memory_MemTotal_bytes * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "メモリ使用率が高い"
+          description: "{{ $labels.instance }} のメモリ使用率が {{ $value | humanize }}% です。"
+
+      # ディスク使用率のアラート
+      - alert: HighDiskUsage
+        expr: |
+          (node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"} -
+           node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"}) /
+          node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs"} * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "ディスク使用率が高い"
+          description: "{{ $labels.instance }} の {{ $labels.mountpoint }} のディスク使用率が {{ $value | humanize }}% です。"
+
+  - name: polibase_llm
+    interval: 30s
+    rules:
+      # LLM APIエラー率のアラート
+      - alert: HighLLMErrorRate
+        expr: |
+          sum(rate(llm_api_calls_total{status="error"}[5m])) /
+          sum(rate(llm_api_calls_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: ai
+        annotations:
+          summary: "LLM APIのエラー率が高い"
+          description: "LLM APIのエラー率が {{ $value | humanizePercentage }} で、10%を超えています。"
+
+      # LLMトークン使用量のアラート（コスト管理）
+      - alert: HighLLMTokenUsage
+        expr: |
+          sum(increase(llm_tokens_used_total[1h])) > 1000000
+        for: 5m
+        labels:
+          severity: warning
+          team: finance
+        annotations:
+          summary: "LLMトークン使用量が多い"
+          description: "過去1時間のトークン使用量が {{ $value | humanize }} で、100万トークンを超えています。"
+
+  - name: polibase_data_quality
+    interval: 60s
+    rules:
+      # スピーカーマッチング精度のアラート
+      - alert: LowSpeakerMatchingAccuracy
+        expr: |
+          (sum(speaker_matching_success_total) / sum(speaker_matching_attempts_total)) < 0.7
+        for: 15m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "スピーカーマッチング精度が低い"
+          description: "マッチング精度が {{ $value | humanizePercentage }} で、70%を下回っています。"
+
+      # データ欠損率のアラート
+      - alert: HighDataMissingRate
+        expr: |
+          (sum(data_missing_fields_total) / sum(data_total_fields)) > 0.2
+        for: 15m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "データ欠損率が高い"
+          description: "データ欠損率が {{ $value | humanizePercentage }} で、20%を超えています。"
+
+  - name: polibase_batch_processing
+    interval: 60s
+    rules:
+      # バッチ処理の停止検知
+      - alert: BatchProcessingStalled
+        expr: |
+          time() - max(minutes_processing_last_success_timestamp) > 3600
+        for: 5m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "バッチ処理が停止している可能性"
+          description: "最後の成功した議事録処理から {{ $value | humanizeDuration }} 経過しています。"
+
+      # 処理待ちキューの増大
+      - alert: ProcessingQueueBacklog
+        expr: minutes_processing_queue_size > 100
+        for: 10m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "処理待ちキューが増大"
+          description: "処理待ちの議事録が {{ $value }} 件あります。"

@@ -327,6 +327,42 @@ docker compose -f docker/docker-compose.yml exec polibase uv run --frozen pyrigh
 
 詳細な開発用コマンドは [COMMANDS.md](COMMANDS.md#開発用コマンド) を参照してください。
 
+## 📊 監視システム
+
+Polibaseには、Grafana、Prometheus、Lokiを使用した包括的な監視システムが含まれています。
+
+### 監視サービスの起動
+
+```bash
+# 監視サービスを起動
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.monitoring.yml up -d
+
+# 動作確認
+docker compose -f docker/docker-compose.yml exec polibase uv run python scripts/verify_monitoring.py
+```
+
+### アクセスURL
+
+- **Grafana**: http://localhost:3000 (初期: admin/admin)
+- **Prometheus**: http://localhost:9091
+- **Loki**: http://localhost:3100
+
+### 提供されるダッシュボード
+
+1. **システム概要**: 稼働状況、エラー率、処理済み議事録数
+2. **パフォーマンス**: API応答時間、データベース性能、LLM使用状況
+3. **エラー追跡**: エラー率の推移、タイプ別分析、ログ検索
+4. **ビジネスメトリクス**: 議事録処理統計、データ品質指標
+
+### 主要なメトリクス
+
+- システムの可用性（SLO: > 99.5%）
+- P95レスポンスタイム（SLO: < 2秒）
+- エラー率（SLO: < 1%）
+- LLMトークン使用量とコスト推定
+
+詳細な設定とカスタマイズ方法は [監視システムセットアップガイド](docs/monitoring/grafana-setup.md) を参照してください。
+
 ## ⚙️ 環境変数設定
 
 主要な環境変数（`.env`ファイルで設定）:
