@@ -12,7 +12,9 @@ from src.common.app_logic import (
     run_main_process,
     setup_environment,
 )
+from src.common.instrumentation import measure_time
 from src.common.logging import get_logger
+from src.common.metrics import CommonMetrics
 from src.config import config
 from src.database.conversation_repository import ConversationRepository
 from src.exceptions import (
@@ -117,6 +119,10 @@ def display_database_status() -> None:
             conversation_repo.close()
 
 
+@measure_time(
+    metric_name="minutes_processing",
+    log_slow_operations=10.0,
+)
 def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:
     """
     議事録分割処理を実行する
@@ -152,12 +158,24 @@ def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:
         agent = MinutesProcessAgent(llm_service=llm_service)
 
         logger.info("Processing minutes", text_length=len(extracted_text))
+
+        # メトリクスカウンターの更新
+        minutes_counter = CommonMetrics.minutes_processed_total()
+        minutes_counter.add(1, attributes={"source": "pdf", "status": "processing"})
+
         results = agent.run(original_minutes=extracted_text)
         logger.info("Extracted conversations", count=len(results))
+
+        # 成功時のメトリクス更新
+        minutes_counter.add(1, attributes={"source": "pdf", "status": "completed"})
 
         return results
 
     except Exception as e:
+        # エラー時のメトリクス更新
+        error_counter = CommonMetrics.minutes_processing_errors()
+        error_counter.add(1, attributes={"error_type": type(e).__name__})
+
         if isinstance(e, ProcessingError | APIKeyError):
             raise
         logger.error("Minutes processing failed", error=str(e), exc_info=True)
