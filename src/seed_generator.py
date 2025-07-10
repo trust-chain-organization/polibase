@@ -203,6 +203,104 @@ class SeedGenerator:
             output.write(result)
         return result
 
+    def generate_parliamentary_groups_seed(self, output: TextIO | None = None) -> str:
+        """parliamentary_groupsテーブルのSEEDファイルを生成する"""
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text("""
+                    SELECT
+                        pg.name,
+                        pg.url,
+                        pg.description,
+                        pg.is_active,
+                        c.name as conference_name,
+                        gb.name as governing_body_name,
+                        gb.type as governing_body_type
+                    FROM parliamentary_groups pg
+                    JOIN conferences c ON pg.conference_id = c.id
+                    JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                    ORDER BY gb.name, c.name, pg.name
+                """)
+            )
+            groups = [dict(row._mapping) for row in result]
+
+        lines = [
+            f"-- Generated from database on "
+            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "-- parliamentary_groups seed data",
+            "",
+            "INSERT INTO parliamentary_groups "
+            "(name, conference_id, url, description, is_active) VALUES",
+        ]
+
+        # 会議体ごとにグループ化
+        grouped_data = {}
+        for group in groups:
+            key = f"{group['governing_body_name']} - {group['conference_name']}"
+            if key not in grouped_data:
+                grouped_data[key] = {
+                    "conference_name": group["conference_name"],
+                    "governing_body_name": group["governing_body_name"],
+                    "governing_body_type": group["governing_body_type"],
+                    "groups": [],
+                }
+            grouped_data[key]["groups"].append(group)
+
+        first_group = True
+        group_keys = list(grouped_data.keys())
+        for group_idx, (key, data) in enumerate(grouped_data.items()):
+            conf_name = data["conference_name"]
+            body_name = data["governing_body_name"]
+            body_type = data["governing_body_type"]
+            groups_list = data["groups"]
+
+            if not first_group:
+                lines.append("")
+            lines.append(f"-- {key}")
+
+            for i, group in enumerate(groups_list):
+                # SQLインジェクション対策のため、シングルクォートをエスケープ
+                name = group["name"].replace("'", "''")
+                conf_name_escaped = conf_name.replace("'", "''")
+                body_name_escaped = body_name.replace("'", "''")
+                body_type_escaped = body_type.replace("'", "''")
+
+                # 最後の要素かどうかチェック（全体での最後）
+                is_last = group_idx == len(group_keys) - 1 and i == len(groups_list) - 1
+                comma = "" if is_last else ","
+
+                # NULL値の処理
+                url = (
+                    f"'{group['url'].replace(chr(39), chr(39) * 2)}'"
+                    if group.get("url")
+                    else "NULL"
+                )
+                description = (
+                    f"'{group['description'].replace(chr(39), chr(39) * 2)}'"
+                    if group.get("description")
+                    else "NULL"
+                )
+                is_active = "true" if group.get("is_active", True) else "false"
+
+                lines.append(
+                    f"('{name}', "
+                    f"(SELECT c.id FROM conferences c "
+                    f"JOIN governing_bodies gb ON c.governing_body_id = gb.id "
+                    f"WHERE c.name = '{conf_name_escaped}' "
+                    f"AND gb.name = '{body_name_escaped}' "
+                    f"AND gb.type = '{body_type_escaped}'), "
+                    f"{url}, {description}, {is_active}){comma}"
+                )
+
+            first_group = False
+
+        lines.append("ON CONFLICT (name, conference_id) DO NOTHING;")
+
+        result = "\n".join(lines)
+        if output:
+            output.write(result)
+        return result
+
 
 def generate_all_seeds(output_dir: str = "database") -> None:
     """すべてのSEEDファイルを生成する"""
@@ -229,6 +327,12 @@ def generate_all_seeds(output_dir: str = "database") -> None:
     path = os.path.join(output_dir, "seed_political_parties_generated.sql")
     with open(path, "w") as f:
         generator.generate_political_parties_seed(f)
+        print(f"Generated: {path}")
+
+    # parliamentary_groups
+    path = os.path.join(output_dir, "seed_parliamentary_groups_generated.sql")
+    with open(path, "w") as f:
+        generator.generate_parliamentary_groups_seed(f)
         print(f"Generated: {path}")
 
 
