@@ -8,8 +8,30 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit_folium import st_folium
 
-from src.database.monitoring_repository import MonitoringRepository
-from src.utils.japan_map import create_japan_map, create_prefecture_details_card
+# Initialize logging and Sentry before other imports
+from src.common.logging import get_logger, setup_logging
+from src.config.sentry import init_sentry
+from src.config.settings import get_settings
+
+# Initialize settings
+settings = get_settings()
+
+# Initialize structured logging with Sentry integration
+setup_logging(
+    log_level=settings.log_level, json_format=settings.is_production, enable_sentry=True
+)
+
+# Initialize Sentry SDK
+init_sentry()
+
+# Get logger
+logger = get_logger(__name__)
+
+from src.database.monitoring_repository import MonitoringRepository  # noqa: E402
+from src.utils.japan_map import (  # noqa: E402
+    create_japan_map,
+    create_prefecture_details_card,
+)
 
 # ページ設定
 st.set_page_config(

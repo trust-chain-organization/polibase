@@ -7,15 +7,34 @@ import pandas as pd
 import streamlit as st
 from sqlalchemy import text
 
-from src.config.database import get_db_engine
-from src.database.conference_repository import ConferenceRepository
-from src.database.governing_body_repository import GoverningBodyRepository
-from src.database.meeting_repository import MeetingRepository
-from src.database.parliamentary_group_repository import (
+# Initialize logging and Sentry before other imports
+from src.common.logging import get_logger, setup_logging
+from src.config.sentry import init_sentry
+from src.config.settings import get_settings
+
+# Initialize settings
+settings = get_settings()
+
+# Initialize structured logging with Sentry integration
+setup_logging(
+    log_level=settings.log_level, json_format=settings.is_production, enable_sentry=True
+)
+
+# Initialize Sentry SDK
+init_sentry()
+
+# Get logger
+logger = get_logger(__name__)
+
+from src.config.database import get_db_engine  # noqa: E402
+from src.database.conference_repository import ConferenceRepository  # noqa: E402
+from src.database.governing_body_repository import GoverningBodyRepository  # noqa: E402
+from src.database.meeting_repository import MeetingRepository  # noqa: E402
+from src.database.parliamentary_group_repository import (  # noqa: E402
     ParliamentaryGroupMembershipRepository,
     ParliamentaryGroupRepository,
 )
-from src.exceptions import (
+from src.exceptions import (  # noqa: E402
     DatabaseError,
     ProcessingError,
     RecordNotFoundError,
@@ -23,7 +42,7 @@ from src.exceptions import (
     ScrapingError,
     UpdateError,
 )
-from src.seed_generator import SeedGenerator
+from src.seed_generator import SeedGenerator  # noqa: E402
 
 # ページ設定
 st.set_page_config(page_title="Polibase - 会議管理", page_icon="🏛️", layout="wide")

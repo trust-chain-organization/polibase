@@ -1,6 +1,6 @@
 version = 1
 revision = 2
-requires-python = ">=3.13.0, <3.14"
+requires-python = "==3.13.*"
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -1482,6 +1482,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "selenium" },
+    { name = "sentry-sdk" },
     { name = "sqlalchemy" },
     { name = "streamlit" },
     { name = "streamlit-folium" },
@@ -1543,6 +1544,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.1,<2" },
     { name = "requests", specifier = ">=2.31.0,<3" },
     { name = "selenium", specifier = ">=4.0.0,<5" },
+    { name = "sentry-sdk", specifier = ">=2.19.0,<3" },
     { name = "sqlalchemy", specifier = ">=2.0.0,<3" },
     { name = "streamlit", specifier = ">=1.29.0,<2" },
     { name = "streamlit-folium", specifier = ">=0.17.0,<1" },
@@ -2108,6 +2110,19 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/60/a0/121a8de053cc8c6a500d58150cd7903bb79059fe256d70ca0d6ffcf1be16/selenium-4.34.1-py3-none-any.whl", hash = "sha256:1a67bee7b80dca39528666f2fa40827ee9733a831e43ff1abcad1db5bcd6f0df", size = 9404807, upload-time = "2025-07-07T14:24:46.262Z" },
+]
+
+[[package]]
+name = "sentry-sdk"
+version = "2.32.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/10/59/eb90c45cb836cf8bec973bba10230ddad1c55e2b2e9ffa9d7d7368948358/sentry_sdk-2.32.0.tar.gz", hash = "sha256:9016c75d9316b0f6921ac14c8cd4fb938f26002430ac5be9945ab280f78bec6b", size = 334932, upload-time = "2025-06-27T08:10:02.89Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/01/a1/fc4856bd02d2097324fb7ce05b3021fb850f864b83ca765f6e37e92ff8ca/sentry_sdk-2.32.0-py2.py3-none-any.whl", hash = "sha256:6cf51521b099562d7ce3606da928c473643abe99b00ce4cb5626ea735f4ec345", size = 356122, upload-time = "2025-06-27T08:10:01.424Z" },
 ]
 
 [[package]]
