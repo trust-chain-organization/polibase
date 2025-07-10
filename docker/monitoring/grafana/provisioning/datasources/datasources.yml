@@ -1,0 +1,44 @@
+apiVersion: 1
+
+datasources:
+  # Prometheusデータソース
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+      httpMethod: POST
+    editable: true
+
+  # Lokiデータソース
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceName: Prometheus
+          matcherRegex: 'trace_id=(\w+)'
+          name: TraceID
+          url: '/explore?orgId=1&left=["now-1h","now","Prometheus",{"expr":"traces{trace_id=\"$${__value.raw}\"}"}]'
+    editable: true
+
+  # PostgreSQLデータソース（オプション）
+  - name: PostgreSQL
+    type: postgres
+    url: postgres:5432
+    database: polibase_db
+    user: polibase_user
+    secureJsonData:
+      password: polibase_password
+    jsonData:
+      sslmode: "disable"
+      maxOpenConns: 10
+      maxIdleConns: 10
+      connMaxLifetime: 14400
+      postgresVersion: 1500 # PostgreSQL 15
+      timescaledb: false
+    editable: true

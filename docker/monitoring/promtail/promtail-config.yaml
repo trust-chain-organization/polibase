@@ -1,0 +1,113 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Docker コンテナログの収集
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          __path__: /var/lib/docker/containers/*/*log
+
+    pipeline_stages:
+      # Dockerログのパース
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            attrs:
+
+      # タイムスタンプの抽出
+      - timestamp:
+          format: RFC3339
+          source: time
+
+      # ログレベルの抽出（構造化ログ用）
+      - regex:
+          expression: '"level":"(?P<level>[^"]*)"'
+
+      # サービス名の抽出
+      - regex:
+          expression: '"service":"(?P<service>[^"]*)"'
+
+      # コンテナ名からサービス名を抽出
+      - regex:
+          source: filename
+          expression: "/var/lib/docker/containers/(?P<container_id>[^/]+)/"
+
+      # ラベルの設定
+      - labels:
+          level:
+          service:
+          container_id:
+
+      # 出力形式の設定
+      - output:
+          source: output
+
+  # システムログの収集（オプション）
+  - job_name: syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          __path__: /var/log/syslog
+
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\w+ \d+ \d+:\d+:\d+) (?P<hostname>\S+) (?P<process>\S+): (?P<message>.*)$'
+
+      - labels:
+          hostname:
+          process:
+
+      - timestamp:
+          format: "Jan 2 15:04:05"
+          source: timestamp
+
+  # アプリケーションログの収集
+  - job_name: polibase
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: polibase
+          __path__: /var/log/polibase/*.log
+
+    pipeline_stages:
+      # 構造化ログのパース
+      - json:
+          expressions:
+            level: level
+            message: message
+            service: service
+            timestamp: timestamp
+            trace_id: trace_id
+            span_id: span_id
+
+      # ラベルの設定
+      - labels:
+          level:
+          service:
+
+      # タイムスタンプの設定
+      - timestamp:
+          format: RFC3339
+          source: timestamp
+
+      # エラーログの強調
+      - match:
+          selector: '{level="ERROR"}'
+          stages:
+            - labels:
+                alert: error
