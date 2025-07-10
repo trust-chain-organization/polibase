@@ -1,6 +1,6 @@
 version = 1
 revision = 2
-requires-python = "==3.13.*"
+requires-python = ">=3.13.0, <3.14"
 
 [[package]]
 name = "aiohappyeyeballs"
@@ -1325,6 +1325,7 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "streamlit" },
     { name = "streamlit-folium" },
+    { name = "structlog" },
 ]
 
 [package.optional-dependencies]
@@ -1375,6 +1376,7 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.0,<3" },
     { name = "streamlit", specifier = ">=1.29.0,<2" },
     { name = "streamlit-folium", specifier = ">=0.17.0,<1" },
+    { name = "structlog", specifier = ">=24.0.0,<25" },
 ]
 provides-extras = ["dev"]
 
@@ -2057,6 +2059,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e7/c9/4b96909cbc2c82859a962d68cdbc1f54a12dae4a828615bd302626489b2c/streamlit_folium-0.25.0.tar.gz", hash = "sha256:f32eb51c1958705030e15045a38edaf9c046d6de5e6587e64190251466a4a006", size = 330728, upload-time = "2025-04-21T16:53:54.969Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/57/1d/4fb456ca29b58b4272672bbd80769ba114b21ccf39af2bf0531895f559bc/streamlit_folium-0.25.0-py3-none-any.whl", hash = "sha256:48d5f05ea3e9005c00c0b2fe5a9a3086df30d04e1a20c3630a6c9df183ec590a", size = 328445, upload-time = "2025-04-21T16:53:53.435Z" },
+]
+
+[[package]]
+name = "structlog"
+version = "24.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/78/a3/e811a94ac3853826805253c906faa99219b79951c7d58605e89c79e65768/structlog-24.4.0.tar.gz", hash = "sha256:b27bfecede327a6d2da5fbc96bd859f114ecc398a6389d664f62085ee7ae6fc4", size = 1348634, upload-time = "2024-07-17T12:38:43.483Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bf/65/813fc133609ebcb1299be6a42e5aea99d6344afb35ccb43f67e7daaa3b92/structlog-24.4.0-py3-none-any.whl", hash = "sha256:597f61e80a91cc0749a9fd2a098ed76715a1c8a01f73e336b746504d1aad7610", size = 67180, upload-time = "2024-07-17T12:38:41.043Z" },
 ]
 
 [[package]]
