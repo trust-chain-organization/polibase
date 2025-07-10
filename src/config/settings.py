@@ -80,6 +80,17 @@ class Settings:
         self.page_load_timeout: int = int(os.getenv("PAGE_LOAD_TIMEOUT", "30"))
         self.selector_wait_timeout: int = int(os.getenv("SELECTOR_WAIT_TIMEOUT", "10"))
 
+        # Sentry Configuration
+        self.sentry_dsn: str = os.getenv("SENTRY_DSN", "")
+        self.sentry_environment: str = os.getenv("ENVIRONMENT", "development")
+        self.sentry_traces_sample_rate: float = float(
+            os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")
+        )
+        self.sentry_profiles_sample_rate: float = float(
+            os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")
+        )
+        self.sentry_release: str = os.getenv("SENTRY_RELEASE", "polibase@0.1.0")
+
         # Validate paths exist
         self._validate_paths()
 

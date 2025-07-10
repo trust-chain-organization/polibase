@@ -7,6 +7,13 @@ from typing import Any
 import structlog
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
+try:
+    import sentry_sdk
+
+    SENTRY_AVAILABLE = True
+except ImportError:
+    SENTRY_AVAILABLE = False
+
 # ログレベルの定義
 LOG_LEVELS = {
     "DEBUG": logging.DEBUG,
@@ -17,10 +24,66 @@ LOG_LEVELS = {
 }
 
 
+class SentryProcessor:
+    """Sentry統合用のstructlogプロセッサー.
+
+    ERROR以上のログをSentryに送信します。
+    """
+
+    def __call__(
+        self, logger: Any, method_name: str, event_dict: dict[str, Any]
+    ) -> dict[str, Any]:
+        """ログイベントを処理し、必要に応じてSentryに送信.
+
+        Args:
+            logger: ロガーインスタンス
+            method_name: ログメソッド名 (error, warning, info等)
+            event_dict: ログイベントの辞書
+
+        Returns:
+            変更されていないイベント辞書
+        """
+        if not SENTRY_AVAILABLE:
+            return event_dict
+
+        # ログレベルを取得
+        level = event_dict.get("level", method_name).upper()
+
+        # ERROR以上のレベルをSentryに送信
+        if level in ["ERROR", "CRITICAL", "FATAL"]:
+            # イベントからメッセージを取得
+            message = event_dict.get("event", "Unknown error")
+
+            # 例外情報があれば送信
+            exc_info = event_dict.get("exc_info")
+            if exc_info:
+                # exc_info が True の場合は sys.exc_info() から取得
+                if exc_info is True:
+                    import sys
+
+                    exc_info = sys.exc_info()
+                # exc_info がタプルの場合は最初の要素（例外インスタンス）を使用
+                if isinstance(exc_info, tuple) and len(exc_info) >= 2:
+                    sentry_sdk.capture_exception(exc_info[1])  # type: ignore
+                elif isinstance(exc_info, BaseException):
+                    sentry_sdk.capture_exception(exc_info)  # type: ignore
+            else:
+                # 例外がない場合はメッセージとして送信
+                extra = {
+                    k: v
+                    for k, v in event_dict.items()
+                    if k not in ["event", "level", "timestamp", "logger", "exc_info"]
+                }
+                sentry_sdk.capture_message(message, level=level.lower(), extras=extra)  # type: ignore
+
+        return event_dict
+
+
 def setup_logging(
     log_level: str = "INFO",
     json_format: bool = True,
     add_timestamp: bool = True,
+    enable_sentry: bool = True,
 ) -> None:
     """構造化ログの初期設定.
 
@@ -28,6 +91,7 @@ def setup_logging(
         log_level: ログレベル (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         json_format: JSON形式で出力するか
         add_timestamp: タイムスタンプを追加するか
+        enable_sentry: Sentry統合を有効にするか
     """
     # タイムスタンプ追加のプロセッサー
     timestamper = structlog.processors.TimeStamper(fmt="iso")
@@ -48,6 +112,7 @@ def setup_logging(
         structlog.processors.StackInfoRenderer(),
         structlog.stdlib.PositionalArgumentsFormatter(),
         structlog.processors.UnicodeDecoder(),
+        SentryProcessor() if enable_sentry and SENTRY_AVAILABLE else None,
     ]
 
     # Noneを除外

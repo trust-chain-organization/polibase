@@ -12,6 +12,7 @@ import click
 # Add parent directory to path to ensure imports work
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# Import logging and configuration modules
 # Import command modules
 from src.cli_package.commands import (
     get_conference_member_commands,
@@ -24,11 +25,22 @@ from src.cli_package.commands import (
     get_seed_commands,
     get_ui_commands,
 )
+from src.common.logging import setup_logging
+from src.config.sentry import init_sentry
+from src.config.settings import get_settings
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+# Initialize settings
+settings = get_settings()
+
+# Initialize structured logging with Sentry integration
+setup_logging(
+    log_level=settings.log_level, json_format=settings.is_production, enable_sentry=True
 )
+
+# Initialize Sentry SDK
+init_sentry()
+
+# Get logger after setup
 logger = logging.getLogger(__name__)
 
 
@@ -75,4 +87,10 @@ register_commands(cli)
 
 
 if __name__ == "__main__":
-    cli()
+    try:
+        cli()
+    except Exception as e:
+        # Log the error
+        logger.error(f"Unhandled exception in CLI: {e}", exc_info=True)
+        # Re-raise to show the error to the user
+        raise
