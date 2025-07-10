@@ -57,15 +57,24 @@ class SentryProcessor:
             # 例外情報があれば送信
             exc_info = event_dict.get("exc_info")
             if exc_info:
-                sentry_sdk.capture_exception(exc_info)  # type: ignore
+                # exc_info が True の場合は sys.exc_info() から取得
+                if exc_info is True:
+                    import sys
+
+                    exc_info = sys.exc_info()
+                # exc_info がタプルの場合は最初の要素（例外インスタンス）を使用
+                if isinstance(exc_info, tuple) and len(exc_info) >= 2:
+                    sentry_sdk.capture_exception(exc_info[1])  # type: ignore
+                elif isinstance(exc_info, BaseException):
+                    sentry_sdk.capture_exception(exc_info)  # type: ignore
             else:
                 # 例外がない場合はメッセージとして送信
                 extra = {
                     k: v
                     for k, v in event_dict.items()
-                    if k not in ["event", "level", "timestamp", "logger"]
+                    if k not in ["event", "level", "timestamp", "logger", "exc_info"]
                 }
-                sentry_sdk.capture_message(message, level=level.lower(), extra=extra)  # type: ignore
+                sentry_sdk.capture_message(message, level=level.lower(), extras=extra)  # type: ignore
 
         return event_dict
 

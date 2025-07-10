@@ -31,7 +31,8 @@ class TestSentryProcessor:
         result = processor(None, "error", event_dict)
 
         assert result == event_dict
-        mock_capture_exception.assert_called_once_with(exc_info)
+        # SentryProcessor should extract the exception instance from the tuple
+        mock_capture_exception.assert_called_once_with(exc_info[1])
 
     @patch("src.common.logging.SENTRY_AVAILABLE", True)
     @patch("src.common.logging.sentry_sdk.capture_message")
@@ -53,8 +54,8 @@ class TestSentryProcessor:
         call_args = mock_capture_message.call_args
         assert call_args[0][0] == "Critical error message"
         assert call_args[1]["level"] == "critical"
-        assert call_args[1]["extra"]["user_id"] == "12345"
-        assert call_args[1]["extra"]["operation"] == "database_query"
+        assert call_args[1]["extras"]["user_id"] == "12345"
+        assert call_args[1]["extras"]["operation"] == "database_query"
 
     @patch("src.common.logging.SENTRY_AVAILABLE", True)
     @patch("src.common.logging.sentry_sdk.capture_message")
