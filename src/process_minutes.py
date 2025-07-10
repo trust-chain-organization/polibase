@@ -4,7 +4,6 @@
 Processes meeting minutes PDF files and extracts individual conversations.
 """
 
-import logging
 import sys
 
 from src.common.app_logic import (
@@ -13,6 +12,7 @@ from src.common.app_logic import (
     run_main_process,
     setup_environment,
 )
+from src.common.logging import get_logger
 from src.config import config
 from src.database.conversation_repository import ConversationRepository
 from src.exceptions import (
@@ -25,7 +25,7 @@ from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAge
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 from src.services.llm_factory import LLMServiceFactory
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def save_to_database(
@@ -46,7 +46,7 @@ def save_to_database(
         DatabaseError: If database save fails
     """
     if not speaker_and_speech_content_list:
-        logger.warning("No conversations to save")
+        logger.warning("No conversations to save", count=0)
         return []
 
     conversation_repo = None
@@ -55,10 +55,19 @@ def save_to_database(
         saved_ids = conversation_repo.save_speaker_and_speech_content_list(
             speaker_and_speech_content_list, minutes_id=minutes_id
         )
-        logger.info(f"Saved {len(saved_ids)} conversations to database")
+        logger.info(
+            "Saved conversations to database",
+            count=len(saved_ids),
+            minutes_id=minutes_id,
+        )
         return saved_ids
     except Exception as e:
-        logger.error(f"Failed to save conversations: {e}")
+        logger.error(
+            "Failed to save conversations",
+            error=str(e),
+            count=len(speaker_and_speech_content_list),
+            exc_info=True,
+        )
         raise DatabaseError(
             "Failed to save conversations to database",
             {"count": len(speaker_and_speech_content_list), "error": str(e)},
@@ -99,7 +108,7 @@ def display_database_status() -> None:
                 )
                 print(f"      発言: {conv['comment'][:50]}...")
     except Exception as e:
-        logger.error(f"Failed to get database status: {e}")
+        logger.error("Failed to get database status", error=str(e), exc_info=True)
         raise DatabaseError(
             "Failed to retrieve database status", {"error": str(e)}
         ) from e
@@ -142,16 +151,16 @@ def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:
 
         agent = MinutesProcessAgent(llm_service=llm_service)
 
-        logger.info(f"Processing minutes with {len(extracted_text)} characters")
+        logger.info("Processing minutes", text_length=len(extracted_text))
         results = agent.run(original_minutes=extracted_text)
-        logger.info(f"Extracted {len(results)} conversations")
+        logger.info("Extracted conversations", count=len(results))
 
         return results
 
     except Exception as e:
         if isinstance(e, ProcessingError | APIKeyError):
             raise
-        logger.error(f"Minutes processing failed: {e}")
+        logger.error("Minutes processing failed", error=str(e), exc_info=True)
         raise ProcessingError(
             "Failed to process meeting minutes",
             {"error": str(e), "text_length": len(extracted_text)},

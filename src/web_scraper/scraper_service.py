@@ -2,19 +2,14 @@
 
 import asyncio
 import json
-import logging
 from pathlib import Path
 
+from ..common.logging import get_logger
 from ..config import config
 from ..utils.gcs_storage import GCSStorage
 from .kaigiroku_net_scraper import KaigirokuNetScraper
 from .kokkai_scraper import KokkaiScraper
 from .models import MinutesData
-
-# ロギング設定
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 
 
 class ScraperService:
@@ -23,7 +18,7 @@ class ScraperService:
     def __init__(self, cache_dir: str = "./cache/minutes", enable_gcs: bool = None):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.logger = logging.getLogger(__name__)
+        self.logger = get_logger(__name__)
 
         # GCS設定
         self.enable_gcs = (
@@ -35,11 +30,11 @@ class ScraperService:
                 self.gcs_storage = GCSStorage(
                     bucket_name=config.GCS_BUCKET_NAME, project_id=config.GCS_PROJECT_ID
                 )
-                self.logger.info(
-                    f"GCS storage enabled. Bucket: {config.GCS_BUCKET_NAME}"
-                )
+                self.logger.info("GCS storage enabled", bucket=config.GCS_BUCKET_NAME)
             except Exception as e:
-                self.logger.error(f"Failed to initialize GCS storage: {e}")
+                self.logger.error(
+                    "Failed to initialize GCS storage", error=str(e), exc_info=True
+                )
                 self.enable_gcs = False
 
     async def fetch_from_url(
