@@ -97,11 +97,9 @@ def main():
     # display_messages()
 
     # タブ作成
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
-            "会議一覧",
-            "新規会議登録",
-            "会議編集",
+            "会議管理",
             "政党管理",
             "会議体管理",
             "開催主体管理",
@@ -111,33 +109,47 @@ def main():
     )
 
     with tab1:
-        show_meetings_list()
+        manage_meetings()
 
     with tab2:
-        add_new_meeting()
-
-    with tab3:
-        edit_meeting()
-
-    with tab4:
         manage_political_parties()
 
-    with tab5:
+    with tab3:
         manage_conferences()
 
-    with tab6:
+    with tab4:
         manage_governing_bodies()
 
-    with tab7:
+    with tab5:
         manage_parliamentary_groups()
 
-    with tab8:
+    with tab6:
         execute_processes()
+
+
+def manage_meetings():
+    """会議管理（一覧・新規登録・編集）"""
+    st.header("会議管理")
+    st.markdown("議事録の会議情報を管理します")
+
+    # 会議管理用のタブを作成
+    meeting_tab1, meeting_tab2, meeting_tab3 = st.tabs(
+        ["会議一覧", "新規会議登録", "会議編集"]
+    )
+
+    with meeting_tab1:
+        show_meetings_list()
+
+    with meeting_tab2:
+        add_new_meeting()
+
+    with meeting_tab3:
+        edit_meeting()
 
 
 def show_meetings_list():
     """会議一覧を表示"""
-    st.header("会議一覧")
+    st.subheader("会議一覧")
 
     repo = MeetingRepository()
 
@@ -236,7 +248,7 @@ def show_meetings_list():
 
 def add_new_meeting():
     """新規会議登録フォーム"""
-    st.header("新規会議登録")
+    st.subheader("新規会議登録")
 
     repo = MeetingRepository()
 
@@ -339,7 +351,7 @@ def add_new_meeting():
 
 def edit_meeting():
     """会議編集フォーム"""
-    st.header("会議編集")
+    st.subheader("会議編集")
 
     if not st.session_state.edit_mode or not st.session_state.edit_meeting_id:
         st.info(
