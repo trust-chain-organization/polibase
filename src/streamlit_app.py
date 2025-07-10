@@ -23,6 +23,7 @@ from src.exceptions import (
     ScrapingError,
     UpdateError,
 )
+from src.seed_generator import SeedGenerator
 
 # ページ設定
 st.set_page_config(page_title="Polibase - 会議管理", page_icon="🏛️", layout="wide")
@@ -481,6 +482,38 @@ def manage_political_parties():
             df = pd.DataFrame(df_data)
             st.dataframe(df, use_container_width=True)
 
+        # SEEDファイル生成セクション
+        st.markdown("---")
+        st.markdown("### SEEDファイル生成")
+        st.markdown("現在登録されている政党データからSEEDファイルを生成します")
+
+        col1, col2 = st.columns([3, 1])
+        with col2:
+            if st.button(
+                "SEEDファイル生成",
+                key="generate_political_parties_seed",
+                type="primary",
+            ):
+                with st.spinner("SEEDファイルを生成中..."):
+                    try:
+                        generator = SeedGenerator()
+                        seed_content = generator.generate_political_parties_seed()
+
+                        # ファイルに保存
+                        output_path = "database/seed_political_parties_generated.sql"
+                        with open(output_path, "w") as f:
+                            f.write(seed_content)
+
+                        st.success(f"✅ SEEDファイルを生成しました: {output_path}")
+
+                        # 生成内容をプレビュー表示
+                        with st.expander("生成されたSEEDファイル", expanded=False):
+                            st.code(seed_content, language="sql")
+                    except Exception as e:
+                        st.error(
+                            f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
+                        )
+
     finally:
         conn.close()
 
@@ -689,6 +722,37 @@ def manage_conferences():
                     st.info("議員紹介URLが未設定の会議体はありません")
         else:
             st.info("会議体が登録されていません")
+
+        # SEEDファイル生成セクション
+        if conferences:  # 会議体が存在する場合のみ表示
+            st.markdown("---")
+            st.markdown("### SEEDファイル生成")
+            st.markdown("現在登録されている会議体データからSEEDファイルを生成します")
+
+            col1, col2 = st.columns([3, 1])
+            with col2:
+                if st.button(
+                    "SEEDファイル生成", key="generate_conferences_seed", type="primary"
+                ):
+                    with st.spinner("SEEDファイルを生成中..."):
+                        try:
+                            generator = SeedGenerator()
+                            seed_content = generator.generate_conferences_seed()
+
+                            # ファイルに保存
+                            output_path = "database/seed_conferences_generated.sql"
+                            with open(output_path, "w") as f:
+                                f.write(seed_content)
+
+                            st.success(f"✅ SEEDファイルを生成しました: {output_path}")
+
+                            # 生成内容をプレビュー表示
+                            with st.expander("生成されたSEEDファイル", expanded=False):
+                                st.code(seed_content, language="sql")
+                        except Exception as e:
+                            st.error(
+                                f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
+                            )
 
     with conf_tab2:
         # 新規登録
@@ -2019,73 +2083,6 @@ def execute_other_processes():
                     output = "\n".join(st.session_state.process_output["show_help"])
                     st.code(output, language="text")
 
-    # SEEDファイル生成セクション
-    st.markdown("### SEEDファイル生成")
-    st.markdown("現在のデータベースからSEEDファイル（初期データ）を生成します")
-
-    with st.expander("SEEDファイル生成の詳細", expanded=False):
-        st.info("""
-        SEEDファイルは、新しい環境でデータベースを初期化する際に使用される初期データです。
-
-        生成されるファイル:
-        - seed_governing_bodies_generated.sql (開催主体)
-        - seed_conferences_generated.sql (会議体)
-        - seed_political_parties_generated.sql (政党)
-
-        ※ 生成されたファイルには '_generated' サフィックスが付きます
-        """)
-
-    col3, col4 = st.columns(2)
-
-    with col3:
-        output_dir = st.text_input(
-            "出力ディレクトリ",
-            value="database/",
-            help="SEEDファイルを出力するディレクトリ",
-            key="seed_output_dir",
-        )
-
-    with col4:
-        if st.button("SEEDファイル生成", key="generate_seeds", type="primary"):
-            command = f"uv run polibase generate-seeds --output-dir {output_dir}"
-
-            with st.spinner("SEEDファイルを生成中..."):
-                run_command_with_progress(command, "generate_seeds")
-
-    # 進捗表示
-    if "generate_seeds" in st.session_state.process_status:
-        status = st.session_state.process_status["generate_seeds"]
-        if status == "running":
-            st.info("🔄 処理実行中...")
-        elif status == "completed":
-            st.success("✅ SEEDファイルの生成が完了しました")
-
-            # 生成されたファイルのリストを表示
-            st.markdown("#### 生成されたファイル:")
-            generated_files = [
-                f"{output_dir}/seed_governing_bodies_generated.sql",
-                f"{output_dir}/seed_conferences_generated.sql",
-                f"{output_dir}/seed_political_parties_generated.sql",
-            ]
-            for file in generated_files:
-                st.markdown(f"- `{file}`")
-
-            st.info(
-                "💡 生成されたファイルをレビューして、"
-                "必要に応じて既存のSEEDファイルと置き換えてください"
-            )
-
-        elif status == "failed":
-            st.error("❌ 処理が失敗しました")
-        elif status == "error":
-            st.error("❌ エラーが発生しました")
-
-        # 出力表示
-        if "generate_seeds" in st.session_state.process_output:
-            with st.expander("実行ログ", expanded=False):
-                output = "\n".join(st.session_state.process_output["generate_seeds"])
-                st.code(output, language="text")
-
     # 処理ステータス一覧
     st.markdown("### 実行中の処理")
     if st.session_state.process_status:
@@ -2170,6 +2167,39 @@ def manage_governing_bodies():
             st.metric("市町村", f"{city_count}件")
         else:
             st.info("開催主体が登録されていません")
+
+        # SEEDファイル生成セクション
+        if governing_bodies:  # 開催主体が存在する場合のみ表示
+            st.markdown("---")
+            st.markdown("### SEEDファイル生成")
+            st.markdown("現在登録されている開催主体データからSEEDファイルを生成します")
+
+            col1, col2 = st.columns([3, 1])
+            with col2:
+                if st.button(
+                    "SEEDファイル生成",
+                    key="generate_governing_bodies_seed",
+                    type="primary",
+                ):
+                    with st.spinner("SEEDファイルを生成中..."):
+                        try:
+                            generator = SeedGenerator()
+                            seed_content = generator.generate_governing_bodies_seed()
+
+                            # ファイルに保存
+                            output_path = "database/seed_governing_bodies_generated.sql"
+                            with open(output_path, "w") as f:
+                                f.write(seed_content)
+
+                            st.success(f"✅ SEEDファイルを生成しました: {output_path}")
+
+                            # 生成内容をプレビュー表示
+                            with st.expander("生成されたSEEDファイル", expanded=False):
+                                st.code(seed_content, language="sql")
+                        except Exception as e:
+                            st.error(
+                                f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
+                            )
 
     with gb_tab2:
         # 新規登録
