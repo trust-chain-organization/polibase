@@ -100,7 +100,9 @@ class BaseRepository:
                 return self.session.execute(text(query), params or {})
             else:
                 with self.engine.connect() as conn:
-                    return conn.execute(text(query), params or {})
+                    result = conn.execute(text(query), params or {})
+                    conn.commit()
+                    return result
         except SQLAlchemyError as e:
             logger.error(f"Query execution failed: {e}")
             raise
