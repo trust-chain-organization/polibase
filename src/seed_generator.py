@@ -19,7 +19,7 @@ class SeedGenerator:
         with self.engine.connect() as conn:
             result = conn.execute(
                 text("""
-                    SELECT name, type
+                    SELECT name, type, organization_code, organization_type
                     FROM governing_bodies
                     ORDER BY
                         CASE type
@@ -38,7 +38,8 @@ class SeedGenerator:
             f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "-- governing_bodies seed data",
             "",
-            "INSERT INTO governing_bodies (name, type) VALUES",
+            "INSERT INTO governing_bodies "
+            "(name, type, organization_code, organization_type) VALUES",
         ]
 
         # タイプごとにグループ化
@@ -60,6 +61,18 @@ class SeedGenerator:
                 name = body["name"].replace("'", "''")
                 type_val = body["type"].replace("'", "''")
 
+                # organization_codeとorganization_typeの処理
+                org_code = (
+                    f"'{body['organization_code']}'"
+                    if body.get("organization_code")
+                    else "NULL"
+                )
+                org_type = (
+                    f"'{body['organization_type'].replace(chr(39), chr(39) * 2)}'"
+                    if body.get("organization_type")
+                    else "NULL"
+                )
+
                 # 最後の要素かどうかチェック（全体での最後）
                 is_last = (
                     type_name == list(grouped_data.keys())[-1]
@@ -67,7 +80,7 @@ class SeedGenerator:
                 )
 
                 comma = "" if is_last else ","
-                lines.append(f"('{name}', '{type_val}'){comma}")
+                lines.append(f"('{name}', '{type_val}', {org_code}, {org_type}){comma}")
 
             first_group = False
 
@@ -86,6 +99,7 @@ class SeedGenerator:
                     SELECT
                         c.name,
                         c.type,
+                        c.members_introduction_url,
                         gb.name as governing_body_name,
                         gb.type as governing_body_type
                     FROM conferences c
@@ -108,7 +122,8 @@ class SeedGenerator:
             f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "-- conferences seed data",
             "",
-            "INSERT INTO conferences (name, type, governing_body_id) VALUES",
+            "INSERT INTO conferences "
+            "(name, type, governing_body_id, members_introduction_url) VALUES",
         ]
 
         # 開催主体ごとにグループ化
@@ -145,19 +160,28 @@ class SeedGenerator:
 
                 comma = "" if is_last else ","
 
+                # members_introduction_urlの処理
+                if conf.get("members_introduction_url"):
+                    url = conf["members_introduction_url"].replace(chr(39), chr(39) * 2)
+                    members_url = f"'{url}'"
+                else:
+                    members_url = "NULL"
+
                 if conf.get("type"):
                     conf_type = conf["type"].replace("'", "''")
                     lines.append(
                         f"('{conf_name}', '{conf_type}', "
                         f"(SELECT id FROM governing_bodies WHERE name = "
-                        f"'{body_name_escaped}' AND type = '{body_type_escaped}')"
+                        f"'{body_name_escaped}' AND type = '{body_type_escaped}'), "
+                        f"{members_url}"
                         f"){comma}"
                     )
                 else:
                     lines.append(
                         f"('{conf_name}', NULL, "
                         f"(SELECT id FROM governing_bodies WHERE name = "
-                        f"'{body_name_escaped}' AND type = '{body_type_escaped}')"
+                        f"'{body_name_escaped}' AND type = '{body_type_escaped}'), "
+                        f"{members_url}"
                         f"){comma}"
                     )
 
@@ -175,7 +199,7 @@ class SeedGenerator:
         with self.engine.connect() as conn:
             result = conn.execute(
                 text("""
-                    SELECT name
+                    SELECT name, members_list_url
                     FROM political_parties
                     ORDER BY name
                 """)
@@ -187,14 +211,19 @@ class SeedGenerator:
             f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "-- political_parties seed data",
             "",
-            "INSERT INTO political_parties (name) VALUES",
+            "INSERT INTO political_parties (name, members_list_url) VALUES",
         ]
 
         for i, party in enumerate(parties):
             # SQLインジェクション対策のため、シングルクォートをエスケープ
             name = party["name"].replace("'", "''")
+            members_url = (
+                f"'{party['members_list_url'].replace(chr(39), chr(39) * 2)}'"
+                if party.get("members_list_url")
+                else "NULL"
+            )
             comma = "" if i == len(parties) - 1 else ","
-            lines.append(f"('{name}'){comma}")
+            lines.append(f"('{name}', {members_url}){comma}")
 
         lines.append("ON CONFLICT (name) DO NOTHING;")
 
