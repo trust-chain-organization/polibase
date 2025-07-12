@@ -21,9 +21,27 @@ class TestSeedGenerator:
         # モックデータの準備
         mock_rows = []
         for data in [
-            {"id": 1, "name": "日本国", "type": "国"},
-            {"id": 2, "name": "東京都", "type": "都道府県"},
-            {"id": 3, "name": "大阪府", "type": "都道府県"},
+            {
+                "id": 1,
+                "name": "日本国",
+                "type": "国",
+                "organization_code": None,
+                "organization_type": "国",
+            },
+            {
+                "id": 2,
+                "name": "東京都",
+                "type": "都道府県",
+                "organization_code": "130001",
+                "organization_type": "都道府県",
+            },
+            {
+                "id": 3,
+                "name": "大阪府",
+                "type": "都道府県",
+                "organization_code": "270008",
+                "organization_type": "都道府県",
+            },
         ]:
             mock_row = MagicMock()
             mock_row._mapping = data
@@ -42,10 +60,11 @@ class TestSeedGenerator:
         result = seed_generator.generate_governing_bodies_seed(output=output)
 
         # 検証
-        assert "INSERT INTO governing_bodies (name, type) VALUES" in result
-        assert "('日本国', '国')" in result
-        assert "('東京都', '都道府県')" in result
-        assert "('大阪府', '都道府県')" in result
+        assert "INSERT INTO governing_bodies " in result
+        assert "(name, type, organization_code, organization_type) VALUES" in result
+        assert "('日本国', '国', NULL, '国')" in result
+        assert "('東京都', '都道府県', '130001', '都道府県')" in result
+        assert "('大阪府', '都道府県', '270008', '都道府県')" in result
         assert "ON CONFLICT (name, type) DO NOTHING;" in result
 
         # コメントの確認
@@ -64,6 +83,7 @@ class TestSeedGenerator:
                 "governing_body_id": 1,
                 "governing_body_name": "日本国",
                 "governing_body_type": "国",
+                "members_introduction_url": None,
             },
             {
                 "id": 2,
@@ -72,6 +92,7 @@ class TestSeedGenerator:
                 "governing_body_id": 2,
                 "governing_body_name": "東京都",
                 "governing_body_type": "都道府県",
+                "members_introduction_url": "https://example.com/tokyo",
             },
         ]:
             mock_row = MagicMock()
@@ -91,16 +112,17 @@ class TestSeedGenerator:
         result = seed_generator.generate_conferences_seed(output=output)
 
         # 検証
+        assert "INSERT INTO conferences " in result
         assert (
-            "INSERT INTO conferences (name, type, governing_body_id) VALUES" in result
+            "(name, type, governing_body_id, members_introduction_url) VALUES" in result
         )
         assert (
             "('国会', '立法', (SELECT id FROM governing_bodies WHERE name = "
-            "'日本国' AND type = '国'))" in result
+            "'日本国' AND type = '国'), NULL)" in result
         )
         assert (
             "('東京都議会', '立法', (SELECT id FROM governing_bodies WHERE name = "
-            "'東京都' AND type = '都道府県'))" in result
+            "'東京都' AND type = '都道府県'), 'https://example.com/tokyo')" in result
         )
         assert "ON CONFLICT (name, governing_body_id) DO NOTHING;" in result
 
@@ -113,9 +135,13 @@ class TestSeedGenerator:
         # モックデータの準備
         mock_rows = []
         for data in [
-            {"id": 1, "name": "自由民主党"},
-            {"id": 2, "name": "立憲民主党"},
-            {"id": 3, "name": "無所属"},
+            {
+                "id": 1,
+                "name": "自由民主党",
+                "members_list_url": "https://example.com/ldp",
+            },
+            {"id": 2, "name": "立憲民主党", "members_list_url": None},
+            {"id": 3, "name": "無所属", "members_list_url": None},
         ]:
             mock_row = MagicMock()
             mock_row._mapping = data
@@ -134,10 +160,10 @@ class TestSeedGenerator:
         result = seed_generator.generate_political_parties_seed(output=output)
 
         # 検証
-        assert "INSERT INTO political_parties (name) VALUES" in result
-        assert "('自由民主党')" in result
-        assert "('立憲民主党')" in result
-        assert "('無所属')" in result
+        assert "INSERT INTO political_parties (name, members_list_url) VALUES" in result
+        assert "('自由民主党', 'https://example.com/ldp')" in result
+        assert "('立憲民主党', NULL)" in result
+        assert "('無所属', NULL)" in result
         assert "ON CONFLICT (name) DO NOTHING;" in result
 
     def test_generate_parliamentary_groups_seed(self, seed_generator):
@@ -207,6 +233,8 @@ class TestSeedGenerator:
             "id": 1,
             "name": "O'Reilly's Party",
             "type": "国",
+            "organization_code": None,
+            "organization_type": "国",
         }  # シングルクォートを含む
         mock_row = MagicMock()
         mock_row._mapping = data
@@ -224,7 +252,7 @@ class TestSeedGenerator:
         result = seed_generator.generate_governing_bodies_seed()
 
         # 検証: シングルクォートが適切にエスケープされていること
-        assert "('O''Reilly''s Party', '国')" in result
+        assert "('O''Reilly''s Party', '国', NULL, '国')" in result
 
     def test_empty_data(self, seed_generator):
         """データが空の場合のテスト"""
@@ -241,7 +269,8 @@ class TestSeedGenerator:
         result = seed_generator.generate_governing_bodies_seed()
 
         # 検証: 基本的なSQL構造は生成されるが、データはない
-        assert "INSERT INTO governing_bodies (name, type) VALUES" in result
+        assert "INSERT INTO governing_bodies " in result
+        assert "(name, type, organization_code, organization_type) VALUES" in result
         assert "ON CONFLICT (name, type) DO NOTHING;" in result
         # データ行がないことを確認（VALUESとON CONFLICTの間に改行のみ）
         lines = result.split("\n")
@@ -262,7 +291,15 @@ class TestSeedGenerator:
         # 各クエリに対する結果を設定
         mock_results = [
             # governing_bodies
-            [{"id": 1, "name": "日本国", "type": "国"}],
+            [
+                {
+                    "id": 1,
+                    "name": "日本国",
+                    "type": "国",
+                    "organization_code": None,
+                    "organization_type": "国",
+                }
+            ],
             # conferences
             [
                 {
@@ -272,10 +309,11 @@ class TestSeedGenerator:
                     "governing_body_id": 1,
                     "governing_body_name": "日本国",
                     "governing_body_type": "国",
+                    "members_introduction_url": None,
                 }
             ],
             # political_parties
-            [{"id": 1, "name": "自由民主党"}],
+            [{"id": 1, "name": "自由民主党", "members_list_url": None}],
             # parliamentary_groups
             [
                 {
