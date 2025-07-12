@@ -500,42 +500,139 @@ def manage_political_parties():
 
         st.markdown("---")
 
-        # 政党ごとにURL編集フォームを表示
-        for party in parties:
-            with st.expander(f"{party.name}"):
-                with st.form(f"party_form_{party.id}"):
-                    current_url = party.members_list_url or ""
-                    new_url = st.text_input(
-                        "議員一覧ページURL",
-                        value=current_url,
-                        placeholder="https://example.com/members",
-                        help="この政党の議員一覧が掲載されているWebページのURL",
-                    )
+        # フィルター設定と統計情報
+        col_filter1, col_filter2, col_filter3 = st.columns([2, 2, 6])
+        with col_filter1:
+            url_filter = st.selectbox(
+                "議員一覧URL",
+                ["すべて", "設定済み", "未設定"],
+                key="party_url_filter",
+            )
 
-                    submitted = st.form_submit_button("更新")
+        # フィルタリング適用
+        filtered_parties = parties
+        if url_filter == "設定済み":
+            filtered_parties = [party for party in parties if party.members_list_url]
+        elif url_filter == "未設定":
+            filtered_parties = [
+                party for party in parties if not party.members_list_url
+            ]
 
-                    if submitted:
-                        update_query = text("""
-                            UPDATE political_parties
-                            SET members_list_url = :url
-                            WHERE id = :party_id
-                        """)
-                        conn.execute(
-                            update_query,
-                            {"url": new_url if new_url else None, "party_id": party.id},
-                        )
-                        conn.commit()
-                        st.success(f"{party.name}のURLを更新しました")
+        # 統計情報を表示
+        total_count = len(parties)
+        with_url_count = len([p for p in parties if p.members_list_url])
+        without_url_count = total_count - with_url_count
+
+        with col_filter2:
+            st.metric(
+                "設定済み",
+                f"{with_url_count}/{total_count}",
+                (
+                    f"{with_url_count / total_count * 100:.0f}%"
+                    if total_count > 0
+                    else "0%"
+                ),
+            )
+
+        with col_filter3:
+            st.metric(
+                "未設定",
+                f"{without_url_count}/{total_count}",
+                (
+                    f"{without_url_count / total_count * 100:.0f}%"
+                    if total_count > 0
+                    else "0%"
+                ),
+            )
+
+        st.markdown("---")
+
+        # フィルター後の政党が存在するかチェック
+        if filtered_parties:
+            # 政党ごとにURL編集フォームを表示
+            for idx, party in enumerate(filtered_parties):
+                # 各政党を個別に表示
+                col1, col2, col3, col4 = st.columns([3, 2, 3, 1])
+
+                with col1:
+                    st.markdown(f"**{party.name}**")
+
+                with col2:
+                    if party.members_list_url:
+                        st.success("✅ URL設定済み")
+                    else:
+                        st.error("❌ URL未設定")
+
+                with col3:
+                    # 編集状態の管理
+                    edit_key = f"edit_party_{party.id}"
+                    if edit_key not in st.session_state:
+                        st.session_state[edit_key] = False
+
+                    # 現在のURLを表示（編集モードでない場合）
+                    if not st.session_state[edit_key] and party.members_list_url:
+                        url = party.members_list_url
+                        display_url = url[:30] + "..." if len(url) > 30 else url
+                        st.caption(f"🔗 {display_url}")
+
+                with col4:
+                    if st.button("✏️ 編集", key=f"edit_party_btn_{party.id}"):
+                        st.session_state[edit_key] = not st.session_state[edit_key]
                         st.rerun()
 
-                # 現在のURL表示
-                if party.members_list_url:
-                    st.markdown(
-                        f"現在のURL: [{party.members_list_url}]"
-                        f"({party.members_list_url})"
-                    )
-                else:
-                    st.markdown("現在のURL: 未設定")
+                # 編集モード
+                if st.session_state[edit_key]:
+                    with st.container():
+                        st.markdown("---")
+                        col_input, col_save, col_cancel = st.columns([6, 1, 1])
+
+                        with col_input:
+                            new_url = st.text_input(
+                                "議員一覧ページURL",
+                                value=party.members_list_url or "",
+                                key=f"party_url_input_{party.id}",
+                                placeholder="https://example.com/members",
+                                help="この政党の議員一覧が掲載されているWebページのURL",
+                            )
+
+                        with col_save:
+                            if st.button("💾 保存", key=f"save_party_btn_{party.id}"):
+                                # URLを更新
+                                update_query = text("""
+                                    UPDATE political_parties
+                                    SET members_list_url = :url
+                                    WHERE id = :party_id
+                                """)
+                                conn.execute(
+                                    update_query,
+                                    {
+                                        "url": new_url if new_url else None,
+                                        "party_id": party.id,
+                                    },
+                                )
+                                conn.commit()
+                                st.session_state[edit_key] = False
+                                st.success(
+                                    f"✅ {party.name}の議員一覧URLを更新しました"
+                                )
+                                st.rerun()
+
+                        with col_cancel:
+                            if st.button(
+                                "❌ キャンセル", key=f"cancel_party_btn_{party.id}"
+                            ):
+                                st.session_state[edit_key] = False
+                                st.rerun()
+
+                # 区切り線（最後の項目以外）
+                if idx < len(filtered_parties) - 1:
+                    st.markdown("---")
+        else:
+            # フィルター結果が空の場合
+            if url_filter == "設定済み":
+                st.info("議員一覧URLが設定されている政党はありません")
+            elif url_filter == "未設定":
+                st.info("すべての政党で議員一覧URLが設定されています")
 
         # 一括確認セクション
         with st.expander("登録済みURL一覧", expanded=False):
