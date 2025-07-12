@@ -12,6 +12,8 @@ services:
       - ../uv.lock:/app/uv.lock
       - ../README.md:/app/README.md
       - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
+    env_file:
+      - ../.env
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
@@ -38,6 +40,8 @@ services:
       - ../uv.lock:/app/uv.lock
       - ../README.md:/app/README.md
       - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
+    env_file:
+      - ../.env
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
