@@ -111,9 +111,9 @@ jobs:
 
           # Load seed data after PostgreSQL is ready
           echo "Loading seed data..."
-          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /docker-entrypoint-initdb.d/seed_governing_bodies_generated.sql
-          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /docker-entrypoint-initdb.d/seed_political_parties.sql
-          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /docker-entrypoint-initdb.d/seed_conferences.sql
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_governing_bodies_generated.sql
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_political_parties.sql
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_conferences.sql
 
       - name: Run database setup and test connection
         run: |
