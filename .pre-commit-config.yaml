@@ -25,8 +25,7 @@ repos:
     hooks:
       - id: pyright
         name: pyright
-        entry: docker compose -f docker/docker-compose.yml exec -T polibase uv run --frozen pyright
+        entry: uv run --frozen pyright
         language: system
         pass_filenames: false
         types: [python]
-        require_serial: true
