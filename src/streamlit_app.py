@@ -2300,17 +2300,39 @@ def manage_governing_bodies():
         # 開催主体一覧
         st.subheader("開催主体一覧")
 
-        # 種別でフィルタリング
-        type_options = ["すべて"] + gb_repo.get_type_options()
-        selected_type = st.selectbox(
-            "種別でフィルタ", type_options, key="gb_type_filter"
-        )
+        # フィルタリングオプション
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # 種別でフィルタリング
+            type_options = ["すべて"] + gb_repo.get_type_options()
+            selected_type = st.selectbox(
+                "種別でフィルタ", type_options, key="gb_type_filter"
+            )
+
+        with col2:
+            # 会議体の有無でフィルタリング
+            conference_filter = st.selectbox(
+                "会議体でフィルタ",
+                ["すべて", "会議体あり", "会議体なし"],
+                key="gb_conference_filter",
+            )
 
         # 開催主体取得
         if selected_type == "すべて":
             governing_bodies = gb_repo.get_all_governing_bodies()
         else:
             governing_bodies = gb_repo.get_governing_bodies_by_type(selected_type)
+
+        # 会議体フィルタの適用
+        if conference_filter == "会議体あり":
+            governing_bodies = [
+                gb for gb in governing_bodies if gb.get("conference_count", 0) > 0
+            ]
+        elif conference_filter == "会議体なし":
+            governing_bodies = [
+                gb for gb in governing_bodies if gb.get("conference_count", 0) == 0
+            ]
 
         if governing_bodies:
             # SEEDファイル生成セクション（一番上に配置）
@@ -2373,7 +2395,8 @@ def manage_governing_bodies():
             st.dataframe(df, use_container_width=True, hide_index=True)
 
             # 統計情報
-            col1, col2, col3 = st.columns(3)
+            st.markdown("### 統計情報")
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("総数", f"{len(governing_bodies)}件")
             with col2:
@@ -2386,9 +2409,28 @@ def manage_governing_bodies():
                     [gb for gb in governing_bodies if gb["type"] == "都道府県"]
                 )
                 st.metric("都道府県", f"{pref_count}件")
+            with col4:
+                city_count = len(
+                    [gb for gb in governing_bodies if gb["type"] == "市町村"]
+                )
+                st.metric("市町村", f"{city_count}件")
 
-            city_count = len([gb for gb in governing_bodies if gb["type"] == "市町村"])
-            st.metric("市町村", f"{city_count}件")
+            # 会議体の有無の統計
+            col1, col2 = st.columns(2)
+            with col1:
+                with_conf_count = len(
+                    [gb for gb in governing_bodies if gb.get("conference_count", 0) > 0]
+                )
+                st.metric("会議体あり", f"{with_conf_count}件")
+            with col2:
+                without_conf_count = len(
+                    [
+                        gb
+                        for gb in governing_bodies
+                        if gb.get("conference_count", 0) == 0
+                    ]
+                )
+                st.metric("会議体なし", f"{without_conf_count}件")
         else:
             st.info("開催主体が登録されていません")
 

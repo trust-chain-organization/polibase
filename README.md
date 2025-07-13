@@ -158,7 +158,7 @@ uv run pytest tests/test_minutes_divider.py -v
 
 **開催主体（governing_bodies）と会議体（conferences）**は基本的に増減しない固定的なマスターデータとして扱います。これらのデータは以下のSEEDファイルで管理しています：
 
-- `database/seed_governing_bodies.sql`: 日本国、47都道府県、主要市町村（政令指定都市、東京23区等）
+- `database/seed_governing_bodies_generated.sql`: 日本国、47都道府県、全国1,939市町村（全自治体）
 - `database/seed_conferences.sql`: 国会・各委員会、都道府県議会、市区議会
 - `database/seed_political_parties.sql`: 主要政党、地域政党、過去の政党
 

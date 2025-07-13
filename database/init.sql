@@ -202,7 +202,7 @@ CREATE TRIGGER update_proposal_meeting_occurrences_updated_at BEFORE UPDATE ON p
 
 -- SEEDデータの読み込み
 -- 開催主体マスターデータの挿入
-\i /docker-entrypoint-initdb.d/seed_governing_bodies.sql
+\i /docker-entrypoint-initdb.d/seed_governing_bodies_generated.sql
 
 -- 政党マスターデータの挿入
 \i /docker-entrypoint-initdb.d/seed_political_parties.sql

@@ -50,14 +50,23 @@ def main():
     project_root = script_dir.parent.parent
 
     csv_path = project_root / "data" / "city_and_prefecture_code.csv"
-    output_path = (
-        project_root / "database" / "seed_governing_bodies_all_municipalities.sql"
-    )
+    output_path = project_root / "database" / "seed_governing_bodies_generated.sql"
 
     # Read the CSV file
     governing_bodies = []
     seen_codes = set()
     seen_names = set()  # Track (name, type) pairs to avoid duplicates
+
+    # Add Japan as the top-level entry
+    governing_bodies.append(
+        {
+            "name": "日本国",
+            "type": "国",
+            "organization_code": None,
+            "organization_type": None,
+        }
+    )
+    seen_names.add(("日本国", "国"))
 
     with open(csv_path, encoding="utf-8") as f:
         reader = csv.reader(f)
@@ -114,28 +123,71 @@ def main():
 
     # Generate SQL file
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write(
-            "-- SEED data for governing_bodies table with all Japanese municipalities\n"
-        )
-        f.write("-- Generated from city_and_prefecture_code.csv\n\n")
+        from datetime import datetime
 
-        f.write("-- Insert all local governments with organization codes\n")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"-- Generated from database on {now}\n")
+        f.write("-- governing_bodies seed data\n\n")
         f.write(
             "INSERT INTO governing_bodies "
             "(name, type, organization_code, organization_type) VALUES\n"
         )
 
-        values = []
+        # Group by type for better organization
+        by_type = {}
         for gb in governing_bodies:
-            # Escape single quotes for SQL
-            name_escaped = gb["name"].replace("'", "''")
-            value = (
-                f"('{name_escaped}', '{gb['type']}', "
-                f"'{gb['organization_code']}', '{gb['organization_type']}')"
-            )
-            values.append(value)
+            gb_type = gb["type"]
+            if gb_type not in by_type:
+                by_type[gb_type] = []
+            by_type[gb_type].append(gb)
 
-        f.write(",\n".join(values))
+        values = []
+
+        # Output in order: 国, 都道府県, 市町村
+        type_order = ["国", "都道府県", "市町村"]
+        for gb_type in type_order:
+            if gb_type in by_type:
+                if values:  # Add empty line between types
+                    values.append("")
+                values.append(f"-- {gb_type}")
+
+                for gb in by_type[gb_type]:
+                    # Escape single quotes for SQL
+                    name_escaped = gb["name"].replace("'", "''")
+                    org_code = (
+                        f"'{gb['organization_code']}'"
+                        if gb["organization_code"]
+                        else "NULL"
+                    )
+                    org_type = (
+                        f"'{gb['organization_type']}'"
+                        if gb["organization_type"]
+                        else "NULL"
+                    )
+                    value = (
+                        f"('{name_escaped}', '{gb['type']}', {org_code}, {org_type})"
+                    )
+                    values.append(value)
+
+        # Join with proper formatting
+        output_lines = []
+        for i, line in enumerate(values):
+            if line == "":  # Empty line
+                output_lines.append("")
+            elif line.startswith("--"):  # Comment
+                output_lines.append(line)
+            else:  # SQL value
+                # Add comma except for the last value
+                if (
+                    i < len(values) - 1
+                    and values[i + 1]
+                    and not values[i + 1].startswith("--")
+                ):
+                    output_lines.append(line + ",")
+                else:
+                    output_lines.append(line + ("," if i < len(values) - 1 else ""))
+
+        f.write("\n".join(output_lines))
         f.write("\nON CONFLICT (name, type) DO UPDATE SET\n")
         f.write("    organization_code = EXCLUDED.organization_code,\n")
         f.write("    organization_type = EXCLUDED.organization_type,\n")

@@ -75,7 +75,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - ../database/seed_governing_bodies.sql:/docker-entrypoint-initdb.d/seed_governing_bodies.sql:ro
+      - ../database/seed_governing_bodies_generated.sql:/docker-entrypoint-initdb.d/seed_governing_bodies_generated.sql:ro
       - ../database/seed_political_parties.sql:/docker-entrypoint-initdb.d/seed_political_parties.sql:ro
       - ../database/seed_conferences.sql:/docker-entrypoint-initdb.d/seed_conferences.sql:ro
       - ../database/migrations:/docker-entrypoint-initdb.d/migrations:ro
