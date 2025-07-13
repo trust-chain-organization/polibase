@@ -1,0 +1,86 @@
+services:
+  polibase:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ../src:/app/src
+      - ../tests:/app/tests
+      - ../database:/app/database
+      - ../scripts:/app/scripts
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../uv.lock:/app/uv.lock
+      - ../README.md:/app/README.md
+      - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
+    env_file:
+      - ../.env
+    environment:
+      - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
+      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+      - GOOGLE_CLOUD_PROJECT=trust-chain-828ad
+    ports:
+      - "8000:8000" # 必要に応じてポートを設定
+      - "8501:8501" # Streamlit用ポート
+    stdin_open: true # 追加
+    tty: true # 追加
+    depends_on:
+      - postgres
+
+  polibase-monitoring:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ../src:/app/src
+      - ../tests:/app/tests
+      - ../database:/app/database
+      - ../scripts:/app/scripts
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../uv.lock:/app/uv.lock
+      - ../README.md:/app/README.md
+      - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
+    env_file:
+      - ../.env
+    environment:
+      - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
+      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+      - GOOGLE_CLOUD_PROJECT=trust-chain-828ad
+    ports:
+      - "8502:8502" # 監視用Streamlitポート
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+    command:
+      [
+        "uv",
+        "run",
+        "streamlit",
+        "run",
+        "src/monitoring_app.py",
+        "--server.port=8502",
+        "--server.address=0.0.0.0",
+      ]
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: polibase_db
+      POSTGRES_USER: polibase_user
+      POSTGRES_PASSWORD: polibase_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../database/init_ci.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ../database/migrations:/docker-entrypoint-initdb.d/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

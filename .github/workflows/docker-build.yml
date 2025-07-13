@@ -77,18 +77,18 @@ jobs:
 
       - name: Start services
         run: |
-          docker compose -f docker/docker-compose.yml up -d
-          docker compose -f docker/docker-compose.yml ps
+          docker compose -f docker/docker-compose.ci.yml up -d
+          docker compose -f docker/docker-compose.ci.yml ps
 
       - name: Wait for services
         run: |
-          timeout 60s bash -c 'until docker compose -f docker/docker-compose.yml exec -T postgres pg_isready; do sleep 2; done'
+          timeout 60s bash -c 'until docker compose -f docker/docker-compose.ci.yml exec -T postgres pg_isready; do sleep 2; done'
           echo "PostgreSQL is ready"
 
       - name: Run database setup and test connection
         run: |
           # データベース接続テスト
-          docker compose -f docker/docker-compose.yml exec -T polibase uv run python -c "
+          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run python -c "
           from src.config.database import test_connection
           import sys
           if test_connection():
@@ -105,23 +105,23 @@ jobs:
             if [ -f "$file" ]; then
               echo "Applying migration: $file"
               filename=$(basename "$file")
-              docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -f "/docker-entrypoint-initdb.d/migrations/$filename"
+              docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f "/docker-entrypoint-initdb.d/migrations/$filename"
             fi
           done
 
           # データベース構造を確認
-          docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
 
       - name: Test CLI
         run: |
-          docker compose -f docker/docker-compose.yml exec -T polibase uv run polibase --help
-          docker compose -f docker/docker-compose.yml exec -T polibase uv run polibase test-connection
+          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run polibase --help
+          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run polibase test-connection
 
       - name: Run tests in container
         run: |
-          docker compose -f docker/docker-compose.yml exec -T -e CI=true polibase uv run pytest -v
+          docker compose -f docker/docker-compose.ci.yml exec -T -e CI=true polibase uv run pytest -v
 
       - name: Stop services
         if: always()
         run: |
-          docker compose -f docker/docker-compose.yml down -v
+          docker compose -f docker/docker-compose.ci.yml down -v
