@@ -24,11 +24,16 @@ def show_meetings_list():
 
         if gb_selected != "すべて":
             # 選択されたオプションから対応するgoverning_bodyを探す
+            selected_gb = None
             for _i, gb in enumerate(governing_bodies):
                 if f"{gb['name']} ({gb['type']})" == gb_selected:
                     selected_gb = gb
                     break
-            conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
+            conferences = (
+                repo.get_conferences_by_governing_body(selected_gb["id"])
+                if selected_gb
+                else []
+            )
         else:
             conferences = []
 
@@ -39,6 +44,7 @@ def show_meetings_list():
 
             if conf_selected != "すべて":
                 # 選択されたオプションから対応するconferenceを探す
+                selected_conf_id = None
                 for conf in conferences:
                     if conf["name"] == conf_selected:
                         selected_conf_id = conf["id"]
@@ -71,13 +77,23 @@ def show_meetings_list():
 
             with col1:
                 # URLを表示
-                url_display = row["url"] if row["url"] else "URLなし"
+                url_value = row["url"]
+                # Ensure url_value is a string or None, not a Series
+                # Use pd.isna() to check for NaN and convert to bool
+                is_na = pd.isna(url_value)
+                if isinstance(is_na, bool):
+                    url_str = str(url_value) if not is_na else None
+                else:
+                    # If is_na is not a bool, assume url_value is not NaN
+                    url_str = str(url_value) if url_value is not None else None
+                has_url = bool(url_str and url_str != "None" and url_str != "")
+                url_display = url_str if has_url else "URLなし"
                 st.markdown(
                     f"**{row['開催日']}** - {row['開催主体・会議体']}",
                     unsafe_allow_html=True,
                 )
-                if row["url"]:
-                    st.markdown(f"URL: [{url_display}]({row['url']})")
+                if has_url:
+                    st.markdown(f"URL: [{url_display}]({url_str})")
                 else:
                     st.markdown(f"URL: {url_display}")
 
@@ -89,7 +105,8 @@ def show_meetings_list():
 
             with col3:
                 if st.button("削除", key=f"delete_{row['id']}"):
-                    if repo.delete_meeting(row["id"]):
+                    meeting_id = int(row["id"])
+                    if repo.delete_meeting(meeting_id):
                         st.success("会議を削除しました")
                         st.rerun()
                     else:

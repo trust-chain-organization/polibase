@@ -21,7 +21,7 @@ def edit_meeting():
     repo = MeetingRepository()
 
     # 編集対象の会議情報を取得
-    meeting = repo.get_meeting_by_id(st.session_state.edit_meeting_id)
+    meeting = repo.get_meeting_by_id_with_info(st.session_state.edit_meeting_id)
     if not meeting:
         st.error("会議が見つかりません")
         st.session_state.edit_mode = False

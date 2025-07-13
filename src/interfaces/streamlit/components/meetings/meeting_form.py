@@ -103,7 +103,7 @@ def add_new_meeting():
             for gb_name in conf_df["governing_body_name"].unique():
                 gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]
                 st.markdown(f"**{gb_name}**")
-                display_df = gb_conf_df[["name", "type"]].copy()
+                display_df = pd.DataFrame(gb_conf_df[["name", "type"]])
                 display_df.columns = ["会議体名", "会議体種別"]
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
         else:
