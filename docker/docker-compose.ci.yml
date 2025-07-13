@@ -84,8 +84,8 @@ services:
         ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db || exit 1"]
       interval: 5s
       timeout: 3s
-      retries: 10
-      start_period: 10s
+      retries: 20
+      start_period: 60s
 
 volumes:
   postgres_data:

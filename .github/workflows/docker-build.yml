@@ -88,15 +88,15 @@ jobs:
           # Check if postgres container is running
           docker compose -f docker/docker-compose.ci.yml ps postgres
 
-          # Wait for postgres to be healthy
-          for i in {1..30}; do
+          # Wait for postgres to be healthy (increased timeout for seed data loading)
+          for i in {1..60}; do
             if docker compose -f docker/docker-compose.ci.yml ps postgres | grep -q "healthy"; then
               echo "PostgreSQL container is healthy!"
               break
             fi
-            echo "Waiting for PostgreSQL to be healthy... ($i/30)"
-            if [ $i -eq 30 ]; then
-              echo "PostgreSQL failed to become healthy within 60 seconds"
+            echo "Waiting for PostgreSQL to be healthy... ($i/60)"
+            if [ $i -eq 60 ]; then
+              echo "PostgreSQL failed to become healthy within 120 seconds"
               echo "Container status:"
               docker compose -f docker/docker-compose.ci.yml ps
               echo "PostgreSQL logs:"
