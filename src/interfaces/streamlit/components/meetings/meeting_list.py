@@ -1,5 +1,7 @@
 """Meeting list display component"""
 
+from typing import Any
+
 import pandas as pd
 import streamlit as st
 
@@ -61,9 +63,9 @@ def show_meetings_list():
 
     if meetings:
         # DataFrameに変換
-        df = pd.DataFrame(meetings)
-        df["date"] = pd.to_datetime(df["date"])
-        df = df.sort_values("date", ascending=False)
+        df: pd.DataFrame = pd.DataFrame(meetings)
+        df["date"] = pd.to_datetime(df["date"])  # type: ignore
+        df = df.sort_values("date", ascending=False)  # type: ignore
 
         # 表示用のカラムを整形
         df["開催日"] = df["date"].dt.strftime("%Y年%m月%d日")
@@ -72,19 +74,18 @@ def show_meetings_list():
         )
 
         # 編集・削除ボタン用のカラム
-        for _idx, row in df.iterrows():
+        for _idx, row in df.iterrows():  # type: ignore
             col1, col2, col3 = st.columns([6, 1, 1])
 
             with col1:
                 # URLを表示
-                url_value = row["url"]
+                url_value: Any = row["url"]
                 # Ensure url_value is a string or None, not a Series
                 # Use pd.isna() to check for NaN and convert to bool
-                is_na = pd.isna(url_value)
-                if isinstance(is_na, bool):
-                    url_str = str(url_value) if not is_na else None
+                is_na: bool = bool(pd.isna(url_value))
+                if is_na:
+                    url_str = None
                 else:
-                    # If is_na is not a bool, assume url_value is not NaN
                     url_str = str(url_value) if url_value is not None else None
                 has_url = bool(url_str and url_str != "None" and url_str != "")
                 url_display = url_str if has_url else "URLなし"
@@ -100,7 +101,7 @@ def show_meetings_list():
             with col2:
                 if st.button("編集", key=f"edit_{row['id']}"):
                     st.session_state.edit_mode = True
-                    st.session_state.edit_meeting_id = row["id"]
+                    st.session_state.edit_meeting_id = int(row["id"])
                     st.rerun()
 
             with col3:
