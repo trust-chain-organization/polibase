@@ -77,10 +77,12 @@ services:
       - ../database/init_ci.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ../database/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test:
+        ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
 volumes:
   postgres_data:
