@@ -1,6 +1,6 @@
 """Use case for managing conference members."""
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Protocol
 
 from src.application.dtos.conference_dto import (
@@ -11,6 +11,7 @@ from src.application.dtos.conference_dto import (
 from src.domain.repositories.conference_repository import ConferenceRepository
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.services.conference_domain_service import ConferenceDomainService
+from src.domain.types import PoliticianDTO
 from src.infrastructure.interfaces.llm_service import ILLMService
 from src.infrastructure.interfaces.web_scraper_service import IWebScraperService
 
@@ -281,13 +282,20 @@ class ManageConferenceMembersUseCase:
             # Try LLM matching with broader search
             # Search more broadly for politicians
             all_politicians = await self.politician_repo.get_all()
-            politician_dtos = [
-                {
-                    "id": str(p.id),
-                    "name": p.name,
-                    "party": p.political_party.name if p.political_party else None,
-                }
+            politician_dtos: list[PoliticianDTO] = [
+                PoliticianDTO(
+                    id=p.id if p.id is not None else 0,
+                    name=p.name,
+                    party_id=p.political_party_id,
+                    prefecture=p.district,
+                    electoral_district=p.district,
+                    profile_url=p.profile_page_url,
+                    image_url=p.profile_image_url,
+                    created_at=p.created_at or datetime.now(),
+                    updated_at=p.updated_at or datetime.now(),
+                )
                 for p in all_politicians
+                if p.id is not None  # Only include politicians with valid IDs
             ]
 
             llm_result = await self.llm.match_conference_member(

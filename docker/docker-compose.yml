@@ -9,6 +9,7 @@ services:
       - ../database:/app/database
       - ../scripts:/app/scripts
       - ../pyproject.toml:/app/pyproject.toml
+      - ../pyrightconfig.json:/app/pyrightconfig.json
       - ../uv.lock:/app/uv.lock
       - ../README.md:/app/README.md
       - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
@@ -37,6 +38,7 @@ services:
       - ../database:/app/database
       - ../scripts:/app/scripts
       - ../pyproject.toml:/app/pyproject.toml
+      - ../pyrightconfig.json:/app/pyrightconfig.json
       - ../uv.lock:/app/uv.lock
       - ../README.md:/app/README.md
       - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント

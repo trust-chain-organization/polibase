@@ -1,6 +1,7 @@
 """Parliamentary group domain service."""
 
 from datetime import date, datetime
+from typing import Any
 
 from src.domain.entities.parliamentary_group import ParliamentaryGroup
 
@@ -89,8 +90,8 @@ class ParliamentaryGroupDomainService:
 
     def merge_group_memberships(
         self,
-        memberships: list[dict[str, any]],
-    ) -> list[dict[str, any]]:
+        memberships: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
         """Merge adjacent memberships with same group and role."""
         if not memberships:
             return []
@@ -137,7 +138,7 @@ class ParliamentaryGroupDomainService:
         group: ParliamentaryGroup,
         member_count: int,
         total_members: int,
-    ) -> dict[str, any]:
+    ) -> dict[str, Any]:
         """Calculate parliamentary group strength metrics."""
         if total_members == 0:
             percentage = 0.0
@@ -208,11 +209,11 @@ class ParliamentaryGroupDomainService:
 
     def group_politicians_by_parliamentary_group(
         self,
-        memberships: list[dict[str, any]],
-    ) -> dict[int, list[dict[str, any]]]:
+        memberships: list[dict[str, Any]],
+    ) -> dict[int, list[dict[str, Any]]]:
         """Group current politicians by their parliamentary groups."""
         current_date = datetime.now().date()
-        grouped: dict[int, list[dict[str, any]]] = {}
+        grouped: dict[int, list[dict[str, Any]]] = {}
 
         for membership in memberships:
             # Check if membership is current

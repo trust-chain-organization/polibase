@@ -160,18 +160,18 @@ class MatchSpeakersUseCase:
         match_result = await self.llm_service.match_speaker_to_politician(context)
 
         if match_result and match_result.get("matched_id"):
-            politician = await self.politician_repo.get_by_id(
-                match_result["matched_id"]
-            )
+            matched_id = match_result["matched_id"]
+            if matched_id is not None:
+                politician = await self.politician_repo.get_by_id(matched_id)
 
-            if politician:
-                return SpeakerMatchingDTO(
-                    speaker_id=speaker.id if speaker.id is not None else 0,
-                    speaker_name=speaker.name,
-                    matched_politician_id=politician.id,
-                    matched_politician_name=politician.name,
-                    confidence_score=match_result.get("confidence", 0.8),
-                    matching_method="llm",
-                )
+                if politician:
+                    return SpeakerMatchingDTO(
+                        speaker_id=speaker.id if speaker.id is not None else 0,
+                        speaker_name=speaker.name,
+                        matched_politician_id=politician.id,
+                        matched_politician_name=politician.name,
+                        confidence_score=match_result.get("confidence", 0.8),
+                        matching_method="llm",
+                    )
 
         return None
