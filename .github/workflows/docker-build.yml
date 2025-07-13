@@ -78,12 +78,36 @@ jobs:
       - name: Start services
         run: |
           docker compose -f docker/docker-compose.ci.yml up -d
+          sleep 5  # Give services time to initialize
           docker compose -f docker/docker-compose.ci.yml ps
 
-      - name: Wait for services
+      - name: Wait for PostgreSQL
         run: |
-          timeout 60s bash -c 'until docker compose -f docker/docker-compose.ci.yml exec -T postgres pg_isready; do sleep 2; done'
-          echo "PostgreSQL is ready"
+          echo "Waiting for PostgreSQL to start..."
+
+          # Check if postgres container is running
+          docker compose -f docker/docker-compose.ci.yml ps postgres
+
+          # Wait for postgres to be healthy
+          for i in {1..30}; do
+            if docker compose -f docker/docker-compose.ci.yml ps postgres | grep -q "healthy"; then
+              echo "PostgreSQL container is healthy!"
+              break
+            fi
+            echo "Waiting for PostgreSQL to be healthy... ($i/30)"
+            if [ $i -eq 30 ]; then
+              echo "PostgreSQL failed to become healthy within 60 seconds"
+              echo "Container status:"
+              docker compose -f docker/docker-compose.ci.yml ps
+              echo "PostgreSQL logs:"
+              docker compose -f docker/docker-compose.ci.yml logs postgres
+              exit 1
+            fi
+            sleep 2
+          done
+
+          # Verify connection
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres pg_isready -U polibase_user -d polibase_db
 
       - name: Run database setup and test connection
         run: |
