@@ -1,6 +1,7 @@
 """Meeting form component for adding new meetings"""
 
 from datetime import date
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -33,7 +34,7 @@ def add_new_meeting():
             break
 
     # 会議体選択（選択された開催主体に紐づくもののみ表示）
-    conferences = []
+    conferences: list[dict[str, Any]] = []
     if selected_gb:
         conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
         if not conferences:
@@ -41,7 +42,7 @@ def add_new_meeting():
             repo.close()
             return
 
-    conf_options = []
+    conf_options: list[str] = []
     for conf in conferences:
         conf_display = f"{conf['name']}"
         if conf.get("type"):
@@ -98,14 +99,24 @@ def add_new_meeting():
         all_conferences = repo.get_all_conferences()
         if all_conferences:
             # 開催主体ごとにグループ化して表示
-            conf_df = pd.DataFrame(all_conferences)
+            conf_df: pd.DataFrame = pd.DataFrame(all_conferences)
 
-            for gb_name in conf_df["governing_body_name"].unique():
-                gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]
+            gb_names: list[str] = conf_df["governing_body_name"].unique().tolist()
+            for gb_name in gb_names:
+                # pandasのフィルタリング結果を明示的にDataFrameとして扱う
+                mask = conf_df["governing_body_name"] == gb_name
+                gb_conf_df: pd.DataFrame = conf_df.loc[mask]
                 st.markdown(f"**{gb_name}**")
-                display_df = gb_conf_df[["name", "type"]].copy()
-                display_df.columns = ["会議体名", "会議体種別"]
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                # DataFrameのサブセットを新しいDataFrameとして作成
+                display_df: pd.DataFrame = pd.DataFrame(
+                    {
+                        "会議体名": gb_conf_df["name"].tolist(),
+                        "会議体種別": gb_conf_df["type"].tolist(),
+                    }
+                )
+                st.dataframe(  # type: ignore
+                    display_df, use_container_width=True, hide_index=True
+                )
         else:
             st.info("会議体が登録されていません")
 

@@ -20,3 +20,12 @@ repos:
       - id: prettier
         types_or: [yaml, json]
         exclude: '^(uv\.lock|.*\.min\.(js|css))$'
+
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: uv run --frozen pyright
+        language: system
+        pass_filenames: true
+        types: [python]
