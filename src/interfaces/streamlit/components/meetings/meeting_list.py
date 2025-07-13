@@ -1,6 +1,6 @@
 """Meeting list display component"""
 
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import streamlit as st
@@ -63,12 +63,12 @@ def show_meetings_list():
 
     if meetings:
         # DataFrameに変換
-        df: pd.DataFrame = pd.DataFrame(meetings)
+        df = pd.DataFrame(meetings)
         df["date"] = pd.to_datetime(df["date"])  # type: ignore
         df = df.sort_values("date", ascending=False)  # type: ignore
 
         # 表示用のカラムを整形
-        df["開催日"] = df["date"].dt.strftime("%Y年%m月%d日")
+        df["開催日"] = df["date"].dt.strftime("%Y年%m月%d日")  # type: ignore
         df["開催主体・会議体"] = (
             df["governing_body_name"] + " - " + df["conference_name"]
         )
@@ -79,18 +79,18 @@ def show_meetings_list():
 
             with col1:
                 # URLを表示
-                url_value: Any = row["url"]
-                # Ensure url_value is a string or None, not a Series
-                # Use pd.isna() to check for NaN and convert to bool
-                is_na: bool = bool(pd.isna(url_value))
-                if is_na:
-                    url_str = None
+                url_value = cast(Any, row["url"])
+                # 型を明示的に処理
+                if pd.isna(url_value):  # type: ignore
+                    url_str: str | None = None
                 else:
-                    url_str = str(url_value) if url_value is not None else None
+                    url_str = str(url_value)
                 has_url = bool(url_str and url_str != "None" and url_str != "")
                 url_display = url_str if has_url else "URLなし"
+                date_str = cast(str, row["開催日"])
+                org_str = cast(str, row["開催主体・会議体"])
                 st.markdown(
-                    f"**{row['開催日']}** - {row['開催主体・会議体']}",
+                    f"**{date_str}** - {org_str}",
                     unsafe_allow_html=True,
                 )
                 if has_url:
@@ -99,21 +99,20 @@ def show_meetings_list():
                     st.markdown(f"URL: {url_display}")
 
             with col2:
-                if st.button("編集", key=f"edit_{row['id']}"):
+                if st.button("編集", key=f"edit_{cast(int, row['id'])}"):
                     st.session_state.edit_mode = True
-                    st.session_state.edit_meeting_id = int(row["id"])
+                    st.session_state.edit_meeting_id = cast(int, row["id"])
                     st.rerun()
 
             with col3:
-                if st.button("削除", key=f"delete_{row['id']}"):
-                    meeting_id = int(row["id"])
+                if st.button("削除", key=f"delete_{cast(int, row['id'])}"):
+                    meeting_id = cast(int, row["id"])
                     if repo.delete_meeting(meeting_id):
                         st.success("会議を削除しました")
                         st.rerun()
                     else:
                         st.error(
-                            "会議を削除できませんでした"
-                            "（関連する議事録が存在する可能性があります）"
+                            "会議を削除できませんでした（関連する議事録が存在する可能性があります）"
                         )
 
             st.divider()
