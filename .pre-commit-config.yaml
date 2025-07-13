@@ -20,3 +20,13 @@ repos:
       - id: prettier
         types_or: [yaml, json]
         exclude: '^(uv\.lock|.*\.min\.(js|css))$'
+
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: docker compose -f docker/docker-compose.yml exec -T polibase uv run --frozen pyright
+        language: system
+        pass_filenames: false
+        types: [python]
+        require_serial: true
