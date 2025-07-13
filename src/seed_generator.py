@@ -86,7 +86,7 @@ class SeedGenerator:
 
         lines.append("ON CONFLICT (name, type) DO NOTHING;")
 
-        result = "\n".join(lines)
+        result = "\n".join(lines) + "\n"
         if output:
             output.write(result)
         return result
@@ -211,7 +211,7 @@ class SeedGenerator:
 
         lines.append("ON CONFLICT (name, governing_body_id) DO NOTHING;")
 
-        result = "\n".join(lines)
+        result = "\n".join(lines) + "\n"
         if output:
             output.write(result)
         return result
@@ -249,7 +249,7 @@ class SeedGenerator:
 
         lines.append("ON CONFLICT (name) DO NOTHING;")
 
-        result = "\n".join(lines)
+        result = "\n".join(lines) + "\n"
         if output:
             output.write(result)
         return result
@@ -347,7 +347,7 @@ class SeedGenerator:
 
         lines.append("ON CONFLICT (name, conference_id) DO NOTHING;")
 
-        result = "\n".join(lines)
+        result = "\n".join(lines) + "\n"
         if output:
             output.write(result)
         return result
