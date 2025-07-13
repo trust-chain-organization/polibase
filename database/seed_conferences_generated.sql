@@ -45,6 +45,43 @@ INSERT INTO conferences (name, type, governing_body_id, members_introduction_url
 ('衆議院財務金融委員会', '常任委員会', (SELECT id FROM governing_bodies WHERE name = '日本国' AND type = '国'), 'https://www.shugiin.go.jp/internet/itdb_iinkai.nsf/html/iinkai/iin_j0050.htm'),
 ('衆議院農林水産委員会', '常任委員会', (SELECT id FROM governing_bodies WHERE name = '日本国' AND type = '国'), 'https://www.shugiin.go.jp/internet/itdb_iinkai.nsf/html/iinkai/iin_j0080.htm'),
 
+
+-- 京都市 (市町村)
+('京都市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '京都市' AND type = '市町村'), 'https://www2.city.kyoto.lg.jp/shikai/meibo/gojuon.html'),
+
+-- 仙台市 (市町村)
+('仙台市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '仙台市' AND type = '市町村'), 'https://www.gikai.city.sendai.jp/list/district/index.html'),
+
+-- 北九州市 (市町村)
+('北九州市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '北九州市' AND type = '市町村'), 'https://www.city.kitakyushu.lg.jp/sigikai/file_0056.html'),
+
+-- 千葉市 (市町村)
+('千葉市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '千葉市' AND type = '市町村'), 'https://www.city.chiba.jp/shigikai/gojuon.html'),
+
+-- 名古屋市 (市町村)
+('名古屋市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '名古屋市' AND type = '市町村'), 'https://www.city.nagoya.jp/shikai/category/333-4-0-0-0-0-0-0-0-0.html'),
+
+-- 堺市 (市町村)
+('堺市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '堺市' AND type = '市町村'), 'https://www.city.sakai.lg.jp/shigikai/meibo/50on.html'),
+
+-- 大阪市 (市町村)
+('大阪市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '大阪市' AND type = '市町村'), 'https://www.city.osaka.lg.jp/shikai/category/3559-2-0-0-0-0-0-0-0-0.html'),
+
+-- 岡山市 (市町村)
+('岡山市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '岡山市' AND type = '市町村'), 'https://www.city.okayama.jp/gikai/0000015787.html'),
+
+-- 川崎市 (市町村)
+('川崎市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '川崎市' AND type = '市町村'), 'https://www.city.kawasaki.jp/shisei/category/40-3-1-0-0-0-0-0-0-0.html'),
+
+-- 広島市 (市町村)
+('広島市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '広島市' AND type = '市町村'), 'https://www.city.hiroshima.lg.jp/gikai/giin-shoukai/1014892/index.html'),
+
+-- 新潟市 (市町村)
+('新潟市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '新潟市' AND type = '市町村'), 'https://www.city.niigata.lg.jp/shigikai/index_meibo/meibo_01kubetsu.html'),
+
+-- 札幌市 (市町村)
+('札幌市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '札幌市' AND type = '市町村'), 'https://www.city.sapporo.jp/gikai/html/giin.html'),
+
 -- 兵庫県 (都道府県)
 ('兵庫県議会', '都道府県議会', (SELECT id FROM governing_bodies WHERE name = '兵庫県' AND type = '都道府県'), 'https://web.pref.hyogo.lg.jp/gikai/giinshokai/shokai/50on/50on_ichiran23.html'),
 
