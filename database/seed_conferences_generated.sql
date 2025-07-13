@@ -2,8 +2,6 @@
 -- conferences seed data
 
 INSERT INTO conferences (name, type, governing_body_id, members_introduction_url) VALUES
--- 開催主体未設定
-('静岡市議会', '市議会', NULL, NULL),
 
 -- 日本国 (国)
 ('参議院', '議院', (SELECT id FROM governing_bodies WHERE name = '日本国' AND type = '国'), 'https://www.sangiin.go.jp/japanese/joho1/kousei/giin/217/giin.htm'),
@@ -206,6 +204,6 @@ INSERT INTO conferences (name, type, governing_body_id, members_introduction_url
 ('神戸市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '神戸市' AND type = '市町村'), 'https://www.city.kobe.lg.jp/a71064/shise/municipal/giinnmeibo/50onmeibo.html'),
 
 -- 福岡市 (市町村)
-('福岡市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '福岡市' AND type = '市町村'), 'https://gikai.city.fukuoka.lg.jp/member/alphabet/'),
+('福岡市議会', '市議会', (SELECT id FROM governing_bodies WHERE name = '福岡市' AND type = '市町村'), 'https://gikai.city.fukuoka.lg.jp/member/alphabet/')
 
 ON CONFLICT (name, governing_body_id) DO NOTHING;

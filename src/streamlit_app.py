@@ -803,13 +803,18 @@ def manage_conferences():
                 # 開催主体でグループ化
                 grouped_conferences = {}
                 for conf in filtered_conferences:
-                    gb_name = conf["governing_body_name"]
+                    gb_name = conf["governing_body_name"] or "未設定"
                     if gb_name not in grouped_conferences:
                         grouped_conferences[gb_name] = []
                     grouped_conferences[gb_name].append(conf)
 
-                # 開催主体ごとに表示
-                for gb_name, gb_conferences in grouped_conferences.items():
+                # 開催主体ごとに表示（未設定を最後に）
+                sorted_gb_names = sorted(
+                    grouped_conferences.keys(),
+                    key=lambda x: (x == "未設定", x),  # 未設定を最後に
+                )
+                for gb_name in sorted_gb_names:
+                    gb_conferences = grouped_conferences[gb_name]
                     with st.expander(f"📂 {gb_name}", expanded=True):
                         for idx, conf in enumerate(gb_conferences):
                             # 各会議体を個別に表示
@@ -853,11 +858,32 @@ def manage_conferences():
                             if st.session_state[edit_key]:
                                 with st.container():
                                     st.markdown("---")
-                                    col_input, col_save, col_cancel = st.columns(
-                                        [6, 1, 1]
+
+                                    # 開催主体の選択
+                                    governing_bodies = conf_repo.get_governing_bodies()
+                                    gb_options = ["なし"] + [
+                                        f"{gb['name']} ({gb['type']})"
+                                        for gb in governing_bodies
+                                    ]
+
+                                    # 現在の開催主体を選択状態にする
+                                    current_gb_index = 0
+                                    if conf.get("governing_body_id"):
+                                        for i, gb in enumerate(governing_bodies):
+                                            if gb["id"] == conf["governing_body_id"]:
+                                                current_gb_index = (
+                                                    i + 1
+                                                )  # "なし"の分を加算
+                                                break
+
+                                    selected_gb = st.selectbox(
+                                        "開催主体",
+                                        gb_options,
+                                        index=current_gb_index,
+                                        key=f"gb_select_{conf['id']}",
                                     )
 
-                                with col_input:
+                                    # URLの入力
                                     new_url = st.text_input(
                                         "議員紹介URL",
                                         value=conf.get("members_introduction_url", ""),
@@ -865,21 +891,34 @@ def manage_conferences():
                                         placeholder="https://example.com/members",
                                     )
 
+                                    col_save, col_cancel = st.columns([1, 1])
+
                                 with col_save:
                                     if st.button(
                                         "💾 保存", key=f"save_btn_{conf['id']}"
                                     ):
-                                        # URLを更新
-                                        conf_repo.update_conference_members_url(
+                                        # 選択された開催主体のIDを取得
+                                        selected_gb_id = None
+                                        if selected_gb != "なし":
+                                            for gb in governing_bodies:
+                                                if (
+                                                    f"{gb['name']} ({gb['type']})"
+                                                    == selected_gb
+                                                ):
+                                                    selected_gb_id = gb["id"]
+                                                    break
+
+                                        # URLと開催主体を更新
+                                        conf_repo.update_conference(
                                             conference_id=conf["id"],
+                                            governing_body_id=selected_gb_id,
                                             members_introduction_url=(
                                                 new_url if new_url else None
                                             ),
                                         )
                                         st.session_state[edit_key] = False
                                         st.session_state.conf_success_message = (
-                                            f"✅ {conf['name']}の議員紹介URL"
-                                            "を更新しました"
+                                            f"✅ {conf['name']}を更新しました"
                                         )
                                         st.rerun()
 
@@ -910,83 +949,75 @@ def manage_conferences():
         with st.form("new_conference_form"):
             # 開催主体選択
             governing_bodies = conf_repo.get_governing_bodies()
-            if not governing_bodies:
-                st.error(
-                    "開催主体が登録されていません。先に開催主体を登録してください。"
-                )
-            else:
-                gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
-                gb_selected = st.selectbox("開催主体", gb_options)
+            gb_options = ["なし"] + [
+                f"{gb['name']} ({gb['type']})" for gb in governing_bodies
+            ]
+            gb_selected = st.selectbox("開催主体（任意）", gb_options)
 
-                # 選択された開催主体のIDを取得
-                selected_gb_id = None
+            # 選択された開催主体のIDを取得
+            selected_gb_id = None
+            if gb_selected != "なし":
                 for gb in governing_bodies:
                     if f"{gb['name']} ({gb['type']})" == gb_selected:
                         selected_gb_id = gb["id"]
                         break
 
-                # 会議体情報入力
-                conf_name = st.text_input(
-                    "会議体名", placeholder="例: 本会議、予算委員会"
-                )
-                conf_type = st.text_input(
-                    "会議体種別（任意）",
-                    placeholder="例: 本会議、常任委員会、特別委員会",
-                )
-                members_url = st.text_input(
-                    "議員紹介URL（任意）",
-                    placeholder="https://example.com/members",
-                    help="会議体の議員一覧が掲載されているページのURL",
-                )
+            # 会議体情報入力
+            conf_name = st.text_input("会議体名", placeholder="例: 本会議、予算委員会")
+            conf_type = st.text_input(
+                "会議体種別（任意）",
+                placeholder="例: 本会議、常任委員会、特別委員会",
+            )
+            members_url = st.text_input(
+                "議員紹介URL（任意）",
+                placeholder="https://example.com/members",
+                help="会議体の議員一覧が掲載されているページのURL",
+            )
 
-                submitted = st.form_submit_button("登録")
+            submitted = st.form_submit_button("登録")
 
-                if submitted:
-                    if not conf_name:
+            if submitted:
+                if not conf_name:
+                    st.session_state.conf_error_message = "会議体名を入力してください"
+                    st.rerun()
+                else:
+                    conf_id = conf_repo.create_conference(
+                        name=conf_name,
+                        governing_body_id=selected_gb_id,  # Noneでも可
+                        type=conf_type if conf_type else None,
+                    )
+                    if conf_id:
+                        # 議員紹介URLが入力されていれば更新
+                        if members_url:
+                            conf_repo.update_conference_members_url(
+                                conference_id=conf_id,
+                                members_introduction_url=members_url,
+                            )
+
+                        # 成功メッセージと詳細をセッション状態に保存
+                        st.session_state.conf_success_message = (
+                            "✅ 会議体を登録しました"
+                        )
+                        st.session_state.conf_message_details = f"""
+                        **会議体ID:** {conf_id}
+
+                        **開催主体:** {gb_selected}
+
+                        **会議体名:** {conf_name}
+
+                        **会議体種別:** {conf_type if conf_type else "未設定"}
+
+                        **議員紹介URL:** {"✅ 設定済み" if members_url else "❌ 未設定"}
+                        {f"\\n- {members_url}" if members_url else ""}
+                        """
+
+                        st.rerun()
+                    else:
                         st.session_state.conf_error_message = (
-                            "会議体名を入力してください"
+                            "会議体の登録に失敗しました"
+                            "（同じ名前の会議体が既に存在する可能性があります）"
                         )
                         st.rerun()
-                    elif selected_gb_id:
-                        conf_id = conf_repo.create_conference(
-                            name=conf_name,
-                            governing_body_id=selected_gb_id,
-                            type=conf_type if conf_type else None,
-                        )
-                        if conf_id:
-                            # 議員紹介URLが入力されていれば更新
-                            if members_url:
-                                conf_repo.update_conference_members_url(
-                                    conference_id=conf_id,
-                                    members_introduction_url=members_url,
-                                )
-
-                            # 成功メッセージと詳細をセッション状態に保存
-                            st.session_state.conf_success_message = (
-                                "✅ 会議体を登録しました"
-                            )
-                            st.session_state.conf_message_details = f"""
-                            **会議体ID:** {conf_id}
-
-                            **開催主体:** {gb_selected}
-
-                            **会議体名:** {conf_name}
-
-                            **会議体種別:** {conf_type if conf_type else "未設定"}
-
-                            **議員紹介URL:** {
-                                "✅ 設定済み" if members_url else "❌ 未設定"
-                            }
-                            {f"\\n- {members_url}" if members_url else ""}
-                            """
-
-                            st.rerun()
-                        else:
-                            st.session_state.conf_error_message = (
-                                "会議体の登録に失敗しました"
-                                "（同じ名前の会議体が既に存在する可能性があります）"
-                            )
-                            st.rerun()
 
     with conf_tab3:
         # 編集・削除

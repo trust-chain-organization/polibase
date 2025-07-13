@@ -60,8 +60,8 @@ class ConferenceRepository:
                     gb.name as governing_body_name,
                     gb.type as governing_body_type
                 FROM conferences c
-                JOIN governing_bodies gb ON c.governing_body_id = gb.id
-                ORDER BY gb.name, c.name
+                LEFT JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                ORDER BY COALESCE(gb.name, ''), c.name
             """)
 
             result = self.connection.execute(query)
@@ -113,7 +113,7 @@ class ConferenceRepository:
                     gb.name as governing_body_name,
                     gb.type as governing_body_type
                 FROM conferences c
-                JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                LEFT JOIN governing_bodies gb ON c.governing_body_id = gb.id
                 WHERE c.id = :conference_id
             """)
 
@@ -154,7 +154,7 @@ class ConferenceRepository:
                 gb.name as governing_body_name,
                 gb.type as governing_body_type
             FROM conferences c
-            JOIN governing_bodies gb ON c.governing_body_id = gb.id
+            LEFT JOIN governing_bodies gb ON c.governing_body_id = gb.id
             WHERE c.governing_body_id = :governing_body_id
             ORDER BY c.name
         """)
@@ -225,23 +225,54 @@ class ConferenceRepository:
             ) from e
 
     def update_conference(
-        self, conference_id: int, name: str, type: str | None = None
+        self,
+        conference_id: int,
+        name: str | None = None,
+        type: str | None = None,
+        governing_body_id: int | None = None,
+        members_introduction_url: str | None = None,
     ) -> bool:
-        """会議体を更新"""
+        """会議体を更新（指定されたフィールドのみ更新）"""
         if not self.connection:
             self.connection = self.engine.connect()
 
         try:
-            query = text("""
+            # 更新するフィールドを動的に構築
+            update_fields = []
+            params = {"conference_id": conference_id}
+
+            if name is not None:
+                update_fields.append("name = :name")
+                params["name"] = name
+
+            if type is not None:
+                update_fields.append("type = :type")
+                params["type"] = type
+
+            if governing_body_id is not None:
+                update_fields.append("governing_body_id = :governing_body_id")
+                params["governing_body_id"] = governing_body_id
+
+            if members_introduction_url is not None:
+                update_fields.append(
+                    "members_introduction_url = :members_introduction_url"
+                )
+                params["members_introduction_url"] = members_introduction_url
+
+            # 更新フィールドがない場合は何もしない
+            if not update_fields:
+                return True
+
+            # 常にupdated_atを更新
+            update_fields.append("updated_at = CURRENT_TIMESTAMP")
+
+            query = text(f"""
                 UPDATE conferences
-                SET name = :name, type = :type, updated_at = CURRENT_TIMESTAMP
+                SET {", ".join(update_fields)}
                 WHERE id = :conference_id
             """)
 
-            self.connection.execute(
-                query, {"conference_id": conference_id, "name": name, "type": type}
-            )
-
+            self.connection.execute(query, params)
             self.connection.commit()
             logger.info(f"Updated conference ID: {conference_id}")
             return True
