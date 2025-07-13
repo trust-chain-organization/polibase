@@ -1,4 +1,4 @@
--- Generated from database on 2025-07-13 18:29:02
+-- Generated from database on 2025-07-13 19:53:47
 -- governing_bodies seed data
 
 INSERT INTO governing_bodies (name, type, organization_code, organization_type) VALUES
@@ -1975,7 +1975,7 @@ INSERT INTO governing_bodies (name, type, organization_code, organization_type) 
 ('熊本県熊本市東区', '市町村', '431028', '区'),
 ('熊本県熊本市西区', '市町村', '431036', '区'),
 ('熊本県熊本市南区', '市町村', '431044', '区'),
-('熊本県熊本市北区', '市町村', '431052', '区')
+('熊本県熊本市北区', '市町村', '431052', '区');
 ON CONFLICT (name, type) DO UPDATE SET
     organization_code = EXCLUDED.organization_code,
     organization_type = EXCLUDED.organization_type,

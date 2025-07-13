@@ -188,7 +188,8 @@ def main():
                     output_lines.append(line + ("," if i < len(values) - 1 else ""))
 
         f.write("\n".join(output_lines))
-        f.write("\nON CONFLICT (name, type) DO UPDATE SET\n")
+        f.write(";\n")
+        f.write("ON CONFLICT (name, type) DO UPDATE SET\n")
         f.write("    organization_code = EXCLUDED.organization_code,\n")
         f.write("    organization_type = EXCLUDED.organization_type,\n")
         f.write("    updated_at = CURRENT_TIMESTAMP;\n")
