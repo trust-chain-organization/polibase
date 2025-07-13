@@ -53,6 +53,9 @@ def manage_political_parties():
                             )
                             with open(output_path, "w") as f:
                                 f.write(seed_content)
+                                # 最後に改行がない場合は追加
+                                if not seed_content.endswith("\n"):
+                                    f.write("\n")
 
                             st.success(f"✅ SEEDファイルを生成しました: {output_path}")
 
