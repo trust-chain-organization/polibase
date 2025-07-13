@@ -100,18 +100,20 @@ class SeedGenerator:
                         c.name,
                         c.type,
                         c.members_introduction_url,
+                        c.governing_body_id,
                         gb.name as governing_body_name,
                         gb.type as governing_body_type
                     FROM conferences c
-                    JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                    LEFT JOIN governing_bodies gb ON c.governing_body_id = gb.id
                     ORDER BY
-                        CASE gb.type
-                            WHEN '国' THEN 1
-                            WHEN '都道府県' THEN 2
-                            WHEN '市町村' THEN 3
+                        CASE
+                            WHEN gb.type IS NULL THEN 0
+                            WHEN gb.type = '国' THEN 1
+                            WHEN gb.type = '都道府県' THEN 2
+                            WHEN gb.type = '市町村' THEN 3
                             ELSE 4
                         END,
-                        gb.name,
+                        COALESCE(gb.name, ''),
                         c.name
                 """)
             )
@@ -129,13 +131,23 @@ class SeedGenerator:
         # 開催主体ごとにグループ化
         grouped_data = {}
         for conf in conferences:
-            key = f"{conf['governing_body_type']}_{conf['governing_body_name']}"
-            if key not in grouped_data:
+            if conf["governing_body_id"] is None:
+                key = "_NO_GOVERNING_BODY_"
                 grouped_data[key] = {
-                    "body_name": conf["governing_body_name"],
-                    "body_type": conf["governing_body_type"],
+                    "body_name": None,
+                    "body_type": None,
+                    "body_id": None,
                     "conferences": [],
                 }
+            else:
+                key = f"{conf['governing_body_type']}_{conf['governing_body_name']}"
+                if key not in grouped_data:
+                    grouped_data[key] = {
+                        "body_name": conf["governing_body_name"],
+                        "body_type": conf["governing_body_type"],
+                        "body_id": conf["governing_body_id"],
+                        "conferences": [],
+                    }
             grouped_data[key]["conferences"].append(conf)
 
         first_group = True
@@ -147,13 +159,14 @@ class SeedGenerator:
 
             if not first_group:
                 lines.append("")
-            lines.append(f"-- {body_name} ({body_type})")
+            if body_name:
+                lines.append(f"-- {body_name} ({body_type})")
+            else:
+                lines.append("-- 開催主体未設定")
 
             for i, conf in enumerate(confs):
                 # SQLインジェクション対策のため、シングルクォートをエスケープ
                 conf_name = conf["name"].replace("'", "''")
-                body_name_escaped = body_name.replace("'", "''")
-                body_type_escaped = body_type.replace("'", "''")
 
                 # 最後の要素かどうかチェック（全体での最後）
                 is_last = group_idx == len(group_keys) - 1 and i == len(confs) - 1
@@ -167,20 +180,29 @@ class SeedGenerator:
                 else:
                     members_url = "NULL"
 
+                # governing_body_idの処理
+                if body_name:
+                    body_name_escaped = body_name.replace("'", "''")
+                    body_type_escaped = body_type.replace("'", "''")
+                    governing_body_part = (
+                        f"(SELECT id FROM governing_bodies WHERE name = "
+                        f"'{body_name_escaped}' AND type = '{body_type_escaped}')"
+                    )
+                else:
+                    governing_body_part = "NULL"
+
                 if conf.get("type"):
                     conf_type = conf["type"].replace("'", "''")
                     lines.append(
                         f"('{conf_name}', '{conf_type}', "
-                        f"(SELECT id FROM governing_bodies WHERE name = "
-                        f"'{body_name_escaped}' AND type = '{body_type_escaped}'), "
+                        f"{governing_body_part}, "
                         f"{members_url}"
                         f"){comma}"
                     )
                 else:
                     lines.append(
                         f"('{conf_name}', NULL, "
-                        f"(SELECT id FROM governing_bodies WHERE name = "
-                        f"'{body_name_escaped}' AND type = '{body_type_escaped}'), "
+                        f"{governing_body_part}, "
                         f"{members_url}"
                         f"){comma}"
                     )
