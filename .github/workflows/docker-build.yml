@@ -77,18 +77,48 @@ jobs:
 
       - name: Start services
         run: |
-          docker compose -f docker/docker-compose.yml up -d
-          docker compose -f docker/docker-compose.yml ps
+          docker compose -f docker/docker-compose.ci.yml up -d
+          sleep 5  # Give services time to initialize
+          docker compose -f docker/docker-compose.ci.yml ps
 
-      - name: Wait for services
+      - name: Wait for PostgreSQL
         run: |
-          timeout 60s bash -c 'until docker compose -f docker/docker-compose.yml exec -T postgres pg_isready; do sleep 2; done'
-          echo "PostgreSQL is ready"
+          echo "Waiting for PostgreSQL to start..."
+
+          # Check if postgres container is running
+          docker compose -f docker/docker-compose.ci.yml ps postgres
+
+          # Wait for postgres to be healthy
+          for i in {1..30}; do
+            if docker compose -f docker/docker-compose.ci.yml ps postgres | grep -q "healthy"; then
+              echo "PostgreSQL container is healthy!"
+              break
+            fi
+            echo "Waiting for PostgreSQL to be healthy... ($i/30)"
+            if [ $i -eq 30 ]; then
+              echo "PostgreSQL failed to become healthy within 60 seconds"
+              echo "Container status:"
+              docker compose -f docker/docker-compose.ci.yml ps
+              echo "PostgreSQL logs:"
+              docker compose -f docker/docker-compose.ci.yml logs postgres
+              exit 1
+            fi
+            sleep 2
+          done
+
+          # Verify connection
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres pg_isready -U polibase_user -d polibase_db
+
+          # Load seed data after PostgreSQL is ready
+          echo "Loading seed data..."
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_governing_bodies_generated.sql
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_political_parties.sql
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_conferences.sql
 
       - name: Run database setup and test connection
         run: |
           # データベース接続テスト
-          docker compose -f docker/docker-compose.yml exec -T polibase uv run python -c "
+          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run python -c "
           from src.config.database import test_connection
           import sys
           if test_connection():
@@ -105,23 +135,23 @@ jobs:
             if [ -f "$file" ]; then
               echo "Applying migration: $file"
               filename=$(basename "$file")
-              docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -f "/docker-entrypoint-initdb.d/migrations/$filename"
+              docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f "/docker-entrypoint-initdb.d/migrations/$filename"
             fi
           done
 
           # データベース構造を確認
-          docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
 
       - name: Test CLI
         run: |
-          docker compose -f docker/docker-compose.yml exec -T polibase uv run polibase --help
-          docker compose -f docker/docker-compose.yml exec -T polibase uv run polibase test-connection
+          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run polibase --help
+          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run polibase test-connection
 
       - name: Run tests in container
         run: |
-          docker compose -f docker/docker-compose.yml exec -T -e CI=true polibase uv run pytest -v
+          docker compose -f docker/docker-compose.ci.yml exec -T -e CI=true polibase uv run pytest -v
 
       - name: Stop services
         if: always()
         run: |
-          docker compose -f docker/docker-compose.yml down -v
+          docker compose -f docker/docker-compose.ci.yml down -v

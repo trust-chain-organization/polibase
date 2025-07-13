@@ -200,15 +200,7 @@ CREATE TRIGGER update_proposal_judges_updated_at BEFORE UPDATE ON proposal_judge
 CREATE TRIGGER update_politician_affiliations_updated_at BEFORE UPDATE ON politician_affiliations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_proposal_meeting_occurrences_updated_at BEFORE UPDATE ON proposal_meeting_occurrences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- SEEDデータの読み込み
--- 開催主体マスターデータの挿入
-\i /docker-entrypoint-initdb.d/seed_governing_bodies_generated.sql
-
--- 政党マスターデータの挿入
-\i /docker-entrypoint-initdb.d/seed_political_parties.sql
-
--- 会議体マスターデータの挿入
-\i /docker-entrypoint-initdb.d/seed_conferences.sql
+-- SEEDデータの読み込みはPostgreSQL起動後に実行する
 
 COMMENT ON TABLE governing_bodies IS '開催主体';
 COMMENT ON TABLE conferences IS '会議体 (議会や委員会など)';

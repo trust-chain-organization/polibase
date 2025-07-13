@@ -76,10 +76,7 @@ jobs:
 
       - name: Initialize database
         run: |
-          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/init.sql
-          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_governing_bodies.sql
-          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_political_parties.sql
-          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_conferences.sql
+          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/init_ci.sql
           # Apply migrations
           for file in database/migrations/*.sql; do
             if [ -f "$file" ]; then
@@ -316,10 +313,7 @@ jobs:
 
       - name: Initialize database
         run: |
-          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/init.sql
-          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_governing_bodies.sql
-          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_political_parties.sql
-          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/seed_conferences.sql
+          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/init_ci.sql
           # Apply migrations
           for file in database/migrations/*.sql; do
             if [ -f "$file" ]; then
