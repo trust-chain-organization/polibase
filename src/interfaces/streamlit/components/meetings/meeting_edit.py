@@ -32,7 +32,7 @@ def edit_meeting():
 
     with st.form("edit_meeting_form"):
         # 日付入力
-        current_date = meeting["date"] if meeting["date"] else date.today()
+        current_date: date = meeting["date"] if meeting["date"] else date.today()
         meeting_date = st.date_input("開催日", value=current_date)
 
         # URL入力
