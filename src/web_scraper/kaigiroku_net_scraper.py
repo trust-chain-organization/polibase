@@ -248,9 +248,10 @@ class KaigirokuNetScraper(BaseScraper):
                 element = await page.query_selector(selector)
                 if element:
                     date_text = await element.text_content()
-                    parsed_date = self.date_parser.parse(date_text.strip())
-                    if parsed_date:
-                        return parsed_date
+                    if date_text:
+                        parsed_date = self.date_parser.parse(date_text.strip())
+                        if parsed_date:
+                            return parsed_date
 
             # ページ全体から日付を検索
             content = await page.content()

@@ -7,6 +7,7 @@ from pathlib import Path
 from ..common.logging import get_logger
 from ..config import config
 from ..utils.gcs_storage import GCSStorage
+from .base_scraper import BaseScraper
 from .kaigiroku_net_scraper import KaigirokuNetScraper
 from .kokkai_scraper import KokkaiScraper
 from .models import MinutesData
@@ -15,7 +16,9 @@ from .models import MinutesData
 class ScraperService:
     """議事録スクレーパーの統合サービス"""
 
-    def __init__(self, cache_dir: str = "./cache/minutes", enable_gcs: bool = None):
+    def __init__(
+        self, cache_dir: str = "./cache/minutes", enable_gcs: bool | None = None
+    ):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.logger = get_logger(__name__)
@@ -80,7 +83,7 @@ class ScraperService:
         tasks = [fetch_with_limit(url) for url in urls]
         return await asyncio.gather(*tasks)
 
-    def _get_scraper_for_url(self, url: str) -> object | None:
+    def _get_scraper_for_url(self, url: str) -> BaseScraper | None:
         """URLに基づいて適切なスクレーパーを選択"""
         # kaigiroku.netシステムの場合
         if "kaigiroku.net/tenant/" in url:
@@ -133,7 +136,7 @@ class ScraperService:
         """議事録をPDFにエクスポート"""
         # TODO: PDFエクスポート機能の実装
         # reportlabやweasyprint等を使用
-        pass
+        return False
 
     def export_to_text(
         self, minutes: MinutesData, output_path: str, upload_to_gcs: bool = True
@@ -177,7 +180,7 @@ class ScraperService:
 
     def _format_minutes_as_text(self, minutes: MinutesData) -> str:
         """議事録をテキスト形式にフォーマット"""
-        lines = []
+        lines: list[str] = []
         lines.append(f"タイトル: {minutes.title}")
         lines.append(
             f"日付: {minutes.date.strftime('%Y年%m月%d日') if minutes.date else '不明'}"

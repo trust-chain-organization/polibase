@@ -12,6 +12,7 @@ try:
 
     HAS_PDFIUM = True
 except ImportError:
+    pdfium = None
     HAS_PDFIUM = False
 
 from ...config.settings import get_settings
@@ -127,13 +128,14 @@ class PDFHandler:
             )
 
         try:
+            assert pdfium is not None
             pdf = pdfium.PdfDocument(pdf_path)
-            text_content = []
+            text_content: list[str] = []
 
             for page_num in range(len(pdf)):
                 page = pdf[page_num]
                 textpage = page.get_textpage()
-                text = textpage.get_text_bounded()
+                text: str = textpage.get_text_bounded()  # type: ignore
                 if text:
                     text_content.append(f"--- Page {page_num + 1} ---")
                     text_content.append(text)
@@ -184,7 +186,7 @@ class PDFHandler:
                 except Exception as e:
                     self.logger.error(f"Error deleting {pdf_file}: {e}")
 
-    def get_pdf_info(self, pdf_path: str) -> dict:
+    def get_pdf_info(self, pdf_path: str) -> dict[str, int | str | bool]:
         """PDFの情報を取得
 
         Args:
@@ -193,7 +195,7 @@ class PDFHandler:
         Returns:
             PDFの情報（ページ数、ファイルサイズなど）
         """
-        info = {
+        info: dict[str, int | str | bool] = {
             "path": pdf_path,
             "exists": os.path.exists(pdf_path),
             "size": 0,
@@ -205,6 +207,7 @@ class PDFHandler:
 
             if HAS_PDFIUM:
                 try:
+                    assert pdfium is not None
                     pdf = pdfium.PdfDocument(pdf_path)
                     info["pages"] = len(pdf)
                     pdf.close()

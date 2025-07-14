@@ -3,7 +3,7 @@
 import logging
 import re
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from ..models import SpeakerData
 
@@ -86,12 +86,12 @@ class SpeakerExtractor:
         Returns:
             発言者データのリスト
         """
-        speakers = []
+        speakers: list[SpeakerData] = []
         lines = content.split("\n")
 
-        current_speaker = None
-        current_role = None
-        current_content = []
+        current_speaker: str | None = None
+        current_role: str | None = None
+        current_content: list[str] = []
 
         for _i, line in enumerate(lines):
             line = line.strip()
@@ -117,7 +117,8 @@ class SpeakerExtractor:
                 current_content = []
 
                 # 発言者マーカーの後の内容を追加
-                remaining_text = speaker_info.get("remaining_text", "").strip()
+                remaining_text = speaker_info.get("remaining_text", "") or ""
+                remaining_text = remaining_text.strip()
                 if remaining_text:
                     current_content.append(remaining_text)
             else:
@@ -136,7 +137,7 @@ class SpeakerExtractor:
 
         return speakers
 
-    def _detect_speaker(self, line: str) -> dict[str, str] | None:
+    def _detect_speaker(self, line: str) -> dict[str, str | None] | None:
         """行から発言者を検出
 
         Returns:
@@ -175,7 +176,7 @@ class SpeakerExtractor:
         Returns:
             発言者データのリスト
         """
-        speakers = []
+        speakers: list[SpeakerData] = []
 
         # 発言ブロックを探す（dlタグやdivタグで構造化されている場合）
         speech_blocks = self._find_speech_blocks(soup)
@@ -192,25 +193,27 @@ class SpeakerExtractor:
 
         return speakers
 
-    def _find_speech_blocks(self, soup: BeautifulSoup) -> list[BeautifulSoup]:
+    def _find_speech_blocks(self, soup: BeautifulSoup) -> list[Tag]:
         """発言ブロックを検索"""
-        blocks = []
+        blocks: list[Tag] = []
 
         # dlタグ（定義リスト）で構造化されている場合
         dl_blocks = soup.find_all("dl", class_=re.compile("speech|statement|remark"))
-        blocks.extend(dl_blocks)
+        blocks.extend([block for block in dl_blocks if isinstance(block, Tag)])
 
         # divタグで構造化されている場合
         div_blocks = soup.find_all("div", class_=re.compile("speech|statement|remark"))
-        blocks.extend(div_blocks)
+        blocks.extend([block for block in div_blocks if isinstance(block, Tag)])
 
         # 特定の属性を持つ要素
         speaker_elements = soup.find_all(attrs={"data-speaker": True})
-        blocks.extend(speaker_elements)
+        blocks.extend(
+            [element for element in speaker_elements if isinstance(element, Tag)]
+        )
 
         return blocks
 
-    def _extract_from_block(self, block: BeautifulSoup) -> SpeakerData | None:
+    def _extract_from_block(self, block: Tag) -> SpeakerData | None:
         """構造化されたブロックから発言者情報を抽出"""
         # dtタグから発言者名を取得
         dt = block.find("dt")
@@ -222,21 +225,23 @@ class SpeakerExtractor:
             dd = block.find("dd")
             if dd and speaker_info:
                 content = dd.get_text(separator="\n", strip=True)
-                return SpeakerData(
-                    name=speaker_info["name"],
-                    content=content,
-                    role=speaker_info.get("role"),
-                )
+                speaker_name = speaker_info["name"]
+                if isinstance(speaker_name, str):
+                    return SpeakerData(
+                        name=speaker_name,
+                        content=content,
+                        role=speaker_info.get("role"),
+                    )
 
         # data-speaker属性から発言者名を取得
-        speaker_name = block.get("data-speaker")
-        if speaker_name:
+        speaker_name_attr = block.get("data-speaker")
+        if speaker_name_attr and isinstance(speaker_name_attr, str):
             content = block.get_text(separator="\n", strip=True)
-            role = self._extract_role_from_name(speaker_name)
-            name = speaker_name
+            role = self._extract_role_from_name(speaker_name_attr)
+            name = speaker_name_attr
             for role_pattern in self.ROLE_PATTERNS:
-                if role_pattern in speaker_name:
-                    name = speaker_name.replace(role_pattern, "").strip()
+                if role_pattern in speaker_name_attr:
+                    name = speaker_name_attr.replace(role_pattern, "").strip()
                     break
 
             return SpeakerData(name=name, content=content, role=role)
@@ -264,7 +269,7 @@ class SpeakerExtractor:
         if not speakers:
             return []
 
-        merged = []
+        merged: list[SpeakerData] = []
         current = speakers[0]
 
         for speaker in speakers[1:]:

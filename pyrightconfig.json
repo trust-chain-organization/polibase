@@ -1,7 +1,6 @@
 {
   "include": ["src"],
   "exclude": [
-    "src/web_scraper/**",
     "src/minutes_divide_processor/**",
     "src/party_member_extractor/**",
     "src/update_speaker_links_llm.py",
