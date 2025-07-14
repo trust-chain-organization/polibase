@@ -172,9 +172,9 @@ class MinutesDivider:
         # resultがSectionInfoList型でない場合の処理を追加
         if not isinstance(result, SectionInfoList):
             if isinstance(result, dict) and "section_info_list" in result:
-                result = SectionInfoList(**result)
+                result = SectionInfoList(**result)  # type: ignore[arg-type]
             elif isinstance(result, list):
-                result = SectionInfoList(section_info_list=result)
+                result = SectionInfoList(section_info_list=result)  # type: ignore[arg-type]
             else:
                 raise TypeError(f"Unexpected result type: {type(result)}")
 

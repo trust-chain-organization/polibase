@@ -15,7 +15,7 @@ class SectionInfo(BaseModel):
 
 class SectionInfoList(BaseModel):
     section_info_list: list[SectionInfo] = Field(
-        default_factory=list, description="各小節ごとのキーワード情報"
+        default_factory=lambda: [], description="各小節ごとのキーワード情報"
     )
 
 
@@ -29,7 +29,7 @@ class SectionString(BaseModel):
 
 class SectionStringList(BaseModel):
     section_string_list: list[SectionString] = Field(
-        default_factory=list, description="各小節ごとの文字列リスト"
+        default_factory=lambda: [], description="各小節ごとの文字列リスト"
     )
 
 
@@ -45,7 +45,7 @@ class RedivideSectionString(BaseModel):
 
 class RedivideSectionStringList(BaseModel):
     redivide_section_string_list: list[RedivideSectionString] = Field(
-        default_factory=list, description="再分割対象の文字列リスト"
+        default_factory=lambda: [], description="再分割対象の文字列リスト"
     )
 
 
@@ -61,7 +61,7 @@ class RedividedSectionInfo(BaseModel):
 
 class RedividedSectionInfoList(BaseModel):
     redivided_section_info_list: list[RedividedSectionInfo] = Field(
-        default_factory=list, description="再分割されたキーワードリスト"
+        default_factory=lambda: [], description="再分割されたキーワードリスト"
     )
 
 
@@ -77,7 +77,7 @@ class SpeakerAndSpeechContent(BaseModel):
 
 class SpeakerAndSpeechContentList(BaseModel):
     speaker_and_speech_content_list: list[SpeakerAndSpeechContent] = Field(
-        default_factory=list, description="各発言者と発言内容のリスト"
+        default_factory=lambda: [], description="各発言者と発言内容のリスト"
     )
 
 
@@ -87,14 +87,14 @@ class MinutesProcessState(BaseModel):
         default="", description="LLMに渡す前処理を施した議事録を保存したメモリID"
     )
     section_info_list: Annotated[list[SectionInfo], operator.add] = Field(
-        default_factory=list, description="分割された各小節ごとのキーワード情報"
+        default_factory=lambda: [], description="分割された各小節ごとのキーワード情報"
     )
     section_string_list_memory_id: str = Field(
         default="", description="分割された各小節ごとの文字列リストを保存したメモリID"
     )
     redivide_section_string_list: Annotated[
         list[RedivideSectionString], operator.add
-    ] = Field(default_factory=list, description="再分割対象の文字列リスト")
+    ] = Field(default_factory=lambda: [], description="再分割対象の文字列リスト")
     divided_speech_list_memory_id: str = Field(
         default="", description="分割された各発言者と発言内容のリストを保存したメモリID"
     )

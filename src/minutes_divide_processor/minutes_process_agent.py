@@ -25,20 +25,20 @@ class MinutesProcessAgent:
             k: Number of sections
         """
         # 各種ジェネレータの初期化
-        self.minutes_divider = MinutesDivider(llm_service=llm_service, k=k)
+        self.minutes_divider = MinutesDivider(llm_service=llm_service, k=k or 5)
         self.in_memory_store = InMemoryStore()
         self.graph = self._create_graph()
 
-    def _create_graph(self) -> StateGraph:
+    def _create_graph(self) -> Any:
         # グラフの初期化
         workflow = StateGraph(MinutesProcessState)
         checkpointer = MemorySaver()
 
-        workflow.add_node("process_minutes", self._process_minutes)
-        workflow.add_node("divide_minutes_to_keyword", self._divide_minutes_to_keyword)
-        workflow.add_node("divide_minutes_to_string", self._divide_minutes_to_string)
-        workflow.add_node("check_length", self._check_length)
-        workflow.add_node("divide_speech", self._divide_speech)
+        workflow.add_node("process_minutes", self._process_minutes)  # type: ignore[arg-type]
+        workflow.add_node("divide_minutes_to_keyword", self._divide_minutes_to_keyword)  # type: ignore[arg-type]
+        workflow.add_node("divide_minutes_to_string", self._divide_minutes_to_string)  # type: ignore[arg-type]
+        workflow.add_node("check_length", self._check_length)  # type: ignore[arg-type]
+        workflow.add_node("divide_speech", self._divide_speech)  # type: ignore[arg-type]
         workflow.set_entry_point("process_minutes")
         workflow.add_edge("process_minutes", "divide_minutes_to_keyword")
         workflow.add_edge("divide_minutes_to_keyword", "divide_minutes_to_string")
@@ -46,7 +46,7 @@ class MinutesProcessAgent:
         workflow.add_edge("check_length", "divide_speech")
         workflow.add_conditional_edges(
             "divide_speech",
-            lambda state: state.index < state.section_list_length,
+            lambda state: state.index < state.section_list_length,  # type: ignore[arg-type, no-any-return]
             {True: "divide_speech", False: END},
         )
 
@@ -155,12 +155,12 @@ class MinutesProcessAgent:
         else:
             print(
                 f"Warning: Index {state.index - 1} is out of range "
-                "for section_string_list."
+                + "for section_string_list."
             )
             speaker_and_speech_content_list = None
         print(
             f"divide_speech_done on index_number: {state.index} "
-            f"all_length: {state.section_list_length}"
+            + f"all_length: {state.section_list_length}"
         )
         # 現在のdivide_speech_listを取得
         memory_id = state.divided_speech_list_memory_id
@@ -179,7 +179,7 @@ class MinutesProcessAgent:
         if speaker_and_speech_content_list is None:
             print(
                 "Warning: speaker_and_speech_content_list is None. "
-                "Skipping this section."
+                + "Skipping this section."
             )
             updated_speaker_and_speech_content_list = divided_speech_list
             memory = {"divided_speech_list": updated_speaker_and_speech_content_list}
@@ -204,7 +204,7 @@ class MinutesProcessAgent:
         # 初期状態の設定
         initial_state = MinutesProcessState(original_minutes=original_minutes)
         # グラフの実行
-        final_state = self.graph.invoke(
+        final_state = self.graph.invoke(  # type: ignore[attr-defined]
             initial_state, config={"recursion_limit": 300, "thread_id": "example-1"}
         )
         # 分割結果の取得

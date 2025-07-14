@@ -1,9 +1,6 @@
 {
   "include": ["src"],
-  "exclude": [
-    "**/__pycache__",
-    "**/*.pyc"
-  ],
+  "exclude": ["**/__pycache__", "**/*.pyc"],
   "pythonVersion": "3.13",
   "typeCheckingMode": "standard",
   "reportMissingImports": true,
