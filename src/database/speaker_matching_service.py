@@ -2,6 +2,7 @@
 
 import logging
 import re
+from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -136,7 +137,7 @@ class SpeakerMatchingService:
                 {"error": str(e)},
             ) from e
 
-    def _get_available_speakers(self) -> list[dict]:
+    def _get_available_speakers(self) -> list[dict[str, Any]]:
         """利用可能な発言者リストを取得
 
         Raises:
@@ -146,7 +147,7 @@ class SpeakerMatchingService:
             query = text("SELECT id, name FROM speakers ORDER BY name")
             result = self.session.execute(query)
 
-            speakers = []
+            speakers: list[dict[str, Any]] = []
             for row in result.fetchall():
                 speakers.append({"id": row[0], "name": row[1]})
 
@@ -159,7 +160,7 @@ class SpeakerMatchingService:
 
     def _get_affiliated_speakers(
         self, meeting_date: str, conference_id: int
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         指定された会議日と会議体IDに基づいて、その時点でアクティブな所属を持つ発言者を取得
 
@@ -195,7 +196,7 @@ class SpeakerMatchingService:
                 query, {"conference_id": conference_id, "meeting_date": meeting_date}
             )
 
-            affiliated_speakers = []
+            affiliated_speakers: list[dict[str, Any]] = []
             for row in result.fetchall():
                 affiliated_speakers.append(
                     {
@@ -220,7 +221,7 @@ class SpeakerMatchingService:
             ) from e
 
     def _rule_based_matching(
-        self, speaker_name: str, available_speakers: list[dict]
+        self, speaker_name: str, available_speakers: list[dict[str, Any]]
     ) -> SpeakerMatch:
         """従来のルールベースマッチング"""
 
@@ -272,12 +273,12 @@ class SpeakerMatchingService:
     def _filter_candidates(
         self,
         speaker_name: str,
-        available_speakers: list[dict],
+        available_speakers: list[dict[str, Any]],
         affiliated_speaker_ids: set[int] | None = None,
         max_candidates: int = 10,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """候補を絞り込む（LLMの処理効率向上のため、会議体所属を優先）"""
-        candidates = []
+        candidates: list[tuple[dict[str, Any], int]] = []
 
         # 括弧内の名前を抽出
         extracted_name = None
@@ -328,10 +329,10 @@ class SpeakerMatchingService:
         )
 
     def _format_speakers_for_llm(
-        self, speakers: list[dict], affiliated_speaker_ids: set[int] | None = None
+        self, speakers: list[dict[str, Any]], affiliated_speaker_ids: set[int] | None = None
     ) -> str:
         """発言者リストをLLM用にフォーマット（会議体所属情報を含む）"""
-        formatted = []
+        formatted: list[str] = []
         for speaker in speakers:
             entry = f"ID: {speaker['id']}, 名前: {speaker['name']}"
             if affiliated_speaker_ids and speaker["id"] in affiliated_speaker_ids:
@@ -410,9 +411,7 @@ class SpeakerMatchingService:
 
                     confidence_emoji = "🟢" if match_result.confidence >= 0.9 else "🟡"
                     logger.info(
-                        f"  {confidence_emoji} マッチ成功: {speaker_name} → "
-                        f"{match_result.speaker_name} "
-                        f"(信頼度: {match_result.confidence:.2f})"
+                        f"  {confidence_emoji} マッチ成功: {speaker_name} → {match_result.speaker_name} (信頼度: {match_result.confidence:.2f})"
                     )
                 else:
                     stats["failed_matches"] += 1
