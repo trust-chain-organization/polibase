@@ -38,7 +38,7 @@ class PoliticianMatch(BaseModel):
 class PoliticianMatchingService:
     """LLMを活用した発言者-政治家マッチングサービス"""
 
-    def __init__(self, llm_service: LLMService | None = None):
+    def __init__(self, llm_service: Any | None = None):
         """
         Initialize PoliticianMatchingService
 
@@ -51,6 +51,7 @@ class PoliticianMatchingService:
 
         self.llm_service = llm_service
         self.session = get_db_session()
+        self.chain: Any = None
         self._setup_prompt()
 
     def _setup_prompt(self):

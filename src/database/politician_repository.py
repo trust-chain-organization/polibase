@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from src.database.typed_repository import TypedRepository
 from src.exceptions import (
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 class PoliticianRepository(TypedRepository[Politician]):
     """Politician repository with Pydantic model support"""
 
-    def __init__(self, db=None):
+    def __init__(self, db: Session | None = None):
         # If db session is provided, use it; otherwise fall back to engine
         if db:
             super().__init__(Politician, "politicians", use_session=True)
@@ -112,23 +113,20 @@ class PoliticianRepository(TypedRepository[Politician]):
                     update_data = PoliticianUpdate(**update_fields)
                     self.update_politician(existing.id, update_data)
                     logger.info(
-                        f"政治家情報を更新しました: {politician.name} "
-                        f"(ID: {existing.id})"
+                        f"政治家情報を更新しました: {politician.name} (ID: {existing.id})"
                     )
                     # 更新後のデータを取得
                     return self.get_by_id(existing.id)
                 else:
                     logger.info(
-                        f"政治家は既に存在し、更新の必要はありません: "
-                        f"{politician.name} (ID: {existing.id})"
+                        f"政治家は既に存在し、更新の必要はありません: {politician.name} (ID: {existing.id})"
                     )
                     return existing
             else:
                 # 新規作成
                 created_politician = self.create_from_model(politician)
                 logger.info(
-                    f"新しい政治家を作成しました: {politician.name} "
-                    f"(ID: {created_politician.id})"
+                    f"新しい政治家を作成しました: {politician.name} (ID: {created_politician.id})"
                 )
                 return created_politician
         except SQLIntegrityError as e:
@@ -164,13 +162,13 @@ class PoliticianRepository(TypedRepository[Politician]):
                 "SELECT * FROM politicians WHERE name = :name "
                 "AND political_party_id IS NULL"
             )
-            params = {"name": name}
+            params: dict[str, Any] = {"name": name}
         else:
             query = (
                 "SELECT * FROM politicians WHERE name = :name "
                 "AND political_party_id = :party_id"
             )
-            params = {"name": name, "party_id": party_id}
+            params: dict[str, Any] = {"name": name, "party_id": party_id}
 
         return self.fetch_as_model(Politician, query, params)
 
@@ -198,7 +196,7 @@ class PoliticianRepository(TypedRepository[Politician]):
         """政治家を削除"""
         return self.delete(politician_id)
 
-    def search_by_name(self, name: str, threshold: float = 0.8) -> list[dict]:
+    def search_by_name(self, name: str, threshold: float = 0.8) -> list[dict[str, Any]]:
         """
         名前で政治家を検索（ファジーマッチング）
 
@@ -219,7 +217,7 @@ class PoliticianRepository(TypedRepository[Politician]):
         politicians_data = self.fetch_as_dict(query)
 
         # ファジーマッチング
-        results = []
+        results: list[dict[str, Any]] = []
         for politician_dict in politicians_data:
             similarity = SequenceMatcher(None, name, politician_dict["name"]).ratio()
             if similarity >= threshold:
@@ -255,8 +253,8 @@ class PoliticianRepository(TypedRepository[Politician]):
         return None
 
     def bulk_create_politicians(
-        self, politicians_data: list[dict]
-    ) -> dict[str, list[Politician]]:
+        self, politicians_data: list[dict[str, Any]]
+    ) -> dict[str, list[Politician] | list[dict[str, Any]]]:
         """
         複数の政治家を一括作成または更新
 
@@ -266,9 +264,9 @@ class PoliticianRepository(TypedRepository[Politician]):
         Returns:
             dict: created, updated, errors のリストを含む辞書
         """
-        created = []
-        updated = []
-        errors = []
+        created: list[Politician] = []
+        updated: list[Politician] = []
+        errors: list[dict[str, Any]] = []
 
         for data in politicians_data:
             try:

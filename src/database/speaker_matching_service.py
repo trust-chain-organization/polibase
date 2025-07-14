@@ -80,8 +80,8 @@ class SpeakerMatchingService:
             )
 
         # 会議体所属情報を取得（利用可能な場合）
-        affiliated_speakers = []
-        affiliated_speaker_ids = set()
+        affiliated_speakers: list[dict[str, Any]] = []
+        affiliated_speaker_ids: set[int] = set()
         if meeting_date and conference_id:
             affiliated_speakers = self._get_affiliated_speakers(
                 meeting_date, conference_id
@@ -278,7 +278,7 @@ class SpeakerMatchingService:
         max_candidates: int = 10,
     ) -> list[dict[str, Any]]:
         """候補を絞り込む（LLMの処理効率向上のため、会議体所属を優先）"""
-        candidates: list[tuple[dict[str, Any], int]] = []
+        candidates: list[dict[str, Any]] = []
 
         # 括弧内の名前を抽出
         extracted_name = None

@@ -1,7 +1,9 @@
 """Repository for managing politician affiliations"""
 
 import logging
+import types
 from datetime import date
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
@@ -30,7 +32,12 @@ class PoliticianAffiliationRepository:
         self.connection = self.engine.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         if self.connection:
             self.connection.close()
 
@@ -73,8 +80,7 @@ class PoliticianAffiliationRepository:
 
             if result.fetchone():
                 logger.warning(
-                    f"Affiliation already exists for politician {politician_id} "
-                    f"in conference {conference_id} starting {start_date}"
+                    f"Affiliation already exists for politician {politician_id} in conference {conference_id} starting {start_date}"
                 )
                 return None
 
@@ -157,7 +163,7 @@ class PoliticianAffiliationRepository:
             logger.error(f"Error updating affiliation role: {e}")
             return False
 
-    def get_affiliations_by_conference(self, conference_id: int) -> list[dict]:
+    def get_affiliations_by_conference(self, conference_id: int) -> list[dict[str, Any]]:
         """会議体IDで所属情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
@@ -181,7 +187,7 @@ class PoliticianAffiliationRepository:
         """)
 
         result = self.connection.execute(query, {"conference_id": conference_id})
-        affiliations = []
+        affiliations: list[dict[str, Any]] = []
         for row in result:
             affiliations.append(
                 {
@@ -229,7 +235,7 @@ class PoliticianAffiliationRepository:
                 query, {"politician_id": politician_id, "conference_id": conference_id}
             )
 
-            affiliations = []
+            affiliations: list[dict[str, Any]] = []
             for row in result:
                 affiliations.append(
                     {
@@ -254,7 +260,7 @@ class PoliticianAffiliationRepository:
                 },
             ) from e
 
-    def get_affiliations_by_politician(self, politician_id: int) -> list[dict]:
+    def get_affiliations_by_politician(self, politician_id: int) -> list[dict[str, Any]]:
         """政治家IDで所属情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
@@ -277,7 +283,7 @@ class PoliticianAffiliationRepository:
         """)
 
         result = self.connection.execute(query, {"politician_id": politician_id})
-        affiliations = []
+        affiliations: list[dict[str, Any]] = []
         for row in result:
             affiliations.append(
                 {
