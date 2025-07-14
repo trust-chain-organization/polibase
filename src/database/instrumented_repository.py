@@ -87,7 +87,7 @@ class InstrumentedRepository(BaseRepository):
             return super().delete(table, where)
 
     @measure_time(metric_name="db_query", log_slow_operations=1.0)
-    def execute_query(self, query: str, params: dict | None = None) -> list[Any]:
+    def execute_query(self, query: str, params: dict[str, Any] | None = None) -> Any:
         """SQLクエリ実行（計測付き）."""
         with MetricsContext(
             operation="db_execute_query",

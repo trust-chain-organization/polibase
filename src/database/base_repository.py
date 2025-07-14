@@ -3,6 +3,7 @@ Base repository class providing common database operations
 """
 
 import logging
+import types
 from contextlib import contextmanager
 from typing import Any, TypeVar
 
@@ -330,7 +331,7 @@ class BaseRepository:
             List of model instances
         """
         results = self.fetch_all(query, params)
-        models = []
+        models: list[T] = []
         for row in results:
             # Convert Row to dict
             columns = row._fields
@@ -351,6 +352,11 @@ class BaseRepository:
         """Context manager entry"""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Context manager exit - ensure resources are cleaned up"""
         self.close()

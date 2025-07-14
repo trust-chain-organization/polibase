@@ -5,6 +5,7 @@ Provides database operations for conversations with proper error handling.
 """
 
 import logging
+from typing import Any
 
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
@@ -154,13 +155,11 @@ class ConversationRepository(BaseRepository):
 
         if speaker_id:
             print(
-                f"➕ 新規追加: {speaker_and_speech_content.speaker} "
-                f"(ID: {conversation_id}, Speaker ID: {speaker_id})"
+                f"➕ 新規追加: {speaker_and_speech_content.speaker} (ID: {conversation_id}, Speaker ID: {speaker_id})"
             )
         else:
             print(
-                f"➕ 新規追加: {speaker_and_speech_content.speaker} "
-                f"(ID: {conversation_id}, Speaker ID: NULL)"
+                f"➕ 新規追加: {speaker_and_speech_content.speaker} (ID: {conversation_id}, Speaker ID: NULL)"
             )
 
         return conversation_id
@@ -239,7 +238,7 @@ class ConversationRepository(BaseRepository):
 
         return int(row[0]) if row else None
 
-    def get_all_conversations(self) -> list[dict]:
+    def get_all_conversations(self) -> list[dict[str, Any]]:
         """
         全てのConversationレコードを取得する
 
@@ -268,7 +267,7 @@ class ConversationRepository(BaseRepository):
         count = self.count("conversations", where={})
         return count
 
-    def get_speaker_linking_stats(self) -> dict:
+    def get_speaker_linking_stats(self) -> dict[str, int]:
         """
         発言者の紐付け統計を取得する
 
@@ -300,7 +299,7 @@ class ConversationRepository(BaseRepository):
 
         return stats
 
-    def get_conversations_by_minutes_id(self, minutes_id: int) -> list[dict]:
+    def get_conversations_by_minutes_id(self, minutes_id: int) -> list[dict[str, Any]]:
         """
         指定されたminutes_idに紐づく全てのConversationレコードを取得する
 
@@ -323,7 +322,7 @@ class ConversationRepository(BaseRepository):
         results = self.fetch_as_dict(query, {"minutes_id": minutes_id})
         return results
 
-    def get_all_conversations_without_speaker_id(self) -> list[dict]:
+    def get_all_conversations_without_speaker_id(self) -> list[dict[str, Any]]:
         """
         speaker_idが設定されていない全てのConversationレコードを取得する
 
@@ -387,8 +386,7 @@ class ConversationRepository(BaseRepository):
                     if rows_affected > 0:
                         updated_count += 1
                         print(
-                            f"🔗 Speaker紐付け更新: {speaker_name} → "
-                            f"Speaker ID: {speaker_id}"
+                            f"🔗 Speaker紐付け更新: {speaker_name} → Speaker ID: {speaker_id}"
                         )
 
             self.session.commit()
