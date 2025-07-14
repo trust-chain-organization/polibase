@@ -116,7 +116,7 @@ def save_data_with_logging(
 
         print(
             f"💾 データベース保存完了: {len(saved_ids)}件の"
-            f"{data_type}レコードを保存しました"
+            + f"{data_type}レコードを保存しました"
         )
         logger.info(f"Saved {len(saved_ids)} {data_type} records")
 
@@ -181,7 +181,7 @@ def batch_save_with_logging(
 
         print(
             f"\n💾 バッチ処理完了: 合計 {len(all_saved_ids)}件の"
-            f"{data_type}レコードを保存しました"
+            + f"{data_type}レコードを保存しました"
         )
         logger.info(
             f"Batch save completed: {len(all_saved_ids)} {data_type} records saved"
