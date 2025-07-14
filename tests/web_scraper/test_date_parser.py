@@ -149,7 +149,7 @@ class TestDateParser:
         assert result is None
         logger.warning.assert_called_once()
         warning_message = logger.warning.call_args[0][0]
-        assert "Invalid date values" in warning_message
+        assert "Invalid date:" in warning_message
         assert "year=2024" in warning_message
         assert "month=13" in warning_message
         assert "day=32" in warning_message
