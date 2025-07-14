@@ -90,12 +90,26 @@ class InstrumentedLLMService:
             start_time = time.time()
 
             try:
-                result = self._llm_service.invoke(
-                    messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    **kwargs,
+                # LLMServiceには直接のinvokeメソッドがないため、
+                # メッセージを文字列に変換してpromptとして実行
+                # Convert messages to prompt text
+                prompt_parts: list[str] = []
+                for msg in messages:
+                    if hasattr(msg, "content"):
+                        content = msg.content  # type: ignore
+                        if isinstance(content, str):
+                            prompt_parts.append(content)
+                        else:
+                            prompt_parts.append(str(content))  # type: ignore
+                    else:
+                        prompt_parts.append(str(msg))
+                prompt_text = "\n".join(prompt_parts)
+
+                chain = self._llm_service.create_simple_chain(  # type: ignore
+                    prompt_template=prompt_text, use_passthrough=False
                 )
+                result = self._llm_service.invoke_with_retry(chain, {})  # type: ignore
+                result = str(result.content if hasattr(result, "content") else result)
 
                 # 成功時のメトリクス記録
                 elapsed_ms = (time.time() - start_time) * 1000
@@ -194,13 +208,12 @@ class InstrumentedLLMService:
                 },
             )
 
-            return self._llm_service.generate_from_template(
-                template_name,
-                context,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs,
+            # generate_from_templateはLLMServiceに存在しないため、
+            # invoke_promptを使用
+            result = self._llm_service.invoke_prompt(
+                prompt_key=template_name, variables=context
             )
+            return str(result.content if hasattr(result, "content") else result)
 
     def __getattr__(self, name: str) -> Any:
         """その他のメソッドは元のサービスに委譲."""
