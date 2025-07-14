@@ -1,7 +1,7 @@
 """Conference member extractor that saves to staging table"""
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -85,7 +85,7 @@ HTMLコンテンツ:
         )
 
         # LLMチェーンの実行
-        chain = prompt | self.llm_service.llm | parser
+        chain = prompt | self.llm_service.llm | parser  # type: ignore
 
         try:
             # HTMLが長すぎる場合は切り詰める
@@ -93,10 +93,10 @@ HTMLコンテンツ:
             if len(html_content) > max_length:
                 html_content = html_content[:max_length] + "..."
 
-            result = chain.invoke(
+            result = chain.invoke(  # type: ignore
                 {"html_content": html_content, "conference_name": conference_name}
             )
-            return result.members
+            return cast(Any, result).members
         except Exception as e:
             logger.error(f"Error extracting members with LLM: {e}")
             return []
@@ -138,7 +138,7 @@ HTMLコンテンツ:
                     failed_count += 1
                     logger.error(f"Failed to save member: {member.name}")
 
-            result = {
+            result: dict[str, Any] = {
                 "conference_id": conference_id,
                 "conference_name": conference_name,
                 "url": url,

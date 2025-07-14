@@ -2,7 +2,7 @@
 
 import logging
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, cast
 
 from langchain_core.prompts import PromptTemplate
 
@@ -109,11 +109,11 @@ class ConferenceMemberMatchingService:
         candidates_text = ""
         for i, candidate in enumerate(candidates, 1):
             party_info = f"（{candidate.get('party_name', '無所属')}）"
-            additional_info = []
+            additional_info: list[str] = []
             if candidate.get("position"):
-                additional_info.append(candidate["position"])
+                additional_info.append(cast(str, candidate["position"]))
             if candidate.get("prefecture"):
-                additional_info.append(candidate["prefecture"])
+                additional_info.append(cast(str, candidate["prefecture"]))
 
             info_str = f" - {', '.join(additional_info)}" if additional_info else ""
             candidates_text += f"{i}. {candidate['name']} {party_info}{info_str}\n"
@@ -128,10 +128,10 @@ class ConferenceMemberMatchingService:
 
         try:
             response = self.llm_service.llm.invoke(prompt)
-            content = response.content.strip()
+            content: str = cast(str, response.content).strip()  # type: ignore
 
             # レスポンスをパース
-            lines = content.split("\n")
+            lines: list[str] = content.split("\n")
             selected_num = 0
             confidence = 0.0
 
@@ -169,7 +169,7 @@ class ConferenceMemberMatchingService:
         self, extracted_member: dict[str, Any]
     ) -> dict[str, Any]:
         """単一の抽出メンバーを処理"""
-        result = {
+        result: dict[str, Any] = {
             "extracted_member_id": extracted_member["id"],
             "extracted_name": extracted_member["extracted_name"],
             "status": "pending",
