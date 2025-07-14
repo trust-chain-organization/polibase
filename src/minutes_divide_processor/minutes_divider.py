@@ -172,11 +172,11 @@ class MinutesDivider:
         # resultがSectionInfoList型でない場合の処理を追加
         if not isinstance(result, SectionInfoList):
             if isinstance(result, dict) and "section_info_list" in result:
-                result = SectionInfoList(**result)  # type: ignore[arg-type]
+                result = SectionInfoList(**result)  # type: ignore[arg-type, misc]
             elif isinstance(result, list):
                 result = SectionInfoList(section_info_list=result)  # type: ignore[arg-type]
             else:
-                raise TypeError(f"Unexpected result type: {type(result)}")
+                raise TypeError(f"Unexpected result type: {type(result)}")  # type: ignore[arg-type]
 
         # section_info_listのchapter_numberを確認して、連番になっているか確認
         last_chapter_number = 0
@@ -249,7 +249,7 @@ class MinutesDivider:
             if isinstance(result, SectionInfoList):
                 section_info_list.extend(result.section_info_list)
             elif isinstance(result, list):
-                section_info_list.extend(result)
+                section_info_list.extend(result)  # type: ignore[arg-type]
             else:
                 logger.warning(f"Unexpected result type: {type(result)}")
         return RedividedSectionInfoList(redivided_section_info_list=section_info_list)

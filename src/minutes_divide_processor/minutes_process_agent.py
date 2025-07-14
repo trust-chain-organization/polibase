@@ -12,6 +12,7 @@ from .minutes_divider import MinutesDivider
 from .models import (
     MinutesProcessState,
     SectionStringList,
+    SpeakerAndSpeechContent,
 )
 
 
@@ -50,7 +51,7 @@ class MinutesProcessAgent:
             {True: "divide_speech", False: END},
         )
 
-        return workflow.compile(checkpointer=checkpointer, store=self.in_memory_store)
+        return workflow.compile(checkpointer=checkpointer, store=self.in_memory_store)  # type: ignore[return-value]
 
     def _get_from_memory(self, namespace: str, memory_id: str) -> Any | None:
         namespace_for_memory = ("1", namespace)
@@ -168,11 +169,13 @@ class MinutesProcessAgent:
 
         # 初回はNULLなのでその場合は空配列を作成
         if memory_data is None or "divided_speech_list" not in memory_data:
-            divided_speech_list = []
+            divided_speech_list: list[SpeakerAndSpeechContent] = []
         else:
             divided_speech_list = memory_data["divided_speech_list"]
             if not isinstance(divided_speech_list, list):
                 raise TypeError("divided_speech_list must be a list")
+            # Cast to proper type after type check
+            divided_speech_list = divided_speech_list
 
         # もしspeaker_and_speech_content_listがNoneの場合は、
         # 現在のリストを更新用リストとして返す
@@ -182,17 +185,21 @@ class MinutesProcessAgent:
                 + "Skipping this section."
             )
             updated_speaker_and_speech_content_list = divided_speech_list
-            memory = {"divided_speech_list": updated_speaker_and_speech_content_list}
+            memory: dict[str, list[SpeakerAndSpeechContent]] = {
+                "divided_speech_list": updated_speaker_and_speech_content_list
+            }
             memory_id = self._put_to_memory(
                 namespace="divided_speech_list", memory=memory
             )
         else:
             # すべてのセクションの結果を追加
-            updated_speaker_and_speech_content_list = (
+            updated_speaker_and_speech_content_list: list[SpeakerAndSpeechContent] = (
                 divided_speech_list
                 + speaker_and_speech_content_list.speaker_and_speech_content_list
             )
-            memory = {"divided_speech_list": updated_speaker_and_speech_content_list}
+            memory: dict[str, list[SpeakerAndSpeechContent]] = {
+                "divided_speech_list": updated_speaker_and_speech_content_list
+            }
             memory_id = self._put_to_memory(
                 namespace="divided_speech_list", memory=memory
             )
@@ -200,11 +207,11 @@ class MinutesProcessAgent:
         print(f"incremented_speech_divide_index: {incremented_index}")
         return {"divided_speech_list_memory_id": memory_id, "index": incremented_index}
 
-    def run(self, original_minutes: str) -> list[Any]:
+    def run(self, original_minutes: str) -> list[SpeakerAndSpeechContent]:
         # 初期状態の設定
         initial_state = MinutesProcessState(original_minutes=original_minutes)
         # グラフの実行
-        final_state = self.graph.invoke(  # type: ignore[attr-defined]
+        final_state = self.graph.invoke(
             initial_state, config={"recursion_limit": 300, "thread_id": "example-1"}
         )
         # 分割結果の取得
@@ -217,4 +224,4 @@ class MinutesProcessAgent:
         if not isinstance(divided_speech_list, list):
             raise TypeError("divided_speech_list must be a list")
 
-        return divided_speech_list
+        return divided_speech_list  # type: ignore[return-value]
