@@ -2,13 +2,13 @@ import json
 import logging
 import re
 import unicodedata
+from typing import Any
 
 from langchain import hub
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
 from ..services.llm_factory import LLMServiceFactory
-from ..services.llm_service import LLMService
 
 # Use relative import for modules within the same package
 from .models import (
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class MinutesDivider:
-    def __init__(self, llm_service: LLMService | None = None, k: int = 5):
+    def __init__(self, llm_service: Any = None, k: int = 5):
         """
         Initialize MinutesDivider
 
@@ -68,7 +68,9 @@ class MinutesDivider:
         return processed_minutes
 
     def do_divide(
-        self, processed_minutes: str, section_info_list: SectionInfoList
+        self,
+        processed_minutes: str,
+        section_info_list: SectionInfoList | list[Any],
     ) -> SectionStringList:
         if not processed_minutes:
             return SectionStringList(section_string_list=[])
@@ -83,9 +85,9 @@ class MinutesDivider:
         else:
             section_info_list_data = section_info_list.section_info_list
 
-        split_minutes_list = []
+        split_minutes_list: list[SectionString] = []
         start_index = 0
-        skipped_keywords = []
+        skipped_keywords: list[str] = []
         i = 0
         output_order = 1  # 出現順を記録する変数
         while i < len(section_info_list_data):
@@ -98,13 +100,13 @@ class MinutesDivider:
                     start_index = 0
                     print(
                         f"最初のキーワード '{keyword}' が見つからないため、"
-                        "議事録の先頭から開始します"
+                        + "議事録の先頭から開始します"
                     )
             # キーワードが見つからない場合はスキップ
             if start_index == -1:
                 print(
                     f"警告: キーワード '{keyword}' が議事録に見つかりません。"
-                    "スキップします。"
+                    + "スキップします。"
                 )
                 skipped_keywords.append(keyword)
                 i += 1
@@ -122,7 +124,7 @@ class MinutesDivider:
                 else:
                     print(
                         f"警告: キーワード '{next_keyword}' が議事録に"
-                        "見つかりません。スキップします。"
+                        + "見つかりません。スキップします。"
                     )
                     skipped_keywords.append(next_keyword)
                     j += 1
@@ -191,7 +193,7 @@ class MinutesDivider:
     def check_length(
         self, section_string_list: SectionStringList
     ) -> RedivideSectionStringList:
-        redivide_list = []
+        redivide_list: list[RedivideSectionString] = []
         for index, section_string in enumerate(section_string_list.section_string_list):
             size_in_bytes = len(section_string.section_string.encode("utf-8"))
             print(f"size_in_bytes: {size_in_bytes}")
@@ -216,15 +218,15 @@ class MinutesDivider:
             # Create a fallback prompt similar to redivide
             prompt_template = ChatPromptTemplate.from_template(
                 "セクションを{divide_counter}個に再分割してください。\n"
-                "元のインデックス: {original_index}\n\n"
-                "セクション内容:\n{minutes}"
+                + "元のインデックス: {original_index}\n\n"
+                + "セクション内容:\n{minutes}"
             )
 
         runnable_prompt = prompt_template | self.section_info_list_formatted_llm
         # 議事録を分割するチェーンを作成
         chain = {"minutes": RunnablePassthrough()} | runnable_prompt
 
-        section_info_list = []
+        section_info_list: list[Any] = []
         for (
             redivide_section_string
         ) in redivide_section_string_list.redivide_section_string_list:

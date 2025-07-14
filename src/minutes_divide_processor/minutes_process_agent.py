@@ -52,7 +52,7 @@ class MinutesProcessAgent:
 
         return workflow.compile(checkpointer=checkpointer, store=self.in_memory_store)
 
-    def _get_from_memory(self, namespace: tuple, memory_id: str) -> Any | None:
+    def _get_from_memory(self, namespace: str, memory_id: str) -> Any | None:
         namespace_for_memory = ("1", namespace)
         memory_item = self.in_memory_store.get(namespace_for_memory, memory_id)
         if memory_item is None:
@@ -60,7 +60,7 @@ class MinutesProcessAgent:
         else:
             return memory_item.value[namespace]
 
-    def _put_to_memory(self, namespace: tuple, memory: dict) -> None:
+    def _put_to_memory(self, namespace: str, memory: dict[str, Any]) -> str:
         user_id = "1"
         namespace_for_memory = (user_id, namespace)
         memory_id = str(uuid.uuid4())
@@ -68,14 +68,14 @@ class MinutesProcessAgent:
         self.in_memory_store.put(namespace_for_memory, memory_id, memory)
         return memory_id
 
-    def _process_minutes(self, state: MinutesProcessState) -> dict:
+    def _process_minutes(self, state: MinutesProcessState) -> dict[str, str]:
         # 議事録の文字列に対する前処理を行う
         processed_minutes = self.minutes_divider.pre_process(state.original_minutes)
         memory = {"processed_minutes": processed_minutes}
         memory_id = self._put_to_memory(namespace="processed_minutes", memory=memory)
         return {"processed_minutes_memory_id": memory_id}
 
-    def _divide_minutes_to_keyword(self, state: MinutesProcessState) -> dict:
+    def _divide_minutes_to_keyword(self, state: MinutesProcessState) -> dict[str, Any]:
         memory_id = state.processed_minutes_memory_id
         memory_data = self._get_from_memory(
             namespace="processed_minutes", memory_id=memory_id
@@ -97,7 +97,7 @@ class MinutesProcessAgent:
             "section_list_length": section_list_length,
         }
 
-    def _divide_minutes_to_string(self, state: MinutesProcessState) -> dict:
+    def _divide_minutes_to_string(self, state: MinutesProcessState) -> dict[str, str]:
         memory_id = state.processed_minutes_memory_id
         memory_data = self._get_from_memory("processed_minutes", memory_id)
         if memory_data is None or "processed_minutes" not in memory_data:
@@ -115,7 +115,7 @@ class MinutesProcessAgent:
         memory_id = self._put_to_memory(namespace="section_string_list", memory=memory)
         return {"section_string_list_memory_id": memory_id}
 
-    def _check_length(self, state: MinutesProcessState) -> dict:
+    def _check_length(self, state: MinutesProcessState) -> dict[str, str]:
         memory_id = state.section_string_list_memory_id
         memory_data = self._get_from_memory("section_string_list", memory_id)
         if memory_data is None or "section_string_list" not in memory_data:
@@ -136,7 +136,7 @@ class MinutesProcessAgent:
         print("check_length_done")
         return {"redivide_section_string_list_memory_id": memory_id}
 
-    def _divide_speech(self, state: MinutesProcessState) -> dict:
+    def _divide_speech(self, state: MinutesProcessState) -> dict[str, Any]:
         memory_id = state.section_string_list_memory_id
         memory_data = self._get_from_memory("section_string_list", memory_id)
         if memory_data is None or "section_string_list" not in memory_data:
@@ -200,7 +200,7 @@ class MinutesProcessAgent:
         print(f"incremented_speech_divide_index: {incremented_index}")
         return {"divided_speech_list_memory_id": memory_id, "index": incremented_index}
 
-    def run(self, original_minutes: str) -> list:
+    def run(self, original_minutes: str) -> list[Any]:
         # 初期状態の設定
         initial_state = MinutesProcessState(original_minutes=original_minutes)
         # グラフの実行
