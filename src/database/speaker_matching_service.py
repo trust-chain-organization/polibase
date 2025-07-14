@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -11,6 +11,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from ..config.database import get_db_session
 from ..exceptions import DatabaseError, LLMError, QueryError
 from ..services import ChainFactory, LLMService
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +43,8 @@ class SpeakerMatchingService:
         # Initialize services
         if llm_service is None:
             # Use fast model with low temperature for consistency
-            self.llm_service = LLMService.create_fast_instance(
+            # Type ignore for unknown kwargs in LLMService
+            self.llm_service = LLMService.create_fast_instance(  # type: ignore[call-arg]
                 temperature=0.1, max_tokens=1000
             )
         else:
@@ -50,7 +54,7 @@ class SpeakerMatchingService:
         self.session = get_db_session()
 
         # Create matching chain
-        self._matching_chain = self.chain_factory.create_speaker_matching_chain(
+        self._matching_chain: Any = self.chain_factory.create_speaker_matching_chain(  # type: ignore[misc]
             SpeakerMatch
         )
 
@@ -101,7 +105,7 @@ class SpeakerMatchingService:
             )
 
             # Use chain factory with retry logic
-            result = self.chain_factory.invoke_with_retry(
+            result = self.chain_factory.invoke_with_retry(  # type: ignore[misc]
                 self._matching_chain,
                 {
                     "speaker_name": speaker_name,
@@ -114,9 +118,16 @@ class SpeakerMatchingService:
 
             # 結果の検証
             if isinstance(result, dict):
-                match_result = SpeakerMatch(**result)
-            else:
+                # Cast to Any to avoid unknown type issues
+                result_dict: dict[str, Any] = result  # type: ignore[assignment]
+                match_result = SpeakerMatch(**result_dict)
+            elif isinstance(result, SpeakerMatch):
                 match_result = result
+            else:
+                # Fallback to no match if result type is unexpected
+                match_result = SpeakerMatch(
+                    matched=False, confidence=0.0, reason="LLM返答の形式が不正です"
+                )
 
             # 信頼度が低い場合はマッチしないとして扱う
             if match_result.confidence < 0.8:
@@ -329,7 +340,9 @@ class SpeakerMatchingService:
         )
 
     def _format_speakers_for_llm(
-        self, speakers: list[dict[str, Any]], affiliated_speaker_ids: set[int] | None = None
+        self,
+        speakers: list[dict[str, Any]],
+        affiliated_speaker_ids: set[int] | None = None,
     ) -> str:
         """発言者リストをLLM用にフォーマット（会議体所属情報を含む）"""
         formatted: list[str] = []
@@ -411,7 +424,9 @@ class SpeakerMatchingService:
 
                     confidence_emoji = "🟢" if match_result.confidence >= 0.9 else "🟡"
                     logger.info(
-                        f"  {confidence_emoji} マッチ成功: {speaker_name} → {match_result.speaker_name} (信頼度: {match_result.confidence:.2f})"
+                        f"  {confidence_emoji} マッチ成功: {speaker_name} → "
+                        f"{match_result.speaker_name} "
+                        f"(信頼度: {match_result.confidence:.2f})"
                     )
                 else:
                     stats["failed_matches"] += 1

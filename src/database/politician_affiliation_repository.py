@@ -80,7 +80,8 @@ class PoliticianAffiliationRepository:
 
             if result.fetchone():
                 logger.warning(
-                    f"Affiliation already exists for politician {politician_id} in conference {conference_id} starting {start_date}"
+                    f"Affiliation already exists for politician {politician_id} "
+                    f"in conference {conference_id} starting {start_date}"
                 )
                 return None
 
@@ -163,7 +164,9 @@ class PoliticianAffiliationRepository:
             logger.error(f"Error updating affiliation role: {e}")
             return False
 
-    def get_affiliations_by_conference(self, conference_id: int) -> list[dict[str, Any]]:
+    def get_affiliations_by_conference(
+        self, conference_id: int
+    ) -> list[dict[str, Any]]:
         """会議体IDで所属情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
@@ -206,7 +209,7 @@ class PoliticianAffiliationRepository:
 
     def get_active_affiliations_by_politician_and_conference(
         self, politician_id: int, conference_id: int
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """政治家IDと会議体IDでアクティブな所属情報を取得
 
         Raises:
@@ -260,7 +263,9 @@ class PoliticianAffiliationRepository:
                 },
             ) from e
 
-    def get_affiliations_by_politician(self, politician_id: int) -> list[dict[str, Any]]:
+    def get_affiliations_by_politician(
+        self, politician_id: int
+    ) -> list[dict[str, Any]]:
         """政治家IDで所属情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()

@@ -15,7 +15,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.config.database import get_db_session
 from src.exceptions import DatabaseError, LLMError, QueryError
 from src.services.llm_factory import LLMServiceFactory
-from src.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +101,7 @@ class PoliticianMatchingService:
         """)
 
         self.output_parser = JsonOutputParser(pydantic_object=PoliticianMatch)
-        if self.llm_service and hasattr(self.llm_service, 'llm'):
+        if self.llm_service and hasattr(self.llm_service, "llm"):
             self.chain = self.prompt | self.llm_service.llm | self.output_parser
         else:
             raise ValueError("LLM service is not properly initialized")
@@ -146,9 +145,11 @@ class PoliticianMatchingService:
                 speaker_name, speaker_party, available_politicians
             )
 
-            if not self.llm_service or not hasattr(self.llm_service, 'invoke_with_retry'):
+            if not self.llm_service or not hasattr(
+                self.llm_service, "invoke_with_retry"
+            ):
                 raise LLMError("LLM service is not available for matching")
-            
+
             result = self.llm_service.invoke_with_retry(
                 self.chain,
                 {
@@ -163,9 +164,16 @@ class PoliticianMatchingService:
 
             # 結果の検証
             if isinstance(result, dict):
-                match_result = PoliticianMatch(**result)
-            else:
+                # Cast to Any to avoid unknown type issues
+                result_dict: dict[str, Any] = result  # type: ignore[assignment]
+                match_result = PoliticianMatch(**result_dict)
+            elif isinstance(result, PoliticianMatch):
                 match_result = result
+            else:
+                # Fallback to no match if result type is unexpected
+                match_result = PoliticianMatch(
+                    matched=False, confidence=0.0, reason="LLM返答の形式が不正です"
+                )
 
             # 信頼度が低い場合はマッチしないとして扱う
             if match_result.confidence < 0.7:
@@ -287,7 +295,7 @@ class PoliticianMatchingService:
         max_candidates: int = 20,
     ) -> list[dict[str, Any]]:
         """候補を絞り込む（LLMの処理効率向上のため）"""
-        candidates: list[tuple[dict[str, Any], int]] = []
+        candidates: list[dict[str, Any]] = []
 
         # 敬称を除去
         cleaned_name = re.sub(r"(議員|氏|さん|様|先生)$", "", speaker_name)
@@ -412,8 +420,7 @@ class PoliticianMatchingService:
                         stats["high_confidence_matches"] += 1
 
                     logger.info(
-                        f"マッチ成功: {speaker_name} → "
-                        f"{match_result.politician_name} "
+                        f"マッチ成功: {speaker_name} → {match_result.politician_name} "
                         f"({match_result.political_party_name}) "
                         f"(信頼度: {match_result.confidence:.2f})"
                     )
