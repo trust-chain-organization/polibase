@@ -1,6 +1,6 @@
 """Factory pattern for creating LLMService instances"""
 
-from typing import Any
+from typing import Any, TypedDict
 
 from src.common.logging import get_logger
 
@@ -15,7 +15,12 @@ class LLMServiceFactory:
     """Factory for creating LLMService instances with different configurations"""
 
     # Preset configurations
-    PRESETS = {
+    class PresetConfig(TypedDict, total=False):
+        model_name: str
+        temperature: float
+        description: str
+
+    PRESETS: dict[str, PresetConfig] = {
         "fast": {
             "model_name": "gemini-1.5-flash",
             "temperature": 0.1,
@@ -51,7 +56,7 @@ class LLMServiceFactory:
             prompt_loader: Shared prompt loader instance
         """
         self.prompt_loader = prompt_loader or PromptLoader.get_default_instance()
-        self._instances: dict[str, LLMService] = {}
+        self._instances: dict[str, LLMService | InstrumentedLLMService] = {}
 
     def create(
         self,
@@ -62,7 +67,7 @@ class LLMServiceFactory:
         api_key: str | None = None,
         use_cache: bool = True,
         enable_metrics: bool = True,
-    ) -> LLMService:
+    ) -> LLMService | InstrumentedLLMService:
         """
         Create LLMService instance
 
@@ -117,30 +122,30 @@ class LLMServiceFactory:
 
         return instance
 
-    def create_fast(self, **kwargs) -> LLMService:
+    def create_fast(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
         """Create fast model instance"""
         return self.create(preset="fast", **kwargs)
 
-    def create_advanced(self, **kwargs) -> LLMService:
+    def create_advanced(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
         """Create advanced model instance"""
         return self.create(preset="advanced", **kwargs)
 
-    def create_creative(self, **kwargs) -> LLMService:
+    def create_creative(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
         """Create creative model instance"""
         return self.create(preset="creative", **kwargs)
 
-    def create_precise(self, **kwargs) -> LLMService:
+    def create_precise(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
         """Create precise model instance"""
         return self.create(preset="precise", **kwargs)
 
-    def create_legacy(self, **kwargs) -> LLMService:
+    def create_legacy(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
         """Create legacy model instance"""
         return self.create(preset="legacy", **kwargs)
 
     def _get_cache_key(self, config: dict[str, Any]) -> str:
         """Generate cache key from configuration"""
         # Exclude prompt_loader from cache key
-        key_parts = []
+        key_parts: list[str] = []
         for k, v in sorted(config.items()):
             if k != "prompt_loader" and k != "api_key":
                 key_parts.append(f"{k}={v}")
@@ -153,7 +158,7 @@ class LLMServiceFactory:
 
     def list_presets(self) -> dict[str, str]:
         """List available presets with descriptions"""
-        return {k: v["description"] for k, v in self.PRESETS.items()}
+        return {k: v.get("description", "") for k, v in self.PRESETS.items()}
 
     @classmethod
     def create_default_factory(cls) -> "LLMServiceFactory":
@@ -161,7 +166,7 @@ class LLMServiceFactory:
         return cls()
 
     @classmethod
-    def create_gemini_service(cls) -> LLMService:
+    def create_gemini_service(cls) -> LLMService | InstrumentedLLMService:
         """Create default Gemini service (for backward compatibility)"""
         factory = cls()
         return factory.create_fast()
