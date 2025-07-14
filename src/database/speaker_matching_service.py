@@ -346,6 +346,14 @@ class SpeakerMatchingService:
         Returns:
             Dict[str, int]: 更新統計
         """
+        stats = {
+            "total_processed": 0,
+            "successfully_matched": 0,
+            "high_confidence_matches": 0,
+            "failed_matches": 0,
+            "affiliation_aided_matches": 0,
+        }
+
         try:
             # speaker_idがNULLのレコードを取得（会議情報も含む）
             query = text("""
@@ -360,13 +368,7 @@ class SpeakerMatchingService:
             result = self.session.execute(query)
             unlinked_conversations = result.fetchall()
 
-            stats = {
-                "total_processed": len(unlinked_conversations),
-                "successfully_matched": 0,
-                "high_confidence_matches": 0,
-                "failed_matches": 0,
-                "affiliation_aided_matches": 0,
-            }
+            stats["total_processed"] = len(unlinked_conversations)
 
             for (
                 conversation_id,

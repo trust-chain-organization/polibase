@@ -347,6 +347,13 @@ class PoliticianMatchingService:
         Returns:
             Dict[str, int]: 更新統計
         """
+        stats = {
+            "total_processed": 0,
+            "successfully_matched": 0,
+            "high_confidence_matches": 0,
+            "failed_matches": 0,
+        }
+
         try:
             # is_politician=Falseのspeakerを取得
             query = text("""
@@ -359,12 +366,7 @@ class PoliticianMatchingService:
             result = self.session.execute(query)
             unlinked_speakers = result.fetchall()
 
-            stats = {
-                "total_processed": len(unlinked_speakers),
-                "successfully_matched": 0,
-                "high_confidence_matches": 0,
-                "failed_matches": 0,
-            }
+            stats["total_processed"] = len(unlinked_speakers)
 
             for (
                 speaker_id,

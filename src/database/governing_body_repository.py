@@ -196,7 +196,11 @@ class GoverningBodyRepository:
             result = self.connection.execute(query, {"name": name, "type": gb_type})
 
             self.connection.commit()
-            governing_body_id = result.fetchone()[0]
+            row = result.fetchone()
+            if row is None:
+                logger.error("Failed to get governing body ID after creation")
+                return None
+            governing_body_id = row[0]
             logger.info(f"Created governing body with ID: {governing_body_id}")
             return governing_body_id
 
@@ -292,9 +296,16 @@ class GoverningBodyRepository:
             result = self.connection.execute(
                 check_query, {"governing_body_id": governing_body_id}
             )
-            count = result.fetchone().count
+            row = result.fetchone()
+            if row is None:
+                logger.error(
+                    f"Failed to check conferences for "
+                    f"governing body {governing_body_id}"
+                )
+                return False
+            count = row.count
 
-            if count > 0:
+            if int(count) > 0:
                 logger.warning(
                     f"Cannot delete governing body {governing_body_id}: "
                     f"has {count} related conferences"

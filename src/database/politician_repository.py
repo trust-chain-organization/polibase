@@ -70,45 +70,46 @@ class PoliticianRepository(TypedRepository[Politician]):
 
             if existing:
                 # 既存レコードがある場合、更新が必要かチェック
-                update_data = PoliticianUpdate()
+                update_fields: dict[str, Any] = {}
                 needs_update = False
 
                 # 各フィールドを比較
                 if politician.position and politician.position != existing.position:
-                    update_data.position = politician.position
+                    update_fields["position"] = politician.position
                     needs_update = True
                 if (
                     politician.prefecture
                     and politician.prefecture != existing.prefecture
                 ):
-                    update_data.prefecture = politician.prefecture
+                    update_fields["prefecture"] = politician.prefecture
                     needs_update = True
                 if (
                     politician.electoral_district
                     and politician.electoral_district != existing.electoral_district
                 ):
-                    update_data.electoral_district = politician.electoral_district
+                    update_fields["electoral_district"] = politician.electoral_district
                     needs_update = True
                 if (
                     politician.profile_url
                     and politician.profile_url != existing.profile_url
                 ):
-                    update_data.profile_url = politician.profile_url
+                    update_fields["profile_url"] = politician.profile_url
                     needs_update = True
                 if (
                     politician.party_position
                     and politician.party_position != existing.party_position
                 ):
-                    update_data.party_position = politician.party_position
+                    update_fields["party_position"] = politician.party_position
                     needs_update = True
                 if (
                     politician.speaker_id
                     and politician.speaker_id != existing.speaker_id
                 ):
-                    update_data.speaker_id = politician.speaker_id
+                    update_fields["speaker_id"] = politician.speaker_id
                     needs_update = True
 
                 if needs_update:
+                    update_data = PoliticianUpdate(**update_fields)
                     self.update_politician(existing.id, update_data)
                     logger.info(
                         f"政治家情報を更新しました: {politician.name} "
@@ -149,10 +150,10 @@ class PoliticianRepository(TypedRepository[Politician]):
                 {"error": str(e), "politician_data": politician.model_dump()},
             ) from e
 
-    def get_by_id(self, politician_id: int) -> Politician | None:
+    def get_by_id(self, id: int) -> Politician | None:
         """IDで政治家を取得"""
         query = "SELECT * FROM politicians WHERE id = :id"
-        return self.fetch_as_model(Politician, query, {"id": politician_id})
+        return self.fetch_as_model(Politician, query, {"id": id})
 
     def get_by_name_and_party(
         self, name: str, party_id: int | None
@@ -281,7 +282,7 @@ class PoliticianRepository(TypedRepository[Politician]):
 
                 if existing:
                     # 更新が必要かチェック
-                    update_data = PoliticianUpdate()
+                    update_fields: dict[str, Any] = {}
                     needs_update = False
 
                     for field in [
@@ -294,10 +295,11 @@ class PoliticianRepository(TypedRepository[Politician]):
                     ]:
                         new_value = getattr(politician_create, field, None)
                         if new_value and new_value != getattr(existing, field):
-                            setattr(update_data, field, new_value)
+                            update_fields[field] = new_value
                             needs_update = True
 
                     if needs_update:
+                        update_data = PoliticianUpdate(**update_fields)
                         updated_politician = self.update_v2(existing.id, update_data)
                         if updated_politician:
                             updated.append(updated_politician)

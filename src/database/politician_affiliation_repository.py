@@ -98,7 +98,11 @@ class PoliticianAffiliationRepository:
             )
 
             self.connection.commit()
-            affiliation_id = result.fetchone()[0]
+            row = result.fetchone()
+            if row is None:
+                logger.error("Failed to get affiliation ID after creation")
+                return None
+            affiliation_id = row[0]
             logger.info(f"Created affiliation with ID: {affiliation_id}")
             return affiliation_id
 
@@ -343,7 +347,7 @@ class PoliticianAffiliationRepository:
         start_date: date,
         end_date: date | None = None,
         role: str | None = None,
-    ) -> int:
+    ) -> int | None:
         """所属情報をUPSERT（存在すれば更新、なければ作成）
 
         Raises:
@@ -394,7 +398,7 @@ class PoliticianAffiliationRepository:
                 )
                 self.connection.commit()
                 logger.info(f"Updated affiliation ID: {existing.id}")
-                return existing.id
+                return int(existing.id)
             else:
                 # 新規作成 - create_affiliation already has proper exception handling
                 return self.create_affiliation(

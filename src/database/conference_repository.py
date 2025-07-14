@@ -198,7 +198,11 @@ class ConferenceRepository:
             )
 
             self.connection.commit()
-            conference_id = result.fetchone()[0]
+            row = result.fetchone()
+            if row is None:
+                logger.error("Failed to get conference ID after creation")
+                return None
+            conference_id = row[0]
             logger.info(f"Created conference with ID: {conference_id}")
             return conference_id
 
@@ -243,11 +247,11 @@ class ConferenceRepository:
 
             if name is not None:
                 update_fields.append("name = :name")
-                params["name"] = name
+                params["name"] = str(name)
 
             if type is not None:
                 update_fields.append("type = :type")
-                params["type"] = type
+                params["type"] = str(type)
 
             if governing_body_id is not None:
                 update_fields.append("governing_body_id = :governing_body_id")
@@ -257,7 +261,7 @@ class ConferenceRepository:
                 update_fields.append(
                     "members_introduction_url = :members_introduction_url"
                 )
-                params["members_introduction_url"] = members_introduction_url
+                params["members_introduction_url"] = str(members_introduction_url)
 
             # 更新フィールドがない場合は何もしない
             if not update_fields:
@@ -343,9 +347,13 @@ class ConferenceRepository:
             result = self.connection.execute(
                 check_query, {"conference_id": conference_id}
             )
-            count = result.fetchone().count
+            row = result.fetchone()
+            if row is None:
+                logger.error(f"Failed to check meetings for conference {conference_id}")
+                return False
+            count = row.count
 
-            if count > 0:
+            if int(count) > 0:
                 logger.warning(
                     f"Cannot delete conference {conference_id}: "
                     f"has {count} related meetings"

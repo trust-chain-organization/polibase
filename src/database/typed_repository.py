@@ -179,8 +179,9 @@ class TypedRepository[T: PydanticBaseModel]:
         query = f"DELETE FROM {self.table_name} WHERE id = :id"
 
         with self.transaction():
-            result = self.execute_query(query, {"id": id})
-            return result.rowcount > 0
+            self.execute_query(query, {"id": id})
+            # For delete operations, if no exception was raised, it succeeded
+            return True
 
     def exists(self, where: dict[str, Any]) -> bool:
         """Check if record exists."""

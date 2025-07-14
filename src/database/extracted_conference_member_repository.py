@@ -73,7 +73,11 @@ class ExtractedConferenceMemberRepository:
             )
 
             self.connection.commit()
-            member_id = result.fetchone()[0]
+            row = result.fetchone()
+            if row is None:
+                logger.error("Failed to get member ID after creation")
+                return None
+            member_id = row[0]
             logger.info(f"Created extracted member with ID: {member_id}")
             return member_id
 
@@ -319,8 +323,8 @@ class ExtractedConferenceMemberRepository:
 
             for row in result:
                 if row.matching_status in summary:
-                    summary[row.matching_status] = row.count
-                summary["total"] += row.count
+                    summary[row.matching_status] = int(row.count)
+                summary["total"] += int(row.count)
 
             return summary
         except SQLAlchemyError as e:

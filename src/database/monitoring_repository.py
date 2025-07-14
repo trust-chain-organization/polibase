@@ -143,7 +143,7 @@ class MonitoringRepository(BaseRepository):
         """
 
         start_date = datetime.now() - timedelta(days=days)
-        result = self.fetch_all(query, {"start_date": start_date})
+        result = self.fetch_all(query, {"start_date": start_date.isoformat()})
 
         return pd.DataFrame(result)
 
@@ -259,7 +259,7 @@ class MonitoringRepository(BaseRepository):
                 ORDER BY date, data_type
             """
 
-            result = self.fetch_all(final_query, {"start_date": start_date})
+            result = self.fetch_all(final_query, {"start_date": start_date.isoformat()})
             return pd.DataFrame(result)
 
         return pd.DataFrame()
