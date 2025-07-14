@@ -119,7 +119,7 @@ def setup_logging(
     ]
 
     # Noneを除外
-    shared_processors = [p for p in shared_processors_raw if p is not None]
+    shared_processors: list[Any] = [p for p in shared_processors_raw if p is not None]  # type: ignore[misc]
 
     # レンダラーの選択
     if json_format:

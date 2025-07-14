@@ -207,7 +207,8 @@ def print_completion_message(
     if result_data is not None:
         print("--------結果出力--------")
         if isinstance(result_data, list):
-            result_list = result_data  # type: ignore[assignment]
+            # 型の絞り込みを明示的に行う
+            result_list: list[Any] = result_data  # type: ignore[assignment]
             print(f"結果数: {len(result_list)}件")
             if len(result_list) > 0 and len(result_list) <= 5:
                 # Show all items if 5 or fewer

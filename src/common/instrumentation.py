@@ -89,7 +89,7 @@ def measure_time(
                         threshold_seconds=log_slow_operations,
                     )
 
-                return result
+                return result  # type: ignore[return-value]
 
             except Exception as e:
                 # エラー時の処理
@@ -137,7 +137,7 @@ def measure_time(
                         threshold_seconds=log_slow_operations,
                     )
 
-                return result
+                return result  # type: ignore[return-value]
 
             except Exception as e:
                 # エラー時の処理
@@ -159,9 +159,9 @@ def measure_time(
 
         # 非同期関数かどうかで適切なラッパーを返す
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper  # type: ignore
+            return async_wrapper  # type: ignore[return-value]
         else:
-            return sync_wrapper  # type: ignore
+            return sync_wrapper
 
     return decorator
 
@@ -209,13 +209,13 @@ def count_calls(
             attributes = labels or {}
             get_counter().add(1, attributes=attributes)
             result: T = await func(*args, **kwargs)  # type: ignore[misc]
-            return result
+            return result  # type: ignore[return-value]
 
         # 非同期関数かどうかで適切なラッパーを返す
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper  # type: ignore
+            return async_wrapper  # type: ignore[return-value]
         else:
-            return sync_wrapper  # type: ignore
+            return sync_wrapper
 
     return decorator
 
