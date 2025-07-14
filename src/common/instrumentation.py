@@ -66,9 +66,10 @@ def measure_time(
             start_time = time.time()
             attributes = labels or {}
 
+            # メトリクスを事前に初期化
+            duration_metric, call_counter = get_metrics()
+
             try:
-                # メトリクスを取得して呼び出し回数をカウント
-                duration_metric, call_counter = get_metrics()
                 call_counter.add(1, attributes=attributes)
 
                 # ログコンテキストの設定
@@ -88,7 +89,7 @@ def measure_time(
                         threshold_seconds=log_slow_operations,
                     )
 
-                return result
+                return result  # type: ignore[return-value]
 
             except Exception as e:
                 # エラー時の処理
@@ -113,14 +114,15 @@ def measure_time(
             start_time = time.time()
             attributes = labels or {}
 
+            # メトリクスを事前に初期化
+            duration_metric, call_counter = get_metrics()
+
             try:
-                # メトリクスを取得して呼び出し回数をカウント
-                duration_metric, call_counter = get_metrics()
                 call_counter.add(1, attributes=attributes)
 
                 # ログコンテキストの設定
                 with LogContext(operation=actual_metric_name):
-                    result = await func(*args, **kwargs)
+                    result: T = await func(*args, **kwargs)  # type: ignore[misc]
 
                 # 成功時の処理
                 elapsed = time.time() - start_time
@@ -135,7 +137,7 @@ def measure_time(
                         threshold_seconds=log_slow_operations,
                     )
 
-                return result
+                return result  # type: ignore[return-value]
 
             except Exception as e:
                 # エラー時の処理
@@ -157,7 +159,7 @@ def measure_time(
 
         # 非同期関数かどうかで適切なラッパーを返す
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper
+            return async_wrapper  # type: ignore[return-value]
         else:
             return sync_wrapper
 
@@ -206,11 +208,12 @@ def count_calls(
         async def async_wrapper(*args: Any, **kwargs: Any) -> T:
             attributes = labels or {}
             get_counter().add(1, attributes=attributes)
-            return await func(*args, **kwargs)
+            result: T = await func(*args, **kwargs)  # type: ignore[misc]
+            return result  # type: ignore[return-value]
 
         # 非同期関数かどうかで適切なラッパーを返す
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper
+            return async_wrapper  # type: ignore[return-value]
         else:
             return sync_wrapper
 
