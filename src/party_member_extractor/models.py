@@ -26,7 +26,8 @@ class PartyMemberList(BaseModel):
     """政党所属議員のリスト"""
 
     members: list[PartyMemberInfo] = Field(
-        description="抽出された議員のリスト", default_factory=list
+        description="抽出された議員のリスト",
+        default_factory=lambda: [],  # pyrightの型推論エラー対策
     )
     total_count: int = Field(description="抽出された議員の総数", default=0)
     party_name: str | None = Field(description="政党名", default=None)

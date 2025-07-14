@@ -3,11 +3,12 @@
 import logging
 import re
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
+from ..services.instrumented_llm_service import InstrumentedLLMService
 from ..services.llm_factory import LLMServiceFactory
 from ..services.llm_service import LLMService
-from .models import PartyMemberList, WebPageContent
+from .models import PartyMemberInfo, PartyMemberList, WebPageContent
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 class PartyMemberExtractor:
     """LLMを使用して政党議員情報を抽出"""
 
-    def __init__(self, llm_service: LLMService | None = None):
+    def __init__(self, llm_service: LLMService | InstrumentedLLMService | None = None):
         """
         Initialize PartyMemberExtractor
 
@@ -33,7 +34,7 @@ class PartyMemberExtractor:
         self, pages: list[WebPageContent], party_name: str
     ) -> PartyMemberList:
         """複数ページから議員情報を抽出"""
-        all_members = []
+        all_members: list[PartyMemberInfo] = []
 
         for page in pages:
             logger.info(f"Extracting from page {page.page_number}: {page.url}")
@@ -41,7 +42,7 @@ class PartyMemberExtractor:
 
             if members and members.members:
                 # 重複チェック
-                existing_names = {m.name for m in all_members}
+                existing_names: set[str] = {m.name for m in all_members}
                 for member in members.members:
                     if member.name not in existing_names:
                         all_members.append(member)
@@ -120,10 +121,11 @@ class PartyMemberExtractor:
 
         # 見つからない場合はbody全体
         body = soup.find("body")
-        if body:
+        if body and isinstance(body, Tag):
             # ヘッダーとフッターを除外
             for tag in body.find_all(["header", "footer", "nav"]):
-                tag.decompose()
+                if isinstance(tag, Tag):
+                    tag.decompose()
             return self._clean_text(body.get_text(separator="\n", strip=True))
 
         return self._clean_text(soup.get_text(separator="\n", strip=True))
