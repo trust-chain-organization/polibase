@@ -224,8 +224,10 @@ class MinutesDivider:
         # 議事録を分割するチェーンを作成
         chain = {"minutes": RunnablePassthrough()} | runnable_prompt
 
-        section_string_list = []
-        for _index, redivide_section_string in redivide_section_string_list:
+        section_info_list = []
+        for (
+            redivide_section_string
+        ) in redivide_section_string_list.redivide_section_string_list:
             divide_counter = (
                 redivide_section_string.redivide_section_string_bytes // 20000000
             )
@@ -235,13 +237,20 @@ class MinutesDivider:
             result = self.llm_service.invoke_with_retry(
                 chain,
                 {
-                    "minutes": redivide_section_string.redivide_section_string,
+                    "minutes": (
+                        redivide_section_string.redivide_section_string.section_string
+                    ),
                     "original_index": redivide_section_string.original_index,
                     "divide_counter": divide_counter,
                 },
             )
-            section_string_list = section_string_list + result
-        return section_string_list
+            if isinstance(result, SectionInfoList):
+                section_info_list.extend(result.section_info_list)
+            elif isinstance(result, list):
+                section_info_list.extend(result)
+            else:
+                logger.warning(f"Unexpected result type: {type(result)}")
+        return RedividedSectionInfoList(redivided_section_info_list=section_info_list)
 
     # 発言者と発言内容に分割する
     def speech_divide_run(
