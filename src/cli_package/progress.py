@@ -69,7 +69,7 @@ def spinner(message: str = "Processing", final_message: str | None = None):
         s.stop(final_message)
 
 
-def progress_bar(
+def progress_bar[T](
     iterable: Iterable[T],
     label: str = "Processing",
     length: int | None = None,
