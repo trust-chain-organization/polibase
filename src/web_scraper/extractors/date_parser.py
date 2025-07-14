@@ -15,7 +15,7 @@ class DateParser:
         # 日付パターンのコンパイル
         self._patterns = self._compile_patterns()
 
-    def _compile_patterns(self) -> list[Pattern]:
+    def _compile_patterns(self) -> list[Pattern[str]]:
         """日付パターンをコンパイル"""
         patterns = [
             # 令和6年12月20日
@@ -95,8 +95,7 @@ class DateParser:
             return datetime(year, month, day)
         except ValueError as e:
             self.logger.warning(
-                f"Invalid date values: year={year}, month={month}, "
-                f"day={day}. Error: {e}"
+                f"Invalid date: year={year}, month={month}, day={day}. Error: {e}"
             )
             return None
 
@@ -129,7 +128,7 @@ class DateParser:
         Returns:
             見つかった日付のリスト
         """
-        dates = []
+        dates: list[datetime] = []
 
         for pattern in self._patterns[:6]:
             for match in pattern.finditer(text):

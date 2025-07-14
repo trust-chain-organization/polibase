@@ -123,23 +123,25 @@ class ContentExtractor:
 
     def _find_elements(self, soup: BeautifulSoup, selector: str) -> list[Tag]:
         """セレクタに一致する要素を検索"""
-        elements = []
+        elements: list[Tag] = []
 
         if selector.startswith("#"):
             # IDセレクタ
             element = soup.find(id=selector[1:])
-            if element:
+            if element and isinstance(element, Tag):
                 elements = [element]
         elif selector.startswith("."):
             # クラスセレクタ
-            elements = soup.find_all(class_=re.compile(selector[1:]))
+            found_elements = soup.find_all(class_=re.compile(selector[1:]))
+            elements = [el for el in found_elements if isinstance(el, Tag)]
         elif "[" in selector:
             # 属性セレクタ
-            elements = soup.select(selector)
+            found_elements = soup.select(selector)
+            elements = [el for el in found_elements if isinstance(el, Tag)]
         else:
             # タグセレクタ
             element = soup.find(selector)
-            if element:
+            if element and isinstance(element, Tag):
                 elements = [element]
 
         return elements
@@ -157,7 +159,7 @@ class ContentExtractor:
 
         # 行ごとに処理
         lines = text.split("\n")
-        cleaned_lines = []
+        cleaned_lines: list[str] = []
 
         for line in lines:
             line = line.strip()
@@ -183,7 +185,7 @@ class ContentExtractor:
     def _extract_from_body(self, soup: BeautifulSoup) -> str:
         """body要素全体から議事録コンテンツを抽出"""
         body = soup.find("body")
-        if not body:
+        if not body or not isinstance(body, Tag):
             return ""
 
         # 不要な要素を削除
@@ -194,7 +196,7 @@ class ContentExtractor:
 
         # 議事録っぽいコンテンツだけを抽出
         lines = text.split("\n")
-        content_lines = []
+        content_lines: list[str] = []
 
         for line in lines:
             line = line.strip()
@@ -265,27 +267,34 @@ class ContentExtractor:
 
         return "議事録"
 
-    def extract_metadata(self, soup: BeautifulSoup) -> dict:
+    def extract_metadata(self, soup: BeautifulSoup) -> dict[str, str]:
         """メタデータを抽出"""
-        metadata = {}
+        metadata: dict[str, str] = {}
 
         # metaタグから情報を抽出
         for meta in soup.find_all("meta"):
-            name = meta.get("name", "")
-            content = meta.get("content", "")
-            if name and content:
-                metadata[name] = content
+            if isinstance(meta, Tag):
+                name = meta.get("name", "")
+                content = meta.get("content", "")
+                if (
+                    name
+                    and content
+                    and isinstance(name, str)
+                    and isinstance(content, str)
+                ):
+                    metadata[name] = content
 
         # その他の情報を抽出
         # 例: 会議名、開催場所など
         info_elements = soup.find_all(class_=re.compile("info|detail|meta"))
         for element in info_elements:
-            text = element.get_text(strip=True)
-            if "会議" in text or "場所" in text or "出席" in text:
-                lines = text.split("\n")
-                for line in lines:
-                    if "：" in line:
-                        key, value = line.split("：", 1)
-                        metadata[key.strip()] = value.strip()
+            if isinstance(element, Tag):
+                text = element.get_text(strip=True)
+                if "会議" in text or "場所" in text or "出席" in text:
+                    lines = text.split("\n")
+                    for line in lines:
+                        if "：" in line:
+                            key, value = line.split("：", 1)
+                            metadata[key.strip()] = value.strip()
 
         return metadata
