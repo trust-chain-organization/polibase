@@ -4,9 +4,9 @@ import json
 import logging
 import re
 import unicodedata
+from typing import Any
 
 from langchain_core.runnables import RunnablePassthrough
-from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ..services import ChainFactory, LLMService, PromptManager
 from .models import (
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class MinutesDivider:
     """Minutes divider using centralized LLM services"""
 
-    def __init__(self, llm: ChatGoogleGenerativeAI | None = None, k: int = 5):
+    def __init__(self, llm: Any = None, k: int = 5):
         """
         Initialize minutes divider
 
@@ -76,7 +76,9 @@ class MinutesDivider:
         return processed_minutes
 
     def do_divide(
-        self, processed_minutes: str, section_info_list: SectionInfoList
+        self,
+        processed_minutes: str,
+        section_info_list: SectionInfoList | list[Any],
     ) -> SectionStringList:
         """Process minutes based on section info"""
         if not processed_minutes:
@@ -92,9 +94,9 @@ class MinutesDivider:
         else:
             section_info_list_data = section_info_list.section_info_list
 
-        split_minutes_list = []
+        split_minutes_list: list[SectionString] = []
         start_index = 0
-        skipped_keywords = []
+        skipped_keywords: list[str] = []
         i = 0
         output_order = 1  # 出現順を記録する変数
 
@@ -109,7 +111,7 @@ class MinutesDivider:
                     start_index = 0
                     logger.warning(
                         f"最初のキーワード '{keyword}' が見つからないため、"
-                        "議事録の先頭から開始します"
+                        + "議事録の先頭から開始します"
                     )
 
             # キーワードが見つからない場合はスキップ
@@ -134,7 +136,7 @@ class MinutesDivider:
                 else:
                     logger.warning(
                         f"キーワード '{next_keyword}' が議事録に"
-                        "見つかりません。スキップします。"
+                        + "見つかりません。スキップします。"
                     )
                     skipped_keywords.append(next_keyword)
                     j += 1
@@ -175,11 +177,11 @@ class MinutesDivider:
             # resultがSectionInfoList型でない場合の処理を追加
             if not isinstance(result, SectionInfoList):
                 if isinstance(result, dict) and "section_info_list" in result:
-                    result = SectionInfoList(**result)
+                    result = SectionInfoList(**result)  # type: ignore[arg-type, misc]
                 elif isinstance(result, list):
-                    result = SectionInfoList(section_info_list=result)
+                    result = SectionInfoList(section_info_list=result)  # type: ignore[arg-type]
                 else:
-                    raise TypeError(f"Unexpected result type: {type(result)}")
+                    raise TypeError(f"Unexpected result type: {type(result)}")  # type: ignore[arg-type]
 
             # section_info_listのchapter_numberを確認して、連番になっているか確認
             last_chapter_number = 0
@@ -203,7 +205,7 @@ class MinutesDivider:
         self, section_string_list: SectionStringList
     ) -> RedivideSectionStringList:
         """Check section lengths and mark for re-division if needed"""
-        redivide_list = []
+        redivide_list: list[RedivideSectionString] = []
         for index, section_string in enumerate(section_string_list.section_string_list):
             size_in_bytes = len(section_string.section_string.encode("utf-8"))
             logger.debug(f"size_in_bytes: {size_in_bytes}")
@@ -241,7 +243,7 @@ class MinutesDivider:
                 """
             )
 
-        redivide_chain = (
+        redivide_chain = (  # type: ignore[var-annotated]
             {
                 "minutes": RunnablePassthrough(),
                 "original_index": RunnablePassthrough(),
@@ -251,7 +253,7 @@ class MinutesDivider:
             | self.llm_service.get_structured_llm(SectionInfoList)
         )
 
-        section_info_list = []
+        section_info_list: list[Any] = []
         for (
             redivide_section_string
         ) in redivide_section_string_list.redivide_section_string_list:
@@ -262,7 +264,7 @@ class MinutesDivider:
 
             # 引数に議事録を渡して実行
             result = self.chain_factory.invoke_with_retry(
-                redivide_chain,
+                redivide_chain,  # type: ignore[arg-type]
                 {
                     "minutes": (
                         redivide_section_string.redivide_section_string.section_string
@@ -275,7 +277,7 @@ class MinutesDivider:
             if isinstance(result, SectionInfoList):
                 section_info_list.extend(result.section_info_list)
             elif isinstance(result, list):
-                section_info_list.extend(result)
+                section_info_list.extend(result)  # type: ignore[arg-type]
             else:
                 logger.warning(f"Unexpected result type: {type(result)}")
 
@@ -310,7 +312,7 @@ class MinutesDivider:
                 if speaker_and_speech_content.speech_order != last_speech_order + 1:
                     logger.warning(
                         "speaker_and_speech_contentのspeech_orderが"
-                        "連番になっていません。"
+                        + "連番になっていません。"
                     )
                     # 連番になっていない場合は
                     # speaker_and_speech_content.speech_orderを

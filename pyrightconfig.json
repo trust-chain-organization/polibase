@@ -1,14 +1,6 @@
 {
   "include": ["src"],
-  "exclude": [
-    "src/minutes_divide_processor/**",
-    "src/party_member_extractor/**",
-    "src/update_speaker_links_llm.py",
-    "src/process_minutes.py",
-    "src/streamlit_app.py",
-    "**/__pycache__",
-    "**/*.pyc"
-  ],
+  "exclude": ["**/__pycache__", "**/*.pyc"],
   "pythonVersion": "3.13",
   "typeCheckingMode": "standard",
   "reportMissingImports": true,
