@@ -37,7 +37,7 @@ class MinutesData:
     scraped_at: datetime
     pdf_url: str | None = None
     text_view_url: str | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)  # type: ignore
 
     def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
@@ -71,16 +71,20 @@ class MinutesData:
         speakers: list[SpeakerData] = []
         speakers_list: Any = data.get("speakers", [])
         if isinstance(speakers_list, list):
-            speaker_item: Any
-            for speaker_item in speakers_list:
+            for speaker_item in speakers_list:  # type: ignore
                 if isinstance(speaker_item, dict):
                     # 新しい形式
                     if "name" in speaker_item and "content" in speaker_item:
-                        speakers.append(SpeakerData.from_dict(speaker_item))
+                        # dict[str, Any]にキャスト
+                        speaker_dict: dict[str, Any] = {}
+                        for key, value in speaker_item.items():  # type: ignore
+                            key_str = str(key)  # type: ignore
+                            speaker_dict[key_str] = value
+                        speakers.append(SpeakerData.from_dict(speaker_dict))
                     # 古い形式の互換性
                     elif "name" in speaker_item:
-                        speaker_name: Any = speaker_item["name"]
-                        speaker_content: Any = speaker_item.get("content", "")
+                        speaker_name: Any = speaker_item["name"]  # type: ignore
+                        speaker_content: Any = speaker_item.get("content", "")  # type: ignore
                         if isinstance(speaker_name, str) and isinstance(
                             speaker_content, str
                         ):
@@ -90,6 +94,15 @@ class MinutesData:
                                     content=speaker_content,
                                 )
                             )
+
+        metadata_dict: dict[str, Any] = {}
+        if "metadata" in data:
+            metadata_value = data["metadata"]
+            if isinstance(metadata_value, dict):
+                # metadataフィールドの型を明示的に構築
+                for key, value in metadata_value.items():  # type: ignore
+                    key_str = str(key)  # type: ignore
+                    metadata_dict[key_str] = value
 
         return cls(
             council_id=data["council_id"],
@@ -102,7 +115,7 @@ class MinutesData:
             scraped_at=scraped_at,
             pdf_url=data.get("pdf_url"),
             text_view_url=data.get("text_view_url"),
-            metadata=data.get("metadata", {}),
+            metadata=metadata_dict,
         )
 
     @property
