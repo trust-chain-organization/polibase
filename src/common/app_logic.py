@@ -105,7 +105,7 @@ def validate_database_connection() -> bool:
         if not test_connection():
             print(
                 "❌ データベースに接続できません。"
-                "docker compose でPostgreSQLが起動していることを確認してください。"
+                + "docker compose でPostgreSQLが起動していることを確認してください。"
             )
             logger.warning("Database connection test failed")
             return False
@@ -166,12 +166,12 @@ def run_main_process(
 
         if saved_ids:
             print(
-                f"💾 データベース保存完了: "
-                f"{len(saved_ids)}件の{process_name}レコードを保存しました"
+                "💾 データベース保存完了: "
+                + f"{len(saved_ids)}件の{process_name}レコードを保存しました"
             )
             print(
                 f"{process_name}の抽出が完了しました。"
-                f"{len(saved_ids)}件のレコードをデータベースに保存しました。"
+                + f"{len(saved_ids)}件のレコードをデータベースに保存しました。"
             )
             logger.info(f"Saved {len(saved_ids)} {process_name} records")
         else:
@@ -194,7 +194,9 @@ def run_main_process(
         ) from e
 
 
-def print_completion_message(result_data: Any, process_name: str = "処理") -> None:
+def print_completion_message(
+    result_data: list[Any] | Any | None, process_name: str = "処理"
+) -> None:
     """
     処理完了メッセージを表示する
 
@@ -205,16 +207,17 @@ def print_completion_message(result_data: Any, process_name: str = "処理") -> 
     if result_data is not None:
         print("--------結果出力--------")
         if isinstance(result_data, list):
-            print(f"結果数: {len(result_data)}件")
-            if len(result_data) > 0 and len(result_data) <= 5:
+            result_list = result_data  # type: ignore[assignment]
+            print(f"結果数: {len(result_list)}件")
+            if len(result_list) > 0 and len(result_list) <= 5:
                 # Show all items if 5 or fewer
-                for i, item in enumerate(result_data, 1):
+                for i, item in enumerate(result_list, 1):
                     print(f"{i}. {item}")
-            elif len(result_data) > 5:
+            elif len(result_list) > 5:
                 # Show first 3 items if more than 5
-                for i, item in enumerate(result_data[:3], 1):
+                for i, item in enumerate(result_list[:3], 1):
                     print(f"{i}. {item}")
-                print(f"... 他 {len(result_data) - 3} 件")
+                print(f"... 他 {len(result_list) - 3} 件")
         else:
             print(result_data)
 

@@ -2,7 +2,7 @@
 
 import logging
 import sys
-from typing import Any
+from typing import Any, cast
 
 import structlog
 from structlog.contextvars import bind_contextvars, clear_contextvars
@@ -63,7 +63,10 @@ class SentryProcessor:
 
                     exc_info = sys.exc_info()
                 # exc_info がタプルの場合は最初の要素（例外インスタンス）を使用
-                if isinstance(exc_info, tuple) and len(exc_info) >= 2:
+                if (
+                    isinstance(exc_info, tuple)
+                    and len(cast(tuple[Any, ...], exc_info)) >= 2
+                ):
                     sentry_sdk.capture_exception(exc_info[1])  # type: ignore
                 elif isinstance(exc_info, BaseException):
                     sentry_sdk.capture_exception(exc_info)  # type: ignore
@@ -97,7 +100,7 @@ def setup_logging(
     timestamper = structlog.processors.TimeStamper(fmt="iso")
 
     # 共通のプロセッサー
-    shared_processors = [
+    shared_processors_raw = [  # type: ignore[var-annotated]
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
@@ -116,7 +119,7 @@ def setup_logging(
     ]
 
     # Noneを除外
-    shared_processors = [p for p in shared_processors if p is not None]
+    shared_processors = [p for p in shared_processors_raw if p is not None]
 
     # レンダラーの選択
     if json_format:
@@ -126,7 +129,7 @@ def setup_logging(
 
     # structlogの設定
     structlog.configure(
-        processors=shared_processors
+        processors=cast(list[Any], shared_processors)
         + [
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
@@ -138,7 +141,7 @@ def setup_logging(
     # 標準ログのフォーマッター
     formatter = structlog.stdlib.ProcessorFormatter(
         processor=renderer,
-        foreign_pre_chain=shared_processors,
+        foreign_pre_chain=cast(list[Any], shared_processors),
     )
 
     # ハンドラーの設定
