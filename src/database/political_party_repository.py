@@ -1,7 +1,6 @@
 """Repository for managing political party data"""
 
 import logging
-from typing import Any
 
 from sqlalchemy.orm import Session
 

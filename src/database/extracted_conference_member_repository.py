@@ -294,7 +294,8 @@ class ExtractedConferenceMemberRepository:
 
             deleted_count = result.rowcount
             logger.info(
-                f"Deleted {deleted_count} extracted members for conference {conference_id}"
+                f"Deleted {deleted_count} extracted members for "
+                f"conference {conference_id}"
             )
             return deleted_count
 
