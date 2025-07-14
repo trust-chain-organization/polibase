@@ -251,7 +251,7 @@ class MinutesDivider:
             | self.llm_service.get_structured_llm(SectionInfoList)
         )
 
-        section_string_list = []
+        section_info_list = []
         for (
             redivide_section_string
         ) in redivide_section_string_list.redivide_section_string_list:
@@ -273,11 +273,13 @@ class MinutesDivider:
             )
 
             if isinstance(result, SectionInfoList):
-                section_string_list.extend(result.section_info_list)
+                section_info_list.extend(result.section_info_list)
+            elif isinstance(result, list):
+                section_info_list.extend(result)
             else:
-                section_string_list.extend(result)
+                logger.warning(f"Unexpected result type: {type(result)}")
 
-        return section_string_list
+        return RedividedSectionInfoList(redivided_section_info_list=section_info_list)
 
     def speech_divide_run(
         self, section_string: SectionString

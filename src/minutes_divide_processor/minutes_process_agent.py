@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
@@ -10,6 +11,7 @@ from .minutes_divider import MinutesDivider
 # Use relative import for modules within the same package
 from .models import (
     MinutesProcessState,
+    SectionStringList,
 )
 
 
@@ -50,7 +52,7 @@ class MinutesProcessAgent:
 
         return workflow.compile(checkpointer=checkpointer, store=self.in_memory_store)
 
-    def _get_from_memory(self, namespace: tuple, memory_id: str) -> dict:
+    def _get_from_memory(self, namespace: tuple, memory_id: str) -> Any | None:
         namespace_for_memory = ("1", namespace)
         memory_item = self.in_memory_store.get(namespace_for_memory, memory_id)
         if memory_item is None:
@@ -75,9 +77,16 @@ class MinutesProcessAgent:
 
     def _divide_minutes_to_keyword(self, state: MinutesProcessState) -> dict:
         memory_id = state.processed_minutes_memory_id
-        processed_minutes = self._get_from_memory(
+        memory_data = self._get_from_memory(
             namespace="processed_minutes", memory_id=memory_id
         )
+        if memory_data is None or "processed_minutes" not in memory_data:
+            raise ValueError("Failed to retrieve processed_minutes from memory")
+
+        processed_minutes = memory_data["processed_minutes"]
+        if not isinstance(processed_minutes, str):
+            raise TypeError("processed_minutes must be a string")
+
         # 議事録を分割する
         section_info_list = self.minutes_divider.section_divide_run(processed_minutes)
         section_list_length = len(section_info_list.section_info_list)
@@ -90,7 +99,14 @@ class MinutesProcessAgent:
 
     def _divide_minutes_to_string(self, state: MinutesProcessState) -> dict:
         memory_id = state.processed_minutes_memory_id
-        processed_minutes = self._get_from_memory("processed_minutes", memory_id)
+        memory_data = self._get_from_memory("processed_minutes", memory_id)
+        if memory_data is None or "processed_minutes" not in memory_data:
+            raise ValueError("Failed to retrieve processed_minutes from memory")
+
+        processed_minutes = memory_data["processed_minutes"]
+        if not isinstance(processed_minutes, str):
+            raise TypeError("processed_minutes must be a string")
+
         # 議事録を分割する
         section_string_list = self.minutes_divider.do_divide(
             processed_minutes, state.section_info_list
@@ -101,7 +117,14 @@ class MinutesProcessAgent:
 
     def _check_length(self, state: MinutesProcessState) -> dict:
         memory_id = state.section_string_list_memory_id
-        section_string_list = self._get_from_memory("section_string_list", memory_id)
+        memory_data = self._get_from_memory("section_string_list", memory_id)
+        if memory_data is None or "section_string_list" not in memory_data:
+            raise ValueError("Failed to retrieve section_string_list from memory")
+
+        section_string_list = memory_data["section_string_list"]
+        if not isinstance(section_string_list, SectionStringList):
+            raise TypeError("section_string_list must be a SectionStringList instance")
+
         # 文字列のバイト数をチェックする
         redivide_section_string_list = self.minutes_divider.check_length(
             section_string_list
@@ -115,7 +138,14 @@ class MinutesProcessAgent:
 
     def _divide_speech(self, state: MinutesProcessState) -> dict:
         memory_id = state.section_string_list_memory_id
-        section_string_list = self._get_from_memory("section_string_list", memory_id)
+        memory_data = self._get_from_memory("section_string_list", memory_id)
+        if memory_data is None or "section_string_list" not in memory_data:
+            raise ValueError("Failed to retrieve section_string_list from memory")
+
+        section_string_list = memory_data["section_string_list"]
+        if not isinstance(section_string_list, SectionStringList):
+            raise TypeError("section_string_list must be a SectionStringList instance")
+
         if state.index - 1 < len(section_string_list.section_string_list):
             # すべてのセクションを処理する（0, 1, 2, 3の制限を削除）
             # 発言者と発言内容に分割する
@@ -134,10 +164,16 @@ class MinutesProcessAgent:
         )
         # 現在のdivide_speech_listを取得
         memory_id = state.divided_speech_list_memory_id
-        divided_speech_list = self._get_from_memory("divided_speech_list", memory_id)
+        memory_data = self._get_from_memory("divided_speech_list", memory_id)
+
         # 初回はNULLなのでその場合は空配列を作成
-        if divided_speech_list is None:
+        if memory_data is None or "divided_speech_list" not in memory_data:
             divided_speech_list = []
+        else:
+            divided_speech_list = memory_data["divided_speech_list"]
+            if not isinstance(divided_speech_list, list):
+                raise TypeError("divided_speech_list must be a list")
+
         # もしspeaker_and_speech_content_listがNoneの場合は、
         # 現在のリストを更新用リストとして返す
         if speaker_and_speech_content_list is None:
@@ -164,7 +200,7 @@ class MinutesProcessAgent:
         print(f"incremented_speech_divide_index: {incremented_index}")
         return {"divided_speech_list_memory_id": memory_id, "index": incremented_index}
 
-    def run(self, original_minutes: str) -> str:
+    def run(self, original_minutes: str) -> list:
         # 初期状態の設定
         initial_state = MinutesProcessState(original_minutes=original_minutes)
         # グラフの実行
@@ -173,5 +209,12 @@ class MinutesProcessAgent:
         )
         # 分割結果の取得
         memory_id = final_state["divided_speech_list_memory_id"]
-        divided_speech_list = self._get_from_memory("divided_speech_list", memory_id)
+        memory_data = self._get_from_memory("divided_speech_list", memory_id)
+        if memory_data is None or "divided_speech_list" not in memory_data:
+            raise ValueError("Failed to retrieve divided_speech_list from memory")
+
+        divided_speech_list = memory_data["divided_speech_list"]
+        if not isinstance(divided_speech_list, list):
+            raise TypeError("divided_speech_list must be a list")
+
         return divided_speech_list
