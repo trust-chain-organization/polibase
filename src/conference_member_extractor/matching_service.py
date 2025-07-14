@@ -2,6 +2,7 @@
 
 import logging
 from datetime import date, timedelta
+from typing import Any
 
 from langchain_core.prompts import PromptTemplate
 
@@ -28,7 +29,7 @@ class ConferenceMemberMatchingService:
 
     def find_politician_candidates(
         self, extracted_name: str, party_name: str | None
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """候補となる政治家を検索"""
         # 名前で検索（部分一致も含む）
         candidates = self.politician_repo.search_by_name(extracted_name)
@@ -49,7 +50,7 @@ class ConferenceMemberMatchingService:
         return candidates[:5]  # 最大5候補
 
     def match_with_llm(
-        self, extracted_member: dict, candidates: list[dict]
+        self, extracted_member: dict[str, Any], candidates: list[dict[str, Any]]
     ) -> tuple[int | None, float]:
         """LLMを使用して最適な政治家をマッチング"""
 
@@ -164,7 +165,9 @@ class ConferenceMemberMatchingService:
             logger.error(f"Error in LLM matching: {e}")
             return None, 0.0
 
-    def process_extracted_member(self, extracted_member: dict) -> dict:
+    def process_extracted_member(
+        self, extracted_member: dict[str, Any]
+    ) -> dict[str, Any]:
         """単一の抽出メンバーを処理"""
         result = {
             "extracted_member_id": extracted_member["id"],
@@ -241,7 +244,9 @@ class ConferenceMemberMatchingService:
 
         return result
 
-    def process_pending_members(self, conference_id: int | None = None) -> dict:
+    def process_pending_members(
+        self, conference_id: int | None = None
+    ) -> dict[str, Any]:
         """未処理の抽出メンバーを処理"""
         # 未処理メンバーを取得
         pending_members = self.extracted_repo.get_pending_members(conference_id)
@@ -272,7 +277,7 @@ class ConferenceMemberMatchingService:
 
     def create_affiliations_from_matched(
         self, conference_id: int | None = None, start_date: date | None = None
-    ) -> dict:
+    ) -> dict[str, Any]:
         """マッチング済みメンバーから所属情報を作成"""
         # マッチング済みメンバーを取得
         matched_members = self.extracted_repo.get_matched_members(conference_id)

@@ -1,6 +1,7 @@
 """Conference member extractor that saves to staging table"""
 
 import logging
+from typing import Any
 
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -102,7 +103,7 @@ HTMLコンテンツ:
 
     async def extract_and_save_members(
         self, conference_id: int, conference_name: str, url: str
-    ) -> dict:
+    ) -> dict[str, Any]:
         """会議体メンバー情報を抽出してステージングテーブルに保存"""
         logger.info(f"Extracting members from {url} for conference {conference_name}")
 

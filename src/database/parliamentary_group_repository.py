@@ -19,7 +19,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         else:
             super().__init__(use_session=False)
 
-    def _row_to_dict(self, row: Any, columns: Any) -> dict[str, Any]:
+    def row_to_dict(self, row: Any, columns: Any) -> dict[str, Any]:
         """Rowオブジェクトを辞書に変換する"""
         if row is None:
             return {}
@@ -64,7 +64,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         )
         row = result.fetchone()
         self.commit()  # トランザクションをコミット
-        return self._row_to_dict(row, result.keys())
+        return self.row_to_dict(row, result.keys())
 
     def get_parliamentary_group_by_id(self, group_id: int) -> dict[str, Any] | None:
         """IDで議員団を取得する
@@ -83,7 +83,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         """
         result = self.execute_query(query, {"group_id": group_id})
         row = result.fetchone()
-        return self._row_to_dict(row, result.keys()) if row else None
+        return self.row_to_dict(row, result.keys()) if row else None
 
     def get_parliamentary_groups_by_conference(
         self, conference_id: int, active_only: bool = True
@@ -203,7 +203,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         else:
             super().__init__(use_session=False)
 
-    def _row_to_dict(self, row: Any, columns: Any) -> dict[str, Any]:
+    def row_to_dict(self, row: Any, columns: Any) -> dict[str, Any]:
         """Rowオブジェクトを辞書に変換する"""
         if row is None:
             return {}
@@ -248,7 +248,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         )
         row = result.fetchone()
         self.commit()
-        return self._row_to_dict(row, result.keys())
+        return self.row_to_dict(row, result.keys())
 
     def get_current_members(self, parliamentary_group_id: int) -> list[dict[str, Any]]:
         """議員団の現在のメンバーを取得する

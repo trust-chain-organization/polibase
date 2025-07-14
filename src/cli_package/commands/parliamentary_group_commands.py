@@ -99,7 +99,7 @@ def extract_group_members(
             result = group_repo.execute_query(query)
             rows = result.fetchall()
             all_groups_data = [
-                group_repo._row_to_dict(row, result.keys()) for row in rows
+                group_repo.row_to_dict(row, result.keys()) for row in rows
             ]
 
         groups_to_process = [g for g in all_groups_data if g.get("url")]
@@ -286,7 +286,7 @@ def list_parliamentary_groups(
 
         result = group_repo.execute_query(query)
         rows = result.fetchall()
-        groups = [group_repo._row_to_dict(row, result.keys()) for row in rows]
+        groups = [group_repo.row_to_dict(row, result.keys()) for row in rows]
 
     if not groups:
         click.echo(click.style("議員団が見つかりません", fg="yellow"))
