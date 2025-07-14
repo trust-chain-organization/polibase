@@ -2,8 +2,9 @@
 
 import asyncio
 import logging
+from types import TracebackType
 
-from playwright.async_api import Page, async_playwright
+from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
 from ..config.settings import get_settings
 from .models import WebPageContent
@@ -15,8 +16,8 @@ class PartyMemberPageFetcher:
     """政党の議員一覧ページを取得（ページネーション対応）"""
 
     def __init__(self):
-        self.browser = None
-        self.context = None
+        self.browser: Browser | None = None
+        self.context: BrowserContext | None = None
         self.settings = get_settings()
 
     async def __aenter__(self):
@@ -29,7 +30,12 @@ class PartyMemberPageFetcher:
         )
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         try:
             if self.context:
                 await self.context.close()
@@ -52,8 +58,11 @@ class PartyMemberPageFetcher:
         Returns:
             List[WebPageContent]: 取得したページコンテンツのリスト
         """
-        pages_content = []
-        visited_urls = set()
+        pages_content: list[WebPageContent] = []
+        visited_urls: set[str] = set()
+
+        if not self.context:
+            raise RuntimeError("Browser context not initialized")
 
         page = await self.context.new_page()
         try:
@@ -173,6 +182,9 @@ class PartyMemberPageFetcher:
 
     async def fetch_single_page(self, url: str) -> WebPageContent | None:
         """単一ページを取得"""
+        if not self.context:
+            raise RuntimeError("Browser context not initialized")
+
         page = await self.context.new_page()
         try:
             logger.info(f"Fetching page: {url}")
