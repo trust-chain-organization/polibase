@@ -333,8 +333,8 @@ class ExtractedConferenceMemberRepository:
             }
 
             for row in result:
-                if row.matching_status in summary:
-                    summary[row.matching_status] = row[1]  # count is the second column
+                if row[0] in summary:  # matching_status is the first column
+                    summary[row[0]] = row[1]  # count is the second column
                 summary["total"] += row[1]
 
             return summary
