@@ -3,11 +3,14 @@
 import sys
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from contextlib import contextmanager
-from typing import Any
+from types import TracebackType
+from typing import Any, TypeVar
 
 import click
+
+T = TypeVar("T")
 
 
 class Spinner:
@@ -67,13 +70,13 @@ def spinner(message: str = "Processing", final_message: str | None = None):
 
 
 def progress_bar(
-    iterable,
+    iterable: Iterable[T],
     label: str = "Processing",
     length: int | None = None,
     fill_char: str = "█",
     empty_char: str = "░",
     width: int = 30,
-):
+) -> Any:
     """Create a progress bar for iterables
 
     Usage:
@@ -92,7 +95,9 @@ def progress_bar(
     )
 
 
-def with_progress(message: str = "Processing", success_message: str | None = None):
+def with_progress(
+    message: str = "Processing", success_message: str | None = None
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator to show progress spinner during function execution
 
     Usage:
@@ -103,8 +108,8 @@ def with_progress(message: str = "Processing", success_message: str | None = Non
             return data
     """
 
-    def decorator(func: Callable) -> Callable:
-        def wrapper(*args, **kwargs) -> Any:
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        def wrapper(*args: Any, **kwargs: Any) -> T:
             with spinner(message, success_message):
                 return func(*args, **kwargs)
 
@@ -134,7 +139,12 @@ class ProgressTracker:
         self.bar.__enter__()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         if self.bar:
             self.bar.__exit__(exc_type, exc_val, exc_tb)
 

@@ -170,7 +170,8 @@ jobs:
       - name: Run type checking
         run: |
           uv run pyright src/
-        # TODO: Remove continue-on-error once Issue #175 is resolved
+        # TODO: Remove continue-on-error once Issues #175, #238 are resolved
+        # #238: cli_package/の依存モジュール型定義改善が必要
         continue-on-error: true
 
       - name: Generate type checking report

@@ -2,7 +2,8 @@
 
 import asyncio
 import logging
-from datetime import date
+from datetime import date, datetime
+from typing import Any
 
 import click
 
@@ -125,7 +126,7 @@ class ConferenceMemberCommands(BaseCommand):
 
                 try:
                     # 抽出実行
-                    result = asyncio.run(
+                    result: dict[str, Any] = asyncio.run(
                         extractor.extract_and_save_members(
                             conference_id=conf["id"],
                             conference_name=conf["name"],
@@ -138,8 +139,8 @@ class ConferenceMemberCommands(BaseCommand):
                             f"  ❌ エラー: {conf['name']} - {result['error']}"
                         )
                     else:
-                        total_extracted += result["extracted_count"]
-                        total_saved += result["saved_count"]
+                        total_extracted += int(result["extracted_count"])
+                        total_saved += int(result["saved_count"])
 
                         ConferenceMemberCommands.echo_success(
                             f"  ✓ {conf['name']}: "
@@ -209,7 +210,9 @@ class ConferenceMemberCommands(BaseCommand):
         with ProgressTracker(
             total_steps=1, description="マッチング処理中..."
         ) as progress:
-            results = matching_service.process_pending_members(conference_id)
+            results: dict[str, Any] = matching_service.process_pending_members(
+                conference_id
+            )
 
             progress.update(1)
 
@@ -237,7 +240,9 @@ class ConferenceMemberCommands(BaseCommand):
         type=click.DateTime(formats=["%Y-%m-%d"]),
         help="所属開始日（デフォルト: 今日）",
     )
-    def create_affiliations(conference_id: int | None = None, start_date=None):
+    def create_affiliations(
+        conference_id: int | None = None, start_date: datetime | None = None
+    ):
         """マッチング済みデータから政治家所属情報を作成（ステップ3）"""
 
         ConferenceMemberCommands.echo_info(
@@ -245,12 +250,13 @@ class ConferenceMemberCommands(BaseCommand):
         )
 
         # 開始日の処理
+        start_date_obj: date
         if start_date:
-            start_date = start_date.date()
+            start_date_obj = start_date.date()
         else:
-            start_date = date.today()
+            start_date_obj = date.today()
 
-        ConferenceMemberCommands.echo_info(f"所属開始日: {start_date}")
+        ConferenceMemberCommands.echo_info(f"所属開始日: {start_date_obj}")
 
         # マッチングサービスを初期化
         matching_service = ConferenceMemberMatchingService()
@@ -259,8 +265,8 @@ class ConferenceMemberCommands(BaseCommand):
         with ProgressTracker(
             total_steps=1, description="所属情報作成中..."
         ) as progress:
-            results = matching_service.create_affiliations_from_matched(
-                conference_id, start_date
+            results: dict[str, Any] = matching_service.create_affiliations_from_matched(
+                conference_id, start_date_obj
             )
 
             progress.update(1)

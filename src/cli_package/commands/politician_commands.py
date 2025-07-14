@@ -24,7 +24,9 @@ class PoliticianCommands(BaseCommand):
     )
     @click.option("--max-pages", default=10, help="Maximum pages to fetch per party")
     @with_error_handling
-    def scrape_politicians(party_id, all_parties, dry_run, max_pages):
+    def scrape_politicians(
+        party_id: int | None, all_parties: bool, dry_run: bool, max_pages: int
+    ):
         """Scrape politician data from party member list pages (政党議員一覧取得)
 
         This command fetches politician information from political party websites
@@ -43,7 +45,9 @@ class PoliticianCommands(BaseCommand):
         )
 
     @staticmethod
-    async def _async_scrape_politicians(party_id, all_parties, dry_run, max_pages):
+    async def _async_scrape_politicians(
+        party_id: int | None, all_parties: bool, dry_run: bool, max_pages: int
+    ):
         """Async implementation of scrape_politicians"""
         from src.config.database import get_db_engine
         from src.database.politician_repository import PoliticianRepository

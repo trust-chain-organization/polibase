@@ -27,7 +27,7 @@ class DatabaseCommands(BaseCommand):
     @click.argument("filename", required=False)
     @click.option("--gcs/--no-gcs", default=True, help="GCSを使用する/しない")
     @with_error_handling
-    def database(action, filename, gcs):
+    def database(action: str, filename: str | None, gcs: bool):
         """Database management commands (データベース管理)
 
         Actions:
