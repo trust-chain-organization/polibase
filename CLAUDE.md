@@ -138,13 +138,22 @@ docker compose exec polibase uv run --frozen ruff check . --fix
 #### Type Checking
 ```bash
 # Run type checking with pyright
-docker compose exec polibase uv run --frozen pyright
+# NOTE: pyrightを実行する際は、Dockerコンテナ内ではなくローカル環境で実行してください
+# Docker環境では設定ファイルの読み込みに問題が発生することがあります
+uv run --frozen pyright
+
+# 特定のフォルダのみチェックする場合
+uv run --frozen pyright src/database/
+
+# pyrightの出力が多い場合、特定のフォルダのエラーのみを抽出
+uv run --frozen pyright 2>&1 | grep -A5 -B5 "src/database/"
 ```
 
 **Requirements:**
 - Explicit `None` checks for `Optional` types
 - Proper type narrowing for strings
 - Version warnings can be ignored if type checks pass
+- pyrightconfig.json で設定されたルールに従う
 
 #### Pre-commit Hooks
 ```bash
