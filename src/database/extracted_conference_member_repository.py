@@ -1,6 +1,8 @@
 """Repository for managing extracted conference member data"""
 
 import logging
+import types
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
@@ -27,7 +29,12 @@ class ExtractedConferenceMemberRepository:
         self.connection = self.engine.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         if self.connection:
             self.connection.close()
 
@@ -73,7 +80,11 @@ class ExtractedConferenceMemberRepository:
             )
 
             self.connection.commit()
-            member_id = result.fetchone()[0]
+            row = result.fetchone()
+            if row is None:
+                logger.error("Failed to get member ID after creation")
+                return None
+            member_id = row[0]
             logger.info(f"Created extracted member with ID: {member_id}")
             return member_id
 
@@ -107,7 +118,9 @@ class ExtractedConferenceMemberRepository:
                 {"extracted_name": extracted_name, "error": str(e)},
             ) from e
 
-    def get_pending_members(self, conference_id: int | None = None) -> list[dict]:
+    def get_pending_members(
+        self, conference_id: int | None = None
+    ) -> list[dict[str, Any]]:
         """未処理のメンバー情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
@@ -143,7 +156,7 @@ class ExtractedConferenceMemberRepository:
 
         result = self.connection.execute(text(query_str), params)
 
-        members = []
+        members: list[dict[str, Any]] = []
         for row in result:
             members.append(
                 {
@@ -203,7 +216,9 @@ class ExtractedConferenceMemberRepository:
             logger.error(f"Error updating matching result: {e}")
             return False
 
-    def get_matched_members(self, conference_id: int | None = None) -> list[dict]:
+    def get_matched_members(
+        self, conference_id: int | None = None
+    ) -> list[dict[str, Any]]:
         """マッチング済みのメンバー情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
@@ -242,7 +257,7 @@ class ExtractedConferenceMemberRepository:
 
         result = self.connection.execute(text(query_str), params)
 
-        members = []
+        members: list[dict[str, Any]] = []
         for row in result:
             members.append(
                 {
@@ -279,8 +294,8 @@ class ExtractedConferenceMemberRepository:
 
             deleted_count = result.rowcount
             logger.info(
-                f"Deleted {deleted_count} extracted members "
-                f"for conference {conference_id}"
+                f"Deleted {deleted_count} extracted members for "
+                f"conference {conference_id}"
             )
             return deleted_count
 
@@ -289,7 +304,7 @@ class ExtractedConferenceMemberRepository:
             logger.error(f"Error deleting extracted members: {e}")
             return 0
 
-    def get_extraction_summary(self) -> dict:
+    def get_extraction_summary(self) -> dict[str, int]:
         """抽出状況のサマリーを取得
 
         Raises:
@@ -309,7 +324,7 @@ class ExtractedConferenceMemberRepository:
 
             result = self.connection.execute(query)
 
-            summary = {
+            summary: dict[str, int] = {
                 "pending": 0,
                 "matched": 0,
                 "no_match": 0,
@@ -318,9 +333,9 @@ class ExtractedConferenceMemberRepository:
             }
 
             for row in result:
-                if row.matching_status in summary:
-                    summary[row.matching_status] = row.count
-                summary["total"] += row.count
+                if row[0] in summary:  # matching_status is the first column
+                    summary[row[0]] = row[1]  # count is the second column
+                summary["total"] += row[1]
 
             return summary
         except SQLAlchemyError as e:

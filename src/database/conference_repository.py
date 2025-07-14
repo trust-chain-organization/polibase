@@ -1,6 +1,8 @@
 """Repository for managing conferences"""
 
 import logging
+import types
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
@@ -30,7 +32,12 @@ class ConferenceRepository:
         self.connection = self.engine.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         if self.connection:
             self.connection.close()
 
@@ -39,7 +46,7 @@ class ConferenceRepository:
         if self.connection:
             self.connection.close()
 
-    def get_all_conferences(self) -> list[dict]:
+    def get_all_conferences(self) -> list[dict[str, Any]]:
         """すべての会議体を取得
 
         Raises:
@@ -65,7 +72,7 @@ class ConferenceRepository:
             """)
 
             result = self.connection.execute(query)
-            conferences = []
+            conferences: list[dict[str, Any]] = []
             for row in result:
                 conferences.append(
                     {
@@ -93,7 +100,7 @@ class ConferenceRepository:
                 {"error": str(e)},
             ) from e
 
-    def get_conference_by_id(self, conference_id: int) -> dict | None:
+    def get_conference_by_id(self, conference_id: int) -> dict[str, Any] | None:
         """IDで会議体を取得
 
         Raises:
@@ -139,7 +146,9 @@ class ConferenceRepository:
                 {"conference_id": conference_id, "error": str(e)},
             ) from e
 
-    def get_conferences_by_governing_body(self, governing_body_id: int) -> list[dict]:
+    def get_conferences_by_governing_body(
+        self, governing_body_id: int
+    ) -> list[dict[str, Any]]:
         """開催主体IDで会議体を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
@@ -162,7 +171,7 @@ class ConferenceRepository:
         result = self.connection.execute(
             query, {"governing_body_id": governing_body_id}
         )
-        conferences = []
+        conferences: list[dict[str, Any]] = []
         for row in result:
             conferences.append(
                 {
@@ -198,7 +207,11 @@ class ConferenceRepository:
             )
 
             self.connection.commit()
-            conference_id = result.fetchone()[0]
+            row = result.fetchone()
+            if row is None:
+                logger.error("Failed to get conference ID after creation")
+                return None
+            conference_id = row[0]
             logger.info(f"Created conference with ID: {conference_id}")
             return conference_id
 
@@ -238,8 +251,8 @@ class ConferenceRepository:
 
         try:
             # 更新するフィールドを動的に構築
-            update_fields = []
-            params = {"conference_id": conference_id}
+            update_fields: list[str] = []
+            params: dict[str, Any] = {"conference_id": conference_id}
 
             if name is not None:
                 update_fields.append("name = :name")
@@ -343,7 +356,11 @@ class ConferenceRepository:
             result = self.connection.execute(
                 check_query, {"conference_id": conference_id}
             )
-            count = result.fetchone().count
+            row = result.fetchone()
+            if row is None:
+                logger.error(f"Failed to check meetings for conference {conference_id}")
+                return False
+            count = row[0]
 
             if count > 0:
                 logger.warning(
@@ -378,7 +395,7 @@ class ConferenceRepository:
                 {"conference_id": conference_id, "error": str(e)},
             ) from e
 
-    def get_governing_bodies(self) -> list[dict]:
+    def get_governing_bodies(self) -> list[dict[str, Any]]:
         """すべての開催主体を取得
 
         Raises:
@@ -395,7 +412,7 @@ class ConferenceRepository:
             """)
 
             result = self.connection.execute(query)
-            governing_bodies = []
+            governing_bodies: list[dict[str, Any]] = []
             for row in result:
                 governing_bodies.append(
                     {"id": row.id, "name": row.name, "type": row.type}

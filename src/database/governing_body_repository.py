@@ -1,6 +1,8 @@
 """Repository for managing governing bodies"""
 
 import logging
+import types
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
@@ -30,7 +32,12 @@ class GoverningBodyRepository:
         self.connection = self.engine.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         if self.connection:
             self.connection.close()
 
@@ -39,7 +46,7 @@ class GoverningBodyRepository:
         if self.connection:
             self.connection.close()
 
-    def get_all_governing_bodies(self) -> list[dict]:
+    def get_all_governing_bodies(self) -> list[dict[str, Any]]:
         """すべての開催主体を取得
 
         Raises:
@@ -67,7 +74,7 @@ class GoverningBodyRepository:
             """)
 
             result = self.connection.execute(query)
-            governing_bodies = []
+            governing_bodies: list[dict[str, Any]] = []
             for row in result:
                 governing_bodies.append(
                     {
@@ -92,7 +99,7 @@ class GoverningBodyRepository:
                 {"error": str(e)},
             ) from e
 
-    def get_governing_body_by_id(self, governing_body_id: int) -> dict | None:
+    def get_governing_body_by_id(self, governing_body_id: int) -> dict[str, Any] | None:
         """IDで開催主体を取得
 
         Raises:
@@ -126,7 +133,7 @@ class GoverningBodyRepository:
                 {"governing_body_id": governing_body_id, "error": str(e)},
             ) from e
 
-    def get_governing_bodies_by_type(self, gb_type: str) -> list[dict]:
+    def get_governing_bodies_by_type(self, gb_type: str) -> list[dict[str, Any]]:
         """種別で開催主体を取得
 
         Raises:
@@ -147,7 +154,7 @@ class GoverningBodyRepository:
             """)
 
             result = self.connection.execute(query, {"type": gb_type})
-            governing_bodies = []
+            governing_bodies: list[dict[str, Any]] = []
             for row in result:
                 governing_bodies.append(
                     {
@@ -196,7 +203,11 @@ class GoverningBodyRepository:
             result = self.connection.execute(query, {"name": name, "type": gb_type})
 
             self.connection.commit()
-            governing_body_id = result.fetchone()[0]
+            row = result.fetchone()
+            if row is None:
+                logger.error("Failed to get governing body ID after creation")
+                return None
+            governing_body_id = row[0]
             logger.info(f"Created governing body with ID: {governing_body_id}")
             return governing_body_id
 
@@ -292,7 +303,14 @@ class GoverningBodyRepository:
             result = self.connection.execute(
                 check_query, {"governing_body_id": governing_body_id}
             )
-            count = result.fetchone().count
+            row = result.fetchone()
+            if row is None:
+                logger.error(
+                    f"Failed to check conferences for governing body "
+                    f"{governing_body_id}"
+                )
+                return False
+            count = row[0]
 
             if count > 0:
                 logger.warning(

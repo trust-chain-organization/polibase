@@ -5,6 +5,7 @@ Provides database operations for conversations with proper error handling.
 """
 
 import logging
+from typing import Any
 
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
@@ -199,7 +200,7 @@ class ConversationRepository(BaseRepository):
         row = self.fetch_one(query, {"speaker_name": speaker_name})
 
         if row:
-            return row[0]
+            return int(row[0])
 
         # 括弧内の名前を抽出して検索（例: "委員長(平山たかお)" → "平山たかお"）
         import re
@@ -216,7 +217,7 @@ class ConversationRepository(BaseRepository):
             row = self.fetch_one(query, {"extracted_name": extracted_name})
 
             if row:
-                return row[0]
+                return int(row[0])
 
         # 記号を除去して検索（例: "◆委員(下村あきら)" → "委員(下村あきら)"）
         cleaned_name = re.sub(r"^[◆○◎]", "", speaker_name)
@@ -237,9 +238,9 @@ class ConversationRepository(BaseRepository):
             {"speaker_pattern": f"%{speaker_name}%", "speaker_name": speaker_name},
         )
 
-        return row[0] if row else None
+        return int(row[0]) if row else None
 
-    def get_all_conversations(self) -> list[dict]:
+    def get_all_conversations(self) -> list[dict[str, Any]]:
         """
         全てのConversationレコードを取得する
 
@@ -268,7 +269,7 @@ class ConversationRepository(BaseRepository):
         count = self.count("conversations", where={})
         return count
 
-    def get_speaker_linking_stats(self) -> dict:
+    def get_speaker_linking_stats(self) -> dict[str, int]:
         """
         発言者の紐付け統計を取得する
 
@@ -285,15 +286,22 @@ class ConversationRepository(BaseRepository):
 
         row = self.fetch_one(query)
 
+        if row is None:
+            return {
+                "total_conversations": 0,
+                "linked_conversations": 0,
+                "unlinked_conversations": 0,
+            }
+
         stats = {
-            "total_conversations": row[0],
-            "linked_conversations": row[1],
-            "unlinked_conversations": row[2],
+            "total_conversations": int(row[0]),
+            "linked_conversations": int(row[1]),
+            "unlinked_conversations": int(row[2]),
         }
 
         return stats
 
-    def get_conversations_by_minutes_id(self, minutes_id: int) -> list[dict]:
+    def get_conversations_by_minutes_id(self, minutes_id: int) -> list[dict[str, Any]]:
         """
         指定されたminutes_idに紐づく全てのConversationレコードを取得する
 
@@ -316,7 +324,7 @@ class ConversationRepository(BaseRepository):
         results = self.fetch_as_dict(query, {"minutes_id": minutes_id})
         return results
 
-    def get_all_conversations_without_speaker_id(self) -> list[dict]:
+    def get_all_conversations_without_speaker_id(self) -> list[dict[str, Any]]:
         """
         speaker_idが設定されていない全てのConversationレコードを取得する
 

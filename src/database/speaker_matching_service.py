@@ -2,6 +2,7 @@
 
 import logging
 import re
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy import text
@@ -10,6 +11,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from ..config.database import get_db_session
 from ..exceptions import DatabaseError, LLMError, QueryError
 from ..services import ChainFactory, LLMService
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +43,8 @@ class SpeakerMatchingService:
         # Initialize services
         if llm_service is None:
             # Use fast model with low temperature for consistency
-            self.llm_service = LLMService.create_fast_instance(
+            # Type ignore for unknown kwargs in LLMService
+            self.llm_service = LLMService.create_fast_instance(  # type: ignore[call-arg]
                 temperature=0.1, max_tokens=1000
             )
         else:
@@ -49,7 +54,7 @@ class SpeakerMatchingService:
         self.session = get_db_session()
 
         # Create matching chain
-        self._matching_chain = self.chain_factory.create_speaker_matching_chain(
+        self._matching_chain: Any = self.chain_factory.create_speaker_matching_chain(  # type: ignore[misc]
             SpeakerMatch
         )
 
@@ -79,8 +84,8 @@ class SpeakerMatchingService:
             )
 
         # 会議体所属情報を取得（利用可能な場合）
-        affiliated_speakers = []
-        affiliated_speaker_ids = set()
+        affiliated_speakers: list[dict[str, Any]] = []
+        affiliated_speaker_ids: set[int] = set()
         if meeting_date and conference_id:
             affiliated_speakers = self._get_affiliated_speakers(
                 meeting_date, conference_id
@@ -100,7 +105,7 @@ class SpeakerMatchingService:
             )
 
             # Use chain factory with retry logic
-            result = self.chain_factory.invoke_with_retry(
+            result = self.chain_factory.invoke_with_retry(  # type: ignore[misc]
                 self._matching_chain,
                 {
                     "speaker_name": speaker_name,
@@ -113,9 +118,16 @@ class SpeakerMatchingService:
 
             # 結果の検証
             if isinstance(result, dict):
-                match_result = SpeakerMatch(**result)
-            else:
+                # Cast to Any to avoid unknown type issues
+                result_dict: dict[str, Any] = result  # type: ignore[assignment]
+                match_result = SpeakerMatch(**result_dict)
+            elif isinstance(result, SpeakerMatch):
                 match_result = result
+            else:
+                # Fallback to no match if result type is unexpected
+                match_result = SpeakerMatch(
+                    matched=False, confidence=0.0, reason="LLM返答の形式が不正です"
+                )
 
             # 信頼度が低い場合はマッチしないとして扱う
             if match_result.confidence < 0.8:
@@ -136,7 +148,7 @@ class SpeakerMatchingService:
                 {"error": str(e)},
             ) from e
 
-    def _get_available_speakers(self) -> list[dict]:
+    def _get_available_speakers(self) -> list[dict[str, Any]]:
         """利用可能な発言者リストを取得
 
         Raises:
@@ -146,7 +158,7 @@ class SpeakerMatchingService:
             query = text("SELECT id, name FROM speakers ORDER BY name")
             result = self.session.execute(query)
 
-            speakers = []
+            speakers: list[dict[str, Any]] = []
             for row in result.fetchall():
                 speakers.append({"id": row[0], "name": row[1]})
 
@@ -159,7 +171,7 @@ class SpeakerMatchingService:
 
     def _get_affiliated_speakers(
         self, meeting_date: str, conference_id: int
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """
         指定された会議日と会議体IDに基づいて、その時点でアクティブな所属を持つ発言者を取得
 
@@ -195,7 +207,7 @@ class SpeakerMatchingService:
                 query, {"conference_id": conference_id, "meeting_date": meeting_date}
             )
 
-            affiliated_speakers = []
+            affiliated_speakers: list[dict[str, Any]] = []
             for row in result.fetchall():
                 affiliated_speakers.append(
                     {
@@ -220,7 +232,7 @@ class SpeakerMatchingService:
             ) from e
 
     def _rule_based_matching(
-        self, speaker_name: str, available_speakers: list[dict]
+        self, speaker_name: str, available_speakers: list[dict[str, Any]]
     ) -> SpeakerMatch:
         """従来のルールベースマッチング"""
 
@@ -272,12 +284,12 @@ class SpeakerMatchingService:
     def _filter_candidates(
         self,
         speaker_name: str,
-        available_speakers: list[dict],
+        available_speakers: list[dict[str, Any]],
         affiliated_speaker_ids: set[int] | None = None,
         max_candidates: int = 10,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """候補を絞り込む（LLMの処理効率向上のため、会議体所属を優先）"""
-        candidates = []
+        candidates: list[dict[str, Any]] = []
 
         # 括弧内の名前を抽出
         extracted_name = None
@@ -328,10 +340,12 @@ class SpeakerMatchingService:
         )
 
     def _format_speakers_for_llm(
-        self, speakers: list[dict], affiliated_speaker_ids: set[int] | None = None
+        self,
+        speakers: list[dict[str, Any]],
+        affiliated_speaker_ids: set[int] | None = None,
     ) -> str:
         """発言者リストをLLM用にフォーマット（会議体所属情報を含む）"""
-        formatted = []
+        formatted: list[str] = []
         for speaker in speakers:
             entry = f"ID: {speaker['id']}, 名前: {speaker['name']}"
             if affiliated_speaker_ids and speaker["id"] in affiliated_speaker_ids:
@@ -346,6 +360,14 @@ class SpeakerMatchingService:
         Returns:
             Dict[str, int]: 更新統計
         """
+        stats = {
+            "total_processed": 0,
+            "successfully_matched": 0,
+            "high_confidence_matches": 0,
+            "failed_matches": 0,
+            "affiliation_aided_matches": 0,
+        }
+
         try:
             # speaker_idがNULLのレコードを取得（会議情報も含む）
             query = text("""
@@ -360,13 +382,7 @@ class SpeakerMatchingService:
             result = self.session.execute(query)
             unlinked_conversations = result.fetchall()
 
-            stats = {
-                "total_processed": len(unlinked_conversations),
-                "successfully_matched": 0,
-                "high_confidence_matches": 0,
-                "failed_matches": 0,
-                "affiliation_aided_matches": 0,
-            }
+            stats["total_processed"] = len(unlinked_conversations)
 
             for (
                 conversation_id,

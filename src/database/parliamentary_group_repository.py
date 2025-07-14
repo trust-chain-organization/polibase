@@ -1,6 +1,9 @@
 """議員団関連のリポジトリクラス"""
 
 from datetime import date
+from typing import Any
+
+from sqlalchemy.orm import Session
 
 from src.database.base_repository import BaseRepository
 
@@ -8,7 +11,7 @@ from src.database.base_repository import BaseRepository
 class ParliamentaryGroupRepository(BaseRepository):
     """議員団のリポジトリ"""
 
-    def __init__(self, session=None):
+    def __init__(self, session: Session | None = None):
         """Initialize repository with optional session"""
         if session:
             super().__init__(use_session=True)
@@ -16,7 +19,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         else:
             super().__init__(use_session=False)
 
-    def _row_to_dict(self, row, columns) -> dict:
+    def _row_to_dict(self, row: Any, columns: Any) -> dict[str, Any]:
         """Rowオブジェクトを辞書に変換する"""
         if row is None:
             return {}
@@ -29,7 +32,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         url: str | None = None,
         description: str | None = None,
         is_active: bool = True,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """議員団を作成する
 
         Args:
@@ -63,7 +66,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         self.commit()  # トランザクションをコミット
         return self._row_to_dict(row, result.keys())
 
-    def get_parliamentary_group_by_id(self, group_id: int) -> dict | None:
+    def get_parliamentary_group_by_id(self, group_id: int) -> dict[str, Any] | None:
         """IDで議員団を取得する
 
         Args:
@@ -84,7 +87,7 @@ class ParliamentaryGroupRepository(BaseRepository):
 
     def get_parliamentary_groups_by_conference(
         self, conference_id: int, active_only: bool = True
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """会議体に所属する議員団を取得する
 
         Args:
@@ -109,7 +112,7 @@ class ParliamentaryGroupRepository(BaseRepository):
 
     def search_parliamentary_groups(
         self, name: str | None = None, conference_id: int | None = None
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """議員団を検索する
 
         Args:
@@ -120,7 +123,7 @@ class ParliamentaryGroupRepository(BaseRepository):
             検索結果のリスト
         """
         query = "SELECT * FROM parliamentary_groups WHERE 1=1"
-        params = {}
+        params: dict[str, Any] = {}
 
         if name:
             query += " AND name LIKE :name"
@@ -157,7 +160,7 @@ class ParliamentaryGroupRepository(BaseRepository):
         Returns:
             更新成功ならTrue
         """
-        updates = []
+        updates: list[str] = []
         params: dict[str, str | int | bool] = {"group_id": group_id}
 
         if name is not None:
@@ -192,7 +195,7 @@ class ParliamentaryGroupRepository(BaseRepository):
 class ParliamentaryGroupMembershipRepository(BaseRepository):
     """議員団所属履歴のリポジトリ"""
 
-    def __init__(self, session=None):
+    def __init__(self, session: Session | None = None):
         """Initialize repository with optional session"""
         if session:
             super().__init__(use_session=True)
@@ -200,7 +203,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         else:
             super().__init__(use_session=False)
 
-    def _row_to_dict(self, row, columns) -> dict:
+    def _row_to_dict(self, row: Any, columns: Any) -> dict[str, Any]:
         """Rowオブジェクトを辞書に変換する"""
         if row is None:
             return {}
@@ -213,7 +216,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         start_date: date,
         end_date: date | None = None,
         role: str | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """議員団所属履歴を追加する
 
         Args:
@@ -247,7 +250,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
         self.commit()
         return self._row_to_dict(row, result.keys())
 
-    def get_current_members(self, parliamentary_group_id: int) -> list[dict]:
+    def get_current_members(self, parliamentary_group_id: int) -> list[dict[str, Any]]:
         """議員団の現在のメンバーを取得する
 
         Args:
@@ -272,7 +275,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
 
     def get_member_history(
         self, parliamentary_group_id: int, include_past: bool = True
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """議員団のメンバー履歴を取得する
 
         Args:
@@ -301,7 +304,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
 
     def get_politician_groups(
         self, politician_id: int, current_only: bool = True
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """政治家が所属する（した）議員団を取得する
 
         Args:
@@ -361,7 +364,7 @@ class ParliamentaryGroupMembershipRepository(BaseRepository):
 
     def get_group_members_at_date(
         self, parliamentary_group_id: int, target_date: date
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """特定の日付における議員団のメンバーを取得する
 
         Args:

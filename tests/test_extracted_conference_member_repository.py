@@ -241,22 +241,15 @@ class TestExtractedConferenceMemberRepository:
         """Test getting extraction summary"""
         # Setup
         mock_result = Mock()
-        mock_row1 = Mock()
-        mock_row1.matching_status = "pending"
-        mock_row1.count = 5
-
-        mock_row2 = Mock()
-        mock_row2.matching_status = "matched"
-        mock_row2.count = 10
-
-        mock_row3 = Mock()
-        mock_row3.matching_status = "no_match"
-        mock_row3.count = 3
+        # Return tuples instead of Mock objects with attributes
+        mock_rows = [
+            ("pending", 5),
+            ("matched", 10),
+            ("no_match", 3),
+        ]
 
         # Mock iterator behavior
-        mock_result.__iter__ = Mock(
-            return_value=iter([mock_row1, mock_row2, mock_row3])
-        )
+        mock_result.__iter__ = Mock(return_value=iter(mock_rows))
         repository.connection.execute.return_value = mock_result
 
         # Execute

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import pandas as pd
+from sqlalchemy.orm import Session
 
 from src.database.base_repository import BaseRepository
 
@@ -11,7 +12,7 @@ from src.database.base_repository import BaseRepository
 class MonitoringRepository(BaseRepository):
     """監視ダッシュボード用のデータアクセスリポジトリ"""
 
-    def __init__(self, session=None):
+    def __init__(self, session: Session | None = None):
         """Initialize repository with optional session"""
         if session:
             super().__init__(use_session=True)
@@ -143,7 +144,7 @@ class MonitoringRepository(BaseRepository):
         """
 
         start_date = datetime.now() - timedelta(days=days)
-        result = self.fetch_all(query, {"start_date": start_date})
+        result = self.fetch_all(query, {"start_date": start_date.isoformat()})
 
         return pd.DataFrame(result)
 
@@ -152,7 +153,7 @@ class MonitoringRepository(BaseRepository):
     ) -> pd.DataFrame:
         """議会別のカバレッジ情報を取得"""
         where_clause = ""
-        params = {"min_coverage": min_coverage}
+        params: dict[str, Any] = {"min_coverage": min_coverage}
 
         if governing_body_type:
             where_clause = "WHERE gb.type = :gov_type"
@@ -214,7 +215,7 @@ class MonitoringRepository(BaseRepository):
         else:  # 全期間
             start_date = datetime(2000, 1, 1)
 
-        queries = []
+        queries: list[str] = []
 
         if data_type in ["会議数", "すべて"]:
             queries.append("""
@@ -259,7 +260,7 @@ class MonitoringRepository(BaseRepository):
                 ORDER BY date, data_type
             """
 
-            result = self.fetch_all(final_query, {"start_date": start_date})
+            result = self.fetch_all(final_query, {"start_date": start_date.isoformat()})
             return pd.DataFrame(result)
 
         return pd.DataFrame()

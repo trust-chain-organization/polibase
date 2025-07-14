@@ -4,6 +4,7 @@ LLMを活用した発言者と政治家の高精度マッチングサービス
 
 import logging
 import re
+from typing import Any
 
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -14,7 +15,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from src.config.database import get_db_session
 from src.exceptions import DatabaseError, LLMError, QueryError
 from src.services.llm_factory import LLMServiceFactory
-from src.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class PoliticianMatch(BaseModel):
 class PoliticianMatchingService:
     """LLMを活用した発言者-政治家マッチングサービス"""
 
-    def __init__(self, llm_service: LLMService | None = None):
+    def __init__(self, llm_service: Any | None = None):
         """
         Initialize PoliticianMatchingService
 
@@ -50,6 +50,7 @@ class PoliticianMatchingService:
 
         self.llm_service = llm_service
         self.session = get_db_session()
+        self.chain: Any = None
         self._setup_prompt()
 
     def _setup_prompt(self):
@@ -100,7 +101,10 @@ class PoliticianMatchingService:
         """)
 
         self.output_parser = JsonOutputParser(pydantic_object=PoliticianMatch)
-        self.chain = self.prompt | self.llm_service.llm | self.output_parser
+        if self.llm_service and hasattr(self.llm_service, "llm"):
+            self.chain = self.prompt | self.llm_service.llm | self.output_parser
+        else:
+            raise ValueError("LLM service is not properly initialized")
 
     def find_best_match(
         self,
@@ -141,6 +145,11 @@ class PoliticianMatchingService:
                 speaker_name, speaker_party, available_politicians
             )
 
+            if not self.llm_service or not hasattr(
+                self.llm_service, "invoke_with_retry"
+            ):
+                raise LLMError("LLM service is not available for matching")
+
             result = self.llm_service.invoke_with_retry(
                 self.chain,
                 {
@@ -155,9 +164,16 @@ class PoliticianMatchingService:
 
             # 結果の検証
             if isinstance(result, dict):
-                match_result = PoliticianMatch(**result)
-            else:
+                # Cast to Any to avoid unknown type issues
+                result_dict: dict[str, Any] = result  # type: ignore[assignment]
+                match_result = PoliticianMatch(**result_dict)
+            elif isinstance(result, PoliticianMatch):
                 match_result = result
+            else:
+                # Fallback to no match if result type is unexpected
+                match_result = PoliticianMatch(
+                    matched=False, confidence=0.0, reason="LLM返答の形式が不正です"
+                )
 
             # 信頼度が低い場合はマッチしないとして扱う
             if match_result.confidence < 0.7:
@@ -179,7 +195,7 @@ class PoliticianMatchingService:
                 {"speaker_name": speaker_name, "error": str(e)},
             ) from e
 
-    def _get_available_politicians(self) -> list[dict]:
+    def _get_available_politicians(self) -> list[dict[str, Any]]:
         """利用可能な政治家リストを取得
 
         Raises:
@@ -195,7 +211,7 @@ class PoliticianMatchingService:
             """)
             result = self.session.execute(query)
 
-            politicians = []
+            politicians: list[dict[str, Any]] = []
             for row in result.fetchall():
                 politicians.append(
                     {
@@ -220,7 +236,7 @@ class PoliticianMatchingService:
         self,
         speaker_name: str,
         speaker_party: str | None,
-        available_politicians: list[dict],
+        available_politicians: list[dict[str, Any]],
     ) -> PoliticianMatch:
         """従来のルールベースマッチング"""
 
@@ -275,11 +291,11 @@ class PoliticianMatchingService:
         self,
         speaker_name: str,
         speaker_party: str | None,
-        available_politicians: list[dict],
+        available_politicians: list[dict[str, Any]],
         max_candidates: int = 20,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """候補を絞り込む（LLMの処理効率向上のため）"""
-        candidates = []
+        candidates: list[dict[str, Any]] = []
 
         # 敬称を除去
         cleaned_name = re.sub(r"(議員|氏|さん|様|先生)$", "", speaker_name)
@@ -324,9 +340,9 @@ class PoliticianMatchingService:
         # 最大候補数に制限
         return candidates[:max_candidates]
 
-    def _format_politicians_for_llm(self, politicians: list[dict]) -> str:
+    def _format_politicians_for_llm(self, politicians: list[dict[str, Any]]) -> str:
         """政治家リストをLLM用にフォーマット"""
-        formatted = []
+        formatted: list[str] = []
         for p in politicians:
             info = f"ID: {p['id']}, 名前: {p['name']}"
             if p.get("party_name"):
@@ -347,6 +363,13 @@ class PoliticianMatchingService:
         Returns:
             Dict[str, int]: 更新統計
         """
+        stats = {
+            "total_processed": 0,
+            "successfully_matched": 0,
+            "high_confidence_matches": 0,
+            "failed_matches": 0,
+        }
+
         try:
             # is_politician=Falseのspeakerを取得
             query = text("""
@@ -359,12 +382,7 @@ class PoliticianMatchingService:
             result = self.session.execute(query)
             unlinked_speakers = result.fetchall()
 
-            stats = {
-                "total_processed": len(unlinked_speakers),
-                "successfully_matched": 0,
-                "high_confidence_matches": 0,
-                "failed_matches": 0,
-            }
+            stats["total_processed"] = len(unlinked_speakers)
 
             for (
                 speaker_id,
@@ -402,8 +420,7 @@ class PoliticianMatchingService:
                         stats["high_confidence_matches"] += 1
 
                     logger.info(
-                        f"マッチ成功: {speaker_name} → "
-                        f"{match_result.politician_name} "
+                        f"マッチ成功: {speaker_name} → {match_result.politician_name} "
                         f"({match_result.political_party_name}) "
                         f"(信頼度: {match_result.confidence:.2f})"
                     )

@@ -2,6 +2,8 @@
 
 import logging
 
+from sqlalchemy.orm import Session
+
 from src.database.base_repository import BaseRepository
 
 logger = logging.getLogger(__name__)
@@ -10,7 +12,7 @@ logger = logging.getLogger(__name__)
 class PoliticalPartyRepository(BaseRepository):
     """Repository for managing political party data"""
 
-    def __init__(self, session=None):
+    def __init__(self, session: Session | None = None):
         if session:
             super().__init__(use_session=True)
             self._session = session
@@ -31,12 +33,12 @@ class PoliticalPartyRepository(BaseRepository):
                 logger.info(f"新しい政党を作成しました: {party_name} (ID: {party_id})")
             return party_id
 
-    def get_by_name(self, name: str) -> tuple | None:
+    def get_by_name(self, name: str) -> tuple[int, str] | None:
         """名前で政党を取得"""
         query = "SELECT id, name FROM political_parties WHERE name = :name"
         return self.fetch_one(query, {"name": name})
 
-    def get_all(self) -> list[tuple]:
+    def get_all(self) -> list[tuple[int, str]]:
         """全ての政党を取得"""
         query = "SELECT id, name FROM political_parties ORDER BY id"
         return self.fetch_all(query)

@@ -1,7 +1,9 @@
 """Repository for managing politician affiliations"""
 
 import logging
+import types
 from datetime import date
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
@@ -30,7 +32,12 @@ class PoliticianAffiliationRepository:
         self.connection = self.engine.connect()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         if self.connection:
             self.connection.close()
 
@@ -98,7 +105,11 @@ class PoliticianAffiliationRepository:
             )
 
             self.connection.commit()
-            affiliation_id = result.fetchone()[0]
+            row = result.fetchone()
+            if row is None:
+                logger.error("Failed to get affiliation ID after creation")
+                return None
+            affiliation_id = row[0]
             logger.info(f"Created affiliation with ID: {affiliation_id}")
             return affiliation_id
 
@@ -153,7 +164,9 @@ class PoliticianAffiliationRepository:
             logger.error(f"Error updating affiliation role: {e}")
             return False
 
-    def get_affiliations_by_conference(self, conference_id: int) -> list[dict]:
+    def get_affiliations_by_conference(
+        self, conference_id: int
+    ) -> list[dict[str, Any]]:
         """会議体IDで所属情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
@@ -177,7 +190,7 @@ class PoliticianAffiliationRepository:
         """)
 
         result = self.connection.execute(query, {"conference_id": conference_id})
-        affiliations = []
+        affiliations: list[dict[str, Any]] = []
         for row in result:
             affiliations.append(
                 {
@@ -196,7 +209,7 @@ class PoliticianAffiliationRepository:
 
     def get_active_affiliations_by_politician_and_conference(
         self, politician_id: int, conference_id: int
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """政治家IDと会議体IDでアクティブな所属情報を取得
 
         Raises:
@@ -225,7 +238,7 @@ class PoliticianAffiliationRepository:
                 query, {"politician_id": politician_id, "conference_id": conference_id}
             )
 
-            affiliations = []
+            affiliations: list[dict[str, Any]] = []
             for row in result:
                 affiliations.append(
                     {
@@ -250,7 +263,9 @@ class PoliticianAffiliationRepository:
                 },
             ) from e
 
-    def get_affiliations_by_politician(self, politician_id: int) -> list[dict]:
+    def get_affiliations_by_politician(
+        self, politician_id: int
+    ) -> list[dict[str, Any]]:
         """政治家IDで所属情報を取得"""
         if not self.connection:
             self.connection = self.engine.connect()
@@ -273,7 +288,7 @@ class PoliticianAffiliationRepository:
         """)
 
         result = self.connection.execute(query, {"politician_id": politician_id})
-        affiliations = []
+        affiliations: list[dict[str, Any]] = []
         for row in result:
             affiliations.append(
                 {
@@ -343,7 +358,7 @@ class PoliticianAffiliationRepository:
         start_date: date,
         end_date: date | None = None,
         role: str | None = None,
-    ) -> int:
+    ) -> int | None:
         """所属情報をUPSERT（存在すれば更新、なければ作成）
 
         Raises:
@@ -394,7 +409,7 @@ class PoliticianAffiliationRepository:
                 )
                 self.connection.commit()
                 logger.info(f"Updated affiliation ID: {existing.id}")
-                return existing.id
+                return int(existing.id)
             else:
                 # 新規作成 - create_affiliation already has proper exception handling
                 return self.create_affiliation(
