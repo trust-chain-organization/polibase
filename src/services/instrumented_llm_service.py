@@ -105,10 +105,10 @@ class InstrumentedLLMService:
                         prompt_parts.append(str(msg))
                 prompt_text = "\n".join(prompt_parts)
 
-                chain = self._llm_service.create_simple_chain(  # type: ignore
+                chain = self._llm_service.create_simple_chain(
                     prompt_template=prompt_text, use_passthrough=False
                 )
-                result = self._llm_service.invoke_with_retry(chain, {})  # type: ignore
+                result = self._llm_service.invoke_with_retry(chain, {})
                 result = str(result.content if hasattr(result, "content") else result)
 
                 # 成功時のメトリクス記録

@@ -96,7 +96,7 @@ class LLMService:
 
     def _create_llm(self) -> ChatGoogleGenerativeAI:
         """Create LLM instance with configuration"""
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "model": self.model_name,
             "temperature": self.temperature,
             "google_api_key": self.api_key,
@@ -122,7 +122,7 @@ class LLMService:
         schema_name = schema.__name__
 
         if schema_name not in self._structured_llms:
-            self._structured_llms[schema_name] = self.llm.with_structured_output(schema)
+            self._structured_llms[schema_name] = self.llm.with_structured_output(schema)  # type: ignore[misc]
 
         return self._structured_llms[schema_name]
 
@@ -162,7 +162,10 @@ class LLMService:
         retry=retry_if_exception_type((LLMRateLimitError, LLMTimeoutError)),
     )
     def invoke_with_retry(
-        self, chain: Runnable, input_data: dict[str, Any], max_retries: int = 3
+        self,
+        chain: Runnable[dict[str, Any], Any],
+        input_data: dict[str, Any],
+        max_retries: int = 3,
     ) -> Any:
         """
         Invoke a chain with retry logic and rate limiting
@@ -210,7 +213,7 @@ class LLMService:
         prompt_key: str | None = None,
         output_schema: type[T] | None = None,
         use_passthrough: bool = True,
-    ) -> Runnable:
+    ) -> Runnable[dict[str, Any], Any]:
         """
         Create a simple chain with prompt and optional structured output
 
@@ -238,18 +241,18 @@ class LLMService:
 
         # Build chain
         if use_passthrough:
-            chain = {"input": RunnablePassthrough()} | prompt | llm
+            chain = {"input": RunnablePassthrough()} | prompt | llm  # type: ignore[misc]
         else:
-            chain = prompt | llm
+            chain = prompt | llm  # type: ignore[misc]
 
-        return chain
+        return chain  # type: ignore[return-value]
 
     def create_json_output_chain(
         self,
         prompt_template: str | None = None,
         prompt_key: str | None = None,
         output_schema: type[T] | None = None,
-    ) -> Runnable:
+    ) -> Runnable[dict[str, Any], Any]:
         """
         Create a chain with JSON output parsing
 
@@ -270,14 +273,14 @@ class LLMService:
 
         if output_schema:
             parser = JsonOutputParser(pydantic_object=output_schema)
-            chain = prompt | self.llm | parser
+            chain = prompt | self.llm | parser  # type: ignore[misc]
         else:
-            chain = prompt | self.llm
+            chain = prompt | self.llm  # type: ignore[misc]
 
-        return chain
+        return chain  # type: ignore[return-value]
 
     @classmethod
-    def create_fast_instance(cls, **kwargs) -> "LLMService":
+    def create_fast_instance(cls, **kwargs: Any) -> "LLMService":
         """Create instance optimized for speed"""
         # Extract temperature to avoid duplicate keyword argument
         temperature = kwargs.pop("temperature", 0.1)
@@ -286,7 +289,7 @@ class LLMService:
         )
 
     @classmethod
-    def create_advanced_instance(cls, **kwargs) -> "LLMService":
+    def create_advanced_instance(cls, **kwargs: Any) -> "LLMService":
         """Create instance for advanced/complex tasks"""
         # Extract temperature to avoid duplicate keyword argument
         temperature = kwargs.pop("temperature", 0.1)
@@ -299,8 +302,8 @@ class LLMService:
         try:
             # Simple test invocation
             test_prompt = ChatPromptTemplate.from_template("Say 'OK'")
-            test_chain = test_prompt | self.llm
-            test_chain.invoke({})
+            test_chain = test_prompt | self.llm  # type: ignore[misc]
+            test_chain.invoke({})  # type: ignore[misc]
             return True
         except Exception as e:
             logger.error(f"API key validation failed: {e}")

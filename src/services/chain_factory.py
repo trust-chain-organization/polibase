@@ -5,7 +5,7 @@ from typing import Any
 
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import Runnable, RunnablePassthrough
+from langchain_core.runnables import Runnable, RunnablePassthrough, RunnableSerializable
 from pydantic import BaseModel
 
 from .llm_service import LLMService
@@ -32,7 +32,9 @@ class ChainFactory:
         self.llm_service = llm_service or LLMService.create_fast_instance()
         self.prompt_manager = prompt_manager or PromptManager.get_default_instance()
 
-    def create_minutes_divider_chain(self, output_schema: type[BaseModel]) -> Runnable:
+    def create_minutes_divider_chain(
+        self, output_schema: type[BaseModel]
+    ) -> RunnableSerializable[dict[str, Any], BaseModel]:
         """
         Create chain for dividing minutes into sections
 
@@ -51,9 +53,12 @@ class ChainFactory:
 
         llm = self.llm_service.get_structured_llm(output_schema)
 
-        return {"minutes": RunnablePassthrough()} | prompt | llm
+        chain = {"minutes": RunnablePassthrough()} | prompt | llm  # type: ignore[misc]
+        return chain  # type: ignore[return-value]
 
-    def create_speech_divider_chain(self, output_schema: type[BaseModel]) -> Runnable:
+    def create_speech_divider_chain(
+        self, output_schema: type[BaseModel]
+    ) -> RunnableSerializable[dict[str, Any], BaseModel]:
         """
         Create chain for dividing sections into speeches
 
@@ -71,11 +76,12 @@ class ChainFactory:
 
         llm = self.llm_service.get_structured_llm(output_schema)
 
-        return {"section_string": RunnablePassthrough()} | prompt | llm
+        chain = {"section_string": RunnablePassthrough()} | prompt | llm  # type: ignore[misc]
+        return chain  # type: ignore[return-value]
 
     def create_politician_extractor_chain(
         self, output_schema: type[BaseModel]
-    ) -> Runnable:
+    ) -> RunnableSerializable[dict[str, Any], BaseModel]:
         """
         Create chain for extracting politician information
 
@@ -92,9 +98,12 @@ class ChainFactory:
 
         llm = self.llm_service.get_structured_llm(output_schema)
 
-        return {"minutes": RunnablePassthrough()} | prompt | llm
+        chain = {"minutes": RunnablePassthrough()} | prompt | llm  # type: ignore[misc]
+        return chain  # type: ignore[return-value]
 
-    def create_speaker_matching_chain(self, output_schema: type[BaseModel]) -> Runnable:
+    def create_speaker_matching_chain(
+        self, output_schema: type[BaseModel]
+    ) -> RunnableSerializable[dict[str, Any], Any]:
         """
         Create chain for speaker matching with JSON output
 
@@ -107,11 +116,12 @@ class ChainFactory:
         prompt = self.prompt_manager.get_prompt("speaker_match")
         parser = JsonOutputParser(pydantic_object=output_schema)
 
-        return prompt | self.llm_service.llm | parser
+        chain = prompt | self.llm_service.llm | parser  # type: ignore[misc]
+        return chain  # type: ignore[return-value]
 
     def create_party_member_extractor_chain(
         self, output_schema: type[BaseModel]
-    ) -> Runnable:
+    ) -> Runnable[dict[str, Any], Any]:
         """
         Create chain for extracting party member information
 
@@ -126,7 +136,7 @@ class ChainFactory:
         llm = advanced_service.get_structured_llm(output_schema)
 
         # Direct invocation without chain for party member extraction
-        return llm
+        return llm  # type: ignore[return-value]
 
     def create_generic_chain(
         self,
@@ -134,7 +144,7 @@ class ChainFactory:
         output_schema: type[BaseModel] | None = None,
         input_variables: list[str] | None = None,
         use_json_parser: bool = False,
-    ) -> Runnable:
+    ) -> Runnable[dict[str, Any], Any]:
         """
         Create a generic chain with custom prompt
 
@@ -156,20 +166,24 @@ class ChainFactory:
 
         # Build input mapping
         if input_variables:
-            input_mapping = {var: RunnablePassthrough() for var in input_variables}
-            chain = input_mapping | prompt | llm
+            input_mapping = {var: RunnablePassthrough() for var in input_variables}  # type: ignore[misc]
+            chain = input_mapping | prompt | llm  # type: ignore[misc]
         else:
-            chain = prompt | llm
+            chain = prompt | llm  # type: ignore[misc]
 
         # Add JSON parser if requested
         if use_json_parser and output_schema:
             parser = JsonOutputParser(pydantic_object=output_schema)
-            chain = chain | parser
+            chain = chain | parser  # type: ignore[misc]
 
-        return chain
+        return chain  # type: ignore[return-value]
 
     def invoke_with_retry(
-        self, chain: Runnable, input_data: dict[str, Any], max_retries: int = 3
+        self,
+        chain: Runnable[dict[str, Any], Any]
+        | RunnableSerializable[dict[str, Any], Any],
+        input_data: dict[str, Any],
+        max_retries: int = 3,
     ) -> Any:
         """
         Invoke a chain with retry logic
