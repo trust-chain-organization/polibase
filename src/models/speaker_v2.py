@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 
 class SpeakerBase(PydanticBaseModel):
@@ -47,7 +47,4 @@ class Speaker(SpeakerBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        """Pydantic configuration."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
