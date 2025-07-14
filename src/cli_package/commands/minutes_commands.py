@@ -21,7 +21,7 @@ class MinutesCommands(BaseCommand):
         help="Output CSV file path",
     )
     @with_error_handling
-    def process_minutes(pdf, output):
+    def process_minutes(pdf: str, output: str):
         """Process meeting minutes to extract conversations (議事録分割処理)
 
         This command reads a PDF file containing meeting minutes and extracts
@@ -43,7 +43,7 @@ class MinutesCommands(BaseCommand):
         help="Enable interactive confirmation",
     )
     @with_error_handling
-    def update_speakers(use_llm, interactive):
+    def update_speakers(use_llm: bool, interactive: bool):
         """Update speaker links in database (発言者紐付け更新)
 
         This command links conversations to speaker records. Use --use-llm

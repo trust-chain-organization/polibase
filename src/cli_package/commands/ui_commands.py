@@ -16,7 +16,7 @@ class UICommands(BaseCommand):
     @click.option("--port", default=8501, help="Port number for Streamlit app")
     @click.option("--host", default="0.0.0.0", help="Host address")
     @with_error_handling
-    def streamlit(port, host):
+    def streamlit(port: int, host: str):
         """Launch Streamlit web interface for meeting management (会議管理Web UI)
 
         This command starts a web interface where you can:
@@ -58,7 +58,7 @@ class UICommands(BaseCommand):
     @click.option("--port", default=8502, help="Port number for monitoring dashboard")
     @click.option("--host", default="0.0.0.0", help="Host address")
     @with_error_handling
-    def monitoring(port, host):
+    def monitoring(port: int, host: str):
         """Launch monitoring dashboard for data coverage visualization.
 
         データカバレッジ監視ダッシュボード

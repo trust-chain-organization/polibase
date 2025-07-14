@@ -1,7 +1,8 @@
 """議員団関連のCLIコマンド"""
 
 import asyncio
-from datetime import date
+from datetime import date, datetime
+from typing import Any
 
 import click
 
@@ -55,7 +56,7 @@ def extract_group_members(
     conference_id: int | None,
     dry_run: bool,
     confidence_threshold: float,
-    start_date: click.DateTime | None,
+    start_date: datetime | None,
 ):
     """議員団メンバーをURLから抽出してメンバーシップを作成"""
     session = get_db_session()
@@ -111,8 +112,10 @@ def extract_group_members(
     else:
         click.echo(
             click.style(
-                "--group-id, --all-groups, --conference-id の"
-                "いずれかを指定してください",
+                (
+                    "--group-id, --all-groups, --conference-id の"
+                    "いずれかを指定してください"
+                ),
                 fg="red",
             ),
             err=True,
@@ -136,10 +139,10 @@ def extract_group_members(
     service = ParliamentaryGroupMembershipService()
 
     # 開始日の設定
-    membership_start_date = start_date.date() if start_date else date.today()
+    membership_start_date: date = start_date.date() if start_date else date.today()
 
     # 処理の実行
-    total_results = {
+    total_results: dict[str, Any] = {
         "total_groups": len(groups_to_process),
         "processed": 0,
         "total_extracted": 0,
@@ -305,7 +308,7 @@ def list_parliamentary_groups(
 
     # 各議員団の情報を表示
     for group in groups:
-        row_data = [
+        row_data: list[str] = [
             str(group["id"]).ljust(6),
             group["name"][:15].ljust(15),
             group.get("conference_name", "N/A")[:15].ljust(15),

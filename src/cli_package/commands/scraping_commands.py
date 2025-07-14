@@ -37,7 +37,14 @@ class ScrapingCommands(BaseCommand):
         "--gcs-bucket", help="GCS bucket name (overrides environment variable)"
     )
     @with_error_handling
-    def scrape_minutes(url, output_dir, format, no_cache, upload_to_gcs, gcs_bucket):
+    def scrape_minutes(
+        url: str,
+        output_dir: str,
+        format: str,
+        no_cache: bool,
+        upload_to_gcs: bool,
+        gcs_bucket: str | None,
+    ):
         """Scrape meeting minutes from council website (議事録Web取得)
 
         This command fetches meeting minutes from supported council websites
@@ -59,7 +66,12 @@ class ScrapingCommands(BaseCommand):
 
     @staticmethod
     async def _async_scrape_minutes(
-        url, output_dir, format, no_cache, upload_to_gcs, gcs_bucket
+        url: str,
+        output_dir: str,
+        format: str,
+        no_cache: bool,
+        upload_to_gcs: bool,
+        gcs_bucket: str | None,
     ):
         """Async implementation of scrape_minutes"""
         import os
@@ -205,14 +217,14 @@ class ScrapingCommands(BaseCommand):
     )
     @with_error_handling
     def batch_scrape(
-        tenant,
-        start_id,
-        end_id,
-        max_schedule,
-        output_dir,
-        concurrent,
-        upload_to_gcs,
-        gcs_bucket,
+        tenant: str,
+        start_id: int,
+        end_id: int,
+        max_schedule: int,
+        output_dir: str,
+        concurrent: int,
+        upload_to_gcs: bool,
+        gcs_bucket: str | None,
     ):
         """Batch scrape multiple meeting minutes from kaigiroku.net (議事録一括取得)
 
@@ -231,7 +243,7 @@ class ScrapingCommands(BaseCommand):
 
         # URL生成
         base_url = f"https://ssp.kaigiroku.net/tenant/{tenant}/MinuteView.html"
-        urls = []
+        urls: list[str] = []
         for council_id in range(start_id, end_id + 1):
             for schedule_id in range(1, max_schedule + 1):
                 url = f"{base_url}?council_id={council_id}&schedule_id={schedule_id}"
@@ -255,7 +267,11 @@ class ScrapingCommands(BaseCommand):
 
     @staticmethod
     async def _async_batch_scrape(
-        urls, output_dir, concurrent, upload_to_gcs, gcs_bucket
+        urls: list[str],
+        output_dir: str,
+        concurrent: int,
+        upload_to_gcs: bool,
+        gcs_bucket: str | None,
     ):
         """Async implementation of batch_scrape"""
         import os

@@ -2,7 +2,11 @@
 
 import asyncio
 import os
+from collections.abc import Coroutine
 from pathlib import Path
+from typing import Any, TypeVar
+
+T = TypeVar("T")
 
 
 class ProgressTracker:
@@ -37,7 +41,7 @@ def ensure_directory(path: str) -> Path:
 
 def setup_gcs_environment(bucket_name: str | None = None) -> dict[str, str]:
     """Setup Google Cloud Storage environment variables"""
-    env_updates = {}
+    env_updates: dict[str, str] = {}
 
     if bucket_name:
         env_updates["GCS_BUCKET_NAME"] = bucket_name
@@ -53,11 +57,12 @@ def setup_gcs_environment(bucket_name: str | None = None) -> dict[str, str]:
 
 def format_file_size(size_bytes: int) -> str:
     """Format file size in human-readable format"""
+    size: float = float(size_bytes)
     for unit in ["B", "KB", "MB", "GB"]:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.1f} TB"
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} TB"
 
 
 def validate_url(url: str) -> bool:
@@ -65,12 +70,14 @@ def validate_url(url: str) -> bool:
     import re
 
     url_pattern = re.compile(
-        r"^https?://"  # http:// or https://
-        r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|"  # domain...
-        r"localhost|"  # localhost...
-        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
-        r"(?::\d+)?"  # optional port
-        r"(?:/?|[/?]\S+)$",
+        (
+            r"^https?://"  # http:// or https://
+            r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|"  # domain...
+            r"localhost|"  # localhost...
+            r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # ...or ip
+            r"(?::\d+)?"  # optional port
+            r"(?:/?|[/?]\S+)$"
+        ),
         re.IGNORECASE,
     )
     return url_pattern.match(url) is not None
@@ -80,7 +87,7 @@ class AsyncRunner:
     """Helper for running async operations in sync context"""
 
     @staticmethod
-    def run(coro):
+    def run(coro: Coroutine[Any, Any, T]) -> asyncio.Task[T] | T:
         """Run an async coroutine in a sync context"""
         loop = None
         try:
