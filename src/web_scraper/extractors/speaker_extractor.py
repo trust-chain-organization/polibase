@@ -225,21 +225,23 @@ class SpeakerExtractor:
             dd = block.find("dd")
             if dd and speaker_info:
                 content = dd.get_text(separator="\n", strip=True)
-                return SpeakerData(
-                    name=speaker_info["name"],
-                    content=content,
-                    role=speaker_info.get("role"),
-                )
+                speaker_name = speaker_info["name"]
+                if isinstance(speaker_name, str):
+                    return SpeakerData(
+                        name=speaker_name,
+                        content=content,
+                        role=speaker_info.get("role"),
+                    )
 
         # data-speaker属性から発言者名を取得
-        speaker_name = block.get("data-speaker")
-        if speaker_name:
+        speaker_name_attr = block.get("data-speaker")
+        if speaker_name_attr and isinstance(speaker_name_attr, str):
             content = block.get_text(separator="\n", strip=True)
-            role = self._extract_role_from_name(speaker_name)
-            name = speaker_name
+            role = self._extract_role_from_name(speaker_name_attr)
+            name = speaker_name_attr
             for role_pattern in self.ROLE_PATTERNS:
-                if role_pattern in speaker_name:
-                    name = speaker_name.replace(role_pattern, "").strip()
+                if role_pattern in speaker_name_attr:
+                    name = speaker_name_attr.replace(role_pattern, "").strip()
                     break
 
             return SpeakerData(name=name, content=content, role=role)
@@ -267,7 +269,7 @@ class SpeakerExtractor:
         if not speakers:
             return []
 
-        merged = []
+        merged: list[SpeakerData] = []
         current = speakers[0]
 
         for speaker in speakers[1:]:

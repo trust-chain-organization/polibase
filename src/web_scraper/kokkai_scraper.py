@@ -149,7 +149,7 @@ class KokkaiScraper(BaseScraper):
 
     async def _extract_meeting_info(self, page: Page) -> dict[str, Any]:
         """会議情報を抽出"""
-        meeting_info = {}
+        meeting_info: dict[str, Any] = {}
 
         try:
             # h2タグから会議情報を取得
@@ -208,7 +208,7 @@ class KokkaiScraper(BaseScraper):
 
     async def _extract_content(self, page: Page) -> str:
         """本文を抽出"""
-        content_parts = []
+        content_parts: list[str] = []
 
         try:
             # テーブル内の発言データを取得
@@ -264,8 +264,8 @@ class KokkaiScraper(BaseScraper):
 
     async def _extract_speakers(self, page: Page) -> list[SpeakerData]:
         """発言者情報を抽出"""
-        speakers = []
-        seen_speakers = set()
+        speakers: list[SpeakerData] = []
+        seen_speakers: set[str] = set()
 
         try:
             # div[class*="speaker"] 要素から発言者情報を取得
@@ -282,7 +282,7 @@ class KokkaiScraper(BaseScraper):
                         parts = text.split()
                         if len(parts) >= 2:
                             # 数字で始まる部分をスキップ
-                            name_parts = []
+                            name_parts: list[str] = []
                             skip_terms = ["発言者情報", "会議録情報"]
                             for part in parts:
                                 if not part[0].isdigit() and part not in skip_terms:

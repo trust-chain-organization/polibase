@@ -68,20 +68,28 @@ class MinutesData:
             scraped_at = datetime.fromisoformat(data["scraped_at"])
 
         # スピーカーデータの変換
-        speakers = []
-        for speaker_data in data.get("speakers", []):
-            if isinstance(speaker_data, dict):
-                # 新しい形式
-                if "name" in speaker_data and "content" in speaker_data:
-                    speakers.append(SpeakerData.from_dict(speaker_data))
-                # 古い形式の互換性
-                elif "name" in speaker_data:
-                    speakers.append(
-                        SpeakerData(
-                            name=speaker_data["name"],
-                            content=speaker_data.get("content", ""),
-                        )
-                    )
+        speakers: list[SpeakerData] = []
+        speakers_list: Any = data.get("speakers", [])
+        if isinstance(speakers_list, list):
+            speaker_item: Any
+            for speaker_item in speakers_list:
+                if isinstance(speaker_item, dict):
+                    # 新しい形式
+                    if "name" in speaker_item and "content" in speaker_item:
+                        speakers.append(SpeakerData.from_dict(speaker_item))
+                    # 古い形式の互換性
+                    elif "name" in speaker_item:
+                        speaker_name: Any = speaker_item["name"]
+                        speaker_content: Any = speaker_item.get("content", "")
+                        if isinstance(speaker_name, str) and isinstance(
+                            speaker_content, str
+                        ):
+                            speakers.append(
+                                SpeakerData(
+                                    name=speaker_name,
+                                    content=speaker_content,
+                                )
+                            )
 
         return cls(
             council_id=data["council_id"],
