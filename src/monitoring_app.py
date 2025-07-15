@@ -1,12 +1,13 @@
 """Streamlit monitoring dashboard for data coverage visualization"""
 
 from datetime import datetime
+from typing import Any
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from streamlit_folium import st_folium
+from streamlit_folium import st_folium  # type: ignore[import-untyped]
 
 # Initialize logging and Sentry before other imports
 from src.common.logging import get_logger, setup_logging
@@ -154,7 +155,7 @@ def display_overview_tab(repo: MonitoringRepository):
     )
 
     # 横棒グラフで表示
-    fig = px.bar(
+    fig = px.bar(  # type: ignore[var-annotated]
         coverage_data,
         x="カバレッジ率",
         y="カテゴリ",
@@ -165,15 +166,15 @@ def display_overview_tab(repo: MonitoringRepository):
         title="各カテゴリのデータカバレッジ率",
     )
 
-    fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_layout(height=400)  # type: ignore[union-attr]
+    st.plotly_chart(fig, use_container_width=True)  # type: ignore[union-attr]
 
     # データ入力進捗
     st.subheader("最近のデータ入力状況")
     recent_activities = repo.get_recent_activities(days=7)
 
     if not recent_activities.empty:
-        st.dataframe(recent_activities, use_container_width=True, hide_index=True)
+        st.dataframe(recent_activities, use_container_width=True, hide_index=True)  # type: ignore[union-attr]
     else:
         st.info("過去7日間のデータ入力はありません")
 
@@ -236,7 +237,7 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
             yaxis_title="統治体名",
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[union-attr]
 
         # 詳細テーブル
         st.subheader("議会別詳細データ")
@@ -251,7 +252,7 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
             "last_updated",
         ]
 
-        column_config = {
+        column_config: dict[str, Any] = {
             "governing_body_name": "統治体名",
             "conference_name": "議会名",
             "total_meetings": "総会議数",
@@ -267,7 +268,7 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
 
         st.dataframe(
             conference_coverage[display_columns],
-            column_config=column_config,
+            column_config=column_config,  # type: ignore[arg-type]
             use_container_width=True,
             hide_index=True,
         )
@@ -301,7 +302,7 @@ def display_timeline_tab(repo: MonitoringRepository):
         # 時系列グラフ
         st.subheader("データ入力推移")
 
-        fig = px.line(
+        fig = px.line(  # type: ignore[var-annotated]
             timeline_data,
             x="date",
             y="count",
@@ -310,18 +311,18 @@ def display_timeline_tab(repo: MonitoringRepository):
             labels={"date": "日付", "count": "件数", "data_type": "データタイプ"},
         )
 
-        fig.update_layout(height=500)
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(height=500)  # type: ignore[union-attr]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[union-attr]
 
         # 累積グラフ
         st.subheader("累積データ数")
 
         # 累積計算
-        timeline_data["cumulative"] = timeline_data.groupby("data_type")[
+        timeline_data["cumulative"] = timeline_data.groupby("data_type")[  # type: ignore[union-attr]
             "count"
-        ].cumsum()
+        ].cumsum()  # type: ignore[union-attr]
 
-        fig_cum = px.area(
+        fig_cum = px.area(  # type: ignore[var-annotated]
             timeline_data,
             x="date",
             y="cumulative",
@@ -334,8 +335,8 @@ def display_timeline_tab(repo: MonitoringRepository):
             },
         )
 
-        fig_cum.update_layout(height=500)
-        st.plotly_chart(fig_cum, use_container_width=True)
+        fig_cum.update_layout(height=500)  # type: ignore[union-attr]
+        st.plotly_chart(fig_cum, use_container_width=True)  # type: ignore[union-attr]
 
     else:
         st.info("表示するデータがありません")
@@ -366,7 +367,7 @@ def display_party_coverage(repo: MonitoringRepository):
 
     if not party_data.empty:
         # ドーナツチャート
-        fig = px.pie(
+        fig = px.pie(  # type: ignore[var-annotated]
             party_data,
             values="politician_count",
             names="party_name",
@@ -374,13 +375,13 @@ def display_party_coverage(repo: MonitoringRepository):
             hole=0.4,
         )
 
-        fig.update_traces(textposition="inside", textinfo="percent+label")
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_traces(textposition="inside", textinfo="percent+label")  # type: ignore[union-attr]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[union-attr]
 
         # 詳細テーブル
         st.dataframe(
             party_data,
-            column_config={
+            column_config={  # type: ignore[arg-type]
                 "party_name": "政党名",
                 "politician_count": "政治家数",
                 "active_count": "アクティブ数",
@@ -520,7 +521,7 @@ def display_japan_map_tab(repo: MonitoringRepository):
         )
 
         # Foliumマップの表示
-        map_data = st_folium(
+        map_data = st_folium(  # type: ignore[no-untyped-call]
             m,
             height=600,
             width=None,

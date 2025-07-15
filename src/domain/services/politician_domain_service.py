@@ -62,7 +62,7 @@ class PoliticianDomainService:
 
     def validate_politician_data(self, politician: Politician) -> list[str]:
         """Validate politician data and return list of issues."""
-        issues = []
+        issues: list[str] = []
 
         if not politician.name or not politician.name.strip():
             issues.append("Name is required")
@@ -98,7 +98,7 @@ class PoliticianDomainService:
     ) -> list[Politician]:
         """Find politicians with similar names."""
         normalized_target = self.normalize_politician_name(name)
-        similar = []
+        similar: list[Politician] = []
 
         for politician in politicians:
             normalized_name = self.normalize_politician_name(politician.name)

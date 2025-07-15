@@ -4,6 +4,7 @@ Generate SEED data for governing_bodies table from city_and_prefecture_code.csv
 
 import csv
 from pathlib import Path
+from typing import Any
 
 
 def parse_organization_type(code: str, prefecture_name: str, city_name: str) -> str:
@@ -53,9 +54,11 @@ def main():
     output_path = project_root / "database" / "seed_governing_bodies_generated.sql"
 
     # Read the CSV file
-    governing_bodies = []
-    seen_codes = set()
-    seen_names = set()  # Track (name, type) pairs to avoid duplicates
+    governing_bodies: list[dict[str, Any]] = []
+    seen_codes: set[str] = set()
+    seen_names: set[tuple[str, str]] = (
+        set()
+    )  # Track (name, type) pairs to avoid duplicates
 
     # Add Japan as the top-level entry
     governing_bodies.append(
@@ -170,7 +173,7 @@ def main():
                     values.append(value)
 
         # Join with proper formatting
-        output_lines = []
+        output_lines: list[str] = []
         for i, line in enumerate(values):
             if line == "":  # Empty line
                 output_lines.append("")

@@ -303,7 +303,7 @@ class SeedGenerator:
         ]
 
         # 会議体ごとにグループ化
-        grouped_data = {}
+        grouped_data: dict[str, dict[str, Any]] = {}
         for group in groups:
             key = f"{group['governing_body_name']} - {group['conference_name']}"
             if key not in grouped_data:
@@ -316,7 +316,7 @@ class SeedGenerator:
             grouped_data[key]["groups"].append(group)
 
         first_group = True
-        group_keys = list(grouped_data.keys())
+        group_keys: list[str] = list(grouped_data.keys())
         for group_idx, (key, data) in enumerate(grouped_data.items()):
             conf_name = data["conference_name"]
             body_name = data["governing_body_name"]

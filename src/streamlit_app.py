@@ -2,6 +2,7 @@
 
 import subprocess
 from datetime import date, datetime
+from typing import Any, cast
 
 import pandas as pd
 import streamlit as st
@@ -192,11 +193,15 @@ def show_meetings_list():
 
         if gb_selected != "すべて":
             # 選択されたオプションから対応するgoverning_bodyを探す
+            selected_gb: dict[str, Any] | None = None
             for _i, gb in enumerate(governing_bodies):
                 if f"{gb['name']} ({gb['type']})" == gb_selected:
                     selected_gb = gb
                     break
-            conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
+            if selected_gb is not None:
+                conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
+            else:
+                conferences = []
         else:
             conferences = []
 
@@ -207,6 +212,7 @@ def show_meetings_list():
 
             if conf_selected != "すべて":
                 # 選択されたオプションから対応するconferenceを探す
+                selected_conf_id: int | None = None
                 for conf in conferences:
                     if conf["name"] == conf_selected:
                         selected_conf_id = conf["id"]
@@ -219,16 +225,16 @@ def show_meetings_list():
                 st.info("会議体を選択してください")
 
     # 会議一覧取得
-    meetings = repo.get_meetings(conference_id=selected_conf_id)
+    meetings: list[dict[str, Any]] = repo.get_meetings(conference_id=selected_conf_id)
 
     if meetings:
         # DataFrameに変換
         df = pd.DataFrame(meetings)
-        df["date"] = pd.to_datetime(df["date"])
+        df["date"] = pd.to_datetime(df["date"])  # type: ignore[arg-type]
         df = df.sort_values("date", ascending=False)
 
         # 表示用のカラムを整形
-        df["開催日"] = df["date"].dt.strftime("%Y年%m月%d日")
+        df["開催日"] = df["date"].dt.strftime("%Y年%m月%d日")  # type: ignore[union-attr]
         df["開催主体・会議体"] = (
             df["governing_body_name"] + " - " + df["conference_name"]
         )
@@ -239,12 +245,12 @@ def show_meetings_list():
 
             with col1:
                 # URLを表示
-                url_display = row["url"] if row["url"] else "URLなし"
+                url_display: str = str(row["url"]) if row["url"] else "URLなし"
                 st.markdown(
                     f"**{row['開催日']}** - {row['開催主体・会議体']}",
                     unsafe_allow_html=True,
                 )
-                if row["url"]:
+                if pd.notna(row["url"]) and row["url"]:
                     st.markdown(f"URL: [{url_display}]({row['url']})")
                 else:
                     st.markdown(f"URL: {url_display}")
@@ -257,7 +263,8 @@ def show_meetings_list():
 
             with col3:
                 if st.button("削除", key=f"delete_{row['id']}"):
-                    if repo.delete_meeting(row["id"]):
+                    meeting_id = int(row["id"])
+                    if repo.delete_meeting(meeting_id):
                         st.success("会議を削除しました")
                         st.rerun()
                     else:
@@ -290,14 +297,14 @@ def add_new_meeting():
     gb_selected = st.selectbox("開催主体を選択", gb_options, key="new_meeting_gb")
 
     # 選択されたgoverning_bodyを取得
-    selected_gb = None
+    selected_gb: dict[str, Any] | None = None
     for gb in governing_bodies:
         if f"{gb['name']} ({gb['type']})" == gb_selected:
             selected_gb = gb
             break
 
     # 会議体選択（選択された開催主体に紐づくもののみ表示）
-    conferences = []
+    conferences: list[dict[str, Any]] = []
     if selected_gb:
         conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
         if not conferences:
@@ -305,7 +312,7 @@ def add_new_meeting():
             repo.close()
             return
 
-    conf_options = []
+    conf_options: list[str] = []
     for conf in conferences:
         conf_display = f"{conf['name']}"
         if conf.get("type"):
@@ -315,7 +322,7 @@ def add_new_meeting():
     conf_selected = st.selectbox("会議体を選択", conf_options, key="new_meeting_conf")
 
     # 選択されたconferenceを取得
-    selected_conf = None
+    selected_conf: dict[str, Any] | None = None
     for i, conf in enumerate(conferences):
         if conf_options[i] == conf_selected:
             selected_conf = conf
@@ -364,11 +371,12 @@ def add_new_meeting():
             # 開催主体ごとにグループ化して表示
             conf_df = pd.DataFrame(all_conferences)
 
-            for gb_name in conf_df["governing_body_name"].unique():
-                gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]
+            gb_names = conf_df["governing_body_name"].unique()  # type: ignore[union-attr]
+            for gb_name in gb_names:
+                gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]  # type: ignore[union-attr]
                 st.markdown(f"**{gb_name}**")
-                display_df = gb_conf_df[["name", "type"]].copy()
-                display_df.columns = ["会議体名", "会議体種別"]
+                display_df = gb_conf_df[["name", "type"]].copy()  # type: ignore[union-attr]
+                display_df.columns = ["会議体名", "会議体種別"]  # type: ignore[union-attr]
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
         else:
             st.info("会議体が登録されていません")
@@ -396,17 +404,21 @@ def edit_meeting():
         st.session_state.edit_meeting_id = None
         return
 
-    st.info(f"編集中: {meeting['governing_body_name']} - {meeting['conference_name']}")
+    meeting_dict = cast(dict[str, Any], meeting)
+    st.info(
+        f"編集中: {meeting_dict['governing_body_name']} - "
+        f"{meeting_dict['conference_name']}"
+    )
 
     with st.form("edit_meeting_form"):
         # 日付入力
-        current_date = meeting["date"] if meeting["date"] else date.today()
+        current_date = meeting_dict["date"] if meeting_dict["date"] else date.today()
         meeting_date = st.date_input("開催日", value=current_date)
 
         # URL入力
         url = st.text_input(
             "会議URL（議事録PDFのURLなど）",
-            value=meeting["url"] or "",
+            value=meeting_dict["url"] or "",
             placeholder="https://example.com/minutes.pdf",
         )
 
@@ -642,7 +654,7 @@ def manage_political_parties():
 
         # 一括確認セクション
         with st.expander("登録済みURL一覧", expanded=False):
-            df_data = []
+            df_data: list[dict[str, str]] = []
             for party in parties:
                 df_data.append(
                     {
@@ -801,7 +813,7 @@ def manage_conferences():
             # フィルター後の会議体が存在するかチェック
             if filtered_conferences:
                 # 開催主体でグループ化
-                grouped_conferences = {}
+                grouped_conferences: dict[str, list[dict[str, Any]]] = {}
                 for conf in filtered_conferences:
                     gb_name = conf["governing_body_name"] or "未設定"
                     if gb_name not in grouped_conferences:
@@ -1028,8 +1040,8 @@ def manage_conferences():
             st.info("編集する会議体がありません")
         else:
             # 会議体選択
-            conf_options = []
-            conf_map = {}
+            conf_options: list[str] = []
+            conf_map: dict[str, dict[str, Any]] = {}
             for conf in conferences:
                 display_name = f"{conf['governing_body_name']} - {conf['name']}"
                 if conf.get("type"):
@@ -1139,7 +1151,7 @@ def execute_processes():
         execute_other_processes()
 
 
-def run_command_with_progress(command, process_name):
+def run_command_with_progress(command: str | list[str], process_name: str) -> None:
     """コマンドをバックグラウンドで実行し、進捗を管理"""
     # セッション状態の初期化を確認
     if "process_status" not in st.session_state:
@@ -1147,8 +1159,11 @@ def run_command_with_progress(command, process_name):
     if "process_output" not in st.session_state:
         st.session_state.process_output = {}
 
-    st.session_state.process_status[process_name] = "running"
-    st.session_state.process_output[process_name] = []
+    process_status = cast(dict[str, str], st.session_state.process_status)
+    process_output = cast(dict[str, list[str]], st.session_state.process_output)
+
+    process_status[process_name] = "running"
+    process_output[process_name] = []
 
     # プレースホルダーを作成して、後で更新できるようにする
     status_placeholder = st.empty()
@@ -1181,7 +1196,7 @@ def run_command_with_progress(command, process_name):
         )
 
         # 出力を収集するリスト
-        output_lines = []
+        output_lines: list[str] = []
 
         # 出力をリアルタイムで収集
         with status_placeholder.container():
@@ -1200,14 +1215,14 @@ def run_command_with_progress(command, process_name):
         process.wait()
 
         # 結果をセッション状態に保存
-        st.session_state.process_output[process_name] = output_lines
+        process_output[process_name] = output_lines
 
         if process.returncode == 0:
-            st.session_state.process_status[process_name] = "completed"
+            process_status[process_name] = "completed"
             with status_placeholder.container():
                 st.success("✅ 処理が完了しました")
         else:
-            st.session_state.process_status[process_name] = "failed"
+            process_status[process_name] = "failed"
             with status_placeholder.container():
                 st.error("❌ 処理が失敗しました")
 
@@ -1217,22 +1232,22 @@ def run_command_with_progress(command, process_name):
                 st.code("\n".join(output_lines), language="text")
 
     except subprocess.TimeoutExpired:
-        st.session_state.process_status[process_name] = "timeout"
-        st.session_state.process_output[process_name] = ["処理がタイムアウトしました"]
+        process_status[process_name] = "timeout"
+        process_output[process_name] = ["処理がタイムアウトしました"]
         with status_placeholder.container():
             st.error("❌ 処理がタイムアウトしました")
         with output_placeholder.container():
             st.code("処理がタイムアウトしました", language="text")
     except ProcessingError as e:
-        st.session_state.process_status[process_name] = "error"
-        st.session_state.process_output[process_name] = [f"処理エラー: {str(e)}"]
+        process_status[process_name] = "error"
+        process_output[process_name] = [f"処理エラー: {str(e)}"]
         with status_placeholder.container():
             st.error("❌ 処理エラーが発生しました")
         with output_placeholder.container():
             st.code(f"処理エラー: {str(e)}", language="text")
     except Exception as e:
-        st.session_state.process_status[process_name] = "error"
-        st.session_state.process_output[process_name] = [f"予期しないエラー: {str(e)}"]
+        process_status[process_name] = "error"
+        process_output[process_name] = [f"予期しないエラー: {str(e)}"]
         with status_placeholder.container():
             st.error("❌ 予期しないエラーが発生しました")
         with output_placeholder.container():
@@ -1745,8 +1760,8 @@ def execute_conference_member_processes():
         return
 
     # 会議体選択
-    conference_options = []
-    conf_map = {}
+    conference_options: list[str] = []
+    conf_map: dict[str, Any] = {}
     for conf in conferences:
         status_str = f"（抽出: {conf.extracted_count}人"
         if conf.matched_count > 0:
