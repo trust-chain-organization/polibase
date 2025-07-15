@@ -193,11 +193,15 @@ def show_meetings_list():
 
         if gb_selected != "すべて":
             # 選択されたオプションから対応するgoverning_bodyを探す
+            selected_gb: dict[str, Any] | None = None
             for _i, gb in enumerate(governing_bodies):
                 if f"{gb['name']} ({gb['type']})" == gb_selected:
                     selected_gb = gb
                     break
-            conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
+            if selected_gb is not None:
+                conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
+            else:
+                conferences = []
         else:
             conferences = []
 
@@ -208,6 +212,7 @@ def show_meetings_list():
 
             if conf_selected != "すべて":
                 # 選択されたオプションから対応するconferenceを探す
+                selected_conf_id: int | None = None
                 for conf in conferences:
                     if conf["name"] == conf_selected:
                         selected_conf_id = conf["id"]
@@ -220,16 +225,16 @@ def show_meetings_list():
                 st.info("会議体を選択してください")
 
     # 会議一覧取得
-    meetings = repo.get_meetings(conference_id=selected_conf_id)
+    meetings: list[dict[str, Any]] = repo.get_meetings(conference_id=selected_conf_id)
 
     if meetings:
         # DataFrameに変換
         df = pd.DataFrame(meetings)
-        df["date"] = pd.to_datetime(df["date"])
+        df["date"] = pd.to_datetime(df["date"])  # type: ignore[arg-type]
         df = df.sort_values("date", ascending=False)
 
         # 表示用のカラムを整形
-        df["開催日"] = df["date"].dt.strftime("%Y年%m月%d日")
+        df["開催日"] = df["date"].dt.strftime("%Y年%m月%d日")  # type: ignore[union-attr]
         df["開催主体・会議体"] = (
             df["governing_body_name"] + " - " + df["conference_name"]
         )
@@ -240,12 +245,12 @@ def show_meetings_list():
 
             with col1:
                 # URLを表示
-                url_display = row["url"] if row["url"] else "URLなし"
+                url_display: str = str(row["url"]) if row["url"] else "URLなし"
                 st.markdown(
                     f"**{row['開催日']}** - {row['開催主体・会議体']}",
                     unsafe_allow_html=True,
                 )
-                if row["url"]:
+                if pd.notna(row["url"]) and row["url"]:
                     st.markdown(f"URL: [{url_display}]({row['url']})")
                 else:
                     st.markdown(f"URL: {url_display}")
@@ -258,7 +263,8 @@ def show_meetings_list():
 
             with col3:
                 if st.button("削除", key=f"delete_{row['id']}"):
-                    if repo.delete_meeting(row["id"]):
+                    meeting_id = int(row["id"])
+                    if repo.delete_meeting(meeting_id):
                         st.success("会議を削除しました")
                         st.rerun()
                     else:
@@ -291,14 +297,14 @@ def add_new_meeting():
     gb_selected = st.selectbox("開催主体を選択", gb_options, key="new_meeting_gb")
 
     # 選択されたgoverning_bodyを取得
-    selected_gb = None
+    selected_gb: dict[str, Any] | None = None
     for gb in governing_bodies:
         if f"{gb['name']} ({gb['type']})" == gb_selected:
             selected_gb = gb
             break
 
     # 会議体選択（選択された開催主体に紐づくもののみ表示）
-    conferences = []
+    conferences: list[dict[str, Any]] = []
     if selected_gb:
         conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
         if not conferences:
@@ -316,7 +322,7 @@ def add_new_meeting():
     conf_selected = st.selectbox("会議体を選択", conf_options, key="new_meeting_conf")
 
     # 選択されたconferenceを取得
-    selected_conf = None
+    selected_conf: dict[str, Any] | None = None
     for i, conf in enumerate(conferences):
         if conf_options[i] == conf_selected:
             selected_conf = conf
@@ -365,11 +371,12 @@ def add_new_meeting():
             # 開催主体ごとにグループ化して表示
             conf_df = pd.DataFrame(all_conferences)
 
-            for gb_name in conf_df["governing_body_name"].unique():
-                gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]
+            gb_names = conf_df["governing_body_name"].unique()  # type: ignore[union-attr]
+            for gb_name in gb_names:
+                gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]  # type: ignore[union-attr]
                 st.markdown(f"**{gb_name}**")
-                display_df = gb_conf_df[["name", "type"]].copy()
-                display_df.columns = ["会議体名", "会議体種別"]
+                display_df = gb_conf_df[["name", "type"]].copy()  # type: ignore[union-attr]
+                display_df.columns = ["会議体名", "会議体種別"]  # type: ignore[union-attr]
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
         else:
             st.info("会議体が登録されていません")

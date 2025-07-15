@@ -52,7 +52,7 @@ class ParliamentaryGroupDomainService:
         existing_memberships: list[tuple[date, date | None]],
     ) -> list[str]:
         """Validate membership dates against existing memberships."""
-        issues = []
+        issues: list[str] = []
 
         # Basic date validation
         if end_date and end_date < start_date:
@@ -99,7 +99,7 @@ class ParliamentaryGroupDomainService:
         # Sort by start date
         sorted_memberships = sorted(memberships, key=lambda m: m["start_date"])
 
-        merged = []
+        merged: list[dict[str, Any]] = []
         current = sorted_memberships[0].copy()
 
         for membership in sorted_memberships[1:]:
@@ -175,7 +175,7 @@ class ParliamentaryGroupDomainService:
     ) -> list[ParliamentaryGroup]:
         """Find parliamentary groups with similar names."""
         normalized_target = self.normalize_group_name(name)
-        similar = []
+        similar: list[ParliamentaryGroup] = []
 
         for group in groups:
             normalized_name = self.normalize_group_name(group.name)
