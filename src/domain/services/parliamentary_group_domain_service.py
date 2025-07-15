@@ -61,10 +61,11 @@ class ParliamentaryGroupDomainService:
         # Check for overlapping memberships
         for existing_start, existing_end in existing_memberships:
             if self._dates_overlap(start_date, end_date, existing_start, existing_end):
-                issues.append(
+                overlap_msg = (
                     f"Membership overlaps with existing period: "
                     f"{existing_start} to {existing_end or 'present'}"
                 )
+                issues.append(overlap_msg)
 
         return issues
 

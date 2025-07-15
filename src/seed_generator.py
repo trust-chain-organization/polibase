@@ -161,7 +161,7 @@ class SeedGenerator:
             grouped_data[key]["conferences"].append(conf)
 
         first_group = True
-        group_keys = list(grouped_data.keys())
+        group_keys: list[str] = list(grouped_data.keys())
         for group_idx, (_key, data) in enumerate(grouped_data.items()):
             body_name = data["body_name"]
             body_type = data["body_type"]
@@ -311,17 +311,17 @@ class SeedGenerator:
                     "conference_name": group["conference_name"],
                     "governing_body_name": group["governing_body_name"],
                     "governing_body_type": group["governing_body_type"],
-                    "groups": [],
+                    "groups": [],  # type: list[dict[str, Any]]
                 }
             grouped_data[key]["groups"].append(group)
 
         first_group = True
         group_keys: list[str] = list(grouped_data.keys())
         for group_idx, (key, data) in enumerate(grouped_data.items()):
-            conf_name = data["conference_name"]
-            body_name = data["governing_body_name"]
-            body_type = data["governing_body_type"]
-            groups_list = data["groups"]
+            conf_name: str = data["conference_name"]
+            body_name: str = data["governing_body_name"]
+            body_type: str = data["governing_body_type"]
+            groups_list: list[dict[str, Any]] = data["groups"]
 
             if not first_group:
                 lines.append("")
@@ -329,10 +329,10 @@ class SeedGenerator:
 
             for i, group in enumerate(groups_list):
                 # SQLインジェクション対策のため、シングルクォートをエスケープ
-                name = group["name"].replace("'", "''")
-                conf_name_escaped = conf_name.replace("'", "''")
-                body_name_escaped = body_name.replace("'", "''")
-                body_type_escaped = body_type.replace("'", "''")
+                name: str = group["name"].replace("'", "''")
+                conf_name_escaped: str = conf_name.replace("'", "''")
+                body_name_escaped: str = body_name.replace("'", "''")
+                body_type_escaped: str = body_type.replace("'", "''")
 
                 # 最後の要素かどうかチェック（全体での最後）
                 is_last = group_idx == len(group_keys) - 1 and i == len(groups_list) - 1

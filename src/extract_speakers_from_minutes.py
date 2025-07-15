@@ -165,14 +165,23 @@ class SpeakerExtractorFromMinutes:
                         WHERE id = :id
                     """
                     # politicianが辞書の場合とオブジェクトの場合の両方に対応
+                    politician_id: int | None
+                    party_name: str | None
                     if isinstance(politician, dict):
-                        politician_id: int | None = politician.get("id")
-                        party_name: str | None = politician.get("political_party_name")
+                        pol_id = politician.get("id")
+                        politician_id = pol_id if isinstance(pol_id, int) else None
+                        party_name_val = politician.get("political_party_name")
+                        party_name = (
+                            party_name_val if isinstance(party_name_val, str) else None
+                        )
                     else:
-                        politician_id: int = politician.id
-                        party_name: str | None
+                        politician_id = politician.id
+                        party_name = None
                         # Get party name by joining with political_parties table
-                        if politician.political_party_id:
+                        if (
+                            hasattr(politician, "political_party_id")
+                            and politician.political_party_id
+                        ):
                             party_query = """
                                 SELECT name FROM political_parties
                                 WHERE id = :party_id
@@ -183,10 +192,6 @@ class SpeakerExtractorFromMinutes:
                             rows = result.fetchall()
                             if rows:
                                 party_name = rows[0][0]
-                            else:
-                                party_name = None
-                        else:
-                            party_name = None
 
                     self.speaker_repo.execute_query(
                         update_query,
@@ -213,7 +218,10 @@ class SpeakerExtractorFromMinutes:
                                     matched_politicians.append(p)
                             else:
                                 # For Politician objects, get party name from party_id
-                                if p.political_party_id:
+                                if (
+                                    hasattr(p, "political_party_id")
+                                    and p.political_party_id
+                                ):
                                     party_query = """
                                         SELECT name FROM political_parties
                                         WHERE id = :party_id
@@ -239,11 +247,13 @@ class SpeakerExtractorFromMinutes:
                                 update_query, {"id": speaker["id"]}
                             )
                             # politicianが辞書の場合とオブジェクトの場合の両方に対応
-                            matched_politician_id: int = (
-                                politician.get("id")
-                                if isinstance(politician, dict)
-                                else politician.id
-                            )
+                            if isinstance(politician, dict):
+                                pol_id = politician.get("id")
+                                matched_politician_id: int | None = (
+                                    pol_id if isinstance(pol_id, int) else None
+                                )
+                            else:
+                                matched_politician_id = politician.id
                             logger.info(
                                 f"政党名で絞り込み紐付け: {speaker['name']} "
                                 f"({speaker['political_party_name']}) -> "

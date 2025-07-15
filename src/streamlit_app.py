@@ -2,11 +2,14 @@
 
 import subprocess
 from datetime import date, datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 import streamlit as st
 from sqlalchemy import text
+
+if TYPE_CHECKING:
+    pass
 
 # Initialize logging and Sentry before other imports
 from src.common.logging import get_logger, setup_logging
@@ -193,26 +196,25 @@ def show_meetings_list():
 
         if gb_selected != "すべて":
             # 選択されたオプションから対応するgoverning_bodyを探す
-            selected_gb: dict[str, Any] | None = None
+            selected_gb = None
             for _i, gb in enumerate(governing_bodies):
                 if f"{gb['name']} ({gb['type']})" == gb_selected:
                     selected_gb = gb
                     break
-            if selected_gb is not None:
-                conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
-            else:
-                conferences = []
+            conferences = repo.get_conferences_by_governing_body(
+                selected_gb["id"] if selected_gb else 0
+            )  # type: ignore[arg-type]
         else:
             conferences = []
 
     with col2:
+        selected_conf_id: int | None = None
         if conferences:
             conf_options = ["すべて"] + [conf["name"] for conf in conferences]
             conf_selected = st.selectbox("会議体", conf_options, key="list_conf")
 
             if conf_selected != "すべて":
                 # 選択されたオプションから対応するconferenceを探す
-                selected_conf_id: int | None = None
                 for conf in conferences:
                     if conf["name"] == conf_selected:
                         selected_conf_id = conf["id"]
@@ -245,12 +247,18 @@ def show_meetings_list():
 
             with col1:
                 # URLを表示
-                url_display: str = str(row["url"]) if row["url"] else "URLなし"
+                url_val: Any = row["url"]  # type: ignore[index]
+                is_not_na = bool(pd.notna(url_val))  # type: ignore[arg-type]
+                url_display: str = (
+                    str(url_val)  # type: ignore[arg-type]
+                    if is_not_na and url_val
+                    else "URLなし"
+                )
                 st.markdown(
                     f"**{row['開催日']}** - {row['開催主体・会議体']}",
                     unsafe_allow_html=True,
                 )
-                if pd.notna(row["url"]) and row["url"]:
+                if pd.notna(row["url"]) and row["url"]:  # type: ignore[arg-type,index]
                     st.markdown(f"URL: [{url_display}]({row['url']})")
                 else:
                     st.markdown(f"URL: {url_display}")
@@ -263,7 +271,7 @@ def show_meetings_list():
 
             with col3:
                 if st.button("削除", key=f"delete_{row['id']}"):
-                    meeting_id = int(row["id"])
+                    meeting_id = int(row["id"])  # type: ignore[arg-type,index]
                     if repo.delete_meeting(meeting_id):
                         st.success("会議を削除しました")
                         st.rerun()
@@ -297,14 +305,14 @@ def add_new_meeting():
     gb_selected = st.selectbox("開催主体を選択", gb_options, key="new_meeting_gb")
 
     # 選択されたgoverning_bodyを取得
-    selected_gb: dict[str, Any] | None = None
+    selected_gb = None
     for gb in governing_bodies:
         if f"{gb['name']} ({gb['type']})" == gb_selected:
             selected_gb = gb
             break
 
     # 会議体選択（選択された開催主体に紐づくもののみ表示）
-    conferences: list[dict[str, Any]] = []
+    conferences = []
     if selected_gb:
         conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
         if not conferences:
@@ -322,7 +330,7 @@ def add_new_meeting():
     conf_selected = st.selectbox("会議体を選択", conf_options, key="new_meeting_conf")
 
     # 選択されたconferenceを取得
-    selected_conf: dict[str, Any] | None = None
+    selected_conf = None
     for i, conf in enumerate(conferences):
         if conf_options[i] == conf_selected:
             selected_conf = conf
@@ -371,13 +379,12 @@ def add_new_meeting():
             # 開催主体ごとにグループ化して表示
             conf_df = pd.DataFrame(all_conferences)
 
-            gb_names = conf_df["governing_body_name"].unique()  # type: ignore[union-attr]
-            for gb_name in gb_names:
-                gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]  # type: ignore[union-attr]
+            for gb_name in conf_df["governing_body_name"].unique():  # type: ignore[union-attr]
+                gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]  # type: ignore[arg-type,index]
                 st.markdown(f"**{gb_name}**")
                 display_df = gb_conf_df[["name", "type"]].copy()  # type: ignore[union-attr]
                 display_df.columns = ["会議体名", "会議体種別"]  # type: ignore[union-attr]
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                st.dataframe(display_df, use_container_width=True, hide_index=True)  # type: ignore[arg-type]
         else:
             st.info("会議体が登録されていません")
 
@@ -404,11 +411,13 @@ def edit_meeting():
         st.session_state.edit_meeting_id = None
         return
 
+    # Cast meeting to dict for proper type handling
     meeting_dict = cast(dict[str, Any], meeting)
-    st.info(
+    edit_info = (
         f"編集中: {meeting_dict['governing_body_name']} - "
         f"{meeting_dict['conference_name']}"
     )
+    st.info(edit_info)
 
     with st.form("edit_meeting_form"):
         # 日付入力
@@ -664,7 +673,7 @@ def manage_political_parties():
                 )
 
             df = pd.DataFrame(df_data)
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, use_container_width=True)  # type: ignore[call-arg]
 
     finally:
         conn.close()
@@ -995,7 +1004,9 @@ def manage_conferences():
                 else:
                     conf_id = conf_repo.create_conference(
                         name=conf_name,
-                        governing_body_id=selected_gb_id,  # Noneでも可
+                        governing_body_id=selected_gb_id
+                        if selected_gb_id is not None
+                        else 0,  # type: ignore[arg-type]
                         type=conf_type if conf_type else None,
                     )
                     if conf_id:
@@ -1040,8 +1051,8 @@ def manage_conferences():
             st.info("編集する会議体がありません")
         else:
             # 会議体選択
-            conf_options: list[str] = []
-            conf_map: dict[str, dict[str, Any]] = {}
+            conf_options = []
+            conf_map = {}
             for conf in conferences:
                 display_name = f"{conf['governing_body_name']} - {conf['name']}"
                 if conf.get("type"):
@@ -1049,12 +1060,12 @@ def manage_conferences():
                 # URL設定状態を追加
                 url_status = "✅" if conf.get("members_introduction_url") else "❌"
                 display_name = f"{url_status} {display_name}"
-                conf_options.append(display_name)
+                conf_options.append(display_name)  # type: ignore[union-attr]
                 conf_map[display_name] = conf
 
-            selected_conf_display = st.selectbox("編集する会議体を選択", conf_options)
+            selected_conf_display = st.selectbox("編集する会議体を選択", conf_options)  # type: ignore[arg-type,assignment]
 
-            selected_conf = conf_map[selected_conf_display]
+            selected_conf = cast(dict[str, Any], conf_map[selected_conf_display])  # type: ignore[assignment]
 
             # 現在の議員紹介URLの状態を表示
             if selected_conf.get("members_introduction_url"):
@@ -1068,13 +1079,18 @@ def manage_conferences():
             with col1:
                 st.markdown("#### 編集")
                 with st.form("edit_conference_form"):
-                    new_name = st.text_input("会議体名", value=selected_conf["name"])
+                    new_name = st.text_input(
+                        "会議体名", value=cast(str, selected_conf["name"])
+                    )
                     new_type = st.text_input(
-                        "会議体種別", value=selected_conf.get("type", "")
+                        "会議体種別",
+                        value=cast(str, selected_conf.get("type", "")),  # type: ignore[union-attr]
                     )
                     new_members_url = st.text_input(
                         "議員紹介URL",
-                        value=selected_conf.get("members_introduction_url", "") or "",
+                        value=cast(
+                            str, selected_conf.get("members_introduction_url", "") or ""
+                        ),  # type: ignore[union-attr]
                         placeholder="https://example.com/members",
                         help="会議体の議員一覧が掲載されているページのURL",
                     )
@@ -1087,13 +1103,13 @@ def manage_conferences():
                         else:
                             # 基本情報を更新
                             if conf_repo.update_conference(
-                                conference_id=selected_conf["id"],
+                                conference_id=selected_conf["id"],  # type: ignore[arg-type]
                                 name=new_name,
                                 type=new_type if new_type else None,
                             ):
                                 # 議員紹介URLを更新
                                 conf_repo.update_conference_members_url(
-                                    conference_id=selected_conf["id"],
+                                    conference_id=selected_conf["id"],  # type: ignore[arg-type]
                                     members_introduction_url=new_members_url
                                     if new_members_url
                                     else None,
@@ -1110,7 +1126,7 @@ def manage_conferences():
                 )
 
                 if st.button("🗑️ この会議体を削除", type="secondary"):
-                    if conf_repo.delete_conference(selected_conf["id"]):
+                    if conf_repo.delete_conference(cast(int, selected_conf["id"])):
                         st.success("会議体を削除しました")
                         st.rerun()
                     else:
@@ -1159,8 +1175,8 @@ def run_command_with_progress(command: str | list[str], process_name: str) -> No
     if "process_output" not in st.session_state:
         st.session_state.process_output = {}
 
-    process_status = cast(dict[str, str], st.session_state.process_status)
-    process_output = cast(dict[str, list[str]], st.session_state.process_output)
+    process_status = cast(dict[str, str], st.session_state.process_status)  # type: ignore[attr-defined]
+    process_output = cast(dict[str, list[str]], st.session_state.process_output)  # type: ignore[attr-defined]
 
     process_status[process_name] = "running"
     process_output[process_name] = []
@@ -1202,7 +1218,7 @@ def run_command_with_progress(command: str | list[str], process_name: str) -> No
         with status_placeholder.container():
             st.info("🔄 処理実行中...")
 
-        for line in iter(process.stdout.readline, ""):
+        for line in iter(process.stdout.readline, ""):  # type: ignore[union-attr]
             if line:
                 output_lines.append(line.strip())
                 # 出力をリアルタイムで更新
@@ -1505,9 +1521,10 @@ def execute_minutes_processes():
                         AND updated_at >= CURRENT_TIMESTAMP - INTERVAL '1 hour'
                     """)
                     )
-                    linked_count = linked_result.fetchone().count
+                    linked_row = linked_result.fetchone()
+                    linked_count = getattr(linked_row, "count", 0) if linked_row else 0
 
-                    if speakers_records or linked_count > 0:
+                    if speakers_records or (linked_count and linked_count > 0):
                         st.success("✅ 発言者抽出処理が完了しました")
 
                         # 作成されたレコードの詳細を表示
@@ -1763,7 +1780,8 @@ def execute_conference_member_processes():
     conference_options: list[str] = []
     conf_map: dict[str, Any] = {}
     for conf in conferences:
-        status_str = f"（抽出: {conf.extracted_count}人"
+        conf = cast(Any, conf)  # SQLAlchemy Row
+        status_str: str = f"（抽出: {conf.extracted_count}人"
         if conf.matched_count > 0:
             status_str += f", マッチ: {conf.matched_count}人"
         if conf.pending_count > 0:
@@ -2001,7 +2019,7 @@ def execute_conference_member_processes():
 
             if members:
                 # ステータス別にグループ化して表示
-                status_groups = {
+                status_groups: dict[str, list[Any]] = {
                     "matched": [],
                     "needs_review": [],
                     "pending": [],
@@ -2009,18 +2027,20 @@ def execute_conference_member_processes():
                 }
 
                 for member in members:
+                    member = cast(Any, member)  # SQLAlchemy Row
                     status_groups[member.matching_status].append(member)
 
                 # マッチ済み
                 if status_groups["matched"]:
                     st.markdown("#### ✅ マッチ済み")
                     for member in status_groups["matched"]:
+                        member = cast(Any, member)  # SQLAlchemy Row
                         confidence_text = (
                             f"（信頼度: {member.matching_confidence:.0%}）"
                             if member.matching_confidence
                             else ""
                         )
-                        role = member.extracted_role or "委員"
+                        role: str = member.extracted_role or "委員"
                         st.success(
                             f"{member.extracted_name} ({role}) "
                             f"→ {member.politician_name} {confidence_text}"
@@ -2030,12 +2050,13 @@ def execute_conference_member_processes():
                 if status_groups["needs_review"]:
                     st.markdown("#### ⚠️ 要確認")
                     for member in status_groups["needs_review"]:
+                        member = cast(Any, member)  # SQLAlchemy Row
                         confidence_text = (
                             f"（信頼度: {member.matching_confidence:.0%}）"
                             if member.matching_confidence
                             else ""
                         )
-                        role = member.extracted_role or "委員"
+                        role: str = member.extracted_role or "委員"
                         st.warning(
                             f"{member.extracted_name} ({role}) "
                             f"→ {member.politician_name} {confidence_text}"
@@ -2050,7 +2071,7 @@ def execute_conference_member_processes():
                             if member.extracted_party_name
                             else ""
                         )
-                        role = member.extracted_role or "委員"
+                        role: str = member.extracted_role or "委員"
                         st.info(f"{member.extracted_name} ({role}) {party_text}")
 
                 # 該当なし
@@ -2062,7 +2083,7 @@ def execute_conference_member_processes():
                             if member.extracted_party_name
                             else ""
                         )
-                        role = member.extracted_role or "委員"
+                        role: str = member.extracted_role or "委員"
                         st.error(f"{member.extracted_name} ({role}) {party_text}")
             else:
                 st.info("抽出されたメンバーはありません")
@@ -2291,7 +2312,7 @@ def execute_other_processes():
                 for name, status in st.session_state.process_status.items()
             ]
         )
-        st.dataframe(status_df, use_container_width=True)
+        st.dataframe(status_df, use_container_width=True)  # type: ignore[call-arg]
 
         if st.button("ステータスをクリア"):
             st.session_state.process_status = {}
@@ -2397,7 +2418,7 @@ def manage_governing_bodies():
             # データフレームで表示
             df_data = []
             for gb in governing_bodies:
-                df_data.append(
+                df_data.append(  # type: ignore[union-attr]
                     {
                         "ID": gb["id"],
                         "名称": gb["name"],
@@ -2407,7 +2428,7 @@ def manage_governing_bodies():
                 )
 
             df = pd.DataFrame(df_data)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, use_container_width=True, hide_index=True)  # type: ignore[call-arg]
 
             # 統計情報
             st.markdown("### 統計情報")
@@ -2672,7 +2693,7 @@ def manage_parliamentary_groups():
                     else "不明"
                 )
 
-                df_data.append(
+                df_data.append(  # type: ignore[union-attr]
                     {
                         "ID": group["id"],
                         "議員団名": group["name"],
@@ -2685,7 +2706,7 @@ def manage_parliamentary_groups():
                 )
 
             df = pd.DataFrame(df_data)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, use_container_width=True, hide_index=True)  # type: ignore[call-arg]
 
             # メンバー数の表示
             st.markdown("### メンバー数")
@@ -2693,7 +2714,7 @@ def manage_parliamentary_groups():
             member_counts = []
             for group in groups:
                 current_members = pgm_repo.get_current_members(group["id"])
-                member_counts.append(
+                member_counts.append(  # type: ignore[union-attr]
                     {
                         "議員団名": group["name"],
                         "現在のメンバー数": len(current_members),
@@ -2701,7 +2722,7 @@ def manage_parliamentary_groups():
                 )
 
             member_df = pd.DataFrame(member_counts)
-            st.dataframe(member_df, use_container_width=True, hide_index=True)
+            st.dataframe(member_df, use_container_width=True, hide_index=True)  # type: ignore[call-arg]
         else:
             st.info("議員団が登録されていません")
 
@@ -2754,7 +2775,7 @@ def manage_parliamentary_groups():
                     )
                     if result:
                         # 作成結果をセッション状態に保存
-                        created_group = {
+                        created_group: dict[str, Any] = {
                             "id": result["id"],
                             "name": result["name"],
                             "conference_id": result["conference_id"],
@@ -2815,8 +2836,8 @@ def manage_parliamentary_groups():
         else:
             # 議員団選択
             conferences = conf_repo.get_all_conferences()
-            group_options = []
-            group_map = {}
+            group_options: list[str] = []
+            group_map: dict[str, Any] = {}
             for group in groups:
                 conf = next(
                     (c for c in conferences if c["id"] == group["conference_id"]), None
@@ -2826,8 +2847,8 @@ def manage_parliamentary_groups():
                 group_options.append(display_name)
                 group_map[display_name] = group
 
-            selected_group_display = st.selectbox("編集する議員団を選択", group_options)
-            selected_group = group_map[selected_group_display]
+            selected_group_display = st.selectbox("編集する議員団を選択", group_options)  # type: ignore[arg-type]
+            selected_group: dict[str, Any] = group_map[selected_group_display]
 
             # 編集フォーム
             col1, col2 = st.columns(2)
@@ -2835,15 +2856,20 @@ def manage_parliamentary_groups():
             with col1:
                 st.markdown("#### 編集")
                 with st.form("edit_parliamentary_group_form"):
-                    new_name = st.text_input("議員団名", value=selected_group["name"])
+                    new_name = st.text_input(
+                        "議員団名", value=cast(str, selected_group["name"])
+                    )
                     new_url = st.text_input(
-                        "議員団URL", value=selected_group.get("url", "") or ""
+                        "議員団URL",
+                        value=cast(str, selected_group.get("url", "") or ""),
                     )
                     new_description = st.text_area(
-                        "説明", value=selected_group.get("description", "") or ""
+                        "説明",
+                        value=cast(str, selected_group.get("description", "") or ""),
                     )
                     new_is_active = st.checkbox(
-                        "活動中", value=selected_group.get("is_active", True)
+                        "活動中",
+                        value=cast(bool, selected_group.get("is_active", True)),
                     )
 
                     submitted = st.form_submit_button("更新")
@@ -2853,7 +2879,7 @@ def manage_parliamentary_groups():
                             st.error("議員団名を入力してください")
                         else:
                             if pg_repo.update_parliamentary_group(
-                                group_id=selected_group["id"],
+                                group_id=cast(int, selected_group["id"]),
                                 name=new_name,
                                 url=new_url if new_url else None,
                                 description=new_description
@@ -2869,7 +2895,9 @@ def manage_parliamentary_groups():
             with col2:
                 st.markdown("#### メンバー情報")
                 pgm_repo = ParliamentaryGroupMembershipRepository()
-                current_members = pgm_repo.get_current_members(selected_group["id"])
+                current_members = pgm_repo.get_current_members(
+                    cast(int, selected_group["id"])
+                )
 
                 if current_members:
                     st.write(f"現在のメンバー数: {len(current_members)}名")
@@ -2936,7 +2964,9 @@ def manage_parliamentary_groups():
 
             # 現在のメンバー数を表示
             pgm_repo = ParliamentaryGroupMembershipRepository()
-            current_members = pgm_repo.get_current_members(selected_group["id"])
+            current_members = pgm_repo.get_current_members(
+                cast(int, selected_group["id"])
+            )
 
             col1, col2 = st.columns(2)
             with col1:
@@ -2986,7 +3016,8 @@ def manage_parliamentary_groups():
 
                         # メンバー情報を抽出
                         extraction_result = extractor.extract_members_sync(
-                            selected_group["id"], selected_group["url"]
+                            cast(int, selected_group["id"]),
+                            cast(str, selected_group["url"]),
                         )
 
                         if extraction_result.error:
@@ -3003,7 +3034,7 @@ def manage_parliamentary_groups():
 
                             # 抽出されたメンバーを表示
                             st.markdown("### 抽出されたメンバー")
-                            member_data = []
+                            member_data: list[dict[str, Any]] = []
                             for member in extraction_result.extracted_members:
                                 member_data.append(
                                     {
@@ -3016,7 +3047,7 @@ def manage_parliamentary_groups():
                                 )
 
                             member_df = pd.DataFrame(member_data)
-                            st.dataframe(
+                            st.dataframe(  # type: ignore[call-arg]
                                 member_df, use_container_width=True, hide_index=True
                             )
 
@@ -3045,7 +3076,7 @@ def manage_parliamentary_groups():
                             )
 
                             # マッチング詳細を表示
-                            match_data = []
+                            match_data: list[dict[str, Any]] = []
                             for result in matching_results:
                                 match_data.append(
                                     {
@@ -3061,7 +3092,7 @@ def manage_parliamentary_groups():
                                 )
 
                             match_df = pd.DataFrame(match_data)
-                            st.dataframe(
+                            st.dataframe(  # type: ignore[call-arg]
                                 match_df, use_container_width=True, hide_index=True
                             )
 
@@ -3134,7 +3165,7 @@ def manage_parliamentary_groups():
     pg_repo.close()
     conf_repo.close()
     if "pgm_repo" in locals():
-        pgm_repo.close()
+        pgm_repo.close()  # type: ignore[possibly-undefined]
 
 
 def manage_politicians():
@@ -3194,14 +3225,14 @@ def show_politicians_list():
         with col1:
             st.metric("総政治家数", len(df))
         with col2:
-            speaker_linked = len(df[df["has_speaker"] == "✅"])
+            speaker_linked = len(df[df["has_speaker"] == "✅"])  # type: ignore[arg-type,index]
             st.metric("発言者リンク済み", f"{speaker_linked} / {len(df)}")
         with col3:
-            parties_count = df["party_id"].nunique()
-            st.metric("政党数", parties_count)
+            parties_count = df["party_id"].nunique()  # type: ignore[union-attr]
+            st.metric("政党数", parties_count)  # type: ignore[arg-type]
         with col4:
-            avg_conferences = df["conference_count"].mean()
-            st.metric("平均所属会議体数", f"{avg_conferences:.1f}")
+            avg_conferences = df["conference_count"].mean()  # type: ignore[union-attr]
+            st.metric("平均所属会議体数", f"{avg_conferences:.1f}")  # type: ignore[arg-type]
 
         # フィルタリング機能
         st.markdown("### フィルタリング")
@@ -3210,7 +3241,7 @@ def show_politicians_list():
         with col1:
             # 政党フィルタ
             party_options = ["すべて"] + sorted(
-                df["party_name"].dropna().unique().tolist()
+                df["party_name"].dropna().unique().tolist()  # type: ignore[union-attr]
             )
             selected_party = st.selectbox("政党", party_options)
 
@@ -3224,19 +3255,19 @@ def show_politicians_list():
             search_name = st.text_input("名前検索", placeholder="政治家名を入力")
 
         # フィルタリング適用
-        filtered_df = df.copy()
+        filtered_df = df.copy()  # type: ignore[union-attr]
 
         if selected_party != "すべて":
-            filtered_df = filtered_df[filtered_df["party_name"] == selected_party]
+            filtered_df = filtered_df[filtered_df["party_name"] == selected_party]  # type: ignore[index]
 
         if selected_speaker == "リンク済み":
-            filtered_df = filtered_df[filtered_df["has_speaker"] == "✅"]
+            filtered_df = filtered_df[filtered_df["has_speaker"] == "✅"]  # type: ignore[index]
         elif selected_speaker == "未リンク":
-            filtered_df = filtered_df[filtered_df["has_speaker"] == "❌"]
+            filtered_df = filtered_df[filtered_df["has_speaker"] == "❌"]  # type: ignore[index]
 
         if search_name:
-            filtered_df = filtered_df[
-                filtered_df["name"].str.contains(search_name, na=False)
+            filtered_df = filtered_df[  # type: ignore[index]
+                filtered_df["name"].str.contains(search_name, na=False)  # type: ignore[union-attr]
             ]
 
         # 表示カラムの選択
@@ -3252,15 +3283,15 @@ def show_politicians_list():
         }
 
         # データ表示
-        st.markdown(f"### 政治家一覧 ({len(filtered_df)}名)")
+        st.markdown(f"### 政治家一覧 ({len(filtered_df)}名)")  # type: ignore[arg-type]
 
         # カラム名を日本語に変換
-        display_df = filtered_df[list(display_columns.keys())].rename(
+        display_df = filtered_df[list(display_columns.keys())].rename(  # type: ignore[index,union-attr]
             columns=display_columns
         )
 
         # データテーブル表示
-        st.dataframe(
+        st.dataframe(  # type: ignore[call-arg]
             display_df,
             use_container_width=True,
             hide_index=True,
@@ -3279,10 +3310,10 @@ def show_politicians_list():
 
         # エクスポート機能
         if st.button("CSVエクスポート", type="secondary"):
-            csv = display_df.to_csv(index=False, encoding="utf-8-sig")
+            csv = display_df.to_csv(index=False, encoding="utf-8-sig")  # type: ignore[union-attr]
             st.download_button(
                 label="ダウンロード",
-                data=csv,
+                data=csv,  # type: ignore[arg-type]
                 file_name=f"politicians_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv",
             )
@@ -3378,20 +3409,20 @@ def show_politician_details():
 
                 if affiliations:
                     aff_df = pd.DataFrame(affiliations)
-                    aff_df["期間"] = aff_df.apply(
+                    aff_df["期間"] = aff_df.apply(  # type: ignore[union-attr]
                         lambda x: f"{x['start_date']} ～ {x['end_date'] or '現在'}",
                         axis=1,
                     )
-                    display_aff_df = aff_df[
+                    display_aff_df = aff_df[  # type: ignore[union-attr]
                         ["conference_name", "governing_body_name", "role", "期間"]
-                    ].rename(
+                    ].rename(  # type: ignore[union-attr]
                         columns={
                             "conference_name": "会議体",
                             "governing_body_name": "開催主体",
                             "role": "役職",
                         }
                     )
-                    st.dataframe(
+                    st.dataframe(  # type: ignore[call-arg]
                         display_aff_df, use_container_width=True, hide_index=True
                     )
                 else:

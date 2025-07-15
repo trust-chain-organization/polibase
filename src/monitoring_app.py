@@ -155,7 +155,7 @@ def display_overview_tab(repo: MonitoringRepository):
     )
 
     # 横棒グラフで表示
-    fig = px.bar(  # type: ignore[var-annotated]
+    fig = px.bar(  # type: ignore[call-overload]
         coverage_data,
         x="カバレッジ率",
         y="カテゴリ",
@@ -166,15 +166,15 @@ def display_overview_tab(repo: MonitoringRepository):
         title="各カテゴリのデータカバレッジ率",
     )
 
-    fig.update_layout(height=400)  # type: ignore[union-attr]
-    st.plotly_chart(fig, use_container_width=True)  # type: ignore[union-attr]
+    fig.update_layout(height=400)  # type: ignore[no-untyped-call]
+    st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
 
     # データ入力進捗
     st.subheader("最近のデータ入力状況")
     recent_activities = repo.get_recent_activities(days=7)
 
     if not recent_activities.empty:
-        st.dataframe(recent_activities, use_container_width=True, hide_index=True)  # type: ignore[union-attr]
+        st.dataframe(recent_activities, use_container_width=True, hide_index=True)  # type: ignore[call-arg]
     else:
         st.info("過去7日間のデータ入力はありません")
 
@@ -209,7 +209,7 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
         st.subheader("議会別データ充実度ヒートマップ")
 
         # ピボットテーブルの作成
-        heatmap_data = conference_coverage.pivot_table(
+        heatmap_data = conference_coverage.pivot_table(  # type: ignore[attr-defined]
             index="governing_body_name",
             columns="conference_name",
             values="coverage_rate",
@@ -230,14 +230,14 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
             )
         )
 
-        fig.update_layout(
+        fig.update_layout(  # type: ignore[no-untyped-call]
             title="議会別カバレッジ率",
             height=600,
             xaxis_title="議会名",
             yaxis_title="統治体名",
         )
 
-        st.plotly_chart(fig, use_container_width=True)  # type: ignore[union-attr]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
 
         # 詳細テーブル
         st.subheader("議会別詳細データ")
@@ -266,7 +266,7 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
             "last_updated": "最終更新日",
         }
 
-        st.dataframe(
+        st.dataframe(  # type: ignore[call-arg]
             conference_coverage[display_columns],
             column_config=column_config,  # type: ignore[arg-type]
             use_container_width=True,
@@ -302,7 +302,7 @@ def display_timeline_tab(repo: MonitoringRepository):
         # 時系列グラフ
         st.subheader("データ入力推移")
 
-        fig = px.line(  # type: ignore[var-annotated]
+        fig = px.line(  # type: ignore[call-overload]
             timeline_data,
             x="date",
             y="count",
@@ -311,18 +311,18 @@ def display_timeline_tab(repo: MonitoringRepository):
             labels={"date": "日付", "count": "件数", "data_type": "データタイプ"},
         )
 
-        fig.update_layout(height=500)  # type: ignore[union-attr]
-        st.plotly_chart(fig, use_container_width=True)  # type: ignore[union-attr]
+        fig.update_layout(height=500)  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
 
         # 累積グラフ
         st.subheader("累積データ数")
 
         # 累積計算
-        timeline_data["cumulative"] = timeline_data.groupby("data_type")[  # type: ignore[union-attr]
+        timeline_data["cumulative"] = timeline_data.groupby("data_type")[  # type: ignore[index]
             "count"
         ].cumsum()  # type: ignore[union-attr]
 
-        fig_cum = px.area(  # type: ignore[var-annotated]
+        fig_cum = px.area(  # type: ignore[call-overload]
             timeline_data,
             x="date",
             y="cumulative",
@@ -335,8 +335,8 @@ def display_timeline_tab(repo: MonitoringRepository):
             },
         )
 
-        fig_cum.update_layout(height=500)  # type: ignore[union-attr]
-        st.plotly_chart(fig_cum, use_container_width=True)  # type: ignore[union-attr]
+        fig_cum.update_layout(height=500)  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig_cum, use_container_width=True)  # type: ignore[no-untyped-call]
 
     else:
         st.info("表示するデータがありません")
@@ -367,7 +367,7 @@ def display_party_coverage(repo: MonitoringRepository):
 
     if not party_data.empty:
         # ドーナツチャート
-        fig = px.pie(  # type: ignore[var-annotated]
+        fig = px.pie(  # type: ignore[call-overload]
             party_data,
             values="politician_count",
             names="party_name",
@@ -375,11 +375,11 @@ def display_party_coverage(repo: MonitoringRepository):
             hole=0.4,
         )
 
-        fig.update_traces(textposition="inside", textinfo="percent+label")  # type: ignore[union-attr]
-        st.plotly_chart(fig, use_container_width=True)  # type: ignore[union-attr]
+        fig.update_traces(textposition="inside", textinfo="percent+label")  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
 
         # 詳細テーブル
-        st.dataframe(
+        st.dataframe(  # type: ignore[call-arg]
             party_data,
             column_config={  # type: ignore[arg-type]
                 "party_name": "政党名",
@@ -406,7 +406,7 @@ def display_prefecture_coverage(repo: MonitoringRepository):
 
     if not prefecture_data.empty:
         # 地図表示（簡易版）
-        fig = px.bar(
+        fig = px.bar(  # type: ignore[call-overload]
             prefecture_data.sort_values("coverage_rate", ascending=True),
             y="prefecture_name",
             x="coverage_rate",
@@ -417,8 +417,8 @@ def display_prefecture_coverage(repo: MonitoringRepository):
             title="都道府県別カバレッジ率",
         )
 
-        fig.update_layout(height=800)
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(height=800)  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
 
     else:
         st.info("都道府県データがありません")
@@ -432,15 +432,15 @@ def display_committee_type_coverage(repo: MonitoringRepository):
 
     if not committee_data.empty:
         # サンキーダイアグラム
-        fig = px.sunburst(
+        fig = px.sunburst(  # type: ignore[call-overload]
             committee_data,
             path=["governing_body_type", "committee_type"],
             values="meeting_count",
             title="委員会タイプ別会議数分布",
         )
 
-        fig.update_layout(height=600)
-        st.plotly_chart(fig, use_container_width=True)
+        fig.update_layout(height=600)  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
 
     else:
         st.info("委員会データがありません")
@@ -469,7 +469,7 @@ def display_japan_map_tab(repo: MonitoringRepository):
     ]
     for col in numeric_columns:
         if col in prefecture_data.columns:
-            prefecture_data[col] = pd.to_numeric(prefecture_data[col], errors="coerce")
+            prefecture_data[col] = pd.to_numeric(prefecture_data[col], errors="coerce")  # type: ignore[assignment]
 
     # メトリクスの選択
     col1, col2 = st.columns([3, 1])
@@ -498,9 +498,9 @@ def display_japan_map_tab(repo: MonitoringRepository):
 
         # 全国平均
         if selected_metric in prefecture_data.columns:
-            avg_value = prefecture_data[selected_metric].mean()
-            max_value = prefecture_data[selected_metric].max()
-            min_value = prefecture_data[selected_metric].min()
+            avg_value = prefecture_data[selected_metric].mean()  # type: ignore[union-attr]
+            max_value = prefecture_data[selected_metric].max()  # type: ignore[union-attr]
+            min_value = prefecture_data[selected_metric].min()  # type: ignore[union-attr]
 
             st.metric("全国平均", f"{avg_value:.1f}")
             st.metric("最大値", f"{max_value:.0f}")
@@ -508,11 +508,11 @@ def display_japan_map_tab(repo: MonitoringRepository):
 
         # トップ5都道府県
         st.markdown("### 🏆 トップ5")
-        top5 = prefecture_data.nlargest(5, selected_metric)[
+        top5 = prefecture_data.nlargest(5, selected_metric)[  # type: ignore[union-attr]
             ["prefecture_name", selected_metric]
         ]
-        for idx, row in top5.iterrows():
-            st.write(f"{idx + 1}. {row['prefecture_name']}: {row[selected_metric]:.1f}")
+        for idx, row in top5.iterrows():  # type: ignore[union-attr]
+            st.write(f"{idx + 1}. {row['prefecture_name']}: {row[selected_metric]:.1f}")  # type: ignore[operator]
 
     with col1:
         # 地図の作成と表示
@@ -541,17 +541,17 @@ def display_japan_map_tab(repo: MonitoringRepository):
                     prefecture_name = match.group(1)
 
                     # 該当する都道府県のデータを取得
-                    pref_data = prefecture_data[
+                    pref_data = prefecture_data[  # type: ignore[index]
                         prefecture_data["prefecture_name"] == prefecture_name
                     ]
 
-                    if not pref_data.empty:
+                    if not pref_data.empty:  # type: ignore[union-attr]
                         st.markdown("---")
                         st.subheader(f"{prefecture_name}の詳細情報")
 
                         # 詳細カードの表示
                         st.markdown(
-                            create_prefecture_details_card(pref_data.iloc[0]),
+                            create_prefecture_details_card(pref_data.iloc[0]),  # type: ignore[arg-type,union-attr]
                             unsafe_allow_html=True,
                         )
 
@@ -573,7 +573,7 @@ def display_japan_map_tab(repo: MonitoringRepository):
         display_df = prefecture_data.rename(columns=column_mapping)
 
         # データフレームの表示
-        st.dataframe(
+        st.dataframe(  # type: ignore[call-arg]
             display_df,
             use_container_width=True,
             hide_index=True,
@@ -588,7 +588,7 @@ def display_japan_map_tab(repo: MonitoringRepository):
         )
 
         # CSVダウンロードボタン
-        csv = display_df.to_csv(index=False, encoding="utf-8-sig")
+        csv = display_df.to_csv(index=False, encoding="utf-8-sig")  # type: ignore[union-attr]
         st.download_button(
             label="📥 CSVダウンロード",
             data=csv,

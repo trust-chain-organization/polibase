@@ -4,7 +4,6 @@ Generate SEED data for governing_bodies table from city_and_prefecture_code.csv
 
 import csv
 from pathlib import Path
-from typing import Any
 
 
 def parse_organization_type(code: str, prefecture_name: str, city_name: str) -> str:
@@ -54,7 +53,7 @@ def main():
     output_path = project_root / "database" / "seed_governing_bodies_generated.sql"
 
     # Read the CSV file
-    governing_bodies: list[dict[str, Any]] = []
+    governing_bodies: list[dict[str, str | None]] = []
     seen_codes: set[str] = set()
     seen_names: set[tuple[str, str]] = (
         set()
@@ -137,14 +136,14 @@ def main():
         )
 
         # Group by type for better organization
-        by_type = {}
+        by_type: dict[str | None, list[dict[str, str | None]]] = {}
         for gb in governing_bodies:
-            gb_type = gb["type"]
+            gb_type: str | None = gb["type"]
             if gb_type not in by_type:
                 by_type[gb_type] = []
             by_type[gb_type].append(gb)
 
-        values = []
+        values: list[str] = []
 
         # Output in order: 国, 都道府県, 市町村
         type_order = ["国", "都道府県", "市町村"]
@@ -156,7 +155,9 @@ def main():
 
                 for gb in by_type[gb_type]:
                     # Escape single quotes for SQL
-                    name_escaped = gb["name"].replace("'", "''")
+                    name_escaped: str = (
+                        gb["name"].replace("'", "''") if gb["name"] else ""
+                    )
                     org_code = (
                         f"'{gb['organization_code']}'"
                         if gb["organization_code"]

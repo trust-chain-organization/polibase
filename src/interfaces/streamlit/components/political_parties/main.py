@@ -1,5 +1,7 @@
 """Political party management component"""
 
+from typing import Any
+
 import pandas as pd
 import streamlit as st
 from sqlalchemy import text
@@ -205,7 +207,7 @@ def manage_political_parties():
 
         # 一括確認セクション
         with st.expander("登録済みURL一覧", expanded=False):
-            df_data = []
+            df_data: list[dict[str, Any]] = []
             for party in parties:
                 df_data.append(
                     {
@@ -215,7 +217,7 @@ def manage_political_parties():
                 )
 
             df = pd.DataFrame(df_data)
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, use_container_width=True)  # type: ignore[no-untyped-call]
 
     finally:
         conn.close()

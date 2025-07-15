@@ -2,6 +2,7 @@
 
 import asyncio
 import time
+from typing import Any
 
 import click
 from sqlalchemy import text
@@ -181,7 +182,7 @@ class PoliticianCommands(BaseCommand):
 
                                 # Pydanticモデルを辞書に変換して
                                 # political_party_idを追加
-                                members_data = []
+                                members_data: list[dict[str, Any]] = []
                                 for member in result.members:
                                     member_dict = member.model_dump()
                                     member_dict["political_party_id"] = party.id

@@ -156,7 +156,7 @@ class MinutesDomainService:
             current.append(char)
             if char in sentence_endings:
                 sentences.append("".join(current))
-                current = []
+                current: list[str] = []
 
         # Add remaining text
         if current:
