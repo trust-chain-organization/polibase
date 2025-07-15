@@ -1,7 +1,7 @@
 """Minutes domain service for handling minutes processing business logic."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.minutes import Minutes
@@ -58,12 +58,12 @@ class MinutesDomainService:
 
     def create_conversations_from_speeches(
         self,
-        speeches: list[dict] | list["ExtractedSpeechDTO"],
+        speeches: list[dict[str, Any]] | list["ExtractedSpeechDTO"],
         minutes_id: int,
         chapter_number: int = 1,
     ) -> list[Conversation]:
         """Create conversation entities from extracted speeches."""
-        conversations = []
+        conversations: list[Conversation] = []
 
         for idx, speech in enumerate(speeches):
             if isinstance(speech, dict):
@@ -100,8 +100,8 @@ class MinutesDomainService:
         # Split by sentences first
         sentences = self._split_into_sentences(conversation.comment)
 
-        chunks = []
-        current_chunk = []
+        chunks: list[Conversation] = []
+        current_chunk: list[str] = []
         current_length = 0
 
         for sentence in sentences:
@@ -149,8 +149,8 @@ class MinutesDomainService:
         # Japanese sentence endings
         sentence_endings = ["。", "！", "？", "\n"]
 
-        sentences = []
-        current = []
+        sentences: list[str] = []
+        current: list[str] = []
 
         for char in text:
             current.append(char)
@@ -179,7 +179,7 @@ class MinutesDomainService:
         self, conversations: list[Conversation]
     ) -> list[str]:
         """Validate conversation sequence and return issues."""
-        issues = []
+        issues: list[str] = []
 
         if not conversations:
             return ["No conversations found"]
