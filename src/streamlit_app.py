@@ -247,11 +247,13 @@ def show_meetings_list():
 
             with col1:
                 # URLを表示
+                url_val: Any = row["url"]  # type: ignore[index]
+                is_not_na = bool(pd.notna(url_val))  # type: ignore[arg-type]
                 url_display: str = (
-                    str(row["url"])
-                    if pd.notna(row["url"]) and row["url"]
+                    str(url_val)  # type: ignore[arg-type]
+                    if is_not_na and url_val
                     else "URLなし"
-                )  # type: ignore[arg-type,index]
+                )
                 st.markdown(
                     f"**{row['開催日']}** - {row['開催主体・会議体']}",
                     unsafe_allow_html=True,
@@ -1063,10 +1065,10 @@ def manage_conferences():
 
             selected_conf_display = st.selectbox("編集する会議体を選択", conf_options)  # type: ignore[arg-type,assignment]
 
-            selected_conf = conf_map[selected_conf_display]  # type: ignore[assignment]
+            selected_conf = cast(dict[str, Any], conf_map[selected_conf_display])  # type: ignore[assignment]
 
             # 現在の議員紹介URLの状態を表示
-            if selected_conf.get("members_introduction_url"):  # type: ignore[union-attr]
+            if selected_conf.get("members_introduction_url"):
                 st.info(f"🔗 現在のURL: {selected_conf['members_introduction_url']}")
             else:
                 st.warning("❌ 議員紹介URLが未設定です")
@@ -1173,12 +1175,8 @@ def run_command_with_progress(command: str | list[str], process_name: str) -> No
     if "process_output" not in st.session_state:
         st.session_state.process_output = {}
 
-    process_status: dict[str, str] = cast(
-        dict[str, str], st.session_state.process_status
-    )  # type: ignore[misc]
-    process_output: dict[str, list[str]] = cast(
-        dict[str, list[str]], st.session_state.process_output
-    )  # type: ignore[misc]
+    process_status = cast(dict[str, str], st.session_state.process_status)  # type: ignore[attr-defined]
+    process_output = cast(dict[str, list[str]], st.session_state.process_output)  # type: ignore[attr-defined]
 
     process_status[process_name] = "running"
     process_output[process_name] = []
