@@ -45,8 +45,10 @@ def validate_config() -> None:
         import warnings
 
         warnings.warn(
-            "GOOGLE_API_KEY is not set. LLM features will not work. "
-            "Please set it in your .env file or environment variables.",
+            (
+                "GOOGLE_API_KEY is not set. LLM features will not work. "
+                "Please set it in your .env file or environment variables."
+            ),
             RuntimeWarning,
             stacklevel=2,
         )
@@ -65,7 +67,7 @@ def validate_config() -> None:
 
 def set_env() -> None:
     """Set environment variables from loaded configuration"""
-    env_vars = {
+    env_vars: dict[str, str | None] = {
         "LANGCHAIN_TRACING_V2": LANGCHAIN_TRACING_V2,
         "LANGCHAIN_ENDPOINT": LANGCHAIN_ENDPOINT,
         "LANGCHAIN_API_KEY": LANGCHAIN_API_KEY,

@@ -6,13 +6,17 @@ settings and integrations.
 
 import logging
 import os
-from typing import Any
+from collections.abc import Callable
+from typing import Any, Literal, TypeVar, cast
 
 import sentry_sdk
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.types import Event
 
 from .settings import get_settings
+
+F = TypeVar("F", bound=Callable[..., Any])
 
 logger = logging.getLogger(__name__)
 
@@ -90,9 +94,7 @@ def init_sentry() -> None:
         logger.error(f"Failed to initialize Sentry: {e}")
 
 
-def before_send_filter(
-    event: dict[str, Any], hint: dict[str, Any]
-) -> dict[str, Any] | None:
+def before_send_filter(event: Event, hint: dict[str, Any]) -> Event | None:
     """Filter events before sending to Sentry
 
     This function allows filtering out sensitive data or unwanted events.
@@ -113,25 +115,24 @@ def before_send_filter(
             return None
 
     # Remove sensitive data from event
-    if "request" in event and "data" in event["request"]:
+    event_dict = cast(dict[str, Any], event)
+    if "request" in event_dict and "data" in event_dict["request"]:
         # Remove any API keys or sensitive data from request
-        if isinstance(event["request"]["data"], dict):
+        if isinstance(event_dict["request"]["data"], dict):
             for key in ["api_key", "password", "token", "secret"]:
-                event["request"]["data"].pop(key, None)
+                event_dict["request"]["data"].pop(key, None)
 
     # Sanitize error messages
-    if "exception" in event and "values" in event["exception"]:
-        for exception in event["exception"]["values"]:
+    if "exception" in event_dict and "values" in event_dict["exception"]:
+        for exception in event_dict["exception"]["values"]:
             if "value" in exception:
                 # Remove any API keys from error messages
                 exception["value"] = sanitize_message(exception["value"])
 
-    return event
+    return cast(Event, event_dict)
 
 
-def before_send_transaction_filter(
-    event: dict[str, Any], hint: dict[str, Any]
-) -> dict[str, Any] | None:
+def before_send_transaction_filter(event: Event, hint: dict[str, Any]) -> Event | None:
     """Filter performance transactions before sending to Sentry
 
     Args:
@@ -142,7 +143,8 @@ def before_send_transaction_filter(
         Modified event or None to drop the transaction
     """
     # Filter out health check endpoints
-    if event.get("transaction") in ["/health", "/metrics", "/ping"]:
+    event_dict = cast(dict[str, Any], event)
+    if event_dict.get("transaction") in ["/health", "/metrics", "/ping"]:
         return None
 
     return event
@@ -181,7 +183,11 @@ def sanitize_message(message: str) -> str:
     return sanitized
 
 
-def capture_message(message: str, level: str = "info", **kwargs: Any) -> None:
+def capture_message(
+    message: str,
+    level: Literal["debug", "info", "warning", "error", "fatal"] = "info",
+    **kwargs: Any,
+) -> None:
     """Capture a message to Sentry
 
     Args:
@@ -247,7 +253,9 @@ def start_transaction(name: str, op: str = "task", **kwargs: Any) -> Any:
     return sentry_sdk.start_transaction(name=name, op=op, **kwargs)
 
 
-def monitor_performance(op: str = "task", description: str | None = None):
+def monitor_performance(
+    op: str = "task", description: str | None = None
+) -> Callable[[F], F]:
     """Decorator for monitoring function performance
 
     Args:
@@ -258,8 +266,8 @@ def monitor_performance(op: str = "task", description: str | None = None):
         Decorated function
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: F) -> F:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             transaction_name = description or f"{func.__module__}.{func.__name__}"
             with sentry_sdk.start_transaction(
                 op=op, name=transaction_name
@@ -272,7 +280,7 @@ def monitor_performance(op: str = "task", description: str | None = None):
                     transaction.set_status("internal_error")
                     raise
 
-        return wrapper
+        return cast(F, wrapper)
 
     return decorator
 
@@ -289,7 +297,7 @@ def monitor_db_query(query_name: str):
     return monitor_performance(op="db.query", description=query_name)
 
 
-def monitor_llm_call(model: str | None = None):
+def monitor_llm_call(model: str | None = None) -> Callable[[F], F]:
     """Decorator for monitoring LLM API calls
 
     Args:
@@ -299,8 +307,8 @@ def monitor_llm_call(model: str | None = None):
         Decorated function
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: F) -> F:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             op_name = f"llm.{model}" if model else "llm.call"
             with sentry_sdk.start_transaction(
                 op=op_name, name=func.__name__
@@ -314,12 +322,12 @@ def monitor_llm_call(model: str | None = None):
                     transaction.set_status("internal_error")
                     raise
 
-        return wrapper
+        return cast(F, wrapper)
 
     return decorator
 
 
-def monitor_web_scraping(url: str | None = None):
+def monitor_web_scraping(url: str | None = None) -> Callable[[F], F]:
     """Decorator for monitoring web scraping operations
 
     Args:
@@ -329,8 +337,8 @@ def monitor_web_scraping(url: str | None = None):
         Decorated function
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: F) -> F:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             with sentry_sdk.start_transaction(
                 op="http.client", name=func.__name__
             ) as transaction:
@@ -344,6 +352,6 @@ def monitor_web_scraping(url: str | None = None):
                     transaction.set_status("internal_error")
                     raise
 
-        return wrapper
+        return cast(F, wrapper)
 
     return decorator
