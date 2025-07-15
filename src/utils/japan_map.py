@@ -1,5 +1,7 @@
 """Utilities for Japan map visualization with Folium."""
 
+from typing import Any
+
 import folium
 import pandas as pd
 from folium import plugins
@@ -56,7 +58,7 @@ PREFECTURE_CENTERS = {
 }
 
 
-def get_prefecture_geojson() -> dict:
+def get_prefecture_geojson() -> dict[str, Any]:
     """Get GeoJSON data for Japanese prefectures.
 
     This is a simplified version. In production, you would load from a proper
@@ -83,7 +85,7 @@ def get_prefecture_geojson() -> dict:
 def create_japan_map(
     data: pd.DataFrame,
     value_column: str = "total_value",
-    center: tuple[float, float] | None = None,
+    center: list[float] | None = None,
     zoom_start: int = 5,
 ) -> folium.Map:
     """Create a Folium map of Japan with data visualization.
@@ -115,24 +117,27 @@ def create_japan_map(
         raise ValueError("Data must have 'prefecture_name' column")
 
     # Normalize values for color mapping
-    if value_column in data.columns and not data[value_column].empty:
-        max_value = data[value_column].max()
-        min_value = data[value_column].min()
-    else:
-        max_value = 100
-        min_value = 0
+    max_value: float = 100.0
+    min_value: float = 0.0
+
+    if value_column in data.columns:
+        value_series = data[value_column]  # type: ignore[index]
+        if len(value_series) > 0:  # type: ignore[arg-type]
+            max_val = value_series.max()  # type: ignore[no-untyped-call]
+            min_val = value_series.min()  # type: ignore[no-untyped-call]
+            max_value = float(max_val) if max_val is not None else 100.0  # type: ignore[arg-type]
+            min_value = float(min_val) if min_val is not None else 0.0  # type: ignore[arg-type]
 
     # Create a marker for each prefecture
     for prefecture, coords in PREFECTURE_CENTERS.items():
         # Get data for this prefecture
-        pref_data = data[data["prefecture_name"] == prefecture]
+        pref_data = data[data["prefecture_name"] == prefecture]  # type: ignore[index]
 
-        if not pref_data.empty:
-            value = (
-                pref_data.iloc[0][value_column]
-                if value_column in pref_data.columns
-                else 0
-            )
+        if len(pref_data) > 0:  # type: ignore[arg-type]
+            value: float = 0.0
+            if value_column in pref_data.columns:  # type: ignore[union-attr]
+                val = pref_data.iloc[0][value_column]  # type: ignore[call-overload]
+                value = float(val) if val is not None else 0.0  # type: ignore[arg-type]
 
             # Calculate color based on value
             if max_value > min_value:
@@ -161,11 +166,13 @@ def create_japan_map(
                 "politicians_count",
                 "groups_count",
             ]:
-                if col in pref_data.columns:
-                    popup_content += (
-                        f"<tr><td>{get_column_label(col)}:</td>"
-                        f"<td>{pref_data.iloc[0][col]:,}</td></tr>"
-                    )
+                if col in pref_data.columns:  # type: ignore[union-attr]
+                    col_value = pref_data.iloc[0][col]  # type: ignore[call-overload]
+                    if col_value is not None:
+                        popup_content += (
+                            f"<tr><td>{get_column_label(col)}:</td>"
+                            f"<td>{int(col_value):,}</td></tr>"  # type: ignore[arg-type]
+                        )
 
             popup_content += "</table></div>"
 
@@ -239,8 +246,9 @@ def create_prefecture_details_card(prefecture_data: pd.Series) -> str:
     ]
 
     for col, label, color in metrics:
-        if col in prefecture_data.index:
-            value = prefecture_data[col]
+        if col in prefecture_data.index:  # type: ignore[operator]
+            val = prefecture_data[col]  # type: ignore[index]
+            value: int = int(val) if val is not None else 0  # type: ignore[arg-type]
             html += f"""
             <div style="background: white; padding: 10px; border-radius: 5px;
                  border-left: 4px solid {color};">

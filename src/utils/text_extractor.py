@@ -46,7 +46,7 @@ def extract_text_from_pdf(file_content: bytes) -> str:
             text_page = None
             try:
                 text_page = page.get_textpage()
-                page_text = text_page.get_text_bounded()
+                page_text: str = text_page.get_text_bounded()  # type: ignore[no-untyped-call]
                 extracted_pages.append(page_text)
             except Exception as e:
                 logger.warning(f"Failed to extract text from page {page_num + 1}: {e}")
