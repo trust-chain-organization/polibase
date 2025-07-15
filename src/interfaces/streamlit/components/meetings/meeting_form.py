@@ -1,7 +1,7 @@
 """Meeting form component for adding new meetings"""
 
 from datetime import date
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import streamlit as st
@@ -101,17 +101,18 @@ def add_new_meeting():
             # 開催主体ごとにグループ化して表示
             conf_df: pd.DataFrame = pd.DataFrame(all_conferences)
 
-            gb_names: list[str] = conf_df["governing_body_name"].unique().tolist()
+            gb_names_series = conf_df["governing_body_name"].unique()  # type: ignore[no-untyped-call]
+            gb_names = cast(list[str], gb_names_series.tolist())  # type: ignore[no-untyped-call]
             for gb_name in gb_names:
                 # pandasのフィルタリング結果を明示的にDataFrameとして扱う
-                mask = conf_df["governing_body_name"] == gb_name
-                gb_conf_df: pd.DataFrame = conf_df.loc[mask]
+                mask = conf_df["governing_body_name"] == gb_name  # type: ignore[no-untyped-call]
+                gb_conf_df = conf_df.loc[mask]  # type: ignore[no-untyped-call]
                 st.markdown(f"**{gb_name}**")
                 # DataFrameのサブセットを新しいDataFrameとして作成
                 display_df: pd.DataFrame = pd.DataFrame(
                     {
-                        "会議体名": gb_conf_df["name"].tolist(),
-                        "会議体種別": gb_conf_df["type"].tolist(),
+                        "会議体名": gb_conf_df["name"].tolist(),  # type: ignore[no-untyped-call]
+                        "会議体種別": gb_conf_df["type"].tolist(),  # type: ignore[no-untyped-call]
                     }
                 )
                 st.dataframe(  # type: ignore

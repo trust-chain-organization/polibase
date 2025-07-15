@@ -53,9 +53,11 @@ def main():
     output_path = project_root / "database" / "seed_governing_bodies_generated.sql"
 
     # Read the CSV file
-    governing_bodies = []
-    seen_codes = set()
-    seen_names = set()  # Track (name, type) pairs to avoid duplicates
+    governing_bodies: list[dict[str, str | None]] = []
+    seen_codes: set[str] = set()
+    seen_names: set[tuple[str, str]] = (
+        set()
+    )  # Track (name, type) pairs to avoid duplicates
 
     # Add Japan as the top-level entry
     governing_bodies.append(
@@ -134,14 +136,14 @@ def main():
         )
 
         # Group by type for better organization
-        by_type = {}
+        by_type: dict[str | None, list[dict[str, str | None]]] = {}
         for gb in governing_bodies:
-            gb_type = gb["type"]
+            gb_type: str | None = gb["type"]
             if gb_type not in by_type:
                 by_type[gb_type] = []
             by_type[gb_type].append(gb)
 
-        values = []
+        values: list[str] = []
 
         # Output in order: 国, 都道府県, 市町村
         type_order = ["国", "都道府県", "市町村"]
@@ -153,7 +155,9 @@ def main():
 
                 for gb in by_type[gb_type]:
                     # Escape single quotes for SQL
-                    name_escaped = gb["name"].replace("'", "''")
+                    name_escaped: str = (
+                        gb["name"].replace("'", "''") if gb["name"] else ""
+                    )
                     org_code = (
                         f"'{gb['organization_code']}'"
                         if gb["organization_code"]
@@ -170,7 +174,7 @@ def main():
                     values.append(value)
 
         # Join with proper formatting
-        output_lines = []
+        output_lines: list[str] = []
         for i, line in enumerate(values):
             if line == "":  # Empty line
                 output_lines.append("")

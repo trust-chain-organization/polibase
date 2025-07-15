@@ -1,6 +1,7 @@
 """Use case for scraping politicians from party websites."""
 
 from src.application.dtos.politician_dto import ExtractedPoliticianDTO, PoliticianDTO
+from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician import Politician
 from src.domain.entities.speaker import Speaker
 from src.domain.repositories.political_party_repository import PoliticalPartyRepository
@@ -45,7 +46,7 @@ class ScrapePoliticiansUseCase:
         else:
             raise ValueError("Either party_id or all_parties must be specified")
 
-        all_results = []
+        all_results: list[PoliticianDTO] = []
 
         for party in parties:
             # Scrape party website
@@ -77,22 +78,26 @@ class ScrapePoliticiansUseCase:
 
         return all_results
 
-    async def _scrape_party_website(self, party) -> list[ExtractedPoliticianDTO]:
+    async def _scrape_party_website(
+        self, party: PoliticalParty
+    ) -> list[ExtractedPoliticianDTO]:
         """Scrape politicians from party website."""
         if not party.members_list_url:
             return []
 
         # Use web scraper service
+        if party.id is None:
+            raise ValueError("Party must have an ID")
         raw_data = await self.scraper.scrape_party_members(
             party.members_list_url, party.id
         )
 
         # Convert to DTOs
-        extracted = []
+        extracted: list[ExtractedPoliticianDTO] = []
         for item in raw_data:
             dto = ExtractedPoliticianDTO(
                 name=item["name"],
-                party_id=party.id,
+                party_id=party.id,  # Safe because we checked above
                 furigana=item.get("furigana"),
                 position=item.get("position"),
                 district=item.get("district"),

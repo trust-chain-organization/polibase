@@ -88,7 +88,7 @@ class ConferenceDomainService:
         self, start_date: date, end_date: date | None
     ) -> list[str]:
         """Validate affiliation date range."""
-        issues = []
+        issues: list[str] = []
 
         # Start date should not be in the future
         if start_date > datetime.now().date():

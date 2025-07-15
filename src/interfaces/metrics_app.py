@@ -1,6 +1,8 @@
 """Prometheusメトリクスエンドポイント用のFastAPIアプリケーション."""
 
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
@@ -14,7 +16,7 @@ logger = get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """アプリケーションのライフサイクル管理."""
     # 起動時の処理
     logger.info("Starting metrics server")
@@ -43,7 +45,9 @@ app = FastAPI(
 
 
 @app.middleware("http")
-async def metrics_middleware(request: Request, call_next):
+async def metrics_middleware(
+    request: Request, call_next: Callable[[Request], Any]
+) -> Response:
     """HTTPリクエストのメトリクスを記録するミドルウェア."""
     # リクエストカウンターとアクティブリクエスト数の更新
     http_requests = CommonMetrics.http_requests_total()
@@ -116,7 +120,7 @@ async def metrics():
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, Any]:
     """ルートエンドポイント."""
     return {
         "service": "polibase-metrics",
@@ -136,7 +140,7 @@ async def root():
     labels={"demo": "true"},
     log_slow_operations=0.5,
 )
-async def demo_process_minutes(minutes_count: int = 1):
+async def demo_process_minutes(minutes_count: int = 1) -> dict[str, Any]:
     """議事録処理のデモ（メトリクス記録のテスト用）."""
     import asyncio
     import random
