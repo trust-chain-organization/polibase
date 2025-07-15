@@ -35,12 +35,16 @@ class SeedGenerator:
             bodies = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
-            f"-- Generated from database on "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
             "-- governing_bodies seed data",
             "",
-            "INSERT INTO governing_bodies "
-            "(name, type, organization_code, organization_type) VALUES",
+            (
+                "INSERT INTO governing_bodies "
+                "(name, type, organization_code, organization_type) VALUES"
+            ),
         ]
 
         # タイプごとにグループ化
@@ -122,12 +126,16 @@ class SeedGenerator:
             conferences = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
-            f"-- Generated from database on "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
             "-- conferences seed data",
             "",
-            "INSERT INTO conferences "
-            "(name, type, governing_body_id, members_introduction_url) VALUES",
+            (
+                "INSERT INTO conferences "
+                "(name, type, governing_body_id, members_introduction_url) VALUES"
+            ),
         ]
 
         # 開催主体ごとにグループ化
@@ -232,8 +240,10 @@ class SeedGenerator:
             parties = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
-            f"-- Generated from database on "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
             "-- political_parties seed data",
             "",
             "INSERT INTO political_parties (name, members_list_url) VALUES",
@@ -280,12 +290,16 @@ class SeedGenerator:
             groups = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
-            f"-- Generated from database on "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
             "-- parliamentary_groups seed data",
             "",
-            "INSERT INTO parliamentary_groups "
-            "(name, conference_id, url, description, is_active) VALUES",
+            (
+                "INSERT INTO parliamentary_groups "
+                "(name, conference_id, url, description, is_active) VALUES"
+            ),
         ]
 
         # 会議体ごとにグループ化

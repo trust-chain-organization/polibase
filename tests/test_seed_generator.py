@@ -19,18 +19,15 @@ class TestSeedGenerator:
     def test_generate_governing_bodies_seed(self, seed_generator):
         """governing_bodiesのSEED生成テスト"""
         # モックデータの準備
-        mock_rows = []
-        for data in [
-            (1, "日本国", "国", None, "国"),
-            (2, "東京都", "都道府県", "130001", "都道府県"),
-            (3, "大阪府", "都道府県", "270008", "都道府県"),
-        ]:
-            mock_rows.append(data)
+        mock_rows = [
+            ("日本国", "国", None, "国"),
+            ("東京都", "都道府県", "130001", "都道府県"),
+            ("大阪府", "都道府県", "270008", "都道府県"),
+        ]
 
         mock_result = MagicMock()
         mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
         mock_result.keys.return_value = [
-            "id",
             "name",
             "type",
             "organization_code",
@@ -57,12 +54,10 @@ class TestSeedGenerator:
     def test_generate_conferences_seed(self, seed_generator):
         """conferencesのSEED生成テスト"""
         # モックデータの準備
-        mock_rows = []
-        for data in [
-            (1, "衆議院", "議院", None, 1, "日本国", "国"),
-            (2, "参議院", "議院", None, 1, "日本国", "国"),
+        mock_rows = [
+            ("衆議院", "議院", None, 1, "日本国", "国"),
+            ("参議院", "議院", None, 1, "日本国", "国"),
             (
-                3,
                 "東京都議会",
                 "議会",
                 "https://example.com/members",
@@ -70,13 +65,11 @@ class TestSeedGenerator:
                 "東京都",
                 "都道府県",
             ),
-        ]:
-            mock_rows.append(data)
+        ]
 
         mock_result = MagicMock()
         mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
         mock_result.keys.return_value = [
-            "id",
             "name",
             "type",
             "members_introduction_url",
@@ -108,17 +101,15 @@ class TestSeedGenerator:
     def test_generate_political_parties_seed(self, seed_generator):
         """political_partiesのSEED生成テスト"""
         # モックデータの準備
-        mock_rows = []
-        for data in [
-            (1, "自由民主党", "https://www.jimin.jp/members"),
-            (2, "立憲民主党", "https://cdp-japan.jp/members"),
-            (3, "日本維新の会", None),
-        ]:
-            mock_rows.append(data)
+        mock_rows = [
+            ("自由民主党", "https://www.jimin.jp/members"),
+            ("立憲民主党", "https://cdp-japan.jp/members"),
+            ("日本維新の会", None),
+        ]
 
         mock_result = MagicMock()
         mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
-        mock_result.keys.return_value = ["id", "name", "members_list_url"]
+        mock_result.keys.return_value = ["name", "members_list_url"]
 
         mock_conn = MagicMock()
         mock_conn.execute.return_value = mock_result
@@ -139,11 +130,9 @@ class TestSeedGenerator:
     def test_generate_parliamentary_groups_seed(self, seed_generator):
         """parliamentary_groupsのSEED生成テスト"""
         # モックデータの準備
-        mock_rows = []
-        for data in [
-            (1, "自由民主党", None, None, True, "東京都議会", "東京都", "都道府県"),
+        mock_rows = [
+            ("自由民主党", None, None, True, "東京都議会", "東京都", "都道府県"),
             (
-                2,
                 "都民ファーストの会",
                 "https://example.com",
                 "都議会第一会派",
@@ -152,13 +141,11 @@ class TestSeedGenerator:
                 "東京都",
                 "都道府県",
             ),
-        ]:
-            mock_rows.append(data)
+        ]
 
         mock_result = MagicMock()
         mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
         mock_result.keys.return_value = [
-            "id",
             "name",
             "url",
             "description",
@@ -189,17 +176,14 @@ class TestSeedGenerator:
     def test_sql_injection_protection(self, seed_generator):
         """SQLインジェクション対策のテスト"""
         # 悪意のあるデータ
-        mock_rows = []
-        for data in [
-            (1, "悪意'; DROP TABLE--", "国", None, "国"),
-            (2, "O'Reilly", "都道府県", "130001", "都道府県"),
-        ]:
-            mock_rows.append(data)
+        mock_rows = [
+            ("悪意'; DROP TABLE--", "国", None, "国"),
+            ("O'Reilly", "都道府県", "130001", "都道府県"),
+        ]
 
         mock_result = MagicMock()
         mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
         mock_result.keys.return_value = [
-            "id",
             "name",
             "type",
             "organization_code",
