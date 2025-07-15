@@ -55,15 +55,15 @@ Issue番号: $ARGUMENTS
    - エッジケースも考慮する
 
 2. **コード品質チェック**
-   !docker compose exec polibase uv run --frozen ruff format .
-   !docker compose exec polibase uv run --frozen ruff check . --fix
-   !docker compose exec polibase uv run --frozen pyright
+   uv run --frozen ruff format .
+   uv run --frozen ruff check . --fix
+   uv run --frozen pyright
 
 ## 6. テストの実行
 
 全てのテストが成功することを確認してください：
 
-!docker compose exec polibase uv run pytest -xvs
+uv run pytest -xvs
 
 テストが失敗した場合は、修正を行い再度テストを実行してください。
 
@@ -88,4 +88,5 @@ Issue番号: $ARGUMENTS
 
 - 各ステップで問題が発生した場合は、その都度修正を行ってください
 - テストが全て成功するまでプルリクエストは作成しないでください
+  - Github Actionsの予算が少なくJob時間制限があるため不要なCIを実行させないためです。
 - コーディング規約（Ruff、型チェック）を遵守してください

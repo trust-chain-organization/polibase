@@ -58,19 +58,19 @@ ultrathink
 ## 5. コード品質チェック
 
 ### Ruffによるフォーマットとチェック
-!docker compose exec polibase uv run --frozen ruff format .
-!docker compose exec polibase uv run --frozen ruff check . --fix
+uv run --frozen ruff format .
+uv run --frozen ruff check . --fix
 
 ### 型チェック
-!docker compose exec polibase uv run --frozen pyright
+uv run --frozen pyright
 
 ## 6. テストの実行
 
 ### 全テストの実行
-!docker compose exec polibase uv run pytest
+uv run pytest
 
 失敗したテストがある場合は、個別に実行して詳細を確認：
-!docker compose exec polibase uv run pytest -xvs [失敗したテストファイル]
+uv run pytest -xvs [失敗したテストファイル]
 
 ## 7. 変更の確認とプッシュ
 
