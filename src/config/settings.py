@@ -190,7 +190,7 @@ try:
 except Exception as e:
     logger.error(f"Failed to load settings: {e}")
     # Create a minimal settings object to avoid import errors
-    settings = None  # type: ignore
+    settings = None
 
 
 def get_settings() -> Settings:
