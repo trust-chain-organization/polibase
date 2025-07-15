@@ -164,25 +164,34 @@ class SpeakerExtractorFromMinutes:
                             political_party_name = :party_name
                         WHERE id = :id
                     """
-                    # politicianはPoliticianモデルのインスタンス
-                    politician_id: int | None = politician.id
-                    party_name: str | None = None
-                    # Get party name by joining with political_parties table
-                    if politician.political_party_id:
-                        party_query = """
-                            SELECT name FROM political_parties
-                            WHERE id = :party_id
-                        """
-                        result = self.politician_repo.execute_query(
-                            party_query, {"party_id": politician.political_party_id}
+                    # politicianが辞書の場合とオブジェクトの場合の両方に対応
+                    politician_id: int | None
+                    party_name: str | None
+                    if isinstance(politician, dict):
+                        pol_id = politician.get("id")
+                        politician_id = pol_id if isinstance(pol_id, int) else None
+                        party_name_val = politician.get("political_party_name")
+                        party_name = (
+                            party_name_val if isinstance(party_name_val, str) else None
                         )
-                        rows = result.fetchall()
-                        if rows:
-                            party_name = rows[0][0]
-                        else:
-                            party_name = None
                     else:
+                        politician_id = politician.id
                         party_name = None
+                        # Get party name by joining with political_parties table
+                        if (
+                            hasattr(politician, "political_party_id")
+                            and politician.political_party_id
+                        ):
+                            party_query = """
+                                SELECT name FROM political_parties
+                                WHERE id = :party_id
+                            """
+                            result = self.politician_repo.execute_query(
+                                party_query, {"party_id": politician.political_party_id}
+                            )
+                            rows = result.fetchall()
+                            if rows:
+                                party_name = rows[0][0]
 
                     self.speaker_repo.execute_query(
                         update_query,
@@ -201,22 +210,32 @@ class SpeakerExtractorFromMinutes:
                     if speaker.get("political_party_name"):
                         matched_politicians: list[Any] = []
                         for p in politicians:
-                            # pはPoliticianモデルのインスタンス
-                            # For Politician objects, get party name from party_id
-                            if p.political_party_id:
-                                party_query = """
-                                    SELECT name FROM political_parties
-                                    WHERE id = :party_id
-                                """
-                                result = self.politician_repo.execute_query(
-                                    party_query, {"party_id": p.political_party_id}
-                                )
-                                rows = result.fetchall()
+                            if isinstance(p, dict):
                                 if (
-                                    rows
-                                    and rows[0][0] == speaker["political_party_name"]
+                                    p.get("political_party_name")
+                                    == speaker["political_party_name"]
                                 ):
                                     matched_politicians.append(p)
+                            else:
+                                # For Politician objects, get party name from party_id
+                                if (
+                                    hasattr(p, "political_party_id")
+                                    and p.political_party_id
+                                ):
+                                    party_query = """
+                                        SELECT name FROM political_parties
+                                        WHERE id = :party_id
+                                    """
+                                    result = self.politician_repo.execute_query(
+                                        party_query, {"party_id": p.political_party_id}
+                                    )
+                                    rows = result.fetchall()
+                                    if (
+                                        rows
+                                        and rows[0][0]
+                                        == speaker["political_party_name"]
+                                    ):
+                                        matched_politicians.append(p)
                         if len(matched_politicians) == 1:
                             politician = matched_politicians[0]
                             # speakerを更新
@@ -227,8 +246,14 @@ class SpeakerExtractorFromMinutes:
                             self.speaker_repo.execute_query(
                                 update_query, {"id": speaker["id"]}
                             )
-                            # politicianはPoliticianモデルのインスタンス
-                            matched_politician_id: int | None = politician.id
+                            # politicianが辞書の場合とオブジェクトの場合の両方に対応
+                            if isinstance(politician, dict):
+                                pol_id = politician.get("id")
+                                matched_politician_id: int | None = (
+                                    pol_id if isinstance(pol_id, int) else None
+                                )
+                            else:
+                                matched_politician_id = politician.id
                             logger.info(
                                 f"政党名で絞り込み紐付け: {speaker['name']} "
                                 f"({speaker['political_party_name']}) -> "
