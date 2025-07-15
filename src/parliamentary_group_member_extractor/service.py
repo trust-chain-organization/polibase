@@ -4,7 +4,9 @@
 議員団メンバーシップを作成・管理する。
 """
 
+import json
 from datetime import date
+from typing import TypedDict
 
 from langchain_core.prompts import PromptTemplate
 from sqlalchemy import text
@@ -21,6 +23,17 @@ from src.parliamentary_group_member_extractor.models import (
     MembershipCreationResult,
 )
 from src.services.llm_service import LLMService
+
+
+class PoliticianCandidate(TypedDict):
+    """政治家候補の型定義"""
+
+    id: int
+    name: str
+    political_party_id: int | None
+    party_name: str | None
+    district: str | None
+    profile: str | None
 
 
 class ParliamentaryGroupMembershipService:
@@ -62,7 +75,7 @@ class ParliamentaryGroupMembershipService:
         Returns:
             マッチング結果リスト
         """
-        results = []
+        results: list[MatchingResult] = []
 
         for member in extracted_members:
             # 名前で政治家を検索
@@ -93,7 +106,7 @@ class ParliamentaryGroupMembershipService:
         name: str,
         party_name: str | None = None,
         conference_id: int | None = None,
-    ) -> list[dict]:
+    ) -> list[PoliticianCandidate]:
         """政治家の候補を検索
 
         Args:
@@ -117,7 +130,7 @@ class ParliamentaryGroupMembershipService:
         WHERE p.name LIKE :name_pattern
         """
 
-        params = {"name_pattern": f"%{name}%"}
+        params: dict[str, str | int] = {"name_pattern": f"%{name}%"}
 
         # 会議体で絞り込み
         if conference_id:
@@ -136,14 +149,14 @@ class ParliamentaryGroupMembershipService:
             result = session.execute(text(query), params)
             rows = result.fetchall()
             candidates = [
-                {
-                    "id": row.id,
-                    "name": row.name,
-                    "political_party_id": row.political_party_id,
-                    "party_name": row.party_name,
-                    "district": row.electoral_district,
-                    "profile": row.profile_url,
-                }
+                PoliticianCandidate(
+                    id=row.id,
+                    name=row.name,
+                    political_party_id=row.political_party_id,
+                    party_name=row.party_name,
+                    district=row.electoral_district,
+                    profile=row.profile_url,
+                )
                 for row in rows
             ]
         finally:
@@ -152,7 +165,7 @@ class ParliamentaryGroupMembershipService:
         return candidates
 
     async def _find_best_match_with_llm(
-        self, extracted_member: ExtractedMember, candidates: list[dict]
+        self, extracted_member: ExtractedMember, candidates: list[PoliticianCandidate]
     ) -> MatchingResult:
         """LLMを使用してベストマッチを見つける
 
@@ -202,17 +215,19 @@ JSONで回答してください。
         # 候補をフォーマット
         candidates_text = "\n".join(
             [
-                f"ID: {c['id']}, 名前: {c['name']}, "
-                f"政党: {c.get('party_name', 'なし')}, "
-                f"選挙区: {c.get('district', 'なし')}"
+                (
+                    f"ID: {c['id']}, 名前: {c['name']}, "
+                    f"政党: {c.get('party_name', 'なし')}, "
+                    f"選挙区: {c.get('district', 'なし')}"
+                )
                 for c in candidates
             ]
         )
 
-        chain = prompt | self.llm_service.llm
+        chain = prompt | self.llm_service.llm  # type: ignore[var-annotated]
 
         try:
-            response = await chain.ainvoke(
+            response = await chain.ainvoke(  # type: ignore[misc]
                 {
                     "member_name": extracted_member.name,
                     "member_role": extracted_member.role or "なし",
@@ -224,9 +239,12 @@ JSONで回答してください。
             )
 
             # レスポンスをパース
-            import json
-
-            result = json.loads(response.content)
+            # response.contentが文字列であることを確認
+            if isinstance(response.content, str):  # type: ignore[misc]
+                result = json.loads(response.content)
+            else:
+                # リスト形式の場合はエラーとして扱う
+                raise ValueError("Unexpected response format from LLM")
 
             if result["best_match_id"] == -1:
                 return MatchingResult(

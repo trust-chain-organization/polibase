@@ -132,7 +132,7 @@ HTMLコンテンツ（構造の参考用）:
         )
 
         # LLMチェーンの実行
-        chain = prompt | self.llm_service.llm | output_parser
+        chain = prompt | self.llm_service.llm | output_parser  # type: ignore[var-annotated]
 
         try:
             # HTMLが長すぎる場合は最初の部分のみを使用
@@ -140,7 +140,7 @@ HTMLコンテンツ（構造の参考用）:
                 html_content[:10000] if len(html_content) > 10000 else html_content
             )
 
-            result = await chain.ainvoke(
+            result = await chain.ainvoke(  # type: ignore[misc]
                 {
                     "text_content": text_content[:5000],  # テキストも制限
                     "html_content": truncated_html,
