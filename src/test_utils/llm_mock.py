@@ -1,11 +1,16 @@
 """LLM testing mock utilities"""
 
-from typing import Any, TypeVar
+from __future__ import annotations
+
+from collections.abc import Callable
+from types import TracebackType
+from typing import Any, TypeVar, cast
 from unittest.mock import MagicMock, patch
 
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.runnables import Runnable
+from langchain_core.runnables.config import RunnableConfig
 from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
@@ -35,7 +40,7 @@ class MockLLMResponse:
         return ChatResult(generations=[generation])
 
 
-class MockLLM(Runnable):
+class MockLLM(Runnable[Any, BaseMessage]):
     """Mock LLM for testing"""
 
     def __init__(self, responses: list[Any] | None = None):
@@ -50,10 +55,10 @@ class MockLLM(Runnable):
         self.call_history: list[dict[str, Any]] = []
 
     def invoke(
-        self, input_data: Any, config: dict[str, Any] | None = None
+        self, input: Any, config: RunnableConfig | None = None, **kwargs: Any
     ) -> BaseMessage:
         """Mock invoke method"""
-        self.call_history.append({"method": "invoke", "input": input_data})
+        self.call_history.append({"method": "invoke", "input": input})
 
         if self.call_count < len(self.responses):
             response = self.responses[self.call_count]
@@ -62,7 +67,7 @@ class MockLLM(Runnable):
 
         return AIMessage(content="Default mock response")
 
-    def with_structured_output(self, schema: type[T]) -> "MockStructuredLLM[T]":
+    def with_structured_output(self, schema: type[T]) -> MockStructuredLLM[T]:
         """Return mock structured LLM"""
         return MockStructuredLLM(schema, self.responses, self.call_history)
 
@@ -72,7 +77,7 @@ class MockLLM(Runnable):
         self.call_history.clear()
 
 
-class MockStructuredLLM(Runnable):
+class MockStructuredLLM(Runnable[Any, T]):
     """Mock structured LLM for testing"""
 
     def __init__(
@@ -86,10 +91,12 @@ class MockStructuredLLM(Runnable):
         self.call_count = 0
         self.call_history = shared_history if shared_history is not None else []
 
-    def invoke(self, input_data: Any, config: dict[str, Any] | None = None) -> T:
+    def invoke(
+        self, input: Any, config: RunnableConfig | None = None, **kwargs: Any
+    ) -> T:
         """Mock invoke method returning structured output"""
         self.call_history.append(
-            {"method": "invoke_structured", "input": input_data, "schema": self.schema}
+            {"method": "invoke_structured", "input": input, "schema": self.schema}
         )
 
         if self.call_count < len(self.responses):
@@ -98,15 +105,15 @@ class MockStructuredLLM(Runnable):
 
             # Convert response to schema instance
             if isinstance(response, self.schema):
-                return response
+                return cast(T, response)
             elif isinstance(response, dict):
-                return self.schema(**response)
+                return cast(T, self.schema(**response))
             else:
                 # Try to parse as JSON
                 import json
 
                 data = json.loads(str(response))
-                return self.schema(**data)
+                return cast(T, self.schema(**data))
 
         # Return default instance
         return self._create_default_instance()
@@ -114,7 +121,7 @@ class MockStructuredLLM(Runnable):
     def _create_default_instance(self) -> T:
         """Create default instance of schema"""
         # Simple default values for common types
-        defaults = {
+        defaults: dict[str, Any] = {
             "str": "default",
             "int": 0,
             "float": 0.0,
@@ -128,7 +135,7 @@ class MockStructuredLLM(Runnable):
             field_type = field_info.annotation
             type_name = (
                 field_type.__name__
-                if hasattr(field_type, "__name__")
+                if field_type is not None and hasattr(field_type, "__name__")
                 else str(field_type)
             )
 
@@ -140,7 +147,7 @@ class MockStructuredLLM(Runnable):
             else:
                 kwargs[field_name] = None
 
-        return self.schema(**kwargs)
+        return cast(T, self.schema(**kwargs))
 
 
 class LLMServiceMock:
@@ -148,7 +155,7 @@ class LLMServiceMock:
 
     def __init__(self, responses: list[Any] | None = None):
         self.mock_llm = MockLLM(responses)
-        self.patches = []
+        self.patches: list[Any] = []
 
     def __enter__(self):
         """Enter context manager"""
@@ -166,13 +173,20 @@ class LLMServiceMock:
 
         return self.mock_llm
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Exit context manager"""
         for patch_obj in self.patches:
             patch_obj.stop()
 
 
-def mock_llm_service(responses: list[Any] | None = None):
+def mock_llm_service(
+    responses: list[Any] | None = None,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator for mocking LLMService in tests
 
@@ -183,8 +197,8 @@ def mock_llm_service(responses: list[Any] | None = None):
             pass
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             with LLMServiceMock(responses) as mock:
                 # Add mock to kwargs if function accepts it
                 import inspect
