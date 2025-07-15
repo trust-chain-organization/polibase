@@ -339,9 +339,12 @@ class SeedGenerator:
 
                 lines.append(
                     f"('{name}', "
-                    f"(SELECT c.id FROM conferences c JOIN governing_bodies gb ON c.governing_body_id = gb.id "
-                    f"WHERE c.name = '{conf_name_escaped}' AND gb.name = '{body_name_escaped}' "
-                    f"AND gb.type = '{body_type_escaped}'), {url}, {description}, {is_active}){comma}"
+                    f"(SELECT c.id FROM conferences c "
+                    f"JOIN governing_bodies gb ON c.governing_body_id = gb.id "
+                    f"WHERE c.name = '{conf_name_escaped}' "
+                    f"AND gb.name = '{body_name_escaped}' "
+                    f"AND gb.type = '{body_type_escaped}'), "
+                    f"{url}, {description}, {is_active}){comma}"
                 )
 
             first_group = False

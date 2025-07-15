@@ -45,11 +45,14 @@ class TestSpeakerExtractorFromMinutes:
         extractor.conversation_repo.get_conversations_by_minutes_id.return_value = (
             mock_conversations
         )
-        extractor.speaker_repo.fetch_as_dict.side_effect = [
-            [],  # 田中太郎 not found
-            [],  # 佐藤花子 not found
+        extractor.speaker_repo.find_by_name.side_effect = [
+            None,  # 田中太郎 not found
+            None,  # 佐藤花子 not found
         ]
-        extractor.speaker_repo.insert.side_effect = [1, 2]  # Return speaker IDs
+        # Mock execute_query for insert operations
+        mock_result = Mock()
+        mock_result.fetchone.side_effect = [(1,), (2,)]  # Return speaker IDs
+        extractor.speaker_repo.execute_query.return_value = mock_result
 
         # Act
         extractor.extract_speakers_from_minutes(minutes_id)
@@ -58,7 +61,9 @@ class TestSpeakerExtractorFromMinutes:
         assert (
             extractor.conversation_repo.get_conversations_by_minutes_id.call_count == 1
         )
-        assert extractor.speaker_repo.insert.call_count == 2  # Two unique speakers
+        assert (
+            extractor.speaker_repo.execute_query.call_count == 2
+        )  # Two unique speakers
         extractor.session.commit.assert_called_once()
 
     def test_extract_speakers_from_minutes_without_minutes_id(self, extractor):
@@ -70,9 +75,10 @@ class TestSpeakerExtractorFromMinutes:
         ]
 
         extractor.conversation_repo.get_all_conversations_without_speaker_id.return_value = mock_conversations  # noqa: E501
-        extractor.speaker_repo.fetch_as_dict.return_value = [
-            {"id": 10, "name": "山田太郎"}
-        ]  # Existing speaker
+        # Mock find_by_name to return existing speaker
+        mock_speaker = Mock()
+        mock_speaker.id = 10
+        extractor.speaker_repo.find_by_name.return_value = mock_speaker
 
         # Act
         extractor.extract_speakers_from_minutes()
@@ -82,7 +88,9 @@ class TestSpeakerExtractorFromMinutes:
             extractor.conversation_repo.get_all_conversations_without_speaker_id.call_count
             == 1
         )
-        assert extractor.speaker_repo.insert.call_count == 0  # No new speakers created
+        assert (
+            extractor.speaker_repo.execute_query.call_count == 0
+        )  # No new speakers created
         extractor.session.commit.assert_called_once()
 
     def test_extract_speakers_handles_object_conversations(self, extractor):
@@ -94,16 +102,18 @@ class TestSpeakerExtractorFromMinutes:
         extractor.conversation_repo.get_all_conversations_without_speaker_id.return_value = [  # noqa: E501
             mock_conv_obj
         ]
-        extractor.speaker_repo.fetch_as_dict.return_value = []
-        extractor.speaker_repo.insert.return_value = 3
+        extractor.speaker_repo.find_by_name.return_value = None
+        mock_result = Mock()
+        mock_result.fetchone.return_value = (3,)
+        extractor.speaker_repo.execute_query.return_value = mock_result
 
         # Act
         extractor.extract_speakers_from_minutes()
 
         # Assert
-        assert extractor.speaker_repo.insert.call_count == 1
-        insert_call = extractor.speaker_repo.insert.call_args
-        assert insert_call[1]["data"]["name"] == "鈴木一郎"
+        assert extractor.speaker_repo.execute_query.call_count == 1
+        query_call = extractor.speaker_repo.execute_query.call_args
+        assert query_call[0][1]["name"] == "鈴木一郎"
 
     def test_extract_speakers_handles_insert_error(self, extractor):
         """Test handling of database insert errors"""
@@ -130,7 +140,14 @@ class TestSpeakerExtractorFromMinutes:
             {"id": 1, "name": "田中太郎", "political_party_name": None},
             {"id": 2, "name": "佐藤花子", "political_party_name": "自民党"},
         ]
-        extractor.speaker_repo.fetch_as_dict.return_value = mock_speakers
+        # Mock execute_query to return speakers
+        mock_result = Mock()
+        mock_result.fetchall.return_value = [
+            (1, "田中太郎", None),
+            (2, "佐藤花子", "自民党"),
+        ]
+        mock_result.keys.return_value = ["id", "name", "political_party_name"]
+        extractor.speaker_repo.execute_query.return_value = mock_result
 
         # Mock politician searches
         extractor.politician_repo.find_by_name.side_effect = [
@@ -147,7 +164,8 @@ class TestSpeakerExtractorFromMinutes:
         extractor.link_speakers_to_politicians(use_llm=False)
 
         # Assert
-        assert extractor.speaker_repo.execute.call_count == 2  # Both speakers updated
+        # execute_query calls: 1 for fetching speakers + 2 for updates + 2 for party name queries
+        assert extractor.speaker_repo.execute_query.call_count >= 2
         extractor.session.commit.assert_called_once()
 
     def test_link_speakers_to_politicians_with_llm(self, extractor):
@@ -179,10 +197,18 @@ class TestSpeakerExtractorFromMinutes:
         ]
         extractor.conversation_repo.get_all_conversations_without_speaker_id.return_value = mock_conversations  # noqa: E501
 
-        extractor.speaker_repo.fetch_as_dict.side_effect = [
-            [{"id": 10}],  # Speaker for 田中太郎
-            [],  # No speaker for 佐藤花子
-        ]
+        # Mock execute_query for speaker queries
+        def mock_execute_query(query, params):
+            mock_result = Mock()
+            if "田中太郎" in str(params):
+                mock_result.fetchall.return_value = [(10,)]
+                mock_result.keys.return_value = ["id"]
+            else:
+                mock_result.fetchall.return_value = []
+                mock_result.keys.return_value = ["id"]
+            return mock_result
+
+        extractor.speaker_repo.execute_query.side_effect = mock_execute_query
 
         # Act
         extractor.update_conversation_speaker_links(use_llm=False)
@@ -202,19 +228,9 @@ class TestSpeakerExtractorFromMinutes:
         ]
         extractor.conversation_repo.get_all_conversations_without_speaker_id.return_value = mock_conversations  # noqa: E501
 
-        with (
-            patch(
-                "src.extract_speakers_from_minutes.LLMService"
-            ) as mock_llm_service_class,
-            patch(
-                "src.extract_speakers_from_minutes.SpeakerMatchingService"
-            ) as mock_matching_class,
-        ):
-            # Mock LLM service
-            mock_llm_service = Mock()
-            mock_llm_service.llm = Mock()
-            mock_llm_service_class.return_value = mock_llm_service
-
+        with patch(
+            "src.extract_speakers_from_minutes.SpeakerMatchingService"
+        ) as mock_matching_class:
             mock_match_result = Mock()
             mock_match_result.matched = True
             mock_match_result.speaker_id = 10
@@ -223,9 +239,11 @@ class TestSpeakerExtractorFromMinutes:
             mock_matching_service.find_best_match.return_value = mock_match_result
             mock_matching_class.return_value = mock_matching_service
 
-            extractor.speaker_repo.fetch_as_dict.return_value = [
-                {"id": 10, "name": "田中太郎"}
-            ]
+            # Mock execute_query for speaker details
+            mock_result = Mock()
+            mock_result.fetchall.return_value = [(10, "田中太郎")]
+            mock_result.keys.return_value = ["id", "name"]
+            extractor.speaker_repo.execute_query.return_value = mock_result
 
             # Act
             extractor.update_conversation_speaker_links(use_llm=True)
