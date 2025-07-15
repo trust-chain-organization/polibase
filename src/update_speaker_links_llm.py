@@ -61,12 +61,10 @@ def main():
     # ユーザー確認（Streamlitから実行される場合はスキップ）
     if os.environ.get("STREAMLIT_RUNNING") != "true":
         print(
-            f"\n❓ {stats['unlinked_conversations']}件の未紐付け会話を"
-            "LLMでマッチング処理しますか？"
+            f"\n❓ {stats['unlinked_conversations']}件の未紐付け会話をLLMでマッチング処理しますか？"
         )
         print(
-            "   注意: この処理にはGoogle Gemini APIが使用され、"
-            "料金が発生する可能性があります。"
+            "   注意: この処理にはGoogle Gemini APIが使用され、料金が発生する可能性があります。"
         )
 
         while True:

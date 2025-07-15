@@ -1,7 +1,7 @@
 """SEEDファイル生成モジュール"""
 
 from datetime import datetime
-from typing import TextIO
+from typing import Any, TextIO
 
 from sqlalchemy import text
 
@@ -31,7 +31,8 @@ class SeedGenerator:
                         name
                 """)
             )
-            bodies = [dict(row._mapping) for row in result]
+            columns = result.keys()
+            bodies = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
             f"-- Generated from database on "
@@ -43,7 +44,7 @@ class SeedGenerator:
         ]
 
         # タイプごとにグループ化
-        grouped_data = {}
+        grouped_data: dict[str, list[dict[str, Any]]] = {}
         for body in bodies:
             body_type = body["type"]
             if body_type not in grouped_data:
@@ -117,7 +118,8 @@ class SeedGenerator:
                         c.name
                 """)
             )
-            conferences = [dict(row._mapping) for row in result]
+            columns = result.keys()
+            conferences = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
             f"-- Generated from database on "
@@ -129,7 +131,7 @@ class SeedGenerator:
         ]
 
         # 開催主体ごとにグループ化
-        grouped_data = {}
+        grouped_data: dict[str, dict[str, Any]] = {}
         for conf in conferences:
             if conf["governing_body_id"] is None:
                 key = "_NO_GOVERNING_BODY_"
@@ -226,7 +228,8 @@ class SeedGenerator:
                     ORDER BY name
                 """)
             )
-            parties = [dict(row._mapping) for row in result]
+            columns = result.keys()
+            parties = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
             f"-- Generated from database on "
@@ -273,7 +276,8 @@ class SeedGenerator:
                     ORDER BY gb.name, c.name, pg.name
                 """)
             )
-            groups = [dict(row._mapping) for row in result]
+            columns = result.keys()
+            groups = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
             f"-- Generated from database on "
@@ -335,12 +339,9 @@ class SeedGenerator:
 
                 lines.append(
                     f"('{name}', "
-                    f"(SELECT c.id FROM conferences c "
-                    f"JOIN governing_bodies gb ON c.governing_body_id = gb.id "
-                    f"WHERE c.name = '{conf_name_escaped}' "
-                    f"AND gb.name = '{body_name_escaped}' "
-                    f"AND gb.type = '{body_type_escaped}'), "
-                    f"{url}, {description}, {is_active}){comma}"
+                    f"(SELECT c.id FROM conferences c JOIN governing_bodies gb ON c.governing_body_id = gb.id "
+                    f"WHERE c.name = '{conf_name_escaped}' AND gb.name = '{body_name_escaped}' "
+                    f"AND gb.type = '{body_type_escaped}'), {url}, {description}, {is_active}){comma}"
                 )
 
             first_group = False

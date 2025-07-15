@@ -9,7 +9,6 @@ import sys
 from src.common.app_logic import (
     load_pdf_text,
     print_completion_message,
-    run_main_process,
     setup_environment,
 )
 from src.common.instrumentation import measure_time
@@ -25,7 +24,9 @@ from src.exceptions import (
 )
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
+from src.services.instrumented_llm_service import InstrumentedLLMService
 from src.services.llm_factory import LLMServiceFactory
+from src.services.llm_service import LLMService
 
 logger = get_logger(__name__)
 
@@ -153,9 +154,19 @@ def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:
 
         # Create LLM service using factory
         factory = LLMServiceFactory()
-        llm_service = factory.create_advanced(temperature=0.0)
+        llm_service_or_instrumented = factory.create_advanced(temperature=0.0)
 
-        agent = MinutesProcessAgent(llm_service=llm_service)
+        # Cast to LLMService if it's InstrumentedLLMService
+        if isinstance(llm_service_or_instrumented, InstrumentedLLMService):
+            # InstrumentedLLMService wraps LLMService, so we use it as is
+            # MinutesProcessAgent needs to be updated to accept Union type
+            llm_service: LLMService | InstrumentedLLMService = (
+                llm_service_or_instrumented
+            )
+        else:
+            llm_service = llm_service_or_instrumented
+
+        agent = MinutesProcessAgent(llm_service=llm_service)  # type: ignore[arg-type]
 
         logger.info("Processing minutes", text_length=len(extracted_text))
 
@@ -252,7 +263,7 @@ def main() -> list[int] | None:
                 print(f"❌ GCS初期化エラー: {e}")
                 return None
 
-            all_saved_ids = []
+            all_saved_ids: list[int] = []
 
             # 各meetingを処理
             for meeting in meetings_with_gcs:
@@ -331,10 +342,10 @@ def main() -> list[int] | None:
             meeting = repo.get_meeting_by_id(args.meeting_id)
             repo.close()
 
-            if meeting and meeting.get("gcs_text_uri"):
+            if meeting and meeting.gcs_text_uri:
                 logger.info(
                     f"Found GCS text URI for meeting {args.meeting_id}: "
-                    f"{meeting['gcs_text_uri']}"
+                    f"{meeting.gcs_text_uri}"
                 )
                 # GCSからテキストを取得
                 try:
@@ -342,9 +353,7 @@ def main() -> list[int] | None:
                         bucket_name=config.GCS_BUCKET_NAME,
                         project_id=config.GCS_PROJECT_ID,
                     )
-                    extracted_text = gcs_storage.download_content(
-                        meeting["gcs_text_uri"]
-                    )
+                    extracted_text = gcs_storage.download_content(meeting.gcs_text_uri)
                     if extracted_text:
                         logger.info(
                             f"Successfully downloaded text from GCS "
@@ -372,22 +381,22 @@ def main() -> list[int] | None:
                                 table="minutes",
                                 data={
                                     "meeting_id": args.meeting_id,
-                                    "url": meeting["url"],
+                                    "url": meeting.url,
                                 },
                                 returning="id",
                             )
                             logger.info(f"Created minutes record with ID: {minutes_id}")
 
                         # メイン処理の実行（minutes_idを渡す）
-                        return run_main_process(
-                            process_func=process_minutes,
-                            process_name="発言データ",
-                            display_status_func=display_database_status,
-                            save_func=lambda results: save_to_database(
-                                results, minutes_id=minutes_id
-                            ),
-                            extracted_text=extracted_text,
-                        )
+                        results = process_minutes(extracted_text)
+                        if results:
+                            saved_ids = save_to_database(results, minutes_id=minutes_id)
+                            # 処理後のデータベース状態を表示
+                            print("\n📊 処理後のデータベース状態:")
+                            display_database_status()
+                            return saved_ids
+                        else:
+                            return None
                     else:
                         logger.warning(
                             "Failed to download text from GCS, "
@@ -404,13 +413,18 @@ def main() -> list[int] | None:
             extracted_text = load_pdf_text()
 
         # メイン処理の実行
-        return run_main_process(
-            process_func=process_minutes,
-            process_name="発言データ",
-            display_status_func=display_database_status,
-            save_func=save_to_database,
-            extracted_text=extracted_text,
-        )
+        print("📊 処理前のデータベース状態:")
+        display_database_status()
+
+        results = process_minutes(extracted_text)
+        if results:
+            saved_ids = save_to_database(results)
+            # 処理後のデータベース状態を表示
+            print("\n📊 処理後のデータベース状態:")
+            display_database_status()
+            return saved_ids
+        else:
+            return None
 
     except APIKeyError as e:
         logger.error(f"API key configuration error: {e}")

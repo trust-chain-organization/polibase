@@ -6,6 +6,7 @@ Provides a comprehensive command-line interface for all Polibase operations.
 import logging
 import os
 import sys
+from collections.abc import Callable
 
 import click
 
@@ -60,7 +61,7 @@ def register_commands(cli_group: click.Group) -> None:
     Args:
         cli_group: Click group to register commands to
     """
-    command_getters = [
+    command_getters: list[Callable[[], list[click.Command]]] = [
         get_minutes_commands,
         get_scraping_commands,
         get_politician_commands,
@@ -74,7 +75,7 @@ def register_commands(cli_group: click.Group) -> None:
 
     for getter in command_getters:
         try:
-            commands = getter()
+            commands: list[click.Command] = getter()
             for command in commands:
                 cli_group.add_command(command)
         except Exception as e:
