@@ -136,10 +136,6 @@ class TestSpeakerExtractorFromMinutes:
     def test_link_speakers_to_politicians_rule_based(self, extractor):
         """Test rule-based speaker to politician linking"""
         # Arrange
-        mock_speakers = [
-            {"id": 1, "name": "田中太郎", "political_party_name": None},
-            {"id": 2, "name": "佐藤花子", "political_party_name": "自民党"},
-        ]
         # Mock execute_query to return speakers
         mock_result = Mock()
         mock_result.fetchall.return_value = [
@@ -164,7 +160,8 @@ class TestSpeakerExtractorFromMinutes:
         extractor.link_speakers_to_politicians(use_llm=False)
 
         # Assert
-        # execute_query calls: 1 for fetching speakers + 2 for updates + 2 for party name queries
+        # execute_query calls: 1 for fetching speakers + 2 for updates
+        # + 2 for party name queries
         assert extractor.speaker_repo.execute_query.call_count >= 2
         extractor.session.commit.assert_called_once()
 
