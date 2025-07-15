@@ -6,6 +6,7 @@ politicianテーブルと紐付ける処理
 
 import argparse
 import logging
+from typing import Any
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -16,7 +17,6 @@ from src.database.meeting_repository import MeetingRepository
 from src.database.politician_repository import PoliticianRepository
 from src.database.speaker_matching_service import SpeakerMatchingService
 from src.database.speaker_repository import SpeakerRepository
-from src.services.llm_service import LLMService
 
 # ロギング設定
 logging.basicConfig(
@@ -79,34 +79,35 @@ class SpeakerExtractorFromMinutes:
 
         for speaker_name in unique_speaker_names:
             # 既存のspeakerを検索
-            query = "SELECT * FROM speakers WHERE name = :name LIMIT 1"
-            existing_speakers = self.speaker_repo.fetch_as_dict(
-                query, {"name": speaker_name}
-            )
-            existing_speaker = existing_speakers[0] if existing_speakers else None
+            existing_speaker = self.speaker_repo.find_by_name(speaker_name)
 
             if existing_speaker:
-                speaker_id = (
-                    existing_speaker.get("id")
-                    if isinstance(existing_speaker, dict)
-                    else existing_speaker.id
-                )
+                speaker_id = existing_speaker.id
                 logger.debug(f"既存の発言者: {speaker_name} (ID: {speaker_id})")
                 existing_count += 1
             else:
                 # 新規作成
                 try:
-                    speaker_id = self.speaker_repo.insert(
-                        table="speakers",
-                        data={
+                    query = """
+                        INSERT INTO speakers (name, type, is_politician)
+                        VALUES (:name, :type, :is_politician)
+                        RETURNING id
+                    """
+                    result = self.speaker_repo.execute_query(
+                        query,
+                        {
                             "name": speaker_name,
                             "type": "未分類",  # 後で分類
                             "is_politician": False,  # 後で判定
                         },
-                        returning="id",
                     )
-                    logger.info(f"新規発言者を作成: {speaker_name} (ID: {speaker_id})")
-                    created_count += 1
+                    row = result.fetchone()
+                    if row:
+                        speaker_id = row[0]
+                        logger.info(
+                            f"新規発言者を作成: {speaker_name} (ID: {speaker_id})"
+                        )
+                        created_count += 1
                 except Exception as e:
                     logger.error(f"発言者作成エラー: {speaker_name} - {e}")
 
@@ -133,14 +134,18 @@ class SpeakerExtractorFromMinutes:
 
             stats = matching_service.batch_link_speakers_to_politicians()
             logger.info(
-                f"LLMマッチング完了 - 成功: {stats['successfully_matched']}件, "
+                f"LLMマッチング完了 - "
+                f"成功: {stats['successfully_matched']}件, "
                 f"失敗: {stats['failed_matches']}件"
             )
         else:
             # 従来のルールベースマッチング
             # is_politician=Falseのspeakerを取得
             query = "SELECT * FROM speakers WHERE is_politician = FALSE"
-            speakers = self.speaker_repo.fetch_as_dict(query)
+            result = self.speaker_repo.execute_query(query)
+            rows = result.fetchall()
+            columns = result.keys()
+            speakers = [dict(zip(columns, row, strict=False)) for row in rows]
             logger.info(f"未紐付けのspeaker: {len(speakers)}件")
 
             linked_count = 0
@@ -161,18 +166,29 @@ class SpeakerExtractorFromMinutes:
                     """
                     # politicianが辞書の場合とオブジェクトの場合の両方に対応
                     if isinstance(politician, dict):
-                        politician_id = politician.get("id")
-                        party_name = politician.get("political_party_name")
+                        politician_id: int | None = politician.get("id")
+                        party_name: str | None = politician.get("political_party_name")
                     else:
-                        politician_id = politician.id
-                        party_name = (
-                            politician.political_party.name
-                            if hasattr(politician, "political_party")
-                            and politician.political_party
-                            else None
-                        )
+                        politician_id: int = politician.id
+                        party_name: str | None
+                        # Get party name by joining with political_parties table
+                        if politician.political_party_id:
+                            party_query = """
+                                SELECT name FROM political_parties
+                                WHERE id = :party_id
+                            """
+                            result = self.politician_repo.execute_query(
+                                party_query, {"party_id": politician.political_party_id}
+                            )
+                            rows = result.fetchall()
+                            if rows:
+                                party_name = rows[0][0]
+                            else:
+                                party_name = None
+                        else:
+                            party_name = None
 
-                    self.speaker_repo.execute(
+                    self.speaker_repo.execute_query(
                         update_query,
                         {
                             "id": speaker["id"],
@@ -187,7 +203,7 @@ class SpeakerExtractorFromMinutes:
                 elif len(politicians) > 1:
                     # 複数見つかった場合は政党名で絞り込み
                     if speaker.get("political_party_name"):
-                        matched_politicians = []
+                        matched_politicians: list[Any] = []
                         for p in politicians:
                             if isinstance(p, dict):
                                 if (
@@ -196,12 +212,22 @@ class SpeakerExtractorFromMinutes:
                                 ):
                                     matched_politicians.append(p)
                             else:
-                                if (
-                                    p.political_party
-                                    and p.political_party.name
-                                    == speaker["political_party_name"]
-                                ):
-                                    matched_politicians.append(p)
+                                # For Politician objects, get party name from party_id
+                                if p.political_party_id:
+                                    party_query = """
+                                        SELECT name FROM political_parties
+                                        WHERE id = :party_id
+                                    """
+                                    result = self.politician_repo.execute_query(
+                                        party_query, {"party_id": p.political_party_id}
+                                    )
+                                    rows = result.fetchall()
+                                    if (
+                                        rows
+                                        and rows[0][0]
+                                        == speaker["political_party_name"]
+                                    ):
+                                        matched_politicians.append(p)
                         if len(matched_politicians) == 1:
                             politician = matched_politicians[0]
                             # speakerを更新
@@ -209,11 +235,11 @@ class SpeakerExtractorFromMinutes:
                                 "UPDATE speakers SET is_politician = TRUE "
                                 "WHERE id = :id"
                             )
-                            self.speaker_repo.execute(
+                            self.speaker_repo.execute_query(
                                 update_query, {"id": speaker["id"]}
                             )
                             # politicianが辞書の場合とオブジェクトの場合の両方に対応
-                            politician_id = (
+                            matched_politician_id: int = (
                                 politician.get("id")
                                 if isinstance(politician, dict)
                                 else politician.id
@@ -221,7 +247,7 @@ class SpeakerExtractorFromMinutes:
                             logger.info(
                                 f"政党名で絞り込み紐付け: {speaker['name']} "
                                 f"({speaker['political_party_name']}) -> "
-                                f"政治家ID: {politician_id}"
+                                f"政治家ID: {matched_politician_id}"
                             )
                             linked_count += 1
                         else:
@@ -231,8 +257,8 @@ class SpeakerExtractorFromMinutes:
                             )
                     else:
                         logger.warning(
-                            f"政党名が不明で複数の政治家候補が存在: {speaker['name']} "
-                            f"({len(politicians)}件)"
+                            f"政党名が不明で複数の政治家候補が存在: "
+                            f"{speaker['name']} ({len(politicians)}件)"
                         )
 
             self.session.commit()
@@ -244,8 +270,6 @@ class SpeakerExtractorFromMinutes:
 
         if use_llm:
             # LLMを使用した高度なマッチング
-            llm_service = LLMService()
-            llm = llm_service.llm
             unlinked_conversations = (
                 self.conversation_repo.get_all_conversations_without_speaker_id()
             )
@@ -263,17 +287,20 @@ class SpeakerExtractorFromMinutes:
                     continue
 
                 # マッチング実行
-                matching_service = SpeakerMatchingService(llm)
+                matching_service = SpeakerMatchingService()
                 match_result = matching_service.find_best_match(speaker_name)
-                matched_speaker = None
+                matched_speaker: dict[str, Any] | None = None
 
                 if match_result.matched and match_result.speaker_id:
                     # Get speaker details
                     query = "SELECT * FROM speakers WHERE id = :id"
-                    speakers = self.speaker_repo.fetch_as_dict(
+                    result = self.speaker_repo.execute_query(
                         query, {"id": match_result.speaker_id}
                     )
-                    matched_speaker = speakers[0] if speakers else None
+                    rows = result.fetchall()
+                    if rows:
+                        columns = result.keys()
+                        matched_speaker = dict(zip(columns, rows[0], strict=False))
 
                 if matched_speaker:
                     # conversationオブジェクトへのspeaker_id設定
@@ -314,10 +341,15 @@ class SpeakerExtractorFromMinutes:
                 )
                 if speaker_name:
                     query = "SELECT id FROM speakers WHERE name = :name LIMIT 1"
-                    speakers = self.speaker_repo.fetch_as_dict(
+                    result = self.speaker_repo.execute_query(
                         query, {"name": speaker_name}
                     )
-                    if speakers:
+                    rows = result.fetchall()
+                    if rows:
+                        columns = result.keys()
+                        speakers = [
+                            dict(zip(columns, row, strict=False)) for row in rows
+                        ]
                         # conversationのIDを取得してUPDATEクエリで更新
                         conversation_id = (
                             conv.get("id") if isinstance(conv, dict) else conv.id

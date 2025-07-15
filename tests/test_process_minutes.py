@@ -208,14 +208,26 @@ class TestMain:
     @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.setup_environment")
     @patch("src.process_minutes.load_pdf_text")
-    @patch("src.process_minutes.run_main_process")
+    @patch("src.process_minutes.process_minutes")
+    @patch("src.process_minutes.save_to_database")
+    @patch("src.process_minutes.display_database_status")
     def test_main_default_pdf_processing(
-        self, mock_run_main, mock_load_pdf, mock_setup, capsys
+        self,
+        mock_display_status,
+        mock_save_db,
+        mock_process,
+        mock_load_pdf,
+        mock_setup,
+        capsys,
     ):
         """Test main function with default PDF processing"""
         # Arrange
         mock_load_pdf.return_value = "PDF content"
-        mock_run_main.return_value = [1, 2, 3]
+        mock_process.return_value = [
+            SpeakerAndSpeechContent(speaker="Speaker1", speech_content="Content1"),
+            SpeakerAndSpeechContent(speaker="Speaker2", speech_content="Content2"),
+        ]
+        mock_save_db.return_value = [1, 2, 3]
 
         # Act
         result = main()
@@ -224,7 +236,9 @@ class TestMain:
         assert result == [1, 2, 3]
         mock_setup.assert_called_once()
         mock_load_pdf.assert_called_once()
-        mock_run_main.assert_called_once()
+        mock_process.assert_called_once_with("PDF content")
+        mock_save_db.assert_called_once()
+        assert mock_display_status.call_count == 2  # Before and after processing
 
     @patch(
         "sys.argv",
@@ -235,10 +249,14 @@ class TestMain:
     @patch("src.process_minutes.config")
     @patch("src.utils.gcs_storage.GCSStorage")
     @patch("src.database.base_repository.BaseRepository")
-    @patch("src.process_minutes.run_main_process")
+    @patch("src.process_minutes.process_minutes")
+    @patch("src.process_minutes.save_to_database")
+    @patch("src.process_minutes.display_database_status")
     def test_main_with_gcs_meeting_id(
         self,
-        mock_run_main,
+        mock_display_status,
+        mock_save_db,
+        mock_process,
         mock_base_repo_class,
         mock_gcs_class,
         mock_config,
@@ -247,12 +265,14 @@ class TestMain:
     ):
         """Test main function with meeting ID and GCS integration"""
         # Arrange
+        # Create a Meeting object with the required attributes
+        mock_meeting = Mock()
+        mock_meeting.id = 123
+        mock_meeting.url = "http://example.com"
+        mock_meeting.gcs_text_uri = "gs://bucket/file.txt"
+
         mock_meeting_repo = Mock()
-        mock_meeting_repo.get_meeting_by_id.return_value = {
-            "id": 123,
-            "url": "http://example.com",
-            "gcs_text_uri": "gs://bucket/file.txt",
-        }
+        mock_meeting_repo.get_meeting_by_id.return_value = mock_meeting
         mock_meeting_repo_class.return_value = mock_meeting_repo
 
         mock_gcs = Mock()
@@ -268,7 +288,10 @@ class TestMain:
         mock_base_repo.insert.return_value = 456  # New minutes ID
         mock_base_repo_class.return_value = mock_base_repo
 
-        mock_run_main.return_value = [789]
+        mock_process.return_value = [
+            SpeakerAndSpeechContent(speaker="Speaker1", speech_content="Content1")
+        ]
+        mock_save_db.return_value = [789]
 
         # Act
         result = main()
@@ -278,6 +301,8 @@ class TestMain:
         mock_meeting_repo.get_meeting_by_id.assert_called_once_with(123)
         mock_gcs.download_content.assert_called_once_with("gs://bucket/file.txt")
         mock_base_repo.insert.assert_called_once()
+        mock_process.assert_called_once_with("GCS content")
+        mock_save_db.assert_called_once()
 
     @patch("sys.argv", ["process_minutes.py", "--process-all-gcs"])
     @patch("src.process_minutes.setup_environment")
@@ -382,12 +407,18 @@ class TestMain:
     @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.setup_environment")
     @patch("src.process_minutes.load_pdf_text")
-    @patch("src.process_minutes.run_main_process")
-    def test_main_database_error(self, mock_run_main, mock_load_pdf, mock_setup):
+    @patch("src.process_minutes.process_minutes")
+    @patch("src.process_minutes.save_to_database")
+    def test_main_database_error(
+        self, mock_save_db, mock_process, mock_load_pdf, mock_setup
+    ):
         """Test main function handling database error"""
         # Arrange
         mock_load_pdf.return_value = "PDF content"
-        mock_run_main.side_effect = DatabaseError(
+        mock_process.return_value = [
+            SpeakerAndSpeechContent(speaker="Speaker1", speech_content="Content1")
+        ]
+        mock_save_db.side_effect = DatabaseError(
             "Database connection failed", {"host": "localhost"}
         )
 

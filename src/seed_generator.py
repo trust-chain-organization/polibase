@@ -1,7 +1,7 @@
 """SEEDファイル生成モジュール"""
 
 from datetime import datetime
-from typing import TextIO
+from typing import Any, TextIO
 
 from sqlalchemy import text
 
@@ -31,19 +31,24 @@ class SeedGenerator:
                         name
                 """)
             )
-            bodies = [dict(row._mapping) for row in result]
+            columns = result.keys()
+            bodies = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
-            f"-- Generated from database on "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
             "-- governing_bodies seed data",
             "",
-            "INSERT INTO governing_bodies "
-            "(name, type, organization_code, organization_type) VALUES",
+            (
+                "INSERT INTO governing_bodies "
+                "(name, type, organization_code, organization_type) VALUES"
+            ),
         ]
 
         # タイプごとにグループ化
-        grouped_data = {}
+        grouped_data: dict[str, list[dict[str, Any]]] = {}
         for body in bodies:
             body_type = body["type"]
             if body_type not in grouped_data:
@@ -117,19 +122,24 @@ class SeedGenerator:
                         c.name
                 """)
             )
-            conferences = [dict(row._mapping) for row in result]
+            columns = result.keys()
+            conferences = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
-            f"-- Generated from database on "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
             "-- conferences seed data",
             "",
-            "INSERT INTO conferences "
-            "(name, type, governing_body_id, members_introduction_url) VALUES",
+            (
+                "INSERT INTO conferences "
+                "(name, type, governing_body_id, members_introduction_url) VALUES"
+            ),
         ]
 
         # 開催主体ごとにグループ化
-        grouped_data = {}
+        grouped_data: dict[str, dict[str, Any]] = {}
         for conf in conferences:
             if conf["governing_body_id"] is None:
                 key = "_NO_GOVERNING_BODY_"
@@ -226,11 +236,14 @@ class SeedGenerator:
                     ORDER BY name
                 """)
             )
-            parties = [dict(row._mapping) for row in result]
+            columns = result.keys()
+            parties = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
-            f"-- Generated from database on "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
             "-- political_parties seed data",
             "",
             "INSERT INTO political_parties (name, members_list_url) VALUES",
@@ -273,15 +286,20 @@ class SeedGenerator:
                     ORDER BY gb.name, c.name, pg.name
                 """)
             )
-            groups = [dict(row._mapping) for row in result]
+            columns = result.keys()
+            groups = [dict(zip(columns, row, strict=False)) for row in result]
 
         lines = [
-            f"-- Generated from database on "
-            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
             "-- parliamentary_groups seed data",
             "",
-            "INSERT INTO parliamentary_groups "
-            "(name, conference_id, url, description, is_active) VALUES",
+            (
+                "INSERT INTO parliamentary_groups "
+                "(name, conference_id, url, description, is_active) VALUES"
+            ),
         ]
 
         # 会議体ごとにグループ化
