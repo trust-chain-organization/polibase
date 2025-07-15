@@ -1,6 +1,7 @@
 """Streamlit monitoring dashboard for data coverage visualization"""
 
 from datetime import datetime
+from typing import Any
 
 import pandas as pd
 import plotly.express as px
@@ -251,7 +252,7 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
             "last_updated",
         ]
 
-        column_config = {  # type: ignore[var-annotated]
+        column_config: dict[str, Any] = {
             "governing_body_name": "統治体名",
             "conference_name": "議会名",
             "total_meetings": "総会議数",
@@ -319,7 +320,7 @@ def display_timeline_tab(repo: MonitoringRepository):
         # 累積計算
         timeline_data["cumulative"] = timeline_data.groupby("data_type")[  # type: ignore[index]
             "count"
-        ].cumsum()
+        ].cumsum()  # type: ignore[union-attr]
 
         fig_cum = px.area(  # type: ignore[call-overload]
             timeline_data,
@@ -380,7 +381,7 @@ def display_party_coverage(repo: MonitoringRepository):
         # 詳細テーブル
         st.dataframe(  # type: ignore[call-arg]
             party_data,
-            column_config={
+            column_config={  # type: ignore[arg-type]
                 "party_name": "政党名",
                 "politician_count": "政治家数",
                 "active_count": "アクティブ数",
@@ -520,7 +521,7 @@ def display_japan_map_tab(repo: MonitoringRepository):
         )
 
         # Foliumマップの表示
-        map_data = st_folium(
+        map_data = st_folium(  # type: ignore[no-untyped-call]
             m,
             height=600,
             width=None,
