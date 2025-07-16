@@ -4,8 +4,8 @@ from datetime import date
 from typing import Any, cast
 
 import pandas as pd
-import streamlit as st
 
+import streamlit as st
 from src.database.meeting_repository import MeetingRepository
 from src.exceptions import DatabaseError, SaveError
 

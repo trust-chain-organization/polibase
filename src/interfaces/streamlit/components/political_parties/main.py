@@ -3,9 +3,9 @@
 from typing import Any
 
 import pandas as pd
-import streamlit as st
 from sqlalchemy import text
 
+import streamlit as st
 from src.config.database import get_db_engine
 from src.seed_generator import SeedGenerator
 

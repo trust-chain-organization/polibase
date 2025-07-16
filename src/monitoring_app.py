@@ -6,8 +6,9 @@ from typing import Any
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import streamlit as st
 from streamlit_folium import st_folium  # type: ignore[import-untyped]
+
+import streamlit as st
 
 # Initialize logging and Sentry before other imports
 from src.common.logging import get_logger, setup_logging
