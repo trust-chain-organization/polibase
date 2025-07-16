@@ -370,6 +370,84 @@ class SeedGenerator:
             output.write(result)
         return result
 
+    def generate_meetings_seed(self, output: TextIO | None = None) -> str:
+        """meetingsテーブルのSEEDファイルを生成する"""
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text("""
+                    SELECT m.conference_id, m.date, m.url,
+                           m.gcs_pdf_uri, m.gcs_text_uri,
+                           c.name as conference_name,
+                           gb.name as governing_body_name,
+                           gb.type as governing_body_type
+                    FROM meetings m
+                    JOIN conferences c ON m.conference_id = c.id
+                    JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                    ORDER BY m.date DESC, gb.name, c.name
+                """)
+            )
+            columns = result.keys()
+            meetings = [dict(zip(columns, row, strict=False)) for row in result]
+
+        lines = [
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
+            "-- meetings seed data",
+            "",
+            (
+                "INSERT INTO meetings "
+                "(conference_id, date, url, gcs_pdf_uri, gcs_text_uri) VALUES"
+            ),
+        ]
+
+        for i, meeting in enumerate(meetings):
+            comma = "," if i < len(meetings) - 1 else ""
+
+            # 会議体名をエスケープ
+            conf_name_escaped = meeting["conference_name"].replace("'", "''")
+            body_name_escaped = meeting["governing_body_name"].replace("'", "''")
+            body_type_escaped = meeting["governing_body_type"].replace("'", "''")
+
+            # 日付フォーマット
+            date_str = (
+                meeting["date"].strftime("%Y-%m-%d") if meeting["date"] else "NULL"
+            )
+
+            # URLとGCS URIの処理
+            url = (
+                f"'{meeting['url'].replace(chr(39), chr(39) + chr(39))}'"
+                if meeting["url"]
+                else "NULL"
+            )
+            gcs_pdf_uri = (
+                f"'{meeting['gcs_pdf_uri'].replace(chr(39), chr(39) + chr(39))}'"
+                if meeting["gcs_pdf_uri"]
+                else "NULL"
+            )
+            gcs_text_uri = (
+                f"'{meeting['gcs_text_uri'].replace(chr(39), chr(39) + chr(39))}'"
+                if meeting["gcs_text_uri"]
+                else "NULL"
+            )
+
+            lines.append(
+                f"((SELECT c.id FROM conferences c "
+                f"JOIN governing_bodies gb ON c.governing_body_id = gb.id "
+                f"WHERE c.name = '{conf_name_escaped}' "
+                f"AND gb.name = '{body_name_escaped}' "
+                f"AND gb.type = '{body_type_escaped}'), "
+                f"'{date_str}', {url}, {gcs_pdf_uri}, {gcs_text_uri}){comma}"
+            )
+
+        lines.append("ON CONFLICT (conference_id, date) DO NOTHING;")
+
+        result = "\n".join(lines) + "\n"
+        if output:
+            output.write(result)
+        return result
+
 
 def generate_all_seeds(output_dir: str = "database") -> None:
     """すべてのSEEDファイルを生成する"""
@@ -402,6 +480,12 @@ def generate_all_seeds(output_dir: str = "database") -> None:
     path = os.path.join(output_dir, "seed_parliamentary_groups_generated.sql")
     with open(path, "w") as f:
         generator.generate_parliamentary_groups_seed(f)
+        print(f"Generated: {path}")
+
+    # meetings
+    path = os.path.join(output_dir, "seed_meetings_generated.sql")
+    with open(path, "w") as f:
+        generator.generate_meetings_seed(f)
         print(f"Generated: {path}")
 
 

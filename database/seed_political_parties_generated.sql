@@ -1,4 +1,4 @@
--- Generated from database on 2025-07-13 04:09:27
+-- Generated from database on 2025-07-16 15:05:30
 -- political_parties seed data
 
 INSERT INTO political_parties (name, members_list_url) VALUES
@@ -19,4 +19,4 @@ INSERT INTO political_parties (name, members_list_url) VALUES
 ('自由民主党', 'https://www.jimin.jp/member/search/'),
 ('諸派', NULL),
 ('都民ファーストの会', 'https://tomin1st.jp/#Members')
-ON CONFLICT (name) DO UPDATE SET members_list_url = EXCLUDED.members_list_url;
+ON CONFLICT (name) DO NOTHING;
