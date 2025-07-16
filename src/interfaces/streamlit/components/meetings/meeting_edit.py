@@ -3,7 +3,6 @@
 from datetime import date
 
 import streamlit as st
-
 from src.database.meeting_repository import MeetingRepository
 from src.exceptions import DatabaseError, RecordNotFoundError, UpdateError
 

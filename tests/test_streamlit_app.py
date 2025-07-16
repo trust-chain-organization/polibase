@@ -9,8 +9,8 @@ import pandas as pd
 class TestStreamlitAppComponents:
     """Test cases for Streamlit app components"""
 
-    @patch("src.streamlit_app.MeetingRepository")
-    @patch("src.streamlit_app.st")
+    @patch("src.streamlit.pages.meetings.MeetingRepository")
+    @patch("src.streamlit.pages.meetings.st")
     def test_show_meetings_list_no_meetings(self, mock_st, mock_repo_class):
         """Test showing meetings list when no meetings exist"""
         # Mock repository
@@ -24,7 +24,7 @@ class TestStreamlitAppComponents:
         mock_st.selectbox.return_value = "すべて"
 
         # Import and call function
-        from src.streamlit_app import show_meetings_list
+        from src.streamlit.pages.meetings import show_meetings_list
 
         show_meetings_list()
 
@@ -32,9 +32,9 @@ class TestStreamlitAppComponents:
         mock_st.info.assert_called_with("会議が登録されていません")
         mock_repo.close.assert_called_once()
 
-    @patch("src.streamlit_app.MeetingRepository")
-    @patch("src.streamlit_app.st")
-    @patch("src.streamlit_app.pd")
+    @patch("src.streamlit.pages.meetings.MeetingRepository")
+    @patch("src.streamlit.pages.meetings.st")
+    @patch("src.streamlit.pages.meetings.pd")
     def test_show_meetings_list_with_meetings(self, mock_pd, mock_st, mock_repo_class):
         """Test showing meetings list with meetings"""
         # Mock repository
@@ -82,9 +82,21 @@ class TestStreamlitAppComponents:
         mock_col1 = MagicMock()
         mock_col2 = MagicMock()
         mock_col3 = MagicMock()
+        # We need 3 calls to columns in show_meetings_list
         mock_st.columns.side_effect = [
-            [MagicMock(), MagicMock()],  # First call for filter columns
-            [mock_col1, mock_col2, mock_col3],  # Second call for row display
+            [
+                MagicMock(),
+                MagicMock(),
+            ],  # First call for filter columns (col1, col2 = st.columns(2))
+            [
+                MagicMock(),
+                MagicMock(),
+            ],  # Second call for SEED generation (col1, col2 = st.columns([3, 1]))
+            [
+                mock_col1,
+                mock_col2,
+                mock_col3,
+            ],  # Third call for row display (col1, col2, col3 = st.columns([6, 1, 1]))
         ]
         mock_st.selectbox.side_effect = ["日本国 (国)", "本会議"]
         mock_st.button.return_value = False
@@ -92,7 +104,7 @@ class TestStreamlitAppComponents:
         mock_st.divider = MagicMock()
 
         # Import and call function
-        from src.streamlit_app import show_meetings_list
+        from src.streamlit.pages.meetings import show_meetings_list
 
         show_meetings_list()
 
@@ -101,8 +113,8 @@ class TestStreamlitAppComponents:
         # Check that markdown was called at least once (for the meeting display)
         assert mock_st.markdown.call_count >= 1
 
-    @patch("src.streamlit_app.MeetingRepository")
-    @patch("src.streamlit_app.st")
+    @patch("src.streamlit.pages.meetings.MeetingRepository")
+    @patch("src.streamlit.pages.meetings.st")
     def test_add_new_meeting_no_governing_bodies(self, mock_st, mock_repo_class):
         """Test adding new meeting when no governing bodies exist"""
         # Mock repository
@@ -111,7 +123,7 @@ class TestStreamlitAppComponents:
         mock_repo.get_governing_bodies.return_value = []
 
         # Import and call function
-        from src.streamlit_app import add_new_meeting
+        from src.streamlit.pages.meetings import add_new_meeting
 
         add_new_meeting()
 
@@ -123,9 +135,9 @@ class TestStreamlitAppComponents:
 
     def test_add_new_meeting_form_display(self):
         """Test that add_new_meeting form displays correctly"""
-        with patch("src.streamlit_app.MeetingRepository") as mock_repo_class:
-            with patch("src.streamlit_app.st") as mock_st:
-                with patch("src.streamlit_app.pd") as mock_pd:
+        with patch("src.streamlit.pages.meetings.MeetingRepository") as mock_repo_class:
+            with patch("src.streamlit.pages.meetings.st") as mock_st:
+                with patch("src.streamlit.pages.meetings.pd") as mock_pd:
                     # Mock repository
                     mock_repo = MagicMock()
                     mock_repo_class.return_value = mock_repo
@@ -165,7 +177,7 @@ class TestStreamlitAppComponents:
                     mock_st.expander.return_value.__exit__ = MagicMock()
 
                     # Import and call function
-                    from src.streamlit_app import add_new_meeting
+                    from src.streamlit.pages.meetings import add_new_meeting
 
                     add_new_meeting()
 
@@ -182,9 +194,9 @@ class TestStreamlitAppComponents:
 
     def test_meeting_repository_integration(self):
         """Test that MeetingRepository is created and closed properly"""
-        with patch("src.streamlit_app.MeetingRepository") as mock_repo_class:
-            with patch("src.streamlit_app.st") as mock_st:
-                with patch("src.streamlit_app.pd"):
+        with patch("src.streamlit.pages.meetings.MeetingRepository") as mock_repo_class:
+            with patch("src.streamlit.pages.meetings.st") as mock_st:
+                with patch("src.streamlit.pages.meetings.pd"):
                     # Mock repository
                     mock_repo = MagicMock()
                     mock_repo_class.return_value = mock_repo
@@ -195,7 +207,7 @@ class TestStreamlitAppComponents:
                     mock_st.form.return_value.__exit__ = MagicMock()
 
                     # Import and call function
-                    from src.streamlit_app import add_new_meeting
+                    from src.streamlit.pages.meetings import add_new_meeting
 
                     add_new_meeting()
 
@@ -203,7 +215,7 @@ class TestStreamlitAppComponents:
                     mock_repo_class.assert_called_once()
                     mock_repo.close.assert_called_once()
 
-    @patch("src.streamlit_app.st")
+    @patch("src.streamlit.pages.meetings.st")
     def test_edit_meeting_no_selection(self, mock_st):
         """Test edit meeting when no meeting is selected"""
         # Mock session state
@@ -211,7 +223,7 @@ class TestStreamlitAppComponents:
         mock_st.session_state.edit_meeting_id = None
 
         # Import and call function
-        from src.streamlit_app import edit_meeting
+        from src.streamlit.pages.meetings import edit_meeting
 
         edit_meeting()
 
@@ -220,8 +232,8 @@ class TestStreamlitAppComponents:
             "編集する会議を選択してください（会議一覧タブから編集ボタンをクリック）"
         )
 
-    @patch("src.streamlit_app.MeetingRepository")
-    @patch("src.streamlit_app.st")
+    @patch("src.streamlit.pages.meetings.MeetingRepository")
+    @patch("src.streamlit.pages.meetings.st")
     def test_get_all_conferences_display(self, mock_st, mock_repo_class):
         """Test displaying all conferences"""
         # Mock repository

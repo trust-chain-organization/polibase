@@ -1,6 +1,4 @@
-"""Political party management component"""
-
-from typing import Any
+"""政党管理ページ"""
 
 import pandas as pd
 from sqlalchemy import text
@@ -55,9 +53,6 @@ def manage_political_parties():
                             )
                             with open(output_path, "w") as f:
                                 f.write(seed_content)
-                                # 最後に改行がない場合は追加
-                                if not seed_content.endswith("\n"):
-                                    f.write("\n")
 
                             st.success(f"✅ SEEDファイルを生成しました: {output_path}")
 
@@ -207,7 +202,7 @@ def manage_political_parties():
 
         # 一括確認セクション
         with st.expander("登録済みURL一覧", expanded=False):
-            df_data: list[dict[str, Any]] = []
+            df_data: list[dict[str, str]] = []
             for party in parties:
                 df_data.append(
                     {
@@ -217,7 +212,7 @@ def manage_political_parties():
                 )
 
             df = pd.DataFrame(df_data)
-            st.dataframe(df, use_container_width=True)  # type: ignore[no-untyped-call]
+            st.dataframe(df, use_container_width=True)  # type: ignore[call-arg]
 
     finally:
         conn.close()

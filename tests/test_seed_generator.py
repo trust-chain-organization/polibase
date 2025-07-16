@@ -244,12 +244,13 @@ class TestSeedGenerator:
         generate_all_seeds()
 
         # 検証 - 各ファイルが作成されること
-        assert mock_open.call_count == 4  # 4つのSEEDファイル
+        assert mock_open.call_count == 5  # 5つのSEEDファイル
         expected_files = [
             "database/seed_governing_bodies_generated.sql",
             "database/seed_conferences_generated.sql",
             "database/seed_political_parties_generated.sql",
             "database/seed_parliamentary_groups_generated.sql",
+            "database/seed_meetings_generated.sql",
         ]
         for call, expected_file in zip(
             mock_open.call_args_list, expected_files, strict=False
