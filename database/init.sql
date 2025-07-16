@@ -206,7 +206,7 @@ CREATE TRIGGER update_proposal_meeting_occurrences_updated_at BEFORE UPDATE ON p
 -- 2. 02_migrations/* (マイグレーションファイル)
 -- 3. 03_seed_governing_bodies_generated.sql
 -- 4. 04_seed_political_parties_generated.sql
--- 5. 05_seed_conferences.sql
+-- 5. 05_seed_conferences_generated.sql
 -- 6. 06_seed_parliamentary_groups_generated.sql
 
 COMMENT ON TABLE governing_bodies IS '開催主体';
