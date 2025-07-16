@@ -34,7 +34,7 @@ CREATE TABLE meetings (
     id SERIAL PRIMARY KEY,
     conference_id INTEGER NOT NULL REFERENCES conferences(id),
     date DATE, -- 開催日
-    url VARCHAR, -- 会議関連のURLまたは議事録PDFのURL
+    -- url column will be added by migration 001_add_url_to_meetings.sql
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -200,15 +200,14 @@ CREATE TRIGGER update_proposal_judges_updated_at BEFORE UPDATE ON proposal_judge
 CREATE TRIGGER update_politician_affiliations_updated_at BEFORE UPDATE ON politician_affiliations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_proposal_meeting_occurrences_updated_at BEFORE UPDATE ON proposal_meeting_occurrences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- SEEDデータの読み込み
--- 開催主体マスターデータの挿入
-\i /docker-entrypoint-initdb.d/seed_governing_bodies_generated.sql
-
--- 政党マスターデータの挿入
-\i /docker-entrypoint-initdb.d/seed_political_parties_generated.sql
-
--- 会議体マスターデータの挿入
-\i /docker-entrypoint-initdb.d/seed_conferences.sql
+-- SEEDデータは自動的に実行されます
+-- PostgreSQLは/docker-entrypoint-initdb.d/内のファイルをアルファベット順に実行します：
+-- 1. 01_init.sql (このファイル)
+-- 2. 02_migrations/* (マイグレーションファイル)
+-- 3. 03_seed_governing_bodies_generated.sql
+-- 4. 04_seed_political_parties_generated.sql
+-- 5. 05_seed_conferences.sql
+-- 6. 06_seed_parliamentary_groups_generated.sql
 
 COMMENT ON TABLE governing_bodies IS '開催主体';
 COMMENT ON TABLE conferences IS '会議体 (議会や委員会など)';

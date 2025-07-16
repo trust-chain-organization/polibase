@@ -76,11 +76,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-      - ../database/seed_governing_bodies_generated.sql:/docker-entrypoint-initdb.d/seed_governing_bodies_generated.sql:ro
-      - ../database/seed_political_parties_generated.sql:/docker-entrypoint-initdb.d/seed_political_parties_generated.sql:ro
-      - ../database/seed_conferences.sql:/docker-entrypoint-initdb.d/seed_conferences.sql:ro
-      - ../database/migrations:/docker-entrypoint-initdb.d/migrations:ro
+      - ../database/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ../database/02_run_migrations.sql:/docker-entrypoint-initdb.d/02_run_migrations.sql:ro
+      - ../database/migrations:/docker-entrypoint-initdb.d/02_migrations:ro
+      - ../database/seed_governing_bodies_generated.sql:/docker-entrypoint-initdb.d/03_seed_governing_bodies_generated.sql:ro
+      - ../database/seed_political_parties_generated.sql:/docker-entrypoint-initdb.d/04_seed_political_parties_generated.sql:ro
+      - ../database/seed_conferences.sql:/docker-entrypoint-initdb.d/05_seed_conferences.sql:ro
+      - ../database/seed_parliamentary_groups_generated.sql:/docker-entrypoint-initdb.d/06_seed_parliamentary_groups_generated.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db"]
       interval: 10s

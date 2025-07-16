@@ -1,0 +1,19 @@
+-- Execute all migration files in order
+-- This file is needed because PostgreSQL doesn't automatically execute files in subdirectories
+
+\echo 'Running migrations...'
+
+\i /docker-entrypoint-initdb.d/02_migrations/001_add_url_to_meetings.sql
+\i /docker-entrypoint-initdb.d/02_migrations/002_add_members_list_url_to_political_parties.sql
+\i /docker-entrypoint-initdb.d/02_migrations/003_add_politician_details.sql
+\i /docker-entrypoint-initdb.d/02_migrations/004_add_gcs_uri_to_meetings.sql
+\i /docker-entrypoint-initdb.d/02_migrations/005_add_members_introduction_url_to_conferences.sql
+\i /docker-entrypoint-initdb.d/02_migrations/006_add_role_to_politician_affiliations.sql
+\i /docker-entrypoint-initdb.d/02_migrations/007_create_extracted_conference_members_table.sql
+\i /docker-entrypoint-initdb.d/02_migrations/008_create_parliamentary_groups_tables.sql
+\i /docker-entrypoint-initdb.d/02_migrations/009_add_processed_at_to_minutes.sql
+\i /docker-entrypoint-initdb.d/02_migrations/010_add_name_to_meetings.sql
+\i /docker-entrypoint-initdb.d/02_migrations/011_add_organization_code_to_governing_bodies.sql
+\i /docker-entrypoint-initdb.d/02_migrations/012_remove_conference_governing_body_fk.sql
+
+\echo 'Migrations completed.'

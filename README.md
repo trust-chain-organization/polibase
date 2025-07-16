@@ -523,17 +523,32 @@ docker compose -f docker/docker-compose.yml up -d
 
 #### データベースの問題
 
-**データが破損した場合**:
+**データベースのリセット方法**:
+
+`reset-database.sh`スクリプトは、データベースを完全にリセットして初期状態に戻します。このスクリプトは以下を実行します：
+- 既存のデータベースを削除
+- テーブルの再作成（init.sql）
+- 全マイグレーションの適用（migrations/*.sql）
+- 初期データの投入（seed_*.sql）
+
 ```bash
-# データベースを完全リセット
-./reset-database.sh
+# ローカル環境から実行（推奨）
+./scripts/reset-database.sh
+
+# または、プロジェクトルートから実行
+bash scripts/reset-database.sh
 ```
+
+**注意**:
+- このスクリプトはホストマシンから実行します（Docker内ではありません）
+- 実行時に確認プロンプトが表示されます
+- 全てのデータが削除されるため、必要に応じてバックアップを取得してください
 
 **古いデータを残したい場合**:
 ```bash
 # バックアップを作成してからリセット
-./backup-database.sh backup
-./reset-database.sh
+./scripts/backup-database.sh backup
+./scripts/reset-database.sh
 ```
 
 **ディスク容量不足**:
