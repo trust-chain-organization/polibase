@@ -82,9 +82,17 @@ class TestStreamlitAppComponents:
         mock_col1 = MagicMock()
         mock_col2 = MagicMock()
         mock_col3 = MagicMock()
+        # Since iterrows has only 1 row, we need exactly 2 calls to columns
         mock_st.columns.side_effect = [
-            [MagicMock(), MagicMock()],  # First call for filter columns
-            [mock_col1, mock_col2, mock_col3],  # Second call for row display
+            [
+                MagicMock(),
+                MagicMock(),
+            ],  # First call for filter columns (col1, col2 = st.columns(2))
+            [
+                mock_col1,
+                mock_col2,
+                mock_col3,
+            ],  # Second call for row display (col1, col2, col3 = st.columns([6, 1, 1]))
         ]
         mock_st.selectbox.side_effect = ["日本国 (国)", "本会議"]
         mock_st.button.return_value = False
