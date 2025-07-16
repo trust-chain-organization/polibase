@@ -78,7 +78,7 @@ services:
       - ../database/migrations:/docker-entrypoint-initdb.d/migrations:ro
       - ../database/seed_governing_bodies_generated.sql:/seed-data/seed_governing_bodies_generated.sql:ro
       - ../database/seed_political_parties_generated.sql:/seed-data/seed_political_parties_generated.sql:ro
-      - ../database/seed_conferences.sql:/seed-data/seed_conferences.sql:ro
+      - ../database/seed_conferences_generated.sql:/seed-data/seed_conferences_generated.sql:ro
     healthcheck:
       test:
         ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db || exit 1"]

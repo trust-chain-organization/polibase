@@ -137,7 +137,7 @@ jobs:
           echo "Loading seed data..."
           docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_governing_bodies_generated.sql
           docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_political_parties_generated.sql
-          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_conferences.sql
+          docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -f /seed-data/seed_conferences_generated.sql
 
           # データベース構造を確認
           docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db -c "\dt"
