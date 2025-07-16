@@ -77,7 +77,7 @@ services:
       - ../database/init_ci.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ../database/migrations:/docker-entrypoint-initdb.d/migrations:ro
       - ../database/seed_governing_bodies_generated.sql:/seed-data/seed_governing_bodies_generated.sql:ro
-      - ../database/seed_political_parties.sql:/seed-data/seed_political_parties.sql:ro
+      - ../database/seed_political_parties_generated.sql:/seed-data/seed_political_parties_generated.sql:ro
       - ../database/seed_conferences.sql:/seed-data/seed_conferences.sql:ro
     healthcheck:
       test:

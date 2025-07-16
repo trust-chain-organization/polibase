@@ -1801,7 +1801,7 @@ INSERT INTO governing_bodies (name, type, organization_code, organization_type) 
 ('沖縄県八重瀬町', '市町村', '473626', '町'),
 ('沖縄県多良間村', '市町村', '473758', '村'),
 ('沖縄県竹富町', '市町村', '473812', '町'),
-('沖縄県与那国町', '市町村', '473821', '町'),
+('沖縄県与那国町', '市町村', '473821', '町')
 ON CONFLICT (name, type) DO UPDATE SET
     organization_code = EXCLUDED.organization_code,
     organization_type = EXCLUDED.organization_type,
