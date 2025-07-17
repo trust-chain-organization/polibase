@@ -441,7 +441,7 @@ class SeedGenerator:
                 f"'{date_str}', {url}, {gcs_pdf_uri}, {gcs_text_uri}){comma}"
             )
 
-        lines.append("ON CONFLICT (conference_id, date) DO NOTHING;")
+        lines.append(";")
 
         result = "\n".join(lines) + "\n"
         if output:
