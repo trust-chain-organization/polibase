@@ -2,6 +2,10 @@
 
 from typing import Protocol
 
+from src.domain.entities.llm_processing_history import LLMProcessingHistory
+from src.domain.repositories.llm_processing_history_repository import (
+    LLMProcessingHistoryRepository,
+)
 from src.domain.types import (
     LLMExtractResult,
     LLMMatchResult,
@@ -12,6 +16,30 @@ from src.domain.types import (
 
 class ILLMService(Protocol):
     """Interface for LLM services."""
+
+    async def set_history_repository(
+        self, repository: LLMProcessingHistoryRepository | None
+    ) -> None:
+        """Set the history repository for recording LLM operations.
+
+        Args:
+            repository: History repository instance or None to disable recording
+        """
+        ...
+
+    async def get_processing_history(
+        self, reference_type: str | None = None, reference_id: int | None = None
+    ) -> list[LLMProcessingHistory]:
+        """Get processing history for this service.
+
+        Args:
+            reference_type: Optional filter by reference type
+            reference_id: Optional filter by reference ID
+
+        Returns:
+            List of processing history entries
+        """
+        ...
 
     async def match_speaker_to_politician(
         self, context: LLMSpeakerMatchContext
