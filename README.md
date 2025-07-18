@@ -101,6 +101,12 @@ Polibaseは以下の設計原則に基づいて構築されています：
    - 時系列でのデータ入力推移を分析
    - データ充実度の低い領域を特定して効率的な作業が可能
 
+8. **LLM処理履歴とプロンプトバージョン管理**
+   - すべてのLLM処理（議事録分割、発言者抽出、政治家マッチング等）の履歴を記録
+   - プロンプトテンプレートのバージョン管理により再現性を確保
+   - 処理の成功/失敗、使用モデル、トークン使用量などを追跡
+   - A/Bテストや改善のためのプロンプト履歴分析が可能
+
 ### コマンドリファレンス
 
 📚 **すべてのコマンドの詳細は [COMMANDS.md](COMMANDS.md) を参照してください。**
@@ -463,7 +469,9 @@ polibase/
 │   │   ├── 001_add_url_to_meetings.sql
 │   │   ├── 002_add_members_list_url_to_political_parties.sql
 │   │   ├── 003_add_politician_details.sql
-│   │   └── 004_add_gcs_uri_to_meetings.sql  # GCS URI保存用カラム追加
+│   │   ├── 004_add_gcs_uri_to_meetings.sql  # GCS URI保存用カラム追加
+│   │   ├── 013_create_llm_processing_history.sql  # LLM処理履歴テーブル
+│   │   └── 014_create_prompt_versions.sql  # プロンプトバージョン管理テーブル
 │   └── backups/                # データベースバックアップファイル
 ├── docker/                      # Docker関連ファイル
 │   ├── docker-compose.yml       # Docker Compose設定（永続化モード）
@@ -640,6 +648,31 @@ Polibaseは、保守性と拡張性を向上させるためClean Architectureを
 3. **URI記録**: GCS URIをmeetingsテーブルに保存
 4. **GCSから処理**: `process_minutes.py --meeting-id` でGCSから直接データを取得して処理
 5. **後続処理**: 政治家抽出、発言者マッチングなどの処理を実行
+
+### LLM処理履歴管理システム
+#### 処理履歴の記録（llm_processing_historyテーブル）
+- **統一的な履歴管理**: すべてのLLM処理を1つのテーブルで管理
+- **処理タイプ**: MINUTES_DIVISION（議事録分割）、SPEECH_EXTRACTION（発言抽出）、SPEAKER_MATCHING（発言者マッチング）、POLITICIAN_EXTRACTION（政治家抽出）など
+- **詳細な記録内容**:
+  - 使用したLLMモデル名とバージョン
+  - 入力・出力トークン数とコスト
+  - 処理時間と成功/失敗状態
+  - 使用したプロンプトテンプレート
+  - 処理対象のエンティティID（meeting_id、speaker_idなど）
+- **活用例**:
+  - 処理の成功率分析
+  - コスト最適化のためのトークン使用量分析
+  - エラー傾向の把握と改善
+
+#### プロンプトバージョン管理（prompt_versionsテーブル）
+- **バージョン管理**: プロンプトテンプレートの変更履歴を完全に追跡
+- **アクティブバージョン**: 各プロンプトキー（minutes_divide、speaker_matchなど）ごとに1つのアクティブバージョンを管理
+- **変数対応**: テンプレート内の変数を自動検出し、実行時に検証
+- **メタデータ管理**: パフォーマンス指標、使用上の注意などを保存
+- **活用例**:
+  - 過去の処理の完全な再現
+  - A/Bテストによるプロンプト改善
+  - 効果的なプロンプトの分析と共有
 
 ## 🚀 クイックリファレンス
 

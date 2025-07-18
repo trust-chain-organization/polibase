@@ -14,6 +14,7 @@ from src.domain.entities.minutes import Minutes
 from src.domain.entities.parliamentary_group import ParliamentaryGroup
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician import Politician
+from src.domain.entities.prompt_version import PromptVersion
 from src.domain.entities.speaker import Speaker
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     "Politician",
     "ProcessingStatus",
     "ProcessingType",
+    "PromptVersion",
     "Speaker",
 ]
