@@ -1,30 +1,35 @@
 """Tests for LLM history helper."""
 
 import json
+from collections.abc import Generator
 from datetime import UTC, datetime
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.database.llm_history_helper import SyncLLMHistoryHelper
 
+# Type aliases for shorter lines
+MockGen = Generator[MagicMock]
+
 
 class TestSyncLLMHistoryHelper:
     """Test cases for SyncLLMHistoryHelper."""
 
     @pytest.fixture
-    def mock_settings(self):
+    def mock_settings(self) -> MockGen:
         """Mock settings."""
         with patch("src.database.llm_history_helper.settings") as mock:
             mock.get_database_url.return_value = "sqlite:///:memory:"
             yield mock
 
     @pytest.fixture
-    def helper(self, mock_settings):
+    def helper(self, mock_settings: MagicMock) -> SyncLLMHistoryHelper:
         """Create helper instance with mocked settings."""
         return SyncLLMHistoryHelper()
 
-    def test_init_creates_engine_and_session_maker(self, mock_settings):
+    def test_init_creates_engine_and_session_maker(self, mock_settings: Any) -> None:
         """Test that initialization creates engine and session maker."""
         helper = SyncLLMHistoryHelper()
 
@@ -32,7 +37,7 @@ class TestSyncLLMHistoryHelper:
         assert helper.session_maker is not None
         mock_settings.get_database_url.assert_called_once()
 
-    def test_record_speaker_matching_success(self, helper):
+    def test_record_speaker_matching_success(self, helper: Any) -> None:
         """Test successful recording of speaker matching."""
         # Mock session and its methods
         mock_session = MagicMock()
@@ -93,7 +98,7 @@ class TestSyncLLMHistoryHelper:
         assert token_usage["completion_tokens"] == 0
         assert token_usage["total_tokens"] == 0
 
-    def test_record_speaker_matching_no_match(self, helper):
+    def test_record_speaker_matching_no_match(self, helper: Any) -> None:
         """Test recording when no match is found."""
         mock_session = MagicMock()
         helper.session_maker = MagicMock(return_value=mock_session)
@@ -116,7 +121,7 @@ class TestSyncLLMHistoryHelper:
         assert metadata["confidence"] == 0.0
         assert metadata["reason"] == "一致なし"
 
-    def test_record_speaker_matching_database_error(self, helper):
+    def test_record_speaker_matching_database_error(self, helper: Any) -> None:
         """Test that database errors are handled gracefully."""
         mock_session = MagicMock()
         mock_session.execute.side_effect = Exception("Database error")
@@ -135,7 +140,7 @@ class TestSyncLLMHistoryHelper:
         assert mock_session.rollback.called
         assert mock_session.close.called
 
-    def test_close_disposes_engine(self, helper):
+    def test_close_disposes_engine(self, helper: Any) -> None:
         """Test that close method disposes the engine."""
         mock_dispose = MagicMock()
         helper.engine.dispose = mock_dispose
@@ -144,7 +149,7 @@ class TestSyncLLMHistoryHelper:
 
         assert mock_dispose.called
 
-    def test_context_manager(self, mock_settings):
+    def test_context_manager(self, mock_settings: MagicMock) -> None:
         """Test that helper works as a context manager."""
         with SyncLLMHistoryHelper() as helper:
             assert helper is not None
@@ -153,7 +158,7 @@ class TestSyncLLMHistoryHelper:
         # Engine should be disposed after context exit
         # (In real implementation, engine.dispose() would be called)
 
-    def test_hash_function_consistency(self, helper):
+    def test_hash_function_consistency(self, helper: Any) -> None:
         """Test that the hash function produces consistent results."""
         mock_session = MagicMock()
         helper.session_maker = MagicMock(return_value=mock_session)
@@ -184,7 +189,7 @@ class TestSyncLLMHistoryHelper:
         # Hash should be consistent
         assert call1_data["input_reference_id"] == call2_data["input_reference_id"]
 
-    def test_datetime_fields(self, helper):
+    def test_datetime_fields(self, helper: Any) -> None:
         """Test that datetime fields are properly set."""
         mock_session = MagicMock()
         helper.session_maker = MagicMock(return_value=mock_session)

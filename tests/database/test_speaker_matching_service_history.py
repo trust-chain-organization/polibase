@@ -1,29 +1,34 @@
 """Tests for speaker matching service history recording functionality."""
 
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.database.speaker_matching_service import SpeakerMatchingService
 
+# Type aliases for shorter lines
+MockGen = Generator[MagicMock]
+
 
 class TestSpeakerMatchingServiceHistory:
     """Test cases for speaker matching service history recording."""
 
     @pytest.fixture
-    def mock_llm_service(self):
+    def mock_llm_service(self) -> MagicMock:
         """Mock LLM service."""
         mock = MagicMock()
         mock.model_name = "gemini-1.5-flash"
         return mock
 
     @pytest.fixture
-    def mock_session(self):
+    def mock_session(self) -> MagicMock:
         """Mock database session."""
         return MagicMock()
 
     @pytest.fixture
-    def mock_history_helper(self):
+    def mock_history_helper(self) -> MockGen:
         """Mock history helper."""
         with patch(
             "src.database.speaker_matching_service.SyncLLMHistoryHelper"
@@ -36,11 +41,11 @@ class TestSpeakerMatchingServiceHistory:
     @patch("src.database.speaker_matching_service.ChainFactory")
     def test_init_with_history_enabled(
         self,
-        mock_chain_factory,
-        mock_get_session,
-        mock_llm_service,
-        mock_history_helper,
-    ):
+        mock_chain_factory: MagicMock,
+        mock_get_session: MagicMock,
+        mock_llm_service: MagicMock,
+        mock_history_helper: MagicMock,
+    ) -> None:
         """Test initialization with history enabled."""
         mock_get_session.return_value = MagicMock()
 
@@ -54,8 +59,11 @@ class TestSpeakerMatchingServiceHistory:
     @patch("src.database.speaker_matching_service.get_db_session")
     @patch("src.database.speaker_matching_service.ChainFactory")
     def test_init_with_history_disabled(
-        self, mock_chain_factory, mock_get_session, mock_llm_service
-    ):
+        self,
+        mock_chain_factory: Any,
+        mock_get_session: Any,
+        mock_llm_service: Any,
+    ) -> None:
         """Test initialization with history disabled."""
         mock_get_session.return_value = MagicMock()
 
@@ -68,8 +76,11 @@ class TestSpeakerMatchingServiceHistory:
     @patch("src.database.speaker_matching_service.get_db_session")
     @patch("src.database.speaker_matching_service.ChainFactory")
     def test_find_best_match_records_history_on_success(
-        self, mock_chain_factory, mock_get_session, mock_llm_service
-    ):
+        self,
+        mock_chain_factory: Any,
+        mock_get_session: Any,
+        mock_llm_service: Any,
+    ) -> None:
         """Test that successful matching records history."""
         # Setup mocks
         mock_get_session.return_value = MagicMock()
@@ -97,9 +108,10 @@ class TestSpeakerMatchingServiceHistory:
             )
 
             # Mock available speakers
-            service._get_available_speakers = MagicMock(
+            mock_get_speakers = MagicMock(
                 return_value=[{"id": 123, "name": "山田太郎"}]
             )
+            service._get_available_speakers = mock_get_speakers  # type: ignore[misc]
 
             # Call the method with a name that won't match with rule-based
             # to ensure LLM matching is used
@@ -124,8 +136,11 @@ class TestSpeakerMatchingServiceHistory:
     @patch("src.database.speaker_matching_service.get_db_session")
     @patch("src.database.speaker_matching_service.ChainFactory")
     def test_find_best_match_records_history_on_no_match(
-        self, mock_chain_factory, mock_get_session, mock_llm_service
-    ):
+        self,
+        mock_chain_factory: Any,
+        mock_get_session: Any,
+        mock_llm_service: Any,
+    ) -> None:
         """Test that no match also records history."""
         mock_get_session.return_value = MagicMock()
         mock_chain = MagicMock()
@@ -150,9 +165,8 @@ class TestSpeakerMatchingServiceHistory:
                 llm_service=mock_llm_service, enable_history=True
             )
 
-            service._get_available_speakers = MagicMock(
-                return_value=[{"id": 1, "name": "別の人"}]
-            )
+            mock_get_speakers = MagicMock(return_value=[{"id": 1, "name": "別の人"}])
+            service._get_available_speakers = mock_get_speakers  # type: ignore[misc]
 
             result = service.find_best_match("未知の発言者")
 
@@ -169,8 +183,11 @@ class TestSpeakerMatchingServiceHistory:
     @patch("src.database.speaker_matching_service.get_db_session")
     @patch("src.database.speaker_matching_service.ChainFactory")
     def test_history_recording_failure_does_not_break_main_flow(
-        self, mock_chain_factory, mock_get_session, mock_llm_service
-    ):
+        self,
+        mock_chain_factory: Any,
+        mock_get_session: Any,
+        mock_llm_service: Any,
+    ) -> None:
         """Test that history recording failure doesn't break the main operation."""
         mock_get_session.return_value = MagicMock()
         mock_chain = MagicMock()
@@ -199,9 +216,10 @@ class TestSpeakerMatchingServiceHistory:
                 llm_service=mock_llm_service, enable_history=True
             )
 
-            service._get_available_speakers = MagicMock(
+            mock_get_speakers = MagicMock(
                 return_value=[{"id": 123, "name": "山田太郎"}]
             )
+            service._get_available_speakers = mock_get_speakers  # type: ignore[misc]
 
             # Should not raise exception
             result = service.find_best_match("山田太郎")
@@ -213,8 +231,11 @@ class TestSpeakerMatchingServiceHistory:
     @patch("src.database.speaker_matching_service.get_db_session")
     @patch("src.database.speaker_matching_service.ChainFactory")
     def test_batch_update_closes_history_helper(
-        self, mock_chain_factory, mock_get_session, mock_llm_service
-    ):
+        self,
+        mock_chain_factory: Any,
+        mock_get_session: Any,
+        mock_llm_service: Any,
+    ) -> None:
         """Test that batch update closes history helper in finally block."""
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
@@ -241,8 +262,11 @@ class TestSpeakerMatchingServiceHistory:
     @patch("src.database.speaker_matching_service.get_db_session")
     @patch("src.database.speaker_matching_service.ChainFactory")
     def test_low_confidence_match_still_records_history(
-        self, mock_chain_factory, mock_get_session, mock_llm_service
-    ):
+        self,
+        mock_chain_factory: Any,
+        mock_get_session: Any,
+        mock_llm_service: Any,
+    ) -> None:
         """Test that low confidence matches (< 0.8) still record history."""
         mock_get_session.return_value = MagicMock()
         mock_chain = MagicMock()
@@ -269,9 +293,10 @@ class TestSpeakerMatchingServiceHistory:
                 llm_service=mock_llm_service, enable_history=True
             )
 
-            service._get_available_speakers = MagicMock(
+            mock_get_speakers = MagicMock(
                 return_value=[{"id": 123, "name": "山田太郎"}]
             )
+            service._get_available_speakers = mock_get_speakers  # type: ignore[misc]
 
             result = service.find_best_match("山田")
 
