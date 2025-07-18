@@ -1,6 +1,7 @@
 """End-to-end test for minutes processing with history recording."""
 
 import os
+from typing import Any
 from unittest.mock import Mock, patch
 
 from src.process_minutes import main, process_minutes
@@ -11,7 +12,9 @@ class TestMinutesProcessingE2E:
 
     @patch("src.process_minutes.LLMServiceFactory")
     @patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key"})
-    def test_process_minutes_with_mocked_llm_service(self, mock_factory_class):
+    def test_process_minutes_with_mocked_llm_service(
+        self, mock_factory_class: Any
+    ) -> None:
         """Test process_minutes with mocked LLM service."""
         # Import required models
         from src.minutes_divide_processor.models import SpeakerAndSpeechContent
@@ -104,11 +107,11 @@ class TestMinutesProcessingE2E:
     @patch("src.process_minutes.LLMServiceFactory")
     def test_main_function_with_mocked_dependencies(
         self,
-        mock_factory_class,
-        mock_display_status,
-        mock_save_to_db,
-        mock_load_pdf,
-    ):
+        mock_factory_class: Any,
+        mock_display_status: Any,
+        mock_save_to_db: Any,
+        mock_load_pdf: Any,
+    ) -> None:
         """Test main function with mocked dependencies."""
         # Mock PDF text
         mock_load_pdf.return_value = "テスト議事録"
@@ -164,7 +167,7 @@ class TestMinutesProcessingE2E:
             mock_save_to_db.assert_called_once()
             mock_display_status.assert_called()
 
-    def test_instrumented_service_configuration_in_process_minutes(self):
+    def test_instrumented_service_configuration_in_process_minutes(self) -> None:
         """Test that InstrumentedLLMService is properly configured."""
         from src.infrastructure.external.instrumented_llm_service import (
             InstrumentedLLMService,
@@ -194,5 +197,5 @@ class TestMinutesProcessingE2E:
                 process_minutes("test", meeting_id=123)
 
                 # Verify that the service was configured with meeting context
-                assert instrumented_service._input_reference_type == "meeting"
-                assert instrumented_service._input_reference_id == 123
+                assert instrumented_service._input_reference_type == "meeting"  # type: ignore[reportPrivateUsage]
+                assert instrumented_service._input_reference_id == 123  # type: ignore[reportPrivateUsage]
