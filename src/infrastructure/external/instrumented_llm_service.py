@@ -34,6 +34,8 @@ class InstrumentedLLMService:
         prompt_repository: PromptVersionRepository | None = None,
         model_name: str = "unknown",
         model_version: str = "unknown",
+        input_reference_type: str | None = None,
+        input_reference_id: int | None = None,
     ):
         """Initialize instrumented LLM service.
 
@@ -49,6 +51,8 @@ class InstrumentedLLMService:
         self._prompt_repository = prompt_repository
         self._model_name = model_name
         self._model_version = model_version
+        self._input_reference_type = input_reference_type
+        self._input_reference_id = input_reference_id
 
     async def set_history_repository(
         self, repository: LLMProcessingHistoryRepository | None
@@ -200,9 +204,13 @@ class InstrumentedLLMService:
         prompt_template = "speech_extraction"
         prompt_variables = {"text_length": len(text)}
 
-        # For text extraction, we don't have a specific reference ID
-        reference_type = "text"
-        reference_id = hash(text[:100]) % 1000000  # Simple hash for tracking
+        # Use configured reference type/id if available, otherwise use defaults
+        reference_type = self._input_reference_type or "text"
+        reference_id = (
+            self._input_reference_id
+            if self._input_reference_id is not None
+            else hash(text[:100]) % 1000000  # Simple hash for tracking
+        )
 
         return await self._record_processing(
             ProcessingType.SPEECH_EXTRACTION,
@@ -212,6 +220,30 @@ class InstrumentedLLMService:
             prompt_variables,
             self._llm_service.extract_speeches_from_text,
             text,
+        )
+
+    async def process_minutes_division(
+        self,
+        processing_func: Callable[..., Awaitable[Any]],
+        prompt_name: str,
+        prompt_variables: dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Process minutes division operations with history recording."""
+        # Use configured reference type/id if available
+        reference_type = self._input_reference_type or "meeting"
+        reference_id = self._input_reference_id or 0
+
+        return await self._record_processing(
+            ProcessingType.MINUTES_DIVISION,
+            reference_type,
+            reference_id,
+            prompt_name,
+            prompt_variables,
+            processing_func,
+            *args,
+            **kwargs,
         )
 
     async def extract_party_members(
@@ -261,3 +293,16 @@ class InstrumentedLLMService:
             party_name,
             candidates,
         )
+
+    # Delegation methods for ILLMService compatibility
+    def get_structured_llm(self, schema: Any) -> Any:
+        """Delegate to wrapped LLM service."""
+        return self._llm_service.get_structured_llm(schema)
+
+    def get_prompt(self, prompt_name: str) -> Any:
+        """Delegate to wrapped LLM service."""
+        return self._llm_service.get_prompt(prompt_name)
+
+    def invoke_with_retry(self, chain: Any, inputs: dict[str, Any]) -> Any:
+        """Delegate to wrapped LLM service."""
+        return self._llm_service.invoke_with_retry(chain, inputs)

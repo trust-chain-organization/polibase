@@ -5,7 +5,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.store.memory import InMemoryStore
 
-from ..services.llm_service import LLMService
+from ..infrastructure.external.instrumented_llm_service import InstrumentedLLMService
+from ..infrastructure.interfaces.llm_service import ILLMService
 from .minutes_divider import MinutesDivider
 
 # Use relative import for modules within the same package
@@ -17,12 +18,17 @@ from .models import (
 
 
 class MinutesProcessAgent:
-    def __init__(self, llm_service: LLMService | None = None, k: int | None = None):
+    def __init__(
+        self,
+        llm_service: ILLMService | InstrumentedLLMService | None = None,
+        k: int | None = None,
+    ):
         """
         Initialize MinutesProcessAgent
 
         Args:
             llm_service: LLMService instance (creates default if not provided)
+                Can be ILLMService or InstrumentedLLMService
             k: Number of sections
         """
         # 各種ジェネレータの初期化
