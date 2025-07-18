@@ -22,11 +22,10 @@ from src.exceptions import (
     PDFProcessingError,
     ProcessingError,
 )
+from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
-from src.services.instrumented_llm_service import InstrumentedLLMService
 from src.services.llm_factory import LLMServiceFactory
-from src.services.llm_service import LLMService
 
 logger = get_logger(__name__)
 
@@ -124,12 +123,15 @@ def display_database_status() -> None:
     metric_name="minutes_processing",
     log_slow_operations=10.0,
 )
-def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:
+def process_minutes(
+    extracted_text: str, meeting_id: int | None = None
+) -> list[SpeakerAndSpeechContent]:
     """
     議事録分割処理を実行する
 
     Args:
         extracted_text: 処理対象のテキスト
+        meeting_id: 処理対象のmeeting ID（履歴記録用）
 
     Returns:
         List[SpeakerAndSpeechContent]: 抽出された発言データ
@@ -154,19 +156,20 @@ def process_minutes(extracted_text: str) -> list[SpeakerAndSpeechContent]:
 
         # Create LLM service using factory
         factory = LLMServiceFactory()
-        llm_service_or_instrumented = factory.create_advanced(temperature=0.0)
+        llm_service = factory.create_advanced(temperature=0.0)
 
-        # Cast to LLMService if it's InstrumentedLLMService
-        if isinstance(llm_service_or_instrumented, InstrumentedLLMService):
-            # InstrumentedLLMService wraps LLMService, so we use it as is
-            # MinutesProcessAgent needs to be updated to accept Union type
-            llm_service: LLMService | InstrumentedLLMService = (
-                llm_service_or_instrumented
+        # If it's an InstrumentedLLMService, configure meeting context
+        if isinstance(llm_service, InstrumentedLLMService) and meeting_id:
+            # Configure the service with meeting context for history recording
+            llm_service._input_reference_type = "meeting"
+            llm_service._input_reference_id = meeting_id
+            logger.info(
+                "Configured InstrumentedLLMService for meeting", meeting_id=meeting_id
             )
-        else:
-            llm_service = llm_service_or_instrumented
+            # Note: History repository should be configured at application startup
+            # in a proper async context, not here in sync code
 
-        agent = MinutesProcessAgent(llm_service=llm_service)  # type: ignore[arg-type]
+        agent = MinutesProcessAgent(llm_service=llm_service)
 
         logger.info("Processing minutes", text_length=len(extracted_text))
 
@@ -311,7 +314,7 @@ def main() -> list[int] | None:
                         print(f"   ✅ Minutes ID {minutes_id} を作成しました")
 
                     # 議事録を処理
-                    results = process_minutes(extracted_text)
+                    results = process_minutes(extracted_text, meeting_id=meeting_id)
                     if results:
                         # データベースに保存（minutes_idを紐付け）
                         saved_ids = save_to_database(results, minutes_id=minutes_id)
@@ -387,8 +390,10 @@ def main() -> list[int] | None:
                             )
                             logger.info(f"Created minutes record with ID: {minutes_id}")
 
-                        # メイン処理の実行（minutes_idを渡す）
-                        results = process_minutes(extracted_text)
+                        # メイン処理の実行（meeting_idを渡す）
+                        results = process_minutes(
+                            extracted_text, meeting_id=args.meeting_id
+                        )
                         if results:
                             saved_ids = save_to_database(results, minutes_id=minutes_id)
                             # 処理後のデータベース状態を表示

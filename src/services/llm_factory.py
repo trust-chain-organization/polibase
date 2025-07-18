@@ -3,8 +3,8 @@
 from typing import Any, TypedDict
 
 from src.common.logging import get_logger
+from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
 
-from .instrumented_llm_service import InstrumentedLLMService
 from .llm_service import LLMService
 from .prompt_loader import PromptLoader
 
@@ -56,7 +56,7 @@ class LLMServiceFactory:
             prompt_loader: Shared prompt loader instance
         """
         self.prompt_loader = prompt_loader or PromptLoader.get_default_instance()
-        self._instances: dict[str, LLMService | InstrumentedLLMService] = {}
+        self._instances: dict[str, InstrumentedLLMService | LLMService] = {}
 
     def create(
         self,
@@ -67,7 +67,7 @@ class LLMServiceFactory:
         api_key: str | None = None,
         use_cache: bool = True,
         enable_metrics: bool = True,
-    ) -> LLMService | InstrumentedLLMService:
+    ) -> InstrumentedLLMService | LLMService:
         """
         Create LLMService instance
 
@@ -114,7 +114,13 @@ class LLMServiceFactory:
 
         # Wrap with instrumentation if enabled
         if enable_metrics:
-            instance = InstrumentedLLMService(instance)
+            model_name = config.get("model_name", "gemini-2.0-flash-exp")
+            model_version = config.get("model_version", "latest")
+            instance = InstrumentedLLMService(
+                instance,
+                model_name=model_name,
+                model_version=model_version,
+            )
 
         # Cache if requested
         if cache_key:
@@ -122,23 +128,23 @@ class LLMServiceFactory:
 
         return instance
 
-    def create_fast(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
+    def create_fast(self, **kwargs: Any) -> InstrumentedLLMService | LLMService:
         """Create fast model instance"""
         return self.create(preset="fast", **kwargs)
 
-    def create_advanced(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
+    def create_advanced(self, **kwargs: Any) -> InstrumentedLLMService | LLMService:
         """Create advanced model instance"""
         return self.create(preset="advanced", **kwargs)
 
-    def create_creative(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
+    def create_creative(self, **kwargs: Any) -> InstrumentedLLMService | LLMService:
         """Create creative model instance"""
         return self.create(preset="creative", **kwargs)
 
-    def create_precise(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
+    def create_precise(self, **kwargs: Any) -> InstrumentedLLMService | LLMService:
         """Create precise model instance"""
         return self.create(preset="precise", **kwargs)
 
-    def create_legacy(self, **kwargs: Any) -> LLMService | InstrumentedLLMService:
+    def create_legacy(self, **kwargs: Any) -> InstrumentedLLMService | LLMService:
         """Create legacy model instance"""
         return self.create(preset="legacy", **kwargs)
 
@@ -166,7 +172,7 @@ class LLMServiceFactory:
         return cls()
 
     @classmethod
-    def create_gemini_service(cls) -> LLMService | InstrumentedLLMService:
+    def create_gemini_service(cls) -> InstrumentedLLMService | LLMService:
         """Create default Gemini service (for backward compatibility)"""
         factory = cls()
         return factory.create_fast()

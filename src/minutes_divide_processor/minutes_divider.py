@@ -8,6 +8,8 @@ from langchain import hub
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
+from ..infrastructure.external.instrumented_llm_service import InstrumentedLLMService
+from ..infrastructure.interfaces.llm_service import ILLMService
 from ..services.llm_factory import LLMServiceFactory
 
 # Use relative import for modules within the same package
@@ -25,12 +27,17 @@ logger = logging.getLogger(__name__)
 
 
 class MinutesDivider:
-    def __init__(self, llm_service: Any = None, k: int = 5):
+    def __init__(
+        self,
+        llm_service: ILLMService | InstrumentedLLMService | None = None,
+        k: int = 5,
+    ):
         """
         Initialize MinutesDivider
 
         Args:
             llm_service: LLMService instance (creates default if not provided)
+                Can be ILLMService or InstrumentedLLMService
             k: Number of sections (default 5)
         """
         if llm_service is None:

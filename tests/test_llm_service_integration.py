@@ -3,8 +3,8 @@
 import pytest
 from pydantic import BaseModel
 
+from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
 from src.party_member_extractor.models import PartyMemberInfo, PartyMemberList
-from src.services.instrumented_llm_service import InstrumentedLLMService
 from src.services.llm_errors import LLMError, LLMRateLimitError
 from src.services.llm_factory import LLMServiceFactory
 from src.services.llm_service import LLMService

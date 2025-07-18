@@ -44,7 +44,7 @@ class TestProcessMinutes:
         mock_agent_class.return_value = mock_agent
 
         # Act
-        results = process_minutes(test_text)
+        results = process_minutes(test_text, meeting_id=None)
 
         # Assert
         assert results == expected_results
@@ -55,7 +55,7 @@ class TestProcessMinutes:
     def test_process_minutes_empty_text(self):
         """Test processing with empty text"""
         with pytest.raises(ProcessingError) as exc_info:
-            process_minutes("")
+            process_minutes("", meeting_id=None)
 
         assert "No text provided for processing" in str(exc_info.value)
         assert exc_info.value.details["text_length"] == 0
@@ -64,7 +64,7 @@ class TestProcessMinutes:
     def test_process_minutes_no_api_key(self):
         """Test processing without API key"""
         with pytest.raises(APIKeyError) as exc_info:
-            process_minutes("Some text")
+            process_minutes("Some text", meeting_id=None)
 
         assert "GOOGLE_API_KEY not set" in str(exc_info.value)
 
@@ -80,7 +80,7 @@ class TestProcessMinutes:
 
         # Act & Assert
         with pytest.raises(ProcessingError) as exc_info:
-            process_minutes("Test text")
+            process_minutes("Test text", meeting_id=None)
 
         assert "Failed to process meeting minutes" in str(exc_info.value)
         assert "Agent processing failed" in str(exc_info.value.details["error"])
@@ -301,7 +301,7 @@ class TestMain:
         mock_meeting_repo.get_meeting_by_id.assert_called_once_with(123)
         mock_gcs.download_content.assert_called_once_with("gs://bucket/file.txt")
         mock_base_repo.insert.assert_called_once()
-        mock_process.assert_called_once_with("GCS content")
+        mock_process.assert_called_once_with("GCS content", meeting_id=123)
         mock_save_db.assert_called_once()
 
     @patch("sys.argv", ["process_minutes.py", "--process-all-gcs"])

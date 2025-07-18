@@ -112,6 +112,15 @@ docker compose exec polibase uv run pytest
 docker compose exec polibase uv run python -c "from src.config.database import test_connection; test_connection()"
 ```
 
+#### Testing Guidelines
+- **外部サービスへの依存を避ける**: テストでは外部LLMサービス（Google Gemini API）やその他のAPIに実際にアクセスしてはいけません
+- **モックの使用**: 外部サービスとの連携をテストする場合は、必ずモックを使用してください
+  - LLMサービスのレスポンスはモックで作成
+  - APIキーの検証もモックで実施
+  - ネットワーク接続は不要
+- **テストの独立性**: テストは環境（CI/ローカル）に依存せず、常に同じ結果を返すようにしてください
+- **統合テスト**: 実際のサービスとの統合をテストする必要がある場合は、別途手動テストとして実施し、自動テストには含めません
+
 ### Code Formatting and Quality
 
 #### Ruff (Code Formatter and Linter)
