@@ -3,8 +3,6 @@
 import os
 from unittest.mock import Mock, patch
 
-import pytest
-
 from src.process_minutes import main, process_minutes
 
 
@@ -17,7 +15,7 @@ class TestMinutesProcessingE2E:
         """Test process_minutes with mocked LLM service."""
         # Import required models
         from src.minutes_divide_processor.models import SpeakerAndSpeechContent
-        
+
         # Short test text to minimize API usage
         test_text = """
         第1回定例会議事録
@@ -36,11 +34,11 @@ class TestMinutesProcessingE2E:
         # Mock the LLM service factory
         mock_factory = Mock()
         mock_llm_service = Mock()
-        
+
         # Configure mocks for MinutesDivider
         mock_llm_service.get_structured_llm = Mock(return_value=lambda x: x)
         mock_llm_service.get_prompt = Mock(return_value=Mock())
-        
+
         # Mock MinutesProcessAgent to return expected results
         with patch("src.process_minutes.MinutesProcessAgent") as mock_agent_class:
             mock_agent = Mock()
@@ -75,7 +73,7 @@ class TestMinutesProcessingE2E:
                 ),
             ]
             mock_agent_class.return_value = mock_agent
-            
+
             mock_factory.create_advanced.return_value = mock_llm_service
             mock_factory_class.return_value = mock_factory
 
@@ -95,7 +93,7 @@ class TestMinutesProcessingE2E:
             assert results[2].speech_content == "私も同意見です。"
             assert results[3].speaker == "議長"
             assert results[3].speech_content == "以上で本日の会議を終了します。"
-            
+
             # Verify the agent was called with the text
             mock_agent.run.assert_called_once_with(original_minutes=test_text)
 
