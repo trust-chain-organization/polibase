@@ -12,7 +12,8 @@ class TestMinutesProcessingE2E:
     """End-to-end tests for minutes processing with history recording."""
 
     @pytest.mark.skipif(
-        not os.getenv("GOOGLE_API_KEY"), reason="Requires GOOGLE_API_KEY"
+        not os.getenv("GOOGLE_API_KEY") or os.getenv("CI") == "true",
+        reason="Requires GOOGLE_API_KEY and should not run in CI"
     )
     def test_process_minutes_with_real_llm_service(self):
         """Test process_minutes with real LLM service (if API key available)."""
@@ -31,17 +32,24 @@ class TestMinutesProcessingE2E:
         議長: 以上で本日の会議を終了します。
         """
 
-        # Process the text
-        results = process_minutes(test_text, meeting_id=999)
+        try:
+            # Process the text
+            results = process_minutes(test_text, meeting_id=999)
 
-        # Verify results
-        assert isinstance(results, list)
-        assert len(results) > 0
+            # Verify results
+            assert isinstance(results, list)
+            assert len(results) > 0
 
-        # Check that conversations were extracted
-        for result in results:
-            assert hasattr(result, "speaker")
-            assert hasattr(result, "speech_content")
+            # Check that conversations were extracted
+            for result in results:
+                assert hasattr(result, "speaker")
+                assert hasattr(result, "speech_content")
+        except Exception as e:
+            # Skip the test if API key is invalid or API call fails
+            if "API_KEY_INVALID" in str(e) or "API key not valid" in str(e):
+                pytest.skip("Skipping test due to invalid API key in CI environment")
+            else:
+                raise
 
     @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.load_pdf_text")
