@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from src.services.instrumented_llm_service import InstrumentedLLMService
+from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
 from src.services.llm_factory import LLMServiceFactory
 from src.services.prompt_loader import PromptLoader
 

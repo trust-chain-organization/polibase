@@ -40,9 +40,10 @@ class TestMinutesProcessingE2E:
 
         # Check that conversations were extracted
         for result in results:
-            assert hasattr(result, "speaker_name")
+            assert hasattr(result, "speaker")
             assert hasattr(result, "speech_content")
 
+    @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.load_pdf_text")
     @patch("src.process_minutes.save_to_database")
     @patch("src.process_minutes.display_database_status")
@@ -94,7 +95,7 @@ class TestMinutesProcessingE2E:
                 SpeakerAndSpeechContent(
                     chapter_number=1,
                     speech_order=1,
-                    speaker_name="テスト議員",
+                    speaker="テスト議員",
                     speech_content="テスト発言",
                 )
             ]

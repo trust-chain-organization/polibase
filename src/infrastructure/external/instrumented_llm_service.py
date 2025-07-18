@@ -306,3 +306,22 @@ class InstrumentedLLMService:
     def invoke_with_retry(self, chain: Any, inputs: dict[str, Any]) -> Any:
         """Delegate to wrapped LLM service."""
         return self._llm_service.invoke_with_retry(chain, inputs)
+
+    # Attribute delegation for compatibility
+    @property
+    def model_name(self) -> str:
+        """Get model name from wrapped service or return configured name."""
+        if hasattr(self._llm_service, "model_name"):
+            return self._llm_service.model_name
+        return self._model_name
+
+    @property
+    def temperature(self) -> float:
+        """Get temperature from wrapped service."""
+        if hasattr(self._llm_service, "temperature"):
+            return self._llm_service.temperature
+        return 0.1  # Default value
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate unknown attributes to wrapped service."""
+        return getattr(self._llm_service, name)
