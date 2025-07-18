@@ -4,6 +4,11 @@ from src.domain.entities.base import BaseEntity
 from src.domain.entities.conference import Conference
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.governing_body import GoverningBody
+from src.domain.entities.llm_processing_history import (
+    LLMProcessingHistory,
+    ProcessingStatus,
+    ProcessingType,
+)
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
 from src.domain.entities.parliamentary_group import ParliamentaryGroup
@@ -16,10 +21,13 @@ __all__ = [
     "Conference",
     "Conversation",
     "GoverningBody",
+    "LLMProcessingHistory",
     "Meeting",
     "Minutes",
     "ParliamentaryGroup",
     "PoliticalParty",
     "Politician",
+    "ProcessingStatus",
+    "ProcessingType",
     "Speaker",
 ]
