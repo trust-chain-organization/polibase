@@ -11,12 +11,13 @@ from src.process_minutes import main, process_minutes
 class TestMinutesProcessingE2E:
     """End-to-end tests for minutes processing with history recording."""
 
-    @pytest.mark.skipif(
-        not os.getenv("GOOGLE_API_KEY") or os.getenv("CI") == "true",
-        reason="Requires GOOGLE_API_KEY and should not run in CI"
-    )
-    def test_process_minutes_with_real_llm_service(self):
-        """Test process_minutes with real LLM service (if API key available)."""
+    @patch("src.process_minutes.LLMServiceFactory")
+    @patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key"})
+    def test_process_minutes_with_mocked_llm_service(self, mock_factory_class):
+        """Test process_minutes with mocked LLM service."""
+        # Import required models
+        from src.minutes_divide_processor.models import SpeakerAndSpeechContent
+        
         # Short test text to minimize API usage
         test_text = """
         第1回定例会議事録
@@ -32,24 +33,71 @@ class TestMinutesProcessingE2E:
         議長: 以上で本日の会議を終了します。
         """
 
-        try:
+        # Mock the LLM service factory
+        mock_factory = Mock()
+        mock_llm_service = Mock()
+        
+        # Configure mocks for MinutesDivider
+        mock_llm_service.get_structured_llm = Mock(return_value=lambda x: x)
+        mock_llm_service.get_prompt = Mock(return_value=Mock())
+        
+        # Mock MinutesProcessAgent to return expected results
+        with patch("src.process_minutes.MinutesProcessAgent") as mock_agent_class:
+            mock_agent = Mock()
+            mock_agent.run.return_value = [
+                SpeakerAndSpeechContent(
+                    chapter_number=1,
+                    sub_chapter_number=1,
+                    speech_order=1,
+                    speaker="議長",
+                    speech_content="本日の会議を開催します。",
+                ),
+                SpeakerAndSpeechContent(
+                    chapter_number=2,
+                    sub_chapter_number=1,
+                    speech_order=1,
+                    speaker="田中委員",
+                    speech_content="予算について質問があります。",
+                ),
+                SpeakerAndSpeechContent(
+                    chapter_number=2,
+                    sub_chapter_number=1,
+                    speech_order=2,
+                    speaker="山田委員",
+                    speech_content="私も同意見です。",
+                ),
+                SpeakerAndSpeechContent(
+                    chapter_number=3,
+                    sub_chapter_number=1,
+                    speech_order=1,
+                    speaker="議長",
+                    speech_content="以上で本日の会議を終了します。",
+                ),
+            ]
+            mock_agent_class.return_value = mock_agent
+            
+            mock_factory.create_advanced.return_value = mock_llm_service
+            mock_factory_class.return_value = mock_factory
+
             # Process the text
             results = process_minutes(test_text, meeting_id=999)
 
             # Verify results
             assert isinstance(results, list)
-            assert len(results) > 0
+            assert len(results) == 4
 
-            # Check that conversations were extracted
-            for result in results:
-                assert hasattr(result, "speaker")
-                assert hasattr(result, "speech_content")
-        except Exception as e:
-            # Skip the test if API key is invalid or API call fails
-            if "API_KEY_INVALID" in str(e) or "API key not valid" in str(e):
-                pytest.skip("Skipping test due to invalid API key in CI environment")
-            else:
-                raise
+            # Check that conversations were extracted correctly
+            assert results[0].speaker == "議長"
+            assert results[0].speech_content == "本日の会議を開催します。"
+            assert results[1].speaker == "田中委員"
+            assert results[1].speech_content == "予算について質問があります。"
+            assert results[2].speaker == "山田委員"
+            assert results[2].speech_content == "私も同意見です。"
+            assert results[3].speaker == "議長"
+            assert results[3].speech_content == "以上で本日の会議を終了します。"
+            
+            # Verify the agent was called with the text
+            mock_agent.run.assert_called_once_with(original_minutes=test_text)
 
     @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.load_pdf_text")
