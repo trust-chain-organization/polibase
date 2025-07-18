@@ -1,9 +1,13 @@
 """Centralized prompt management for all LLM operations"""
 
 import logging
+from typing import TYPE_CHECKING, Any
 
 from langchain import hub
 from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+
+if TYPE_CHECKING:
+    from src.services.versioned_prompt_manager import VersionedPromptManager
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +134,41 @@ HTMLコンテンツ：
     def __init__(self):
         self._cached_prompts: dict[str, ChatPromptTemplate] = {}
         self._hub_prompts: dict[str, PromptTemplate] = {}
+        self._versioned_manager: VersionedPromptManager | None = None
+
+    def set_versioned_manager(self, manager: "VersionedPromptManager") -> None:
+        """Set the versioned prompt manager for database-backed prompts.
+
+        Args:
+            manager: VersionedPromptManager instance
+        """
+        self._versioned_manager = manager
+
+    async def get_prompt_async(
+        self, prompt_key: str, variables: dict[str, Any] | None = None
+    ) -> tuple[str, str]:
+        """Get a prompt template asynchronously (supports versioning).
+
+        Args:
+            prompt_key: Key identifying the prompt
+            variables: Optional variables for prompt formatting
+
+        Returns:
+            Tuple of (formatted_prompt, version)
+        """
+        # Try versioned manager first
+        if self._versioned_manager:
+            try:
+                return await self._versioned_manager.get_versioned_prompt(
+                    prompt_key, variables
+                )
+            except Exception as e:
+                logger.warning(f"Failed to get versioned prompt for {prompt_key}: {e}")
+
+        # Fall back to static prompts
+        template = self.get_prompt(prompt_key)
+        formatted = template.format(**(variables or {}))
+        return formatted, "static"
 
     def get_prompt(self, prompt_key: str) -> ChatPromptTemplate:
         """
@@ -199,6 +238,50 @@ HTMLコンテンツ：
             self._cached_prompts[cache_key] = prompt
 
         return prompt
+
+    async def save_prompt_version(
+        self,
+        prompt_key: str,
+        template: str,
+        version: str | None = None,
+        description: str | None = None,
+        created_by: str | None = None,
+    ) -> bool:
+        """Save a new version of a prompt (if versioned manager is available).
+
+        Args:
+            prompt_key: Key identifying the prompt
+            template: The prompt template content
+            version: Version identifier (auto-generated if not provided)
+            description: Optional description
+            created_by: Creator identifier
+
+        Returns:
+            True if saved successfully, False otherwise
+        """
+        if not self._versioned_manager:
+            logger.warning("No versioned manager available for saving prompts")
+            return False
+
+        try:
+            # Extract variables from template
+            test_prompt = ChatPromptTemplate.from_template(template)
+            variables = list(test_prompt.input_variables)
+
+            result = await self._versioned_manager.save_new_version(
+                prompt_key=prompt_key,
+                template=template,
+                version=version,
+                description=description,
+                variables=variables,
+                created_by=created_by,
+                activate=True,
+            )
+
+            return result is not None
+        except Exception as e:
+            logger.error(f"Failed to save prompt version: {e}")
+            return False
 
     @classmethod
     def get_default_instance(cls) -> "PromptManager":
