@@ -236,7 +236,7 @@ class TestMain:
         assert result == [1, 2, 3]
         mock_setup.assert_called_once()
         mock_load_pdf.assert_called_once()
-        mock_process.assert_called_once_with("PDF content", meeting_id=None)
+        mock_process.assert_called_once_with("PDF content")
         mock_save_db.assert_called_once()
         assert mock_display_status.call_count == 2  # Before and after processing
 

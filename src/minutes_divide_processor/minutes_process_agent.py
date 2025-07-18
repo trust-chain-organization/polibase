@@ -65,7 +65,7 @@ class MinutesProcessAgent:
         if memory_item is None:
             return None
         else:
-            return memory_item.value[namespace]
+            return memory_item.value
 
     def _put_to_memory(self, namespace: str, memory: dict[str, Any]) -> str:
         user_id = "1"
