@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from ..config.database import get_db_session
 from ..exceptions import DatabaseError, LLMError, QueryError
 from ..services import ChainFactory, LLMService
+from .llm_history_helper import SyncLLMHistoryHelper
 
 if TYPE_CHECKING:
     pass
@@ -33,12 +34,17 @@ class SpeakerMatch(BaseModel):
 class SpeakerMatchingService:
     """LLMを活用した発言者名マッチングサービス"""
 
-    def __init__(self, llm_service: LLMService | None = None):
+    def __init__(
+        self,
+        llm_service: LLMService | None = None,
+        enable_history: bool = False,
+    ):
         """
         Initialize speaker matching service
 
         Args:
             llm_service: Optional LLMService instance
+            enable_history: Whether to enable LLM history recording
         """
         # Initialize services
         if llm_service is None:
@@ -52,6 +58,10 @@ class SpeakerMatchingService:
 
         self.chain_factory = ChainFactory(self.llm_service)
         self.session = get_db_session()
+
+        # Initialize history helper if enabled
+        self.history_helper = SyncLLMHistoryHelper() if enable_history else None
+        self.model_name = getattr(self.llm_service, "model_name", "gemini-1.5-flash")
 
         # Create matching chain
         self._matching_chain: Any = self.chain_factory.create_speaker_matching_chain(  # type: ignore[misc]
@@ -134,6 +144,22 @@ class SpeakerMatchingService:
                 match_result.matched = False
                 match_result.speaker_id = None
                 match_result.speaker_name = None
+
+            # Record history if enabled
+            if self.history_helper:
+                try:
+                    self.history_helper.record_speaker_matching(
+                        speaker_name=speaker_name,
+                        matched=match_result.matched,
+                        speaker_id=match_result.speaker_id,
+                        confidence=match_result.confidence,
+                        reason=match_result.reason,
+                        model_name=self.model_name,
+                        prompt_template="speaker_matching",
+                    )
+                except Exception as hist_e:
+                    logger.warning(f"Failed to record LLM history: {hist_e}")
+                    # Don't fail the main operation due to history recording failure
 
             return match_result
 
@@ -460,3 +486,5 @@ class SpeakerMatchingService:
             ) from e
         finally:
             self.session.close()
+            if self.history_helper:
+                self.history_helper.close()

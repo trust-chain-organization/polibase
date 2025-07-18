@@ -37,8 +37,10 @@ def main():
     # マッチングサービスの初期化（LLMServiceを内部で使用）
     print("\n🎯 Speaker Matchingサービスを初期化中...")
     try:
-        matching_service = SpeakerMatchingService()  # LLMServiceを内部で作成
+        # Enable history recording for speaker matching
+        matching_service = SpeakerMatchingService(enable_history=True)
         print("✅ Speaker Matchingサービス初期化完了")
+        print("✅ LLM履歴記録機能: 有効")
     except Exception as e:
         print(f"❌ サービス初期化エラー: {e}")
         print("   環境変数 GOOGLE_API_KEY が正しく設定されているか確認してください")
@@ -131,8 +133,8 @@ def test_single_match():
 
     config.set_env()
 
-    # Use LLMService instead of direct instantiation
-    matching_service = SpeakerMatchingService()
+    # Use LLMService with history recording enabled
+    matching_service = SpeakerMatchingService(enable_history=True)
 
     # テスト用の発言者名
     test_names = [
