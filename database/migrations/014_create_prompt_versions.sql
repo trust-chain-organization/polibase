@@ -13,7 +13,7 @@ CREATE TABLE prompt_versions (
     -- Status and metadata
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     variables TEXT[], -- Array of variable names expected in the template
-    metadata JSONB NOT NULL DEFAULT '{}',
+    prompt_metadata JSONB NOT NULL DEFAULT '{}',
     created_by VARCHAR(100),
 
     -- Standard timestamps
@@ -37,7 +37,7 @@ COMMENT ON COLUMN prompt_versions.template IS 'プロンプトテンプレート
 COMMENT ON COLUMN prompt_versions.description IS 'このバージョンの説明';
 COMMENT ON COLUMN prompt_versions.is_active IS '現在アクティブなバージョンかどうか';
 COMMENT ON COLUMN prompt_versions.variables IS 'テンプレート内で使用される変数名のリスト';
-COMMENT ON COLUMN prompt_versions.metadata IS '追加のメタデータ（パフォーマンス指標、使用上の注意など）';
+COMMENT ON COLUMN prompt_versions.prompt_metadata IS '追加のメタデータ（パフォーマンス指標、使用上の注意など）';
 COMMENT ON COLUMN prompt_versions.created_by IS 'このバージョンを作成したユーザーまたはシステム';
 
 -- Add trigger to update updated_at

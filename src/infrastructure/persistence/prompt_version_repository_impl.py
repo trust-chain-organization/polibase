@@ -37,7 +37,7 @@ class PromptVersionModel(Base):
     description = Column(Text)
     is_active = Column(Boolean, nullable=False, default=True)
     variables = Column(ARRAY(String))
-    metadata = Column(JSON, nullable=False, default={})
+    prompt_metadata = Column(JSON, nullable=False, default={})
     created_by = Column(String(100))
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(
@@ -238,7 +238,7 @@ class PromptVersionRepositoryImpl(
             description=model.description,
             is_active=model.is_active,
             variables=model.variables or [],
-            metadata=model.metadata or {},
+            metadata=model.prompt_metadata or {},
             created_by=model.created_by,
             id=model.id,
         )
@@ -255,7 +255,7 @@ class PromptVersionRepositoryImpl(
             description=entity.description,
             is_active=entity.is_active,
             variables=entity.variables,
-            metadata=entity.metadata,
+            prompt_metadata=entity.metadata,
             created_by=entity.created_by,
         )
 
@@ -267,5 +267,5 @@ class PromptVersionRepositoryImpl(
         model.description = entity.description
         model.is_active = entity.is_active
         model.variables = entity.variables
-        model.metadata = entity.metadata
+        model.prompt_metadata = entity.metadata
         model.created_by = entity.created_by
