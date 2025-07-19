@@ -26,18 +26,48 @@ def find_env_file() -> str:
 
     # Check if we're in a git worktree and look for main repo's .env
     try:
+        # First, try to find the main worktree using porcelain format
         result = subprocess.run(
             ["git", "worktree", "list", "--porcelain"],
             capture_output=True,
             text=True,
             check=True,
         )
+
+        # Parse porcelain output to find the first worktree (usually main)
+        worktrees: list[dict[str, str | bool]] = []
+        current_worktree: dict[str, str | bool] = {}
         for line in result.stdout.splitlines():
-            if line.startswith("worktree ") and "[main]" in line:
-                main_repo_path = line.split()[1]
-                main_env_path = os.path.join(main_repo_path, ".env")
+            if line.startswith("worktree "):
+                if current_worktree:
+                    worktrees.append(current_worktree)
+                current_worktree = {"path": line.split()[1]}
+            elif line.startswith("branch "):
+                branch = line.split()[1]
+                current_worktree["branch"] = branch
+                # Check if this is the main branch
+                if branch == "refs/heads/main":
+                    current_worktree["is_main"] = True
+        if current_worktree:
+            worktrees.append(current_worktree)
+
+        # Find main worktree
+        for wt in worktrees:
+            if wt.get("is_main"):
+                path = wt.get("path")
+                if isinstance(path, str):
+                    main_env_path = os.path.join(path, ".env")
+                    if os.path.exists(main_env_path):
+                        return main_env_path
+
+        # If no main branch found, use the first worktree (usually the original)
+        if worktrees:
+            path = worktrees[0].get("path")
+            if isinstance(path, str):
+                main_env_path = os.path.join(path, ".env")
                 if os.path.exists(main_env_path):
                     return main_env_path
+
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
 

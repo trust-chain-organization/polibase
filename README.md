@@ -61,6 +61,31 @@ uv sync
 ./scripts/test-setup.sh
 ```
 
+### 📁 Git Worktreeでの開発
+
+Git worktreeを使用する場合、`.env`ファイルは自動的にメインリポジトリからコピーされます：
+
+```bash
+# Git hooksのセットアップ（初回のみ）
+./scripts/setup-git-hooks.sh
+
+# 新しいworktreeを作成
+git worktree add -b feature/new-feature ../new-feature
+
+# .envファイルは自動的にコピーされる（post-checkoutフック使用）
+cd ../new-feature
+ls -la .env  # メインリポジトリからコピーされた.envファイル
+```
+
+**手動でのセットアップ（フックが動作しない場合）**:
+```bash
+# Python側の自動検出機能
+# src/config/config.pyがメインリポジトリの.envを自動検出
+
+# または手動でシンボリックリンクを作成
+ln -s /path/to/main/repo/.env .env
+```
+
 ## 🏃 使用方法
 
 ### システムデザイン

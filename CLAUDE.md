@@ -23,6 +23,16 @@ gcloud auth application-default login  # Authenticate for GCS access
 # Edit .env to set GCS_BUCKET_NAME and GCS_UPLOAD_ENABLED=true
 ```
 
+### Git Worktree Support
+
+When creating a new git worktree, the `.env` file is automatically copied from the main repository using a post-checkout Git hook. If the hook doesn't run for any reason, the Python code (`src/config/config.py`) will automatically detect and use the main repository's .env file.
+
+Manual setup if needed:
+```bash
+# Create symbolic link to main repository's .env
+ln -s /path/to/main/repo/.env .env
+```
+
 ### Running the Application
 
 #### Using the Unified CLI (Recommended)
