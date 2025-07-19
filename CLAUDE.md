@@ -12,7 +12,7 @@ Polibase is a Political Activity Tracking Application (政治活動追跡アプ�
 ```bash
 # First time setup
 cp .env.example .env  # Configure GOOGLE_API_KEY for Gemini API
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 ./test-setup.sh
 
 # Install dependencies for local development
@@ -28,88 +28,88 @@ gcloud auth application-default login  # Authenticate for GCS access
 #### Using the Unified CLI (Recommended)
 ```bash
 # Show all available commands
-docker compose exec polibase uv run polibase --help
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase --help
 
 # Process meeting minutes
-docker compose exec polibase uv run polibase process-minutes
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase process-minutes
 
 # Process minutes from GCS (using meeting ID)
-docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
 
 # Scrape politician information from party websites
-docker compose exec polibase uv run polibase scrape-politicians --all-parties
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties
 
 # Update speaker links with LLM
-docker compose exec polibase uv run polibase update-speakers --use-llm
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase update-speakers --use-llm
 
 # Launch meeting management web UI
-docker compose exec polibase uv run polibase streamlit
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit
 
 # Launch monitoring dashboard for data coverage visualization
-docker compose exec polibase uv run polibase monitoring
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring
 
 # Scrape meeting minutes from web
-docker compose exec polibase uv run polibase scrape-minutes "URL"
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-minutes "URL"
 
 # Scrape with Google Cloud Storage upload (automatically saves GCS URIs to meetings table)
-docker compose exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs
-docker compose exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
 
 # Batch scrape multiple minutes from kaigiroku.net
-docker compose exec polibase uv run polibase batch-scrape --tenant kyoto
-docker compose exec polibase uv run polibase batch-scrape --tenant osaka
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase batch-scrape --tenant kyoto
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase batch-scrape --tenant osaka
 
 # Batch scrape with GCS upload
-docker compose exec polibase uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
 
 # Extract speakers from meeting minutes
-docker compose exec polibase uv run polibase extract-speakers
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-speakers
 
 # Scrape politician information from party websites
-docker compose exec polibase uv run polibase scrape-politicians --all-parties
-docker compose exec polibase uv run polibase scrape-politicians --party-id 5
-docker compose exec polibase uv run polibase scrape-politicians --all-parties --dry-run
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --party-id 5
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties --dry-run
 
 # Conference member extraction (3-step process)
 # Step 1: Extract members from conference URLs
-docker compose exec polibase uv run polibase extract-conference-members --conference-id 185
-docker compose exec polibase uv run polibase extract-conference-members --force  # Re-extract all
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members --force  # Re-extract all
 
 # Step 2: Match extracted members with existing politicians
-docker compose exec polibase uv run polibase match-conference-members --conference-id 185
-docker compose exec polibase uv run polibase match-conference-members  # Process all pending
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase match-conference-members --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase match-conference-members  # Process all pending
 
 # Step 3: Create politician affiliations from matched data
-docker compose exec polibase uv run polibase create-affiliations --conference-id 185
-docker compose exec polibase uv run polibase create-affiliations --start-date 2024-01-01
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --start-date 2024-01-01
 
 # Check extraction and matching status
-docker compose exec polibase uv run polibase member-status --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase member-status --conference-id 185
 
 # Show coverage statistics for governing bodies
-docker compose exec polibase uv run polibase coverage
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase coverage
 ```
 
 #### Direct Module Execution (Legacy)
 ```bash
 # Minutes Division Processing
-docker compose exec polibase uv run python -m src.process_minutes
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes
 
 # Minutes Division Processing from GCS
-docker compose exec polibase uv run python -m src.process_minutes --meeting-id 123
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
 
 
 # LLM-based Speaker Matching
-docker compose exec polibase uv run python update_speaker_links_llm.py
+docker compose -f docker/docker-compose.yml exec polibase uv run python update_speaker_links_llm.py
 ```
 
 ### Testing
 ```bash
 # Run tests
-docker compose exec polibase uv run pytest
+docker compose -f docker/docker-compose.yml exec polibase uv run pytest
 
 # Test database connection
-docker compose exec polibase uv run python -c "from src.config.database import test_connection; test_connection()"
+docker compose -f docker/docker-compose.yml exec polibase uv run python -c "from src.config.database import test_connection; test_connection()"
 ```
 
 #### Testing Guidelines
@@ -126,13 +126,13 @@ docker compose exec polibase uv run python -c "from src.config.database import t
 #### Ruff (Code Formatter and Linter)
 ```bash
 # Format code
-docker compose exec polibase uv run --frozen ruff format .
+docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff format .
 
 # Check code style
-docker compose exec polibase uv run --frozen ruff check .
+docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check .
 
 # Fix auto-fixable issues
-docker compose exec polibase uv run --frozen ruff check . --fix
+docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check . --fix
 ```
 
 **Critical Ruff Rules:**
@@ -167,13 +167,13 @@ uv run --frozen pyright 2>&1 | grep -A5 -B5 "src/database/"
 #### Pre-commit Hooks
 ```bash
 # Install pre-commit hooks (first time only)
-docker compose exec polibase uv run pre-commit install
+docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit install
 
 # Run pre-commit manually on all files
-docker compose exec polibase uv run pre-commit run --all-files
+docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit run --all-files
 
 # Update pre-commit hooks to latest versions
-docker compose exec polibase uv run pre-commit autoupdate
+docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit autoupdate
 ```
 
 **Pre-commit Configuration:**
@@ -192,15 +192,15 @@ docker compose exec polibase uv run pre-commit autoupdate
 ### Database Management
 ```bash
 # Access PostgreSQL
-docker compose exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
 
 # Backup/Restore (with GCS support)
-docker compose exec polibase uv run polibase database backup               # Backup to local and GCS
-docker compose exec polibase uv run polibase database backup --no-gcs      # Backup to local only
-docker compose exec polibase uv run polibase database restore backup.sql   # Restore from local
-docker compose exec polibase uv run polibase database restore gs://bucket/backup.sql  # Restore from GCS
-docker compose exec polibase uv run polibase database list                 # List all backups
-docker compose exec polibase uv run polibase database list --no-gcs        # List local backups only
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database backup               # Backup to local and GCS
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database backup --no-gcs      # Backup to local only
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore backup.sql   # Restore from local
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore gs://bucket/backup.sql  # Restore from GCS
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database list                 # List all backups
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database list --no-gcs        # List local backups only
 
 # Legacy backup scripts (local only)
 ./backup-database.sh backup
@@ -210,7 +210,7 @@ docker compose exec polibase uv run polibase database list --no-gcs        # Lis
 ./reset-database.sh
 
 # Apply new migrations
-docker compose exec postgres psql -U polibase_user -d polibase_db -f /docker-entrypoint-initdb.d/migrations/004_add_gcs_uri_to_meetings.sql
+docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -f /docker-entrypoint-initdb.d/migrations/004_add_gcs_uri_to_meetings.sql
 ```
 
 ## Architecture
@@ -380,7 +380,7 @@ Polibase follows these core design principles:
   - Streamlit for dashboard UI
 
 ### Development Patterns
-- Docker-first development (all commands run through `docker compose exec`)
+- Docker-first development (all commands run through `docker compose -f docker/docker-compose.yml exec`)
 - Multi-phase processing: Extract conversations → Extract speakers → Match speakers → Scrape party members from websites
 - Environment variables for configuration (DATABASE_URL differs between Docker/local)
 - Modular architecture with shared utilities in `src/common/`
@@ -407,7 +407,7 @@ Polibase follows these core design principles:
 
 ## Important Notes
 - **API Key Required**: GOOGLE_API_KEY must be set in .env for Gemini API access
-- **Database Persistence**: Default docker/docker-compose.yml uses volumes for persistent storage
+- **Database Persistence**: Docker Compose configuration at docker/docker-compose.yml uses volumes for persistent storage
 - **Master Data**: Governing bodies and conferences are fixed master data, not modified during operation
 - **Coverage Tracking**: All Japanese municipalities (1,966 entities) are now tracked in governing_bodies table with organization codes
 - **Processing Order**: Always run process-minutes → extract-speakers → update-speakers in sequence
