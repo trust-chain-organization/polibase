@@ -5,13 +5,47 @@ Loads and validates environment variables with proper type hints and error handl
 """
 
 import os
+import subprocess
 
 from dotenv import load_dotenv
 
 from ..exceptions import InvalidConfigError, MissingConfigError
 
+
 # Load environment variables
-load_dotenv()
+# Support custom .env path via POLIBASE_ENV_FILE environment variable
+def find_env_file() -> str:
+    """Find .env file, checking worktree main repo if local one doesn't exist"""
+    custom_path = os.getenv("POLIBASE_ENV_FILE")
+    if custom_path:
+        return custom_path
+
+    # Check local .env first
+    if os.path.exists(".env"):
+        return ".env"
+
+    # Check if we're in a git worktree and look for main repo's .env
+    try:
+        result = subprocess.run(
+            ["git", "worktree", "list", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        for line in result.stdout.splitlines():
+            if line.startswith("worktree ") and "[main]" in line:
+                main_repo_path = line.split()[1]
+                main_env_path = os.path.join(main_repo_path, ".env")
+                if os.path.exists(main_env_path):
+                    return main_env_path
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
+
+    return ".env"  # Fallback to local .env
+
+
+ENV_FILE_PATH = find_env_file()
+load_dotenv(ENV_FILE_PATH)
 
 # LangChain Configuration
 LANGCHAIN_TRACING_V2: str | None = os.getenv("LANGCHAIN_TRACING_V2")
