@@ -20,6 +20,7 @@ init_sentry()
 
 # Import page components - this is done after initializing logging and Sentry
 # which is a necessary pattern for this application
+from src.interfaces.web.llm_history_page import manage_llm_history  # noqa: E402
 from src.streamlit.pages import (  # noqa: E402
     execute_processes,
     manage_conferences,
@@ -43,7 +44,7 @@ def main():
     st.markdown("議事録の会議情報（URL、日付）を管理します")
 
     # タブ作成
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
         [
             "会議管理",
             "政党管理",
@@ -52,6 +53,7 @@ def main():
             "議員団管理",
             "処理実行",
             "政治家管理",
+            "LLM履歴",
         ]
     )
 
@@ -75,6 +77,9 @@ def main():
 
     with tab7:
         manage_politicians()
+
+    with tab8:
+        manage_llm_history()
 
 
 if __name__ == "__main__":
