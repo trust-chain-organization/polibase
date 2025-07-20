@@ -21,7 +21,6 @@ Phase 2では、設定をpyrightconfig.jsonに移行し、レガシーモジュ�
     "src/party_member_extractor/**",
     "src/update_speaker_links_llm.py",
     "src/process_minutes.py",
-    "src/streamlit_app.py"
   ],
   "pythonVersion": "3.13",
   "typeCheckingMode": "standard",

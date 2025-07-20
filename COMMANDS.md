@@ -120,15 +120,9 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase create
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase member-status --conference-id 185
 ```
 
-### Web UI（従来の起動方法）
+### 監視ダッシュボード（専用コンテナ）
 
 ```bash
-# Docker環境で実行（コンテナ内で起動）
-docker compose -f docker/docker-compose.yml exec polibase uv run streamlit run src/streamlit_app.py --server.address 0.0.0.0
-
-# Docker環境で実行（ポートフォワーディング付き）
-docker compose -f docker/docker-compose.yml run -p 8501:8501 polibase uv run streamlit run src/streamlit_app.py --server.address 0.0.0.0
-
 # 監視ダッシュボード（専用コンテナ）
 docker compose -f docker/docker-compose.yml up -d polibase-monitoring
 ```

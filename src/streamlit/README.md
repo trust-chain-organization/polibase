@@ -9,7 +9,6 @@ Streamlit 1.37.0+ の `st.navigation` を使用したURL ベースルーティ�
 
 ### エントリーポイント
 - `app.py` - 新しいURL ベースルーティングを使用したメインエントリーポイント
-- `../streamlit_app.py` - レガシータブベースのエントリーポイント（後方互換性のため保持）
 
 ### ページ構造
 ```
@@ -45,22 +44,15 @@ src/streamlit/
 
 ## 起動方法
 
-### 新しいURL ベースアプリ（推奨）
 ```bash
-# Docker 環境で実行
+# 統一CLIを使用（推奨）
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit
+
+# 直接実行
 docker compose -f docker/docker-compose.yml exec polibase uv run streamlit run src/streamlit/app.py
 
 # ローカル環境で実行
 uv run streamlit run src/streamlit/app.py
-```
-
-### レガシータブベースアプリ
-```bash
-# Docker 環境で実行
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit
-
-# ローカル環境で実行
-uv run streamlit run src/streamlit_app.py
 ```
 
 ## 開発ガイド

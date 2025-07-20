@@ -332,7 +332,7 @@ Polibase follows these core design principles:
    - Creates entries in `politician_affiliations` with roles
 
 #### Additional Components
-- **Meeting Management UI** (`src/streamlit_app.py`): Streamlit-based web interface for managing meeting URLs, dates, and political party information
+- **Meeting Management UI** (`src/streamlit/`): Streamlit-based web interface with URL routing for managing meetings, parties, conferences, and more
 - **Party Member Extractor** (`src/party_member_extractor/`): LLM-based extraction of politician information from party member list pages
   - Uses Gemini API to extract structured data from HTML
   - Supports pagination for multi-page member lists
