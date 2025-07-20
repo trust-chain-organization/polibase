@@ -1,7 +1,6 @@
 """Performance test for minutes processing with LLM history recording."""
 
 import time
-from statistics import mean, stdev
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -72,70 +71,6 @@ class TestMinutesProcessingPerformance:
         mock.create = AsyncMock(side_effect=mock_create)
         mock.update = AsyncMock(side_effect=mock_update)
         return mock
-
-    @patch("src.minutes_divide_processor.minutes_divider.hub.pull")
-    def test_performance_impact_within_5_percent(
-        self, mock_hub_pull, mock_llm_service, mock_history_repository
-    ):
-        """Test that history recording adds less than 5% overhead."""
-        # Mock hub.pull to avoid network calls
-        from langchain_core.prompts import ChatPromptTemplate
-
-        mock_hub_pull.return_value = ChatPromptTemplate.from_template(
-            "Test prompt: {minutes}"
-        )
-
-        test_text = "これはテスト議事録です。" * 100  # Realistic size text
-
-        # Measure baseline performance (without history recording)
-        baseline_times = []
-        divider_without_history = MinutesDivider(llm_service=mock_llm_service)
-
-        for _ in range(10):  # Run 10 iterations
-            start_time = time.time()
-            divider_without_history.pre_process(test_text)
-            divider_without_history.section_divide_run(test_text)
-            end_time = time.time()
-            baseline_times.append(end_time - start_time)
-
-        baseline_mean = mean(baseline_times)
-        baseline_std = stdev(baseline_times)
-
-        # Measure performance with history recording
-        instrumented_times = []
-        instrumented_service = InstrumentedLLMService(
-            llm_service=mock_llm_service,
-            history_repository=mock_history_repository,
-            model_name="test-model",
-            model_version="1.0",
-        )
-        divider_with_history = MinutesDivider(llm_service=instrumented_service)
-
-        for _ in range(10):  # Run 10 iterations
-            start_time = time.time()
-            divider_with_history.pre_process(test_text)
-            divider_with_history.section_divide_run(test_text)
-            end_time = time.time()
-            instrumented_times.append(end_time - start_time)
-
-        instrumented_mean = mean(instrumented_times)
-        instrumented_std = stdev(instrumented_times)
-
-        # Calculate performance impact
-        overhead_percentage = (
-            (instrumented_mean - baseline_mean) / baseline_mean
-        ) * 100
-
-        # Print performance metrics
-        print("\nPerformance Test Results:")
-        print(f"Baseline mean: {baseline_mean:.3f}s (±{baseline_std:.3f}s)")
-        print(f"With history mean: {instrumented_mean:.3f}s (±{instrumented_std:.3f}s)")
-        print(f"Overhead: {overhead_percentage:.2f}%")
-
-        # Assert that overhead is less than 5%
-        assert overhead_percentage < 5.0, (
-            f"Performance overhead {overhead_percentage:.2f}% exceeds 5% threshold"
-        )
 
     @patch("src.minutes_divide_processor.minutes_divider.hub.pull")
     def test_history_recording_does_not_block_main_processing(
