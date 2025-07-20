@@ -28,6 +28,46 @@ services:
     depends_on:
       - postgres
 
+  polibase-app:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    image: docker-polibase:latest
+    volumes:
+      - ../src:/app/src
+      - ../tests:/app/tests
+      - ../database:/app/database
+      - ../scripts:/app/scripts
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../pyrightconfig.json:/app/pyrightconfig.json
+      - ../uv.lock:/app/uv.lock
+      - ../README.md:/app/README.md
+      - ../tmp:/app/tmp
+      - ~/.config/gcloud:/root/.config/gcloud:ro # GCP認証情報をマウント
+    env_file:
+      - ../.env
+    environment:
+      - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
+      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
+      - GOOGLE_CLOUD_PROJECT=trust-chain-828ad
+    ports:
+      - "8503:8501" # 新しいアプリ用ポート
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+    command:
+      [
+        "uv",
+        "run",
+        "streamlit",
+        "run",
+        "src/streamlit/app.py",
+        "--server.port=8501",
+        "--server.address=0.0.0.0",
+      ]
+
   polibase-monitoring:
     build:
       context: ../
