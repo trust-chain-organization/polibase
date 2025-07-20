@@ -900,33 +900,92 @@ def execute_scraping_processes():
     # 議事録スクレイピング
     st.markdown("### 議事録スクレイピング")
 
+    # スクレイピング方法の選択
+    scrape_method = st.radio(
+        "スクレイピング方法",
+        ["会議を選択", "URLを直接入力"],
+        horizontal=True,
+        help="会議オブジェクトから選択するか、URLを直接入力するかを選択",
+    )
+
     col1, col2 = st.columns(2)
 
     with col1:
-        scrape_url = st.text_input(
-            "議事録URL",
-            placeholder="https://example.com/minutes.html",
-            help="スクレイピングする議事録のURL",
-        )
+        meeting_id = None
+        scrape_url = None
+
+        if scrape_method == "会議を選択":
+            # データベースから会議リストを取得
+            engine = get_db_engine()
+            with engine.connect() as conn:
+                meetings_result = conn.execute(
+                    text("""
+                        SELECT
+                            m.id,
+                            m.date,
+                            m.name,
+                            m.url,
+                            c.name as conference_name,
+                            gb.name as governing_body_name
+                        FROM meetings m
+                        JOIN conferences c ON m.conference_id = c.id
+                        JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                        WHERE m.url IS NOT NULL
+                        ORDER BY m.date DESC, gb.name, c.name
+                        LIMIT 100
+                    """)
+                )
+                meetings = meetings_result.fetchall()
+
+            if not meetings:
+                st.warning("URLが設定されている会議がありません。")
+            else:
+                # 会議選択のためのフォーマット
+                meeting_options = ["選択してください"] + [
+                    f"{meeting.date} - {meeting.governing_body_name} "
+                    f"{meeting.conference_name} {meeting.name or ''} "
+                    f"(ID: {meeting.id})"
+                    for meeting in meetings
+                ]
+
+                selected_meeting = st.selectbox(
+                    "会議を選択",
+                    meeting_options,
+                    help="スクレイピングする会議を選択してください",
+                )
+
+                if selected_meeting != "選択してください":
+                    # 選択された会議のIDを取得
+                    meeting_id = int(selected_meeting.split("(ID: ")[1].rstrip(")"))
+                    # 選択された会議の情報を表示
+                    selected_meeting_info = next(
+                        m for m in meetings if m.id == meeting_id
+                    )
+                    st.info(f"**URL:** {selected_meeting_info.url}")
+
+        else:  # URLを直接入力
+            scrape_url = st.text_input(
+                "議事録URL",
+                placeholder="https://example.com/minutes.html",
+                help="スクレイピングする議事録のURL",
+            )
 
         upload_to_gcs = st.checkbox("GCSにアップロード", value=False)
-        gcs_bucket = ""
-        if upload_to_gcs:
-            gcs_bucket = st.text_input(
-                "GCSバケット名（オプション）",
-                placeholder="my-bucket",
-                help="空欄の場合は環境変数のGCS_BUCKET_NAMEを使用",
-            )
 
     with col2:
         if st.button(
-            "議事録をスクレイピング", key="scrape_minutes", disabled=not scrape_url
+            "議事録をスクレイピング",
+            key="scrape_minutes",
+            disabled=(scrape_method == "会議を選択" and not meeting_id)
+            or (scrape_method == "URLを直接入力" and not scrape_url),
         ):
-            command = f"uv run polibase scrape-minutes '{scrape_url}'"
+            if scrape_method == "会議を選択":
+                command = f"uv run polibase scrape-minutes --meeting-id {meeting_id}"
+            else:
+                command = f"uv run polibase scrape-minutes '{scrape_url}'"
+
             if upload_to_gcs:
                 command += " --upload-to-gcs"
-                if gcs_bucket:
-                    command += f" --gcs-bucket {gcs_bucket}"
 
             with st.spinner("議事録をスクレイピング中..."):
                 run_command_with_progress(command, "scrape_minutes")

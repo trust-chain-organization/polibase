@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ..common.logging import get_logger
 from ..config import config
+from ..database.meeting_repository import MeetingRepository
 from ..utils.gcs_storage import GCSStorage
 from .base_scraper import BaseScraper
 from .kaigiroku_net_scraper import KaigirokuNetScraper
@@ -69,6 +70,37 @@ class ScraperService:
             self.logger.error(f"Error fetching minutes: {e}")
 
         return None
+
+    async def fetch_from_meeting_id(
+        self, meeting_id: int, use_cache: bool = True
+    ) -> MinutesData | None:
+        """会議IDから議事録を取得
+
+        Args:
+            meeting_id: 会議ID
+            use_cache: キャッシュを使用するかどうか
+
+        Returns:
+            MinutesData or None
+        """
+        # 会議情報を取得
+        meeting_repo = MeetingRepository()
+        meeting = meeting_repo.get_by_id(meeting_id)
+
+        if not meeting:
+            self.logger.error(f"Meeting not found with ID: {meeting_id}")
+            return None
+
+        if not meeting.url:
+            self.logger.error(f"Meeting ID {meeting_id} has no URL")
+            return None
+
+        self.logger.info(
+            f"Fetching minutes for meeting ID {meeting_id} from URL: {meeting.url}"
+        )
+
+        # URLから議事録を取得
+        return await self.fetch_from_url(meeting.url, use_cache=use_cache)
 
     async def fetch_multiple(
         self, urls: list[str], max_concurrent: int = 3
