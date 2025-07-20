@@ -398,7 +398,6 @@ docker compose -f docker/docker-compose.yml exec polibase uv run python scripts/
 polibase/
 ├── src/                          # メインアプリケーションコード
 │   ├── cli.py                   # 統一CLIエントリーポイント
-│   ├── streamlit_app.py         # 会議管理Web UI
 │   ├── process_minutes.py       # 議事録分割処理
 │   ├── extract_speakers_from_minutes.py   # 発言者抽出処理
 │   ├── update_speaker_links.py  # 発言者紐付け更新スクリプト（レガシー）
