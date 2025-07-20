@@ -1,6 +1,6 @@
 """LLM service interface definition."""
 
-from typing import Protocol
+from typing import Any, Protocol
 
 from src.domain.entities.llm_processing_history import LLMProcessingHistory
 from src.domain.repositories.llm_processing_history_repository import (
@@ -16,6 +16,9 @@ from src.domain.types import (
 
 class ILLMService(Protocol):
     """Interface for LLM services."""
+
+    model_name: str
+    temperature: float
 
     async def set_history_repository(
         self, repository: LLMProcessingHistoryRepository | None
@@ -91,5 +94,39 @@ class ILLMService(Protocol):
 
         Returns:
             Matching result with politician_id and confidence score
+        """
+        ...
+
+    def get_structured_llm(self, schema: Any) -> Any:
+        """Get a structured LLM instance configured with the given schema.
+
+        Args:
+            schema: Pydantic model or schema definition
+
+        Returns:
+            Configured LLM instance
+        """
+        ...
+
+    def get_prompt(self, prompt_name: str) -> Any:
+        """Get a prompt template by name.
+
+        Args:
+            prompt_name: Name identifier of the prompt
+
+        Returns:
+            Prompt template instance
+        """
+        ...
+
+    def invoke_with_retry(self, chain: Any, inputs: dict[str, Any]) -> Any:
+        """Invoke an LLM chain with retry logic.
+
+        Args:
+            chain: LangChain runnable to invoke
+            inputs: Input dictionary for the chain
+
+        Returns:
+            Result from the chain invocation
         """
         ...
