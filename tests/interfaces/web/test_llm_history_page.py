@@ -226,7 +226,7 @@ class TestRenderHistoryDetail:
 class TestLLMHistoryPageIntegration:
     """Integration tests for LLM history page functionality."""
 
-    @patch("src.interfaces.web.llm_history_page.LLMProcessingHistoryRepositoryImpl")
+    @patch("src.interfaces.web.llm_history_page.LLMProcessingHistoryRepository")
     @patch("streamlit.metric")
     @patch("streamlit.dataframe")
     @patch("streamlit.line_chart")
