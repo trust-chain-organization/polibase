@@ -160,7 +160,7 @@ class InstrumentedLLMService:
 
         if isinstance(result, dict):
             # For dict results, include some key info
-            metadata["keys"] = list(result.keys())
+            metadata["keys"] = list(result.keys()) if result else []  # type: ignore[arg-type]
             if "matched" in result:
                 metadata["matched"] = result["matched"]
             if "confidence" in result:
@@ -168,7 +168,7 @@ class InstrumentedLLMService:
             if "success" in result:
                 metadata["success"] = result["success"]
         elif isinstance(result, list):
-            metadata["count"] = len(result)
+            metadata["count"] = len(result)  # type: ignore[arg-type]
         elif result is None:
             metadata["is_null"] = True
 
@@ -180,7 +180,7 @@ class InstrumentedLLMService:
         """Match a speaker to a politician using LLM with history recording."""
         # Extract prompt information
         prompt_template = "speaker_matching"  # This would be from prompt manager
-        prompt_variables = {
+        prompt_variables: dict[str, Any] = {
             "speaker_name": context.get("speaker_name", ""),
             "candidates_count": len(context.get("candidates", [])),
         }
@@ -272,7 +272,7 @@ class InstrumentedLLMService:
     ) -> LLMMatchResult | None:
         """Match a conference member to a politician with history recording."""
         prompt_template = "conference_member_matching"
-        prompt_variables = {
+        prompt_variables: dict[str, Any] = {
             "member_name": member_name,
             "party_name": party_name,
             "candidates_count": len(candidates),

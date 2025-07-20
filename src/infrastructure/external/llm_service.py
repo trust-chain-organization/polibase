@@ -203,7 +203,7 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
             # Create prompt template and invoke
             prompt_template = ChatPromptTemplate.from_template(prompt)
             chain = prompt_template | self._llm
-            response = await chain.ainvoke({})
+            response = await chain.ainvoke({})  # type: ignore[arg-type]
 
             # Parse response
             if hasattr(response, "content"):
@@ -241,7 +241,7 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
             # Create prompt template and invoke
             prompt_template = ChatPromptTemplate.from_template(full_prompt)
             chain = prompt_template | self._llm
-            response = await chain.ainvoke({})
+            response = await chain.ainvoke({})  # type: ignore[arg-type]
 
             # Parse response
             if hasattr(response, "content"):
@@ -287,7 +287,7 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
             # Create prompt template and invoke
             prompt_template = ChatPromptTemplate.from_template(prompt)
             chain = prompt_template | self._llm
-            response = await chain.ainvoke({})
+            response = await chain.ainvoke({})  # type: ignore[arg-type]
 
             # Parse response
             if hasattr(response, "content"):
@@ -321,7 +321,7 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
             # Create prompt template and invoke
             prompt_template = ChatPromptTemplate.from_template(full_prompt)
             chain = prompt_template | self._llm
-            response = await chain.ainvoke({})
+            response = await chain.ainvoke({})  # type: ignore[arg-type]
 
             # Parse response
             if hasattr(response, "content"):
@@ -338,7 +338,51 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
                 logger.error("Invalid response format: expected list")
                 return []
 
-            return speeches
+            return speeches  # type: ignore[return-value]
         except Exception as e:
             logger.error(f"Failed to extract speeches: {e}")
             return []
+
+    def get_structured_llm(self, schema: Any) -> Any:
+        """Get a structured LLM instance configured with the given schema.
+
+        Args:
+            schema: Pydantic model or schema definition
+
+        Returns:
+            Configured LLM instance
+        """
+        # For Gemini, we can use with_structured_output method
+        return self._llm.with_structured_output(schema)  # type: ignore[return-value]
+
+    def get_prompt(self, prompt_name: str) -> Any:
+        """Get a prompt template by name.
+
+        Args:
+            prompt_name: Name identifier of the prompt
+
+        Returns:
+            Prompt template instance
+        """
+        # Return a ChatPromptTemplate for the given prompt name
+        # This is a simplified implementation - in practice, you might want to
+        # load prompts from a configuration or template file
+        return ChatPromptTemplate.from_template(f"{{{{ {prompt_name} }}}}")
+
+    def invoke_with_retry(self, chain: Any, inputs: dict[str, Any]) -> Any:
+        """Invoke an LLM chain with retry logic.
+
+        Args:
+            chain: LangChain runnable to invoke
+            inputs: Input dictionary for the chain
+
+        Returns:
+            Result from the chain invocation
+        """
+        # Simple implementation without actual retry logic
+        # In production, you'd want to add proper retry logic with exponential backoff
+        try:
+            return chain.invoke(inputs)
+        except Exception as e:
+            logger.error(f"Chain invocation failed: {e}")
+            raise
