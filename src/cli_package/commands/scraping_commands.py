@@ -186,40 +186,92 @@ class ScrapingCommands(BaseCommand):
                     ScrapingCommands.show_progress(f"Uploaded PDF to GCS: {gcs_url}")
                     gcs_pdf_uri = gcs_url
 
-        # meetingsテーブルのGCS URIを更新（URLから既存のmeetingを検索して更新）
+        # meetingsテーブルのGCS URIを更新
         if gcs_text_uri or gcs_pdf_uri:
             try:
                 with spinner("Updating meeting record with GCS URIs"):
                     repo = MeetingRepository()
-                    # URLでmeetingを検索（パラメータの順序が異なる場合も考慮）
-                    # 完全一致で検索
-                    meetings = repo.fetch_as_dict(
-                        "SELECT id FROM meetings WHERE url = :url", {"url": url}
-                    )
+                    meeting_id_to_update: int | None = None
 
-                    # 完全一致で見つからない場合、LIKE検索を試す
-                    if not meetings and url:  # url が None でないことを確認
-                        # minIdがURLに含まれている場合の処理
-                        if "minId=" in url:
-                            min_id = url.split("minId=")[1].split("&")[0]
-                            meetings = repo.fetch_as_dict(
-                                "SELECT id FROM meetings WHERE url LIKE :pattern",
-                                {"pattern": f"%minId={min_id}%"},
-                            )
-                    if meetings:
-                        meeting_id_from_url: int = meetings[0]["id"]
-                        success = repo.update_meeting_gcs_uris(
-                            meeting_id_from_url, gcs_pdf_uri, gcs_text_uri
+                    # meeting IDベースの場合
+                    if meeting_id is not None:
+                        meeting_id_to_update = meeting_id
+                        ScrapingCommands.show_progress(
+                            f"Updating meeting ID {meeting_id} with GCS URIs"
                         )
-                        if success:
+                    # URLベースの場合
+                    elif url:
+                        # URLでmeetingを検索（パラメータの順序が異なる場合も考慮）
+                        # 完全一致で検索
+                        meetings = repo.fetch_as_dict(
+                            "SELECT id FROM meetings WHERE url = :url", {"url": url}
+                        )
+
+                        # 完全一致で見つからない場合、LIKE検索を試す
+                        if not meetings:
+                            # minIdがURLに含まれている場合の処理
+                            if "minId=" in url:
+                                min_id = url.split("minId=")[1].split("&")[0]
+                                meetings = repo.fetch_as_dict(
+                                    "SELECT id FROM meetings WHERE url LIKE :pattern",
+                                    {"pattern": f"%minId={min_id}%"},
+                                )
+                            # kaigiroku.netのURLパターンの場合
+                            elif "council_id=" in url and "schedule_id=" in url:
+                                # council_idとschedule_idを抽出
+                                council_id_match = url.split("council_id=")[1].split(
+                                    "&"
+                                )[0]
+                                schedule_id_match = url.split("schedule_id=")[1].split(
+                                    "&"
+                                )[0]
+                                meetings = repo.fetch_as_dict(
+                                    "SELECT id FROM meetings WHERE url LIKE :pattern",
+                                    {
+                                        "pattern": (
+                                            f"%council_id={council_id_match}%"
+                                            f"schedule_id={schedule_id_match}%"
+                                        )
+                                    },
+                                )
+
+                        if meetings:
+                            meeting_id_to_update = meetings[0]["id"]
                             ScrapingCommands.show_progress(
-                                f"Updated meeting {meeting_id} with GCS URIs"
+                                f"Found meeting ID {meeting_id_to_update} for URL"
+                            )
+                        else:
+                            ScrapingCommands.show_progress(
+                                f"Warning: Could not find meeting record for URL: {url}"
+                            )
+
+                    # GCS URIを更新
+                    if meeting_id_to_update:
+                        updated_meeting = repo.update_meeting_gcs_uris(
+                            meeting_id_to_update, gcs_pdf_uri, gcs_text_uri
+                        )
+                        if updated_meeting:
+                            msg = (
+                                f"✓ Updated meeting {meeting_id_to_update} "
+                                "with GCS URIs"
+                            )
+                            ScrapingCommands.show_progress(msg)
+                            if gcs_pdf_uri:
+                                ScrapingCommands.show_progress(
+                                    f"  PDF URI: {gcs_pdf_uri}"
+                                )
+                            if gcs_text_uri:
+                                ScrapingCommands.show_progress(
+                                    f"  Text URI: {gcs_text_uri}"
+                                )
+                        else:
+                            ScrapingCommands.show_progress(
+                                f"✗ Failed to update meeting {meeting_id_to_update} "
+                                f"with GCS URIs"
                             )
                     repo.close()
             except Exception as e:
-                ScrapingCommands.show_progress(
-                    f"Note: Could not update meeting record: {e}"
-                )
+                ScrapingCommands.show_progress(f"✗ Error updating meeting record: {e}")
 
         # 基本情報を表示
         ScrapingCommands.show_progress("\n--- Minutes Summary ---")
@@ -316,6 +368,7 @@ class ScrapingCommands(BaseCommand):
         """Async implementation of batch_scrape"""
         import os
 
+        from src.database.meeting_repository import MeetingRepository
         from src.web_scraper.scraper_service import ScraperService
 
         # GCS設定の上書き
@@ -329,11 +382,12 @@ class ScrapingCommands(BaseCommand):
 
         # バッチ処理実行
         success_count = 0
+        gcs_update_count = 0
 
         with ProgressTracker(len(urls), "Scraping minutes") as tracker:
             results = await service.fetch_multiple(urls, max_concurrent=concurrent)
 
-            for i, minutes in enumerate(results):
+            for i, (url, minutes) in enumerate(zip(urls, results, strict=False)):
                 tracker.update(1, f"Processing {i + 1}/{len(urls)}")
                 if minutes:
                     # テキストとJSONで保存
@@ -358,9 +412,59 @@ class ScrapingCommands(BaseCommand):
                                 f"Scraped and uploaded: {base_name}"
                             )
 
+                            # meetingsテーブルのGCS URIを更新
+                            try:
+                                repo = MeetingRepository()
+
+                                # kaigiroku.netのURLパターンから会議を検索
+                                if "council_id=" in url and "schedule_id=" in url:
+                                    council_id_match = url.split("council_id=")[
+                                        1
+                                    ].split("&")[0]
+                                    schedule_id_match = url.split("schedule_id=")[
+                                        1
+                                    ].split("&")[0]
+                                    query = (
+                                        "SELECT id FROM meetings "
+                                        "WHERE url LIKE :pattern"
+                                    )
+                                    meetings = repo.fetch_as_dict(
+                                        query,
+                                        {
+                                            "pattern": (
+                                                f"%council_id={council_id_match}%"
+                                                f"schedule_id={schedule_id_match}%"
+                                            )
+                                        },
+                                    )
+
+                                    if meetings:
+                                        meeting_id = meetings[0]["id"]
+                                        updated = repo.update_meeting_gcs_uris(
+                                            meeting_id,
+                                            None,  # PDFは現在対応していない
+                                            txt_gcs_url,
+                                        )
+                                        if updated:
+                                            gcs_update_count += 1
+                                            msg = (
+                                                f"  ✓ Updated meeting {meeting_id} "
+                                                "with GCS URIs"
+                                            )
+                                            ScrapingCommands.show_progress(msg)
+                                repo.close()
+                            except Exception as e:
+                                ScrapingCommands.show_progress(
+                                    f"  Note: Could not update meeting record: {e}"
+                                )
+
         ScrapingCommands.show_progress(
             f"\nCompleted: {success_count}/{len(urls)} URLs successfully scraped"
         )
+        if gcs_update_count > 0:
+            ScrapingCommands.show_progress(
+                f"Updated {gcs_update_count} meeting records with GCS URIs"
+            )
         return success_count
 
 

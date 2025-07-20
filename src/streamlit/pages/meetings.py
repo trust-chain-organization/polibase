@@ -149,6 +149,24 @@ def show_meetings_list():
                 else:
                     st.markdown(f"URL: {url_display}")
 
+                # GCS URIを表示
+                gcs_pdf_uri: Any = row.get("gcs_pdf_uri", None)  # type: ignore[index]
+                gcs_text_uri: Any = row.get("gcs_text_uri", None)  # type: ignore[index]
+
+                if pd.notna(gcs_pdf_uri) and gcs_pdf_uri:  # type: ignore[arg-type]
+                    st.markdown(f"📄 PDF URI: `{gcs_pdf_uri}`")  # type: ignore[arg-type]
+                if pd.notna(gcs_text_uri) and gcs_text_uri:  # type: ignore[arg-type]
+                    st.markdown(f"📝 Text URI: `{gcs_text_uri}`")  # type: ignore[arg-type]
+
+                if not (
+                    (pd.notna(gcs_pdf_uri) and gcs_pdf_uri)
+                    or (pd.notna(gcs_text_uri) and gcs_text_uri)
+                ):  # type: ignore[arg-type]
+                    st.markdown(
+                        "🔸 *GCS未アップロード*",
+                        help="議事録スクレイピングを実行するとGCSにアップロードされます",
+                    )
+
             with col2:
                 if st.button("編集", key=f"edit_{row['id']}"):
                     st.session_state.edit_mode = True
