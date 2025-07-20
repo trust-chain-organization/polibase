@@ -15,7 +15,12 @@ class ScrapingCommands(BaseCommand):
 
     @staticmethod
     @click.command()
-    @click.argument("url")
+    @click.argument("url", required=False)
+    @click.option(
+        "--meeting-id",
+        type=int,
+        help="Meeting ID to scrape (alternative to URL)",
+    )
     @click.option(
         "--output-dir",
         default="data/scraped",
@@ -38,7 +43,8 @@ class ScrapingCommands(BaseCommand):
     )
     @with_error_handling
     def scrape_minutes(
-        url: str,
+        url: str | None,
+        meeting_id: int | None,
         output_dir: str,
         format: str,
         no_cache: bool,
@@ -50,15 +56,35 @@ class ScrapingCommands(BaseCommand):
         This command fetches meeting minutes from supported council websites
         and saves them as text or JSON files.
 
-        Example:
+        You can specify either a URL or a meeting ID:
+
+        Example with URL:
             polibase scrape-minutes "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
+
+        Example with meeting ID:
+            polibase scrape-minutes --meeting-id 123
         """
-        ScrapingCommands.show_progress(f"Scraping minutes from: {url}")
+        # URLとmeeting-idの両方が指定されていない、
+        # または両方が指定されている場合はエラー
+        if (url is None and meeting_id is None) or (
+            url is not None and meeting_id is not None
+        ):
+            click.echo(
+                "Error: Specify either URL or --meeting-id, but not both", err=True
+            )
+            sys.exit(1)
+
+        if url:
+            ScrapingCommands.show_progress(f"Scraping minutes from: {url}")
+        else:
+            ScrapingCommands.show_progress(
+                f"Scraping minutes for meeting ID: {meeting_id}"
+            )
 
         # Run the async scraping operation
         success = asyncio.run(
             ScrapingCommands._async_scrape_minutes(
-                url, output_dir, format, no_cache, upload_to_gcs, gcs_bucket
+                url, meeting_id, output_dir, format, no_cache, upload_to_gcs, gcs_bucket
             )
         )
 
@@ -66,7 +92,8 @@ class ScrapingCommands(BaseCommand):
 
     @staticmethod
     async def _async_scrape_minutes(
-        url: str,
+        url: str | None,
+        meeting_id: int | None,
         output_dir: str,
         format: str,
         no_cache: bool,
@@ -88,13 +115,26 @@ class ScrapingCommands(BaseCommand):
             service = ScraperService(enable_gcs=upload_to_gcs)
 
         # スクレイピング実行
-        with spinner(f"Fetching minutes from: {url}") as spin:
-            minutes = await service.fetch_from_url(url, use_cache=not no_cache)
-            spin.stop(
-                "✓ Minutes fetched successfully"
-                if minutes
-                else "✗ Failed to fetch minutes"
-            )
+        if url:
+            with spinner(f"Fetching minutes from: {url}") as spin:
+                minutes = await service.fetch_from_url(url, use_cache=not no_cache)
+                spin.stop(
+                    "✓ Minutes fetched successfully"
+                    if minutes
+                    else "✗ Failed to fetch minutes"
+                )
+        else:  # meeting_id が指定されている場合
+            assert meeting_id is not None  # Type narrowing for pyright
+            with spinner(f"Fetching minutes for meeting ID: {meeting_id}") as spin:
+                minutes = await service.fetch_from_meeting_id(
+                    meeting_id, use_cache=not no_cache
+                )
+                spin.stop(
+                    "✓ Minutes fetched successfully"
+                    if minutes
+                    else "✗ Failed to fetch minutes"
+                )
+
         if not minutes:
             ScrapingCommands.error("Failed to scrape minutes", exit_code=0)
             return False
@@ -158,7 +198,7 @@ class ScrapingCommands(BaseCommand):
                     )
 
                     # 完全一致で見つからない場合、LIKE検索を試す
-                    if not meetings:
+                    if not meetings and url:  # url が None でないことを確認
                         # minIdがURLに含まれている場合の処理
                         if "minId=" in url:
                             min_id = url.split("minId=")[1].split("&")[0]
@@ -167,9 +207,9 @@ class ScrapingCommands(BaseCommand):
                                 {"pattern": f"%minId={min_id}%"},
                             )
                     if meetings:
-                        meeting_id = meetings[0]["id"]
+                        meeting_id_from_url: int = meetings[0]["id"]
                         success = repo.update_meeting_gcs_uris(
-                            meeting_id, gcs_pdf_uri, gcs_text_uri
+                            meeting_id_from_url, gcs_pdf_uri, gcs_text_uri
                         )
                         if success:
                             ScrapingCommands.show_progress(
