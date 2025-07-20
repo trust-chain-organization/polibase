@@ -971,13 +971,6 @@ def execute_scraping_processes():
             )
 
         upload_to_gcs = st.checkbox("GCSにアップロード", value=False)
-        gcs_bucket = ""
-        if upload_to_gcs:
-            gcs_bucket = st.text_input(
-                "GCSバケット名（オプション）",
-                placeholder="my-bucket",
-                help="空欄の場合は環境変数のGCS_BUCKET_NAMEを使用",
-            )
 
     with col2:
         if st.button(
@@ -993,8 +986,6 @@ def execute_scraping_processes():
 
             if upload_to_gcs:
                 command += " --upload-to-gcs"
-                if gcs_bucket:
-                    command += f" --gcs-bucket {gcs_bucket}"
 
             with st.spinner("議事録をスクレイピング中..."):
                 run_command_with_progress(command, "scrape_minutes")
