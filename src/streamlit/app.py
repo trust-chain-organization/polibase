@@ -24,6 +24,7 @@ from src.interfaces.web.llm_history_page import manage_llm_history  # noqa: E402
 from src.streamlit.pages import (  # noqa: E402
     execute_processes,
     manage_conferences,
+    manage_conversations_speakers,
     manage_governing_bodies,
     manage_meetings,
     manage_parliamentary_groups,
@@ -68,6 +69,9 @@ def home_page():
         ### 👤 [政治家管理](/politicians)
         政治家情報の検索・編集・管理
 
+        ### 💬 [発言・発言者管理](/conversations-speakers)
+        議事録処理で生成された発言と発言者データの閲覧
+
         ### 📊 [LLM履歴](/llm-history)
         LLM処理履歴の確認と検索
         """)
@@ -106,6 +110,12 @@ def main():
         st.Page(execute_processes, title="処理実行", url_path="processes", icon="⚙️"),
         st.Page(
             manage_politicians, title="政治家管理", url_path="politicians", icon="👤"
+        ),
+        st.Page(
+            manage_conversations_speakers,
+            title="発言・発言者管理",
+            url_path="conversations-speakers",
+            icon="💬",
         ),
         st.Page(manage_llm_history, title="LLM履歴", url_path="llm-history", icon="📊"),
     ]
