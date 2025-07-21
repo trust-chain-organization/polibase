@@ -207,6 +207,7 @@ class TestMain:
 
     @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.setup_environment")
+    @patch("src.process_minutes.setup_metrics")
     @patch("src.process_minutes.load_pdf_text")
     @patch("src.process_minutes.process_minutes")
     @patch("src.process_minutes.save_to_database")
@@ -217,6 +218,7 @@ class TestMain:
         mock_save_db,
         mock_process,
         mock_load_pdf,
+        mock_setup_metrics,
         mock_setup,
         capsys,
     ):
@@ -245,6 +247,7 @@ class TestMain:
         ["process_minutes.py", "--meeting-id", "123"],
     )
     @patch("src.process_minutes.setup_environment")
+    @patch("src.process_minutes.setup_metrics")
     @patch("src.database.meeting_repository.MeetingRepository")
     @patch("src.process_minutes.config")
     @patch("src.utils.gcs_storage.GCSStorage")
@@ -261,6 +264,7 @@ class TestMain:
         mock_gcs_class,
         mock_config,
         mock_meeting_repo_class,
+        mock_setup_metrics,
         mock_setup,
     ):
         """Test main function with meeting ID and GCS integration"""
@@ -306,6 +310,7 @@ class TestMain:
 
     @patch("sys.argv", ["process_minutes.py", "--process-all-gcs"])
     @patch("src.process_minutes.setup_environment")
+    @patch("src.process_minutes.setup_metrics")
     @patch("src.database.meeting_repository.MeetingRepository")
     @patch("src.process_minutes.config")
     @patch("src.utils.gcs_storage.GCSStorage")
@@ -324,6 +329,7 @@ class TestMain:
         mock_gcs_class,
         mock_config,
         mock_meeting_repo_class,
+        mock_setup_metrics,
         mock_setup,
     ):
         """Test main function with --process-all-gcs flag"""
@@ -374,8 +380,9 @@ class TestMain:
 
     @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.setup_environment")
+    @patch("src.process_minutes.setup_metrics")
     @patch("src.process_minutes.load_pdf_text")
-    def test_main_api_key_error(self, mock_load_pdf, mock_setup):
+    def test_main_api_key_error(self, mock_load_pdf, mock_setup_metrics, mock_setup):
         """Test main function handling API key error"""
         # Arrange
         mock_load_pdf.side_effect = APIKeyError(
@@ -390,8 +397,11 @@ class TestMain:
 
     @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.setup_environment")
+    @patch("src.process_minutes.setup_metrics")
     @patch("src.process_minutes.load_pdf_text")
-    def test_main_pdf_processing_error(self, mock_load_pdf, mock_setup):
+    def test_main_pdf_processing_error(
+        self, mock_load_pdf, mock_setup_metrics, mock_setup
+    ):
         """Test main function handling PDF processing error"""
         # Arrange
         mock_load_pdf.side_effect = PDFProcessingError(
@@ -406,11 +416,12 @@ class TestMain:
 
     @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.setup_environment")
+    @patch("src.process_minutes.setup_metrics")
     @patch("src.process_minutes.load_pdf_text")
     @patch("src.process_minutes.process_minutes")
     @patch("src.process_minutes.save_to_database")
     def test_main_database_error(
-        self, mock_save_db, mock_process, mock_load_pdf, mock_setup
+        self, mock_save_db, mock_process, mock_load_pdf, mock_setup_metrics, mock_setup
     ):
         """Test main function handling database error"""
         # Arrange
@@ -430,8 +441,9 @@ class TestMain:
 
     @patch("sys.argv", ["process_minutes.py"])
     @patch("src.process_minutes.setup_environment")
+    @patch("src.process_minutes.setup_metrics")
     @patch("src.process_minutes.load_pdf_text")
-    def test_main_unexpected_error(self, mock_load_pdf, mock_setup):
+    def test_main_unexpected_error(self, mock_load_pdf, mock_setup_metrics, mock_setup):
         """Test main function handling unexpected error"""
         # Arrange
         mock_load_pdf.side_effect = RuntimeError("Unexpected error occurred")
