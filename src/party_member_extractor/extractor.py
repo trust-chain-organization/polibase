@@ -2,12 +2,12 @@
 
 import logging
 import re
+from typing import cast
 
 from bs4 import BeautifulSoup, Tag
 
-from ..services.instrumented_llm_service import InstrumentedLLMService
+from ..infrastructure.interfaces.llm_service import ILLMService
 from ..services.llm_factory import LLMServiceFactory
-from ..services.llm_service import LLMService
 from .models import PartyMemberInfo, PartyMemberList, WebPageContent
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class PartyMemberExtractor:
     """LLMを使用して政党議員情報を抽出"""
 
-    def __init__(self, llm_service: LLMService | InstrumentedLLMService | None = None):
+    def __init__(self, llm_service: ILLMService | None = None):
         """
         Initialize PartyMemberExtractor
 
@@ -25,10 +25,10 @@ class PartyMemberExtractor:
         """
         if llm_service is None:
             factory = LLMServiceFactory()
-            llm_service = factory.create_advanced()
+            llm_service = cast(ILLMService, factory.create_advanced())
 
-        self.llm_service: LLMService | InstrumentedLLMService = llm_service
-        self.extraction_llm = llm_service.get_structured_llm(PartyMemberList)
+        self.llm_service: ILLMService = llm_service
+        self.extraction_llm = self.llm_service.get_structured_llm(PartyMemberList)
 
     def extract_from_pages(
         self, pages: list[WebPageContent], party_name: str
@@ -75,16 +75,15 @@ class PartyMemberExtractor:
 
         # LLMで抽出
         try:
-            # プロンプトを使用して抽出
-            result = self.llm_service.invoke_prompt(
-                "party_member_extract",
-                {
-                    "party_name": party_name,
-                    "base_url": self._get_base_url(page.url),
-                    "content": main_content,
-                },
-                output_schema=PartyMemberList,
+            # Directly use extraction_llm configured with PartyMemberList schema
+            prompt = self.llm_service.get_prompt("party_member_extract")
+            formatted_prompt = prompt.format(
+                party_name=party_name,
+                base_url=self._get_base_url(page.url),
+                content=main_content,
             )
+            raw_result = self.extraction_llm.invoke({"text": formatted_prompt})
+            result = cast(PartyMemberList, raw_result)
 
             # URLを絶寞URLに変換
             base_url = self._get_base_url(page.url)

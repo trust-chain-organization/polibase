@@ -6,7 +6,7 @@ politicianテーブルと紐付ける処理
 
 import argparse
 import logging
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,6 +23,13 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+class PoliticianDict(TypedDict):
+    """Type definition for politician dictionary."""
+
+    id: int
+    political_party_name: str
 
 
 class SpeakerExtractorFromMinutes:
@@ -167,11 +174,16 @@ class SpeakerExtractorFromMinutes:
                     politician_id: int | None
                     party_name: str | None
                     if isinstance(politician, dict):
-                        pol_id = politician.get("id")
-                        politician_id = pol_id if isinstance(pol_id, int) else None
-                        party_name_val = politician.get("political_party_name")
+                        pol_dict = cast(dict[str, Any], politician)
+                        politician_id = (
+                            pol_dict.get("id")
+                            if isinstance(pol_dict.get("id"), int)
+                            else None
+                        )
                         party_name = (
-                            party_name_val if isinstance(party_name_val, str) else None
+                            pol_dict.get("political_party_name")
+                            if isinstance(pol_dict.get("political_party_name"), str)
+                            else None
                         )
                     else:
                         politician_id = politician.id
@@ -206,11 +218,15 @@ class SpeakerExtractorFromMinutes:
 
                 elif len(politicians) > 1:
                     # 複数見つかった場合は政党名で絞り込み
-                    if speaker.get("political_party_name"):
+                    speaker_dict = cast(dict[str, Any], speaker)
+                    if speaker_dict.get("political_party_name"):
                         matched_politicians: list[Any] = []
                         for p in politicians:
                             if isinstance(p, dict):
-                                party_name_from_dict = p.get("political_party_name")
+                                p_dict = cast(dict[str, Any], p)
+                                party_name_from_dict = p_dict.get(
+                                    "political_party_name"
+                                )
                                 if (
                                     party_name_from_dict
                                     == speaker["political_party_name"]
@@ -248,7 +264,8 @@ class SpeakerExtractorFromMinutes:
                             )
                             # politicianが辞書の場合とオブジェクトの場合の両方に対忎
                             if isinstance(politician, dict):
-                                pol_id = politician.get("id")
+                                pol_dict2 = cast(dict[str, Any], politician)
+                                pol_id = pol_dict2.get("id")
                                 matched_politician_id: int | None = (
                                     pol_id if isinstance(pol_id, int) else None
                                 )

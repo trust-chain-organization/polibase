@@ -2,13 +2,12 @@ import json
 import logging
 import re
 import unicodedata
-from typing import Any
+from typing import Any, cast
 
 from langchain import hub
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
-from ..infrastructure.external.instrumented_llm_service import InstrumentedLLMService
 from ..infrastructure.interfaces.llm_service import ILLMService
 from ..services.llm_factory import LLMServiceFactory
 
@@ -29,7 +28,7 @@ logger = logging.getLogger(__name__)
 class MinutesDivider:
     def __init__(
         self,
-        llm_service: ILLMService | InstrumentedLLMService | None = None,
+        llm_service: ILLMService | None = None,
         k: int = 5,
     ):
         """
@@ -42,9 +41,9 @@ class MinutesDivider:
         """
         if llm_service is None:
             factory = LLMServiceFactory()
-            llm_service = factory.create_advanced()
+            llm_service = cast(ILLMService, factory.create_advanced())
 
-        self.llm_service: ILLMService | InstrumentedLLMService = llm_service
+        self.llm_service: ILLMService = llm_service
         self.section_info_list_formatted_llm = self.llm_service.get_structured_llm(
             SectionInfoList
         )
