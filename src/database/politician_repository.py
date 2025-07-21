@@ -25,8 +25,7 @@ class PoliticianRepository(TypedRepository[Politician]):
     def __init__(self, db: Session | None = None):
         # If db session is provided, use it; otherwise fall back to engine
         if db:
-            super().__init__(Politician, "politicians", use_session=True)
-            self._session = db  # Set internal _session attribute
+            super().__init__(Politician, "politicians", use_session=True, session=db)
         else:
             super().__init__(Politician, "politicians", use_session=False)
 

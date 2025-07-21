@@ -4,6 +4,8 @@ import logging
 from datetime import date
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from src.database.typed_repository import TypedRepository
 from src.models.meeting_v2 import Meeting, MeetingCreate, MeetingUpdate
 
@@ -13,8 +15,8 @@ logger = logging.getLogger(__name__)
 class MeetingRepository(TypedRepository[Meeting]):
     """Repository class for Meeting-related database operations"""
 
-    def __init__(self):
-        super().__init__(Meeting, "meetings", use_session=True)
+    def __init__(self, session: Session | None = None):
+        super().__init__(Meeting, "meetings", use_session=True, session=session)
 
     def fetch_as_dict(
         self, query: str, params: dict[str, Any] | None = None

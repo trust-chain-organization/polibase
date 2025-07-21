@@ -37,10 +37,10 @@ class SpeakerExtractorFromMinutes:
 
     def __init__(self, session: Session):
         self.session = session
-        self.speaker_repo = SpeakerRepository()
-        self.politician_repo = PoliticianRepository()
-        self.conversation_repo = ConversationRepository()
-        self.meeting_repo = MeetingRepository()
+        self.speaker_repo = SpeakerRepository(session=session)
+        self.politician_repo = PoliticianRepository(db=session)
+        self.conversation_repo = ConversationRepository(session=session)
+        self.meeting_repo = MeetingRepository(session=session)
         # Speaker matching service will be initialized when needed with LLM
 
     def extract_speakers_from_minutes(self, minutes_id: int | None = None) -> None:

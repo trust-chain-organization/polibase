@@ -23,19 +23,21 @@ logger = logging.getLogger(__name__)
 class BaseRepository:
     """Base repository class with common database operations"""
 
-    def __init__(self, use_session: bool = True):
+    def __init__(self, use_session: bool = True, session: Session | None = None):
         """
         Initialize repository with either session or engine
 
         Args:
             use_session: If True, use SQLAlchemy session. If False, use engine directly.
+            session: Optional external session to use. If provided, this session will be
+                used instead of creating a new one.
         """
         self._use_session = use_session
         self._session: Session | None = None
         self._engine: Engine | None = None
 
         if use_session:
-            self._session = get_db_session()
+            self._session = session if session is not None else get_db_session()
         else:
             self._engine = get_db_engine()
 
