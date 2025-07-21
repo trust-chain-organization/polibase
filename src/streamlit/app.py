@@ -76,6 +76,8 @@ def home_page():
         ### 📊 [LLM履歴](/llm-history)
         LLM処理履歴の確認と検索
 
+        ### 💬 [発言レコード一覧](/conversations)
+        議事録分割で生成された発言レコード一覧
         """)
 
 
@@ -120,6 +122,12 @@ def main():
             icon="💬",
         ),
         st.Page(manage_llm_history, title="LLM履歴", url_path="llm-history", icon="📊"),
+        st.Page(
+            manage_conversations,
+            title="発言レコード一覧",
+            url_path="conversations",
+            icon="💬",
+        ),
     ]
 
     # ナビゲーション設定
