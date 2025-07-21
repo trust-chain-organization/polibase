@@ -4,6 +4,8 @@ Speaker テーブルへのデータ操作を管理するリポジトリクラス
 
 from collections.abc import Sequence
 
+from sqlalchemy.orm import Session
+
 from src.database.typed_repository import TypedRepository
 from src.models.speaker_v2 import Speaker
 
@@ -11,8 +13,8 @@ from src.models.speaker_v2 import Speaker
 class SpeakerRepository(TypedRepository[Speaker]):
     """Speakerテーブルに対するデータベース操作を管理するクラス"""
 
-    def __init__(self):
-        super().__init__(Speaker, "speakers", use_session=True)
+    def __init__(self, session: Session | None = None):
+        super().__init__(Speaker, "speakers", use_session=True, session=session)
 
     # Removed save_politician_info_list and related methods
     # These were used for extracting politicians from minutes which is now disabled
