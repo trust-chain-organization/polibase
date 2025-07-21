@@ -17,5 +17,5 @@
   "reportOptionalOperand": "error",
   "strictParameterNoneValue": true,
   "reportUnnecessaryTypeIgnoreComment": "warning",
-  "reportImplicitStringConcatenation": "warning"
+  "reportImplicitStringConcatenation": "none"
 }
