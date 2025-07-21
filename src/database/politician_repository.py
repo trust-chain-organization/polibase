@@ -113,23 +113,20 @@ class PoliticianRepository(TypedRepository[Politician]):
                     update_data = PoliticianUpdate(**update_fields)
                     self.update_politician(existing.id, update_data)
                     logger.info(
-                        f"政治家情報を更新しました: {politician.name} "
-                        f"(ID: {existing.id})"
+                        f"政治家情報を更新しました: {politician.name} (ID: {existing.id})"
                     )
                     # 更新後のデータを取得
                     return self.get_by_id(existing.id)
                 else:
                     logger.info(
-                        f"政治家は既に存在し、更新の必要はありません: "
-                        f"{politician.name} (ID: {existing.id})"
+                        f"政治家は既に存在し、更新の必要はありません: {politician.name} (ID: {existing.id})"
                     )
                     return existing
             else:
                 # 新規作成
                 created_politician = self.create_from_model(politician)
                 logger.info(
-                    f"新しい政治家を作成しました: {politician.name} "
-                    f"(ID: {created_politician.id})"
+                    f"新しい政治家を作成しました: {politician.name} (ID: {created_politician.id})"
                 )
                 return created_politician
         except SQLIntegrityError as e:

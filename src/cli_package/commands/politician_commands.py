@@ -134,8 +134,7 @@ class PoliticianCommands(BaseCommand):
 
                         # LLMで議員情報を抽出
                         with spinner(
-                            f"Extracting member information using LLM "
-                            f"for {party.name}..."
+                            f"Extracting member information using LLM for {party.name}..."
                         ):
                             result = extractor.extract_from_pages(pages, party.name)
 
@@ -196,12 +195,10 @@ class PoliticianCommands(BaseCommand):
                                 "  Database operation results:"
                             )
                             PoliticianCommands.show_progress(
-                                f"    - Created: {len(stats['created'])} "
-                                "new politicians"
+                                f"    - Created: {len(stats['created'])} new politicians"
                             )
                             PoliticianCommands.show_progress(
-                                f"    - Updated: {len(stats['updated'])} "
-                                "existing politicians"
+                                f"    - Updated: {len(stats['updated'])} existing politicians"
                             )
                             PoliticianCommands.show_progress(
                                 f"    - Errors: {len(stats['errors'])}"

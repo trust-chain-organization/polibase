@@ -252,8 +252,7 @@ class GoverningBodyRepository:
 
             if existing:
                 logger.warning(
-                    f"Another governing body with same name and type exists: "
-                    f"{name} ({gb_type})"
+                    f"Another governing body with same name and type exists: {name} ({gb_type})"
                 )
                 return False
 
@@ -306,16 +305,14 @@ class GoverningBodyRepository:
             row = result.fetchone()
             if row is None:
                 logger.error(
-                    f"Failed to check conferences for governing body "
-                    f"{governing_body_id}"
+                    f"Failed to check conferences for governing body {governing_body_id}"
                 )
                 return False
             count = row[0]
 
             if count > 0:
                 logger.warning(
-                    f"Cannot delete governing body {governing_body_id}: "
-                    f"has {count} related conferences"
+                    f"Cannot delete governing body {governing_body_id}: has {count} related conferences"
                 )
                 return False
 

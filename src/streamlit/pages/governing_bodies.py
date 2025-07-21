@@ -95,8 +95,7 @@ def manage_governing_bodies():
                                     st.code(seed_content, language="sql")
                             except Exception as e:
                                 st.error(
-                                    f"❌ SEEDファイル生成中にエラーが"
-                                    f"発生しました: {str(e)}"
+                                    f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
                                 )
 
             st.markdown("---")
@@ -245,8 +244,7 @@ def manage_governing_bodies():
                 conference_count = selected_gb.get("conference_count", 0)
                 if conference_count > 0:
                     st.warning(
-                        f"この開催主体には{conference_count}件の会議体が関連付けられています。"
-                        "削除するには、先に関連する会議体を削除する必要があります。"
+                        f"この開催主体には{conference_count}件の会議体が関連付けられています。削除するには、先に関連する会議体を削除する必要があります。"
                     )
                 else:
                     st.info("この開催主体に関連する会議体はありません。")

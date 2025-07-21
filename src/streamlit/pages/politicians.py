@@ -74,7 +74,7 @@ def show_politicians_list():
             st.metric("政党数", parties_count)  # type: ignore[arg-type]
         with col4:
             avg_conferences = df["conference_count"].mean()  # type: ignore[union-attr]
-            st.metric("平均所属会議体数", f"{avg_conferences:.1f}")  # type: ignore[arg-type]
+            st.metric("平均所属会議体数", f"{avg_conferences:.1f}")
 
         # フィルタリング機能
         st.markdown("### フィルタリング")
@@ -97,7 +97,7 @@ def show_politicians_list():
             search_name = st.text_input("名前検索", placeholder="政治家名を入力")
 
         # フィルタリング適用
-        filtered_df = df.copy()  # type: ignore[union-attr]
+        filtered_df = df.copy()
 
         if selected_party != "すべて":
             filtered_df = filtered_df[filtered_df["party_name"] == selected_party]  # type: ignore[index]
@@ -257,9 +257,9 @@ def show_politician_details():
                         lambda x: f"{x['start_date']} ～ {x['end_date'] or '現在'}",
                         axis=1,
                     )
-                    display_aff_df = aff_df[  # type: ignore[union-attr]
+                    display_aff_df = aff_df[
                         ["conference_name", "governing_body_name", "role", "期間"]
-                    ].rename(  # type: ignore[union-attr]
+                    ].rename(
                         columns={
                             "conference_name": "会議体",
                             "governing_body_name": "開催主体",

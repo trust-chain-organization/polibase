@@ -155,13 +155,11 @@ class ConversationRepository(BaseRepository):
 
         if speaker_id:
             print(
-                f"➕ 新規追加: {speaker_and_speech_content.speaker} "
-                f"(ID: {conversation_id}, Speaker ID: {speaker_id})"
+                f"➕ 新規追加: {speaker_and_speech_content.speaker} (ID: {conversation_id}, Speaker ID: {speaker_id})"
             )
         else:
             print(
-                f"➕ 新規追加: {speaker_and_speech_content.speaker} "
-                f"(ID: {conversation_id}, Speaker ID: NULL)"
+                f"➕ 新規追加: {speaker_and_speech_content.speaker} (ID: {conversation_id}, Speaker ID: NULL)"
             )
 
         return conversation_id
@@ -388,8 +386,7 @@ class ConversationRepository(BaseRepository):
                     if rows_affected > 0:
                         updated_count += 1
                         print(
-                            f"🔗 Speaker紐付け更新: {speaker_name} → "
-                            f"Speaker ID: {speaker_id}"
+                            f"🔗 Speaker紐付け更新: {speaker_name} → Speaker ID: {speaker_id}"
                         )
 
             self.session.commit()

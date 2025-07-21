@@ -53,8 +53,7 @@ class SeedCommands(BaseCommand):
                 click.echo(f"  - {file}")
 
             click.echo(
-                "\n💡 ヒント: 生成されたファイルをレビューして、"
-                "必要に応じて既存のSEEDファイルと置き換えてください。"
+                "\n💡 ヒント: 生成されたファイルをレビューして、必要に応じて既存のSEEDファイルと置き換えてください。"
             )
 
         except (DatabaseError, FileNotFoundError, PermissionError):

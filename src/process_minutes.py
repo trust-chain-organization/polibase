@@ -319,8 +319,7 @@ def main() -> list[int] | None:
                         saved_ids = save_to_database(results, minutes_id=minutes_id)
                         all_saved_ids.extend(saved_ids)
                         print(
-                            f"   ✅ {len(saved_ids)}件の発言を保存しました "
-                            f"(Minutes ID: {minutes_id})"
+                            f"   ✅ {len(saved_ids)}件の発言を保存しました (Minutes ID: {minutes_id})"
                         )
                     else:
                         print("   ⚠️  発言が抽出されませんでした")
@@ -346,8 +345,7 @@ def main() -> list[int] | None:
 
             if meeting and meeting.gcs_text_uri:
                 logger.info(
-                    f"Found GCS text URI for meeting {args.meeting_id}: "
-                    f"{meeting.gcs_text_uri}"
+                    f"Found GCS text URI for meeting {args.meeting_id}: {meeting.gcs_text_uri}"
                 )
                 # GCSからテキストを取得
                 try:
@@ -358,8 +356,7 @@ def main() -> list[int] | None:
                     extracted_text = gcs_storage.download_content(meeting.gcs_text_uri)
                     if extracted_text:
                         logger.info(
-                            f"Successfully downloaded text from GCS "
-                            f"({len(extracted_text)} characters)"
+                            f"Successfully downloaded text from GCS ({len(extracted_text)} characters)"
                         )
 
                         # minutesレコードを作成（既存のものがあるかチェック）
@@ -403,13 +400,11 @@ def main() -> list[int] | None:
                             return None
                     else:
                         logger.warning(
-                            "Failed to download text from GCS, "
-                            "falling back to PDF extraction"
+                            "Failed to download text from GCS, falling back to PDF extraction"
                         )
                 except Exception as e:
                     logger.warning(
-                        f"Failed to initialize GCS or download content: {e}, "
-                        f"falling back to PDF extraction"
+                        f"Failed to initialize GCS or download content: {e}, falling back to PDF extraction"
                     )
 
         # GCSから取得できなかった場合は、通常のPDF読み込み

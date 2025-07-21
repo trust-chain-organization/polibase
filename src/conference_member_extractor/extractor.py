@@ -131,8 +131,7 @@ HTMLコンテンツ:
                 if member_id:
                     saved_count += 1
                     logger.info(
-                        f"Saved extracted member: {member.name} "
-                        f"(role: {member.role}, party: {member.party_name})"
+                        f"Saved extracted member: {member.name} (role: {member.role}, party: {member.party_name})"
                     )
                 else:
                     failed_count += 1
@@ -148,8 +147,7 @@ HTMLコンテンツ:
             }
 
             logger.info(
-                f"Extraction complete: extracted={len(members)}, "
-                f"saved={saved_count}, failed={failed_count}"
+                f"Extraction complete: extracted={len(members)}, saved={saved_count}, failed={failed_count}"
             )
 
             return result

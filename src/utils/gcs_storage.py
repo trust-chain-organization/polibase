@@ -52,8 +52,7 @@ class GCSStorage:
 
         if not HAS_GCS:
             raise StorageError(
-                "Google Cloud Storage library not installed. "
-                "Install with: pip install google-cloud-storage"
+                "Google Cloud Storage library not installed. Install with: pip install google-cloud-storage"
             )
 
         self.bucket_name = bucket_name

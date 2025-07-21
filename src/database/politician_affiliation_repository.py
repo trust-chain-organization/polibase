@@ -80,8 +80,7 @@ class PoliticianAffiliationRepository:
 
             if result.fetchone():
                 logger.warning(
-                    f"Affiliation already exists for politician {politician_id} "
-                    f"in conference {conference_id} starting {start_date}"
+                    f"Affiliation already exists for politician {politician_id} in conference {conference_id} starting {start_date}"
                 )
                 return None
 

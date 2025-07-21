@@ -94,8 +94,7 @@ def manage_parliamentary_groups():
                                     st.code(seed_content, language="sql")
                             except Exception as e:
                                 st.error(
-                                    f"❌ SEEDファイル生成中にエラーが"
-                                    f"発生しました: {str(e)}"
+                                    f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
                                 )
 
             st.markdown("---")
@@ -210,8 +209,7 @@ def manage_parliamentary_groups():
                         )
                     else:
                         st.error(
-                            "議員団の登録に失敗しました"
-                            "（同じ名前の議員団が既に存在する可能性があります）"
+                            "議員団の登録に失敗しました（同じ名前の議員団が既に存在する可能性があります）"
                         )
                 except Exception as e:
                     st.error(f"エラーが発生しました: {str(e)}")
@@ -267,7 +265,7 @@ def manage_parliamentary_groups():
                 group_options.append(display_name)
                 group_map[display_name] = group
 
-            selected_group_display = st.selectbox("編集する議員団を選択", group_options)  # type: ignore[arg-type]
+            selected_group_display = st.selectbox("編集する議員団を選択", group_options)
             selected_group: dict[str, Any] = group_map[selected_group_display]
 
             # 編集フォーム
@@ -448,8 +446,7 @@ def manage_parliamentary_groups():
                             )
                         else:
                             st.success(
-                                f"✅ {len(extraction_result.extracted_members)}名の"
-                                "メンバーを抽出しました"
+                                f"✅ {len(extraction_result.extracted_members)}名のメンバーを抽出しました"
                             )
 
                             # 抽出されたメンバーを表示
@@ -491,8 +488,7 @@ def manage_parliamentary_groups():
                                 if r.politician_id is not None
                             )
                             st.info(
-                                f"マッチング成功: "
-                                f"{matched_count}/{len(matching_results)}名"
+                                f"マッチング成功: {matched_count}/{len(matching_results)}名"
                             )
 
                             # マッチング詳細を表示
@@ -529,8 +525,7 @@ def manage_parliamentary_groups():
                                         )
 
                                         st.success(
-                                            f"✅ {creation_result.created_count}件の"
-                                            "メンバーシップを作成しました"
+                                            f"✅ {creation_result.created_count}件のメンバーシップを作成しました"
                                         )
 
                                         if creation_result.errors:
@@ -552,8 +547,7 @@ def manage_parliamentary_groups():
                                     f"- 作成予定: {creation_result.created_count}件"
                                 )
                                 st.write(
-                                    f"- スキップ（既存）: "
-                                    f"{creation_result.skipped_count}件"
+                                    f"- スキップ（既存）: {creation_result.skipped_count}件"
                                 )
 
                                 if creation_result.errors:
@@ -562,8 +556,7 @@ def manage_parliamentary_groups():
                                         st.write(f"  - {error}")
                                     if len(creation_result.errors) > 5:
                                         st.write(
-                                            f"  ... 他 "
-                                            f"{len(creation_result.errors) - 5}件"
+                                            f"  ... 他 {len(creation_result.errors) - 5}件"
                                         )
 
                                 if not dry_run and creation_result.created_count > 0:

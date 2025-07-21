@@ -89,8 +89,7 @@ def manage_conferences():
                                     st.code(seed_content, language="sql")
                             except Exception as e:
                                 st.error(
-                                    f"❌ SEEDファイル生成中にエラーが"
-                                    f"発生しました: {str(e)}"
+                                    f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
                                 )
 
             st.markdown("---")
@@ -334,7 +333,7 @@ def manage_conferences():
                         name=conf_name,
                         governing_body_id=selected_gb_id
                         if selected_gb_id is not None
-                        else 0,  # type: ignore[arg-type]
+                        else 0,
                         type=conf_type if conf_type else None,
                     )
                     if conf_id:
@@ -388,12 +387,12 @@ def manage_conferences():
                 # URL設定状態を追加
                 url_status = "✅" if conf.get("members_introduction_url") else "❌"
                 display_name = f"{url_status} {display_name}"
-                conf_options.append(display_name)  # type: ignore[union-attr]
+                conf_options.append(display_name)
                 conf_map[display_name] = conf
 
-            selected_conf_display = st.selectbox("編集する会議体を選択", conf_options)  # type: ignore[arg-type,assignment]
+            selected_conf_display = st.selectbox("編集する会議体を選択", conf_options)
 
-            selected_conf = cast(dict[str, Any], conf_map[selected_conf_display])  # type: ignore[assignment]
+            selected_conf = cast(dict[str, Any], conf_map[selected_conf_display])
 
             # 現在の議員紹介URLの状態を表示
             if selected_conf.get("members_introduction_url"):
@@ -412,13 +411,13 @@ def manage_conferences():
                     )
                     new_type = st.text_input(
                         "会議体種別",
-                        value=cast(str, selected_conf.get("type", "")),  # type: ignore[union-attr]
+                        value=cast(str, selected_conf.get("type", "")),
                     )
                     new_members_url = st.text_input(
                         "議員紹介URL",
                         value=cast(
                             str, selected_conf.get("members_introduction_url", "") or ""
-                        ),  # type: ignore[union-attr]
+                        ),
                         placeholder="https://example.com/members",
                         help="会議体の議員一覧が掲載されているページのURL",
                     )
@@ -431,13 +430,13 @@ def manage_conferences():
                         else:
                             # 基本情報を更新
                             if conf_repo.update_conference(
-                                conference_id=selected_conf["id"],  # type: ignore[arg-type]
+                                conference_id=selected_conf["id"],
                                 name=new_name,
                                 type=new_type if new_type else None,
                             ):
                                 # 議員紹介URLを更新
                                 conf_repo.update_conference_members_url(
-                                    conference_id=selected_conf["id"],  # type: ignore[arg-type]
+                                    conference_id=selected_conf["id"],
                                     members_introduction_url=new_members_url
                                     if new_members_url
                                     else None,
@@ -459,8 +458,7 @@ def manage_conferences():
                         st.rerun()
                     else:
                         st.error(
-                            "会議体を削除できませんでした"
-                            "（関連する会議が存在する可能性があります）"
+                            "会議体を削除できませんでした（関連する会議が存在する可能性があります）"
                         )
 
     conf_repo.close()
