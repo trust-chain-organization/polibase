@@ -33,3 +33,14 @@ class SpeakerRepository(BaseRepository[Speaker]):
     async def upsert(self, speaker: Speaker) -> Speaker:
         """Insert or update speaker (upsert)."""
         pass
+
+    @abstractmethod
+    async def get_all_with_conversation_count(
+        self, offset: int = 0, limit: int | None = None
+    ) -> tuple[list[tuple[Speaker, int]], int]:
+        """Get all speakers with their conversation count.
+
+        Returns:
+            Tuple of (list of (speaker, conversation_count), total_count)
+        """
+        pass

@@ -29,6 +29,7 @@ from src.streamlit.pages import (  # noqa: E402
     manage_parliamentary_groups,
     manage_political_parties,
     manage_politicians,
+    manage_speakers,
 )
 from src.streamlit.utils import init_session_state  # noqa: E402
 
@@ -67,6 +68,9 @@ def home_page():
 
         ### 👤 [政治家管理](/politicians)
         政治家情報の検索・編集・管理
+
+        ### 🗣️ [発言者管理](/speakers)
+        議事録から抽出された発言者の一覧
 
         ### 📊 [LLM履歴](/llm-history)
         LLM処理履歴の確認と検索
@@ -107,6 +111,7 @@ def main():
         st.Page(
             manage_politicians, title="政治家管理", url_path="politicians", icon="👤"
         ),
+        st.Page(manage_speakers, title="発言者管理", url_path="speakers", icon="🗣️"),
         st.Page(manage_llm_history, title="LLM履歴", url_path="llm-history", icon="📊"),
     ]
 

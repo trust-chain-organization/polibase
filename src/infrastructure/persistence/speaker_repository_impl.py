@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from sqlalchemy import and_
+from sqlalchemy import and_, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -104,3 +104,41 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
         model.political_party_name = entity.political_party_name
         model.position = entity.position
         model.is_politician = entity.is_politician
+
+    async def get_all_with_conversation_count(
+        self, offset: int = 0, limit: int | None = None
+    ) -> tuple[list[tuple[Speaker, int]], int]:
+        """Get all speakers with their conversation count."""
+        # Get total count
+        count_query = select(func.count()).select_from(self.model_class)
+        total_result = await self.session.execute(count_query)
+        total_count = total_result.scalar() or 0
+
+        # Get speakers with conversation count using raw SQL for clarity
+        sql = text("""
+            SELECT
+                s.*,
+                COALESCE(COUNT(c.id), 0) as conversation_count
+            FROM speakers s
+            LEFT JOIN conversations c ON s.id = c.speaker_id
+            GROUP BY s.id
+            ORDER BY s.name
+            LIMIT :limit OFFSET :offset
+        """)
+
+        params = {"limit": limit if limit else 1000000, "offset": offset}
+        result = await self.session.execute(sql, params)
+
+        speakers_with_count = []
+        for row in result:
+            speaker = Speaker(
+                name=row.name,
+                type=row.type,
+                political_party_name=row.political_party_name,
+                position=row.position,
+                is_politician=row.is_politician,
+                id=row.id,
+            )
+            speakers_with_count.append((speaker, row.conversation_count))
+
+        return speakers_with_count, total_count
