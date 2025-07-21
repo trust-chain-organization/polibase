@@ -238,7 +238,7 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
             yaxis_title="統治体名",
         )
 
-        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[attr-defined]  # type: ignore[no-untyped-call]
 
         # 詳細テーブル
         st.subheader("議会別詳細データ")
@@ -267,7 +267,7 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
             "last_updated": "最終更新日",
         }
 
-        st.dataframe(
+        st.dataframe(  # type: ignore[attr-defined]
             conference_coverage[display_columns],
             column_config=column_config,
             use_container_width=True,
@@ -313,13 +313,13 @@ def display_timeline_tab(repo: MonitoringRepository):
         )
 
         fig.update_layout(height=500)  # type: ignore[no-untyped-call]
-        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[attr-defined]  # type: ignore[no-untyped-call]
 
         # 累積グラフ
         st.subheader("累積データ数")
 
         # 累積計算
-        timeline_data["cumulative"] = timeline_data.groupby("data_type")[
+        timeline_data["cumulative"] = timeline_data.groupby("data_type")[  # type: ignore[attr-defined]
             "count"
         ].cumsum()
 
@@ -377,10 +377,10 @@ def display_party_coverage(repo: MonitoringRepository):
         )
 
         fig.update_traces(textposition="inside", textinfo="percent+label")  # type: ignore[no-untyped-call]
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[attr-defined]
 
         # 詳細テーブル
-        st.dataframe(
+        st.dataframe(  # type: ignore[attr-defined]
             party_data,
             column_config={
                 "party_name": "政党名",
@@ -419,7 +419,7 @@ def display_prefecture_coverage(repo: MonitoringRepository):
         )
 
         fig.update_layout(height=800)  # type: ignore[no-untyped-call]
-        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[attr-defined]  # type: ignore[no-untyped-call]
 
     else:
         st.info("都道府県データがありません")
@@ -441,7 +441,7 @@ def display_committee_type_coverage(repo: MonitoringRepository):
         )
 
         fig.update_layout(height=600)  # type: ignore[no-untyped-call]
-        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig, use_container_width=True)  # type: ignore[attr-defined]  # type: ignore[no-untyped-call]
 
     else:
         st.info("委員会データがありません")

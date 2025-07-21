@@ -44,12 +44,12 @@ class MinutesDivider:
             factory = LLMServiceFactory()
             llm_service = factory.create_advanced()
 
-        self.llm_service = llm_service
-        self.section_info_list_formatted_llm = llm_service.get_structured_llm(
+        self.llm_service: ILLMService | InstrumentedLLMService = llm_service
+        self.section_info_list_formatted_llm = self.llm_service.get_structured_llm(
             SectionInfoList
         )
-        self.speaker_and_speech_content_formatted_llm = llm_service.get_structured_llm(
-            SpeakerAndSpeechContentList
+        self.speaker_and_speech_content_formatted_llm = (
+            self.llm_service.get_structured_llm(SpeakerAndSpeechContentList)
         )
         self.k = k
 

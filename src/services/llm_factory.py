@@ -114,11 +114,15 @@ class LLMServiceFactory:
 
         # Wrap with instrumentation if enabled
         if enable_metrics:
-            model_name = config.get("model_name", "gemini-2.0-flash-exp")
+            model_name_val = config.get("model_name", "gemini-2.0-flash-exp")
             model_version = config.get("model_version", "latest")
             instance = InstrumentedLLMService(
-                instance,
-                model_name=model_name,
+                instance,  # type: ignore[arg-type]
+                model_name=(
+                    model_name_val
+                    if model_name_val is not None
+                    else "gemini-2.0-flash-exp"
+                ),
                 model_version=model_version,
             )
 

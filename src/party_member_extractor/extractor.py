@@ -27,7 +27,7 @@ class PartyMemberExtractor:
             factory = LLMServiceFactory()
             llm_service = factory.create_advanced()
 
-        self.llm_service = llm_service
+        self.llm_service: LLMService | InstrumentedLLMService = llm_service
         self.extraction_llm = llm_service.get_structured_llm(PartyMemberList)
 
     def extract_from_pages(

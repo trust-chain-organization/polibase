@@ -168,7 +168,7 @@ def process_minutes(
             # Note: History repository should be configured at application startup
             # in a proper async context, not here in sync code
 
-        agent = MinutesProcessAgent(llm_service=llm_service)
+        agent = MinutesProcessAgent(llm_service=llm_service)  # type: ignore[arg-type]
 
         logger.info("Processing minutes", text_length=len(extracted_text))
 
