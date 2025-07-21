@@ -332,7 +332,6 @@ class InstrumentedLLMService:
             return self._llm_service.model_name
         return self._model_name
 
-
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown attributes to wrapped service."""
         return getattr(self._llm_service, name)
