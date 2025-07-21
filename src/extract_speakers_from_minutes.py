@@ -167,9 +167,9 @@ class SpeakerExtractorFromMinutes:
                     politician_id: int | None
                     party_name: str | None
                     if isinstance(politician, dict):
-                        pol_id: Any = politician.get("id")
+                        pol_id = politician.get("id")
                         politician_id = pol_id if isinstance(pol_id, int) else None
-                        party_name_val: Any = politician.get("political_party_name")
+                        party_name_val = politician.get("political_party_name")
                         party_name = (
                             party_name_val if isinstance(party_name_val, str) else None
                         )
@@ -210,7 +210,7 @@ class SpeakerExtractorFromMinutes:
                         matched_politicians: list[Any] = []
                         for p in politicians:
                             if isinstance(p, dict):
-                                party_name_from_dict: Any = p.get(
+                                party_name_from_dict = p.get(
                                     "political_party_name"
                                 )
                                 if (
@@ -250,7 +250,7 @@ class SpeakerExtractorFromMinutes:
                             )
                             # politicianが辞書の場合とオブジェクトの場合の両方に対忎
                             if isinstance(politician, dict):
-                                pol_id: Any = politician.get("id")
+                                pol_id = politician.get("id")
                                 matched_politician_id: int | None = (
                                     pol_id if isinstance(pol_id, int) else None
                                 )
