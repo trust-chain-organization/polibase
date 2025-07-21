@@ -89,7 +89,7 @@ def measure_time(
                         threshold_seconds=log_slow_operations,
                     )
 
-                return result  # type: ignore[return-value]
+                return result
 
             except Exception as e:
                 # エラー時の処理
@@ -137,7 +137,7 @@ def measure_time(
                         threshold_seconds=log_slow_operations,
                     )
 
-                return result  # type: ignore[return-value]
+                return result
 
             except Exception as e:
                 # エラー時の処理

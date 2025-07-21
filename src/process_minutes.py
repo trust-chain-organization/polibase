@@ -161,8 +161,7 @@ def process_minutes(
         # If it's an InstrumentedLLMService, configure meeting context
         if isinstance(llm_service, InstrumentedLLMService) and meeting_id:
             # Configure the service with meeting context for history recording
-            llm_service._input_reference_type = "meeting"
-            llm_service._input_reference_id = meeting_id
+            llm_service.set_input_reference("meeting", meeting_id)
             logger.info(
                 "Configured InstrumentedLLMService for meeting", meeting_id=meeting_id
             )
@@ -410,7 +409,7 @@ def main() -> list[int] | None:
                 except Exception as e:
                     logger.warning(
                         f"Failed to initialize GCS or download content: {e}, "
-                        "falling back to PDF extraction"
+                        f"falling back to PDF extraction"
                     )
 
         # GCSから取得できなかった場合は、通常のPDF読み込み

@@ -54,6 +54,23 @@ class InstrumentedLLMService:
         self._input_reference_type = input_reference_type
         self._input_reference_id = input_reference_id
 
+    @property
+    def temperature(self) -> float:
+        """Get the temperature from the underlying LLM service."""
+        return self._llm_service.temperature
+
+    def set_input_reference(
+        self, reference_type: str | None, reference_id: int | None
+    ) -> None:
+        """Set the input reference for history tracking.
+
+        Args:
+            reference_type: Type of reference (e.g., 'meeting')
+            reference_id: ID of the reference
+        """
+        self._input_reference_type = reference_type
+        self._input_reference_id = reference_id
+
     async def set_history_repository(
         self, repository: LLMProcessingHistoryRepository | None
     ) -> None:
@@ -315,12 +332,6 @@ class InstrumentedLLMService:
             return self._llm_service.model_name
         return self._model_name
 
-    @property
-    def temperature(self) -> float:
-        """Get temperature from wrapped service."""
-        if hasattr(self._llm_service, "temperature"):
-            return self._llm_service.temperature
-        return 0.1  # Default value
 
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown attributes to wrapped service."""

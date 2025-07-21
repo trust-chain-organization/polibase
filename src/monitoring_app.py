@@ -267,9 +267,9 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
             "last_updated": "最終更新日",
         }
 
-        st.dataframe(  # type: ignore[call-arg]
+        st.dataframe(
             conference_coverage[display_columns],
-            column_config=column_config,  # type: ignore[arg-type]
+            column_config=column_config,
             use_container_width=True,
             hide_index=True,
         )
@@ -319,9 +319,9 @@ def display_timeline_tab(repo: MonitoringRepository):
         st.subheader("累積データ数")
 
         # 累積計算
-        timeline_data["cumulative"] = timeline_data.groupby("data_type")[  # type: ignore[index]
+        timeline_data["cumulative"] = timeline_data.groupby("data_type")[
             "count"
-        ].cumsum()  # type: ignore[union-attr]
+        ].cumsum()
 
         fig_cum = px.area(  # type: ignore[call-overload]
             timeline_data,
@@ -377,12 +377,12 @@ def display_party_coverage(repo: MonitoringRepository):
         )
 
         fig.update_traces(textposition="inside", textinfo="percent+label")  # type: ignore[no-untyped-call]
-        st.plotly_chart(fig, use_container_width=True)  # type: ignore[no-untyped-call]
+        st.plotly_chart(fig, use_container_width=True)
 
         # 詳細テーブル
-        st.dataframe(  # type: ignore[call-arg]
+        st.dataframe(
             party_data,
-            column_config={  # type: ignore[arg-type]
+            column_config={
                 "party_name": "政党名",
                 "politician_count": "政治家数",
                 "active_count": "アクティブ数",
@@ -522,7 +522,7 @@ def display_japan_map_tab(repo: MonitoringRepository):
         )
 
         # Foliumマップの表示
-        map_data = st_folium(  # type: ignore[no-untyped-call]
+        map_data = st_folium(
             m,
             height=600,
             width=None,

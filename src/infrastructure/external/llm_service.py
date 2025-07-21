@@ -5,7 +5,9 @@ import logging
 import os
 from typing import Any
 
+from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableSerializable
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from src.domain.entities.llm_processing_history import LLMProcessingHistory
@@ -202,12 +204,14 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
 
             # Create prompt template and invoke
             prompt_template = ChatPromptTemplate.from_template(prompt)
-            chain = prompt_template | self._llm
-            response = await chain.ainvoke({})  # type: ignore[arg-type]
+            chain: RunnableSerializable[dict[str, Any], BaseMessage] = (
+                prompt_template | self._llm
+            )
+            response = await chain.ainvoke({})
 
             # Parse response
             if hasattr(response, "content"):
-                content = response.content
+                content: str | list[str | dict[str, Any]] = response.content
                 if isinstance(content, str):
                     response_text = content
                 else:
@@ -240,12 +244,14 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
 
             # Create prompt template and invoke
             prompt_template = ChatPromptTemplate.from_template(full_prompt)
-            chain = prompt_template | self._llm
-            response = await chain.ainvoke({})  # type: ignore[arg-type]
+            chain: RunnableSerializable[dict[str, Any], BaseMessage] = (
+                prompt_template | self._llm
+            )
+            response = await chain.ainvoke({})
 
             # Parse response
             if hasattr(response, "content"):
-                content = response.content
+                content: str | list[str | dict[str, Any]] = response.content
                 if isinstance(content, str):
                     response_text = content
                 else:
@@ -286,12 +292,14 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
 
             # Create prompt template and invoke
             prompt_template = ChatPromptTemplate.from_template(prompt)
-            chain = prompt_template | self._llm
-            response = await chain.ainvoke({})  # type: ignore[arg-type]
+            chain: RunnableSerializable[dict[str, Any], BaseMessage] = (
+                prompt_template | self._llm
+            )
+            response = await chain.ainvoke({})
 
             # Parse response
             if hasattr(response, "content"):
-                content = response.content
+                content: str | list[str | dict[str, Any]] = response.content
                 if isinstance(content, str):
                     response_text = content
                 else:
@@ -320,12 +328,14 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
 
             # Create prompt template and invoke
             prompt_template = ChatPromptTemplate.from_template(full_prompt)
-            chain = prompt_template | self._llm
-            response = await chain.ainvoke({})  # type: ignore[arg-type]
+            chain: RunnableSerializable[dict[str, Any], BaseMessage] = (
+                prompt_template | self._llm
+            )
+            response = await chain.ainvoke({})
 
             # Parse response
             if hasattr(response, "content"):
-                content = response.content
+                content: str | list[str | dict[str, Any]] = response.content
                 if isinstance(content, str):
                     response_text = content
                 else:

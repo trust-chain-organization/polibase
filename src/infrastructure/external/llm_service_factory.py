@@ -1,5 +1,7 @@
 """Factory for creating LLM services with optional instrumentation."""
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.domain.repositories.llm_processing_history_repository import (
     LLMProcessingHistoryRepository,
 )
@@ -82,7 +84,9 @@ class LLMServiceFactory:
         return base_service
 
     @staticmethod
-    def create_default_service(session=None, with_history: bool = True) -> ILLMService:
+    def create_default_service(
+        session: AsyncSession | None = None, with_history: bool = True
+    ) -> ILLMService:
         """Create default LLM service with database repositories.
 
         Args:
