@@ -48,16 +48,16 @@ cat > docker/docker-compose.override.yml << EOF
 
 services:
   polibase:
-    ports:
+    ports: !override
       - "$POLIBASE_PORT:8000"
       - "$STREAMLIT_PORT:8501"
 
   polibase-monitoring:
-    ports:
+    ports: !override
       - "$MONITORING_PORT:8502"
 
   postgres:
-    ports:
+    ports: !override
       - "$POSTGRES_PORT:5432"
 EOF
 
