@@ -70,11 +70,11 @@ def show_politicians_list():
             speaker_linked = len(df[df["has_speaker"] == "✅"])  # type: ignore[arg-type,index]
             st.metric("発言者リンク済み", f"{speaker_linked} / {len(df)}")
         with col3:
-            parties_count = df["party_id"].nunique()  # type: ignore[union-attr]
+            parties_count = df["party_id"].nunique()
             st.metric("政党数", parties_count)  # type: ignore[arg-type]
         with col4:
-            avg_conferences = df["conference_count"].mean()  # type: ignore[union-attr]
-            st.metric("平均所属会議体数", f"{avg_conferences:.1f}")  # type: ignore[arg-type]
+            avg_conferences = df["conference_count"].mean()
+            st.metric("平均所属会議体数", f"{avg_conferences:.1f}")
 
         # フィルタリング機能
         st.markdown("### フィルタリング")
@@ -97,18 +97,18 @@ def show_politicians_list():
             search_name = st.text_input("名前検索", placeholder="政治家名を入力")
 
         # フィルタリング適用
-        filtered_df = df.copy()  # type: ignore[union-attr]
+        filtered_df = df.copy()
 
         if selected_party != "すべて":
-            filtered_df = filtered_df[filtered_df["party_name"] == selected_party]  # type: ignore[index]
+            filtered_df = filtered_df[filtered_df["party_name"] == selected_party]
 
         if selected_speaker == "リンク済み":
-            filtered_df = filtered_df[filtered_df["has_speaker"] == "✅"]  # type: ignore[index]
+            filtered_df = filtered_df[filtered_df["has_speaker"] == "✅"]
         elif selected_speaker == "未リンク":
-            filtered_df = filtered_df[filtered_df["has_speaker"] == "❌"]  # type: ignore[index]
+            filtered_df = filtered_df[filtered_df["has_speaker"] == "❌"]
 
         if search_name:
-            filtered_df = filtered_df[  # type: ignore[index]
+            filtered_df = filtered_df[
                 filtered_df["name"].str.contains(search_name, na=False)  # type: ignore[union-attr]
             ]
 
@@ -253,20 +253,20 @@ def show_politician_details():
 
                 if affiliations:
                     aff_df = pd.DataFrame(affiliations)
-                    aff_df["期間"] = aff_df.apply(  # type: ignore[union-attr]
+                    aff_df["期間"] = aff_df.apply(
                         lambda x: f"{x['start_date']} ～ {x['end_date'] or '現在'}",
                         axis=1,
                     )
-                    display_aff_df = aff_df[  # type: ignore[union-attr]
+                    display_aff_df = aff_df[
                         ["conference_name", "governing_body_name", "role", "期間"]
-                    ].rename(  # type: ignore[union-attr]
+                    ].rename(
                         columns={
                             "conference_name": "会議体",
                             "governing_body_name": "開催主体",
                             "role": "役職",
                         }
                     )
-                    st.dataframe(  # type: ignore[call-arg]
+                    st.dataframe(
                         display_aff_df, use_container_width=True, hide_index=True
                     )
                 else:

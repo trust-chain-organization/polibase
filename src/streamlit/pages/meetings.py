@@ -56,7 +56,7 @@ def show_meetings_list():
                     break
             conferences = repo.get_conferences_by_governing_body(
                 selected_gb["id"] if selected_gb else 0
-            )  # type: ignore[arg-type]
+            )
         else:
             conferences = []
 
@@ -186,8 +186,7 @@ def show_meetings_list():
                         st.rerun()
                     else:
                         st.error(
-                            "会議を削除できませんでした"
-                            "（関連する議事録が存在する可能性があります）"
+                            "会議を削除できませんでした（関連する議事録が存在する可能性があります）"
                         )
 
             st.divider()

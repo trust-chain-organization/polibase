@@ -267,7 +267,7 @@ class ScrapingCommands(BaseCommand):
                         else:
                             ScrapingCommands.show_progress(
                                 f"✗ Failed to update meeting {meeting_id_to_update} "
-                                f"with GCS URIs"
+                                "with GCS URIs"
                             )
                     repo.close()
             except Exception as e:

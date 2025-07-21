@@ -708,16 +708,16 @@ def execute_conference_member_processes():
             # 3つのコマンドを順番に実行
             commands = [
                 (
-                    f"uv run polibase extract-conference-members "
+                    "uv run polibase extract-conference-members "
                     f"--conference-id {conference_id}"
-                    + (" --force" if batch_force else "")
+                )
+                + (" --force" if batch_force else ""),
+                (
+                    "uv run polibase match-conference-members "
+                    f"--conference-id {conference_id}"
                 ),
                 (
-                    f"uv run polibase match-conference-members "
-                    f"--conference-id {conference_id}"
-                ),
-                (
-                    f"uv run polibase create-affiliations "
+                    "uv run polibase create-affiliations "
                     f"--conference-id {conference_id} "
                     f"--start-date {batch_start_date.strftime('%Y-%m-%d')}"
                 ),
@@ -844,8 +844,8 @@ def execute_conference_member_processes():
                         )
                         role: str = member.extracted_role or "委員"
                         st.success(
-                            f"{member.extracted_name} ({role}) "
-                            f"→ {member.politician_name} {confidence_text}"
+                            f"{member.extracted_name} ({role}) → "
+                            f"{member.politician_name} {confidence_text}"
                         )
 
                 # 要確認
@@ -860,8 +860,8 @@ def execute_conference_member_processes():
                         )
                         role: str = member.extracted_role or "委員"
                         st.warning(
-                            f"{member.extracted_name} ({role}) "
-                            f"→ {member.politician_name} {confidence_text}"
+                            f"{member.extracted_name} ({role}) → "
+                            f"{member.politician_name} {confidence_text}"
                         )
 
                 # 未処理
@@ -942,9 +942,11 @@ def execute_scraping_processes():
             else:
                 # 会議選択のためのフォーマット
                 meeting_options = ["選択してください"] + [
-                    f"{meeting.date} - {meeting.governing_body_name} "
-                    f"{meeting.conference_name} {meeting.name or ''} "
-                    f"(ID: {meeting.id})"
+                    (
+                        f"{meeting.date} - {meeting.governing_body_name} "
+                        f"{meeting.conference_name} {meeting.name or ''} "
+                        f"(ID: {meeting.id})"
+                    )
                     for meeting in meetings
                 ]
 

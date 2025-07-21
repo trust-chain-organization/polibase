@@ -205,16 +205,12 @@ class SeedGenerator:
                     conf_type = conf["type"].replace("'", "''")
                     lines.append(
                         f"('{conf_name}', '{conf_type}', "
-                        f"{governing_body_part}, "
-                        f"{members_url}"
-                        f"){comma}"
+                        f"{governing_body_part}, {members_url}){comma}"
                     )
                 else:
                     lines.append(
                         f"('{conf_name}', NULL, "
-                        f"{governing_body_part}, "
-                        f"{members_url}"
-                        f"){comma}"
+                        f"{governing_body_part}, {members_url}){comma}"
                     )
 
             first_group = False

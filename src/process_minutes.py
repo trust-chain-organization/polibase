@@ -417,7 +417,7 @@ def main() -> list[int] | None:
                 except Exception as e:
                     logger.warning(
                         f"Failed to initialize GCS or download content: {e}, "
-                        f"falling back to PDF extraction"
+                        "falling back to PDF extraction"
                     )
 
         # GCSから取得できなかった場合は、通常のPDF読み込み

@@ -151,8 +151,8 @@ class ConferenceMemberMatchingService:
                 selected_politician_id = candidates[selected_num - 1]["id"]
                 logger.info(
                     f"LLM matched '{extracted_member['extracted_name']}' to "
-                    f"politician ID {selected_politician_id} "
-                    f"with confidence {confidence}"
+                    f"politician ID {selected_politician_id} with confidence "
+                    f"{confidence}"
                 )
                 return selected_politician_id, confidence
             else:

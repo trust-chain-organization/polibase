@@ -134,8 +134,8 @@ class PoliticianCommands(BaseCommand):
 
                         # LLMで議員情報を抽出
                         with spinner(
-                            f"Extracting member information using LLM "
-                            f"for {party.name}..."
+                            f"Extracting member information using LLM for "
+                            f"{party.name}..."
                         ):
                             result = extractor.extract_from_pages(pages, party.name)
 

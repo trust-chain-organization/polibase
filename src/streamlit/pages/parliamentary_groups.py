@@ -94,8 +94,8 @@ def manage_parliamentary_groups():
                                     st.code(seed_content, language="sql")
                             except Exception as e:
                                 st.error(
-                                    f"❌ SEEDファイル生成中にエラーが"
-                                    f"発生しました: {str(e)}"
+                                    "❌ SEEDファイル生成中にエラーが発生しました: "
+                                    f"{str(e)}"
                                 )
 
             st.markdown("---")
@@ -210,8 +210,7 @@ def manage_parliamentary_groups():
                         )
                     else:
                         st.error(
-                            "議員団の登録に失敗しました"
-                            "（同じ名前の議員団が既に存在する可能性があります）"
+                            "議員団の登録に失敗しました（同じ名前の議員団が既に存在する可能性があります）"
                         )
                 except Exception as e:
                     st.error(f"エラーが発生しました: {str(e)}")
@@ -267,7 +266,7 @@ def manage_parliamentary_groups():
                 group_options.append(display_name)
                 group_map[display_name] = group
 
-            selected_group_display = st.selectbox("編集する議員団を選択", group_options)  # type: ignore[arg-type]
+            selected_group_display = st.selectbox("編集する議員団を選択", group_options)
             selected_group: dict[str, Any] = group_map[selected_group_display]
 
             # 編集フォーム
@@ -491,8 +490,8 @@ def manage_parliamentary_groups():
                                 if r.politician_id is not None
                             )
                             st.info(
-                                f"マッチング成功: "
-                                f"{matched_count}/{len(matching_results)}名"
+                                f"マッチング成功: {matched_count}/"
+                                f"{len(matching_results)}名"
                             )
 
                             # マッチング詳細を表示
@@ -561,10 +560,8 @@ def manage_parliamentary_groups():
                                     for error in creation_result.errors[:5]:
                                         st.write(f"  - {error}")
                                     if len(creation_result.errors) > 5:
-                                        st.write(
-                                            f"  ... 他 "
-                                            f"{len(creation_result.errors) - 5}件"
-                                        )
+                                        remaining = len(creation_result.errors) - 5
+                                        st.write(f"  ... 他 {remaining}件")
 
                                 if not dry_run and creation_result.created_count > 0:
                                     st.info(

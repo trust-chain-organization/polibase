@@ -64,7 +64,7 @@ def main():
     if os.environ.get("STREAMLIT_RUNNING") != "true":
         print(
             f"\n❓ {stats['unlinked_conversations']}件の未紐付け会話を"
-            f"LLMでマッチング処理しますか？"
+            "LLMでマッチング処理しますか？"
         )
         print(
             "   注意: この処理にはGoogle Gemini APIが使用され、"
