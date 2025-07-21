@@ -27,10 +27,17 @@ class TestPartyMemberExtractor:
             mock_extraction_llm = Mock()
 
             # Setup mock service
+            mock_service.temperature = 0.1
+            mock_service.model_name = "test-model"
             mock_service.get_structured_llm.return_value = mock_extraction_llm
 
-            # Default return value for invoke_prompt
-            mock_service.invoke_prompt.return_value = PartyMemberList(
+            # Mock get_prompt to return a simple template
+            mock_prompt = Mock()
+            mock_prompt.format.return_value = "Test prompt"
+            mock_service.get_prompt.return_value = mock_prompt
+
+            # Default return value for extraction_llm.invoke
+            mock_extraction_llm.invoke.return_value = PartyMemberList(
                 members=[], total_count=0, party_name="テスト党"
             )
 
@@ -78,8 +85,8 @@ class TestPartyMemberExtractor:
 
     def test_extract_from_pages(self, extractor, sample_html):
         """複数ページからの抽出テスト"""
-        # モックLLMの設定 - Use invoke_prompt instead of extraction_llm
-        extractor._mock_service.invoke_prompt.side_effect = [
+        # モックLLMの設定
+        extractor.extraction_llm.invoke.side_effect = [
             PartyMemberList(
                 members=[
                     PartyMemberInfo(
@@ -139,7 +146,7 @@ class TestPartyMemberExtractor:
     def test_extract_from_single_page(self, extractor, sample_html):
         """単一ページからの抽出テスト"""
         # モックLLMの設定
-        extractor._mock_service.invoke_prompt.return_value = PartyMemberList(
+        extractor.extraction_llm.invoke.return_value = PartyMemberList(
             members=[
                 PartyMemberInfo(
                     name="田中三郎",
@@ -235,7 +242,7 @@ class TestPartyMemberExtractor:
     def test_extract_with_error(self, extractor):
         """エラー処理のテスト"""
         # モックLLMがエラーを発生させる
-        extractor._mock_service.invoke_prompt.side_effect = Exception("LLM Error")
+        extractor.extraction_llm.invoke.side_effect = Exception("LLM Error")
 
         page = WebPageContent(
             url="https://example.com/members",
@@ -252,7 +259,7 @@ class TestPartyMemberExtractor:
     def test_duplicate_removal(self, extractor):
         """重複除去のテスト"""
         # モックLLMの設定（同じ名前の議員を返す）
-        extractor._mock_service.invoke_prompt.side_effect = [
+        extractor.extraction_llm.invoke.side_effect = [
             PartyMemberList(
                 members=[PartyMemberInfo(name="重複太郎", position="衆議院議員")],
                 total_count=1,

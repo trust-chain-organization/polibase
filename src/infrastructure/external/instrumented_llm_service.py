@@ -24,7 +24,7 @@ from src.infrastructure.interfaces.llm_service import ILLMService
 logger = logging.getLogger(__name__)
 
 
-class InstrumentedLLMService:
+class InstrumentedLLMService(ILLMService):
     """Decorator for LLM services that adds automatic history recording."""
 
     def __init__(
@@ -54,10 +54,9 @@ class InstrumentedLLMService:
         self._input_reference_type = input_reference_type
         self._input_reference_id = input_reference_id
 
-    @property
-    def temperature(self) -> float:
-        """Get the temperature from the underlying LLM service."""
-        return self._llm_service.temperature
+        # Required attributes for ILLMService protocol
+        self.temperature = self._llm_service.temperature
+        self.model_name = self._model_name
 
     def set_input_reference(
         self, reference_type: str | None, reference_id: int | None
@@ -204,7 +203,8 @@ class InstrumentedLLMService:
 
         # Get reference info from context
         reference_type = "speaker"
-        reference_id = context.get("speaker_id", 0)
+        # TypedDict doesn't have speaker_id, use speaker_name as reference
+        reference_id = hash(context.get("speaker_name", "")) % 1000000
 
         return await self._record_processing(
             ProcessingType.SPEAKER_MATCHING,
@@ -323,14 +323,6 @@ class InstrumentedLLMService:
     def invoke_with_retry(self, chain: Any, inputs: dict[str, Any]) -> Any:
         """Delegate to wrapped LLM service."""
         return self._llm_service.invoke_with_retry(chain, inputs)
-
-    # Attribute delegation for compatibility
-    @property
-    def model_name(self) -> str:
-        """Get model name from wrapped service or return configured name."""
-        if hasattr(self._llm_service, "model_name"):
-            return self._llm_service.model_name
-        return self._model_name
 
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown attributes to wrapped service."""

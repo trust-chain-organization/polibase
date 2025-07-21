@@ -4,7 +4,7 @@ import asyncio
 import functools
 import time
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from src.common.logging import LogContext, get_logger
 from src.common.metrics import (
@@ -89,7 +89,7 @@ def measure_time(
                         threshold_seconds=log_slow_operations,
                     )
 
-                return result
+                return cast(T, result)
 
             except Exception as e:
                 # エラー時の処理
@@ -137,7 +137,7 @@ def measure_time(
                         threshold_seconds=log_slow_operations,
                     )
 
-                return result
+                return cast(T, result)
 
             except Exception as e:
                 # エラー時の処理

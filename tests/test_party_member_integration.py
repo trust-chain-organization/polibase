@@ -324,7 +324,20 @@ class TestPartyMemberIntegration:
             "src.party_member_extractor.extractor.LLMServiceFactory"
         ) as mock_factory:
             mock_service = Mock()
-            mock_service.invoke_prompt.side_effect = [
+            mock_extraction_llm = Mock()
+
+            # Setup mock service attributes
+            mock_service.temperature = 0.1
+            mock_service.model_name = "test-model"
+            mock_service.get_structured_llm.return_value = mock_extraction_llm
+
+            # Mock get_prompt
+            mock_prompt = Mock()
+            mock_prompt.format.return_value = "Test prompt"
+            mock_service.get_prompt.return_value = mock_prompt
+
+            # Setup extraction_llm.invoke to return results with error on 2nd page
+            mock_extraction_llm.invoke.side_effect = [
                 PartyMemberList(
                     members=[PartyMemberInfo(name="成功太郎", position="衆議院議員")],
                     total_count=1,

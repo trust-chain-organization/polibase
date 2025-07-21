@@ -150,18 +150,23 @@ def show_meetings_list():
                     st.markdown(f"URL: {url_display}")
 
                 # GCS URIを表示
-                gcs_pdf_uri: Any = row.get("gcs_pdf_uri", None)  # type: ignore[index]
-                gcs_text_uri: Any = row.get("gcs_text_uri", None)  # type: ignore[index]
+                row_dict = cast(dict[str, Any], row)
+                gcs_pdf_uri: str | None = cast(
+                    str | None, row_dict.get("gcs_pdf_uri", None)
+                )
+                gcs_text_uri: str | None = cast(
+                    str | None, row_dict.get("gcs_text_uri", None)
+                )
 
-                if pd.notna(gcs_pdf_uri) and gcs_pdf_uri:  # type: ignore[arg-type]
-                    st.markdown(f"📄 PDF URI: `{gcs_pdf_uri}`")  # type: ignore[arg-type]
-                if pd.notna(gcs_text_uri) and gcs_text_uri:  # type: ignore[arg-type]
-                    st.markdown(f"📝 Text URI: `{gcs_text_uri}`")  # type: ignore[arg-type]
+                if gcs_pdf_uri is not None and gcs_pdf_uri:
+                    st.markdown(f"📄 PDF URI: `{gcs_pdf_uri}`")
+                if gcs_text_uri is not None and gcs_text_uri:
+                    st.markdown(f"📝 Text URI: `{gcs_text_uri}`")
 
                 if not (
-                    (pd.notna(gcs_pdf_uri) and gcs_pdf_uri)
-                    or (pd.notna(gcs_text_uri) and gcs_text_uri)
-                ):  # type: ignore[arg-type]
+                    (gcs_pdf_uri is not None and gcs_pdf_uri)
+                    or (gcs_text_uri is not None and gcs_text_uri)
+                ):
                     st.markdown(
                         "🔸 *GCS未アップロード*",
                         help="議事録スクレイピングを実行するとGCSにアップロードされます",

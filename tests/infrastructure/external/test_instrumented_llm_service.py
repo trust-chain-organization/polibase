@@ -24,6 +24,10 @@ from src.infrastructure.external.instrumented_llm_service import InstrumentedLLM
 class MockLLMService:
     """Mock LLM service for testing."""
 
+    def __init__(self):
+        self.temperature = 0.1
+        self.model_name = "test-model"
+
     async def set_history_repository(
         self, repository: LLMProcessingHistoryRepository | None
     ) -> None:
@@ -106,7 +110,12 @@ class TestInstrumentedLLMService:
     ):
         """Test speaker matching records history."""
         context = LLMSpeakerMatchContext(
-            speaker_name="Test Speaker", speaker_id=1, candidates=[]
+            speaker_name="Test Speaker",
+            normalized_name="test speaker",
+            party_affiliation=None,
+            position=None,
+            meeting_date="2024-01-01",
+            candidates=[],
         )
 
         result = await instrumented_service.match_speaker_to_politician(context)
@@ -127,7 +136,9 @@ class TestInstrumentedLLMService:
         assert history_call.model_name == "test-model"
         assert history_call.model_version == "1.0.0"
         assert history_call.input_reference_type == "speaker"
-        assert history_call.input_reference_id == 1
+        assert (
+            history_call.input_reference_id > 0
+        )  # Generated from hash of speaker name
 
     @pytest.mark.asyncio
     async def test_extract_speeches_with_history(
@@ -227,7 +238,12 @@ class TestInstrumentedLLMService:
         )
 
         context = LLMSpeakerMatchContext(
-            speaker_name="Test Speaker", speaker_id=1, candidates=[]
+            speaker_name="Test Speaker",
+            normalized_name="test speaker",
+            party_affiliation=None,
+            position=None,
+            meeting_date="2024-01-01",
+            candidates=[],
         )
 
         # Should raise the exception
@@ -254,7 +270,12 @@ class TestInstrumentedLLMService:
         )
 
         context = LLMSpeakerMatchContext(
-            speaker_name="Test Speaker", speaker_id=1, candidates=[]
+            speaker_name="Test Speaker",
+            normalized_name="test speaker",
+            party_affiliation=None,
+            position=None,
+            meeting_date="2024-01-01",
+            candidates=[],
         )
 
         # Should work normally without recording history
@@ -309,8 +330,7 @@ class TestInstrumentedLLMService:
         # Verify it was set
         assert service._history_repository == new_repo
 
-    @pytest.mark.asyncio
-    async def test_extract_result_metadata(self, instrumented_service):
+    def test_extract_result_metadata(self, instrumented_service):
         """Test metadata extraction from results."""
         # Dict result with matching fields
         dict_result = {"matched": True, "confidence": 0.8, "other": "data"}
