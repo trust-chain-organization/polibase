@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from src.database.base_repository import BaseRepository
 from src.database.speaker_matching_service import SpeakerMatchingService
@@ -23,8 +24,12 @@ logger = logging.getLogger(__name__)
 class ConversationRepository(BaseRepository):
     """Conversationsテーブルに対するデータベース操作を管理するクラス"""
 
-    def __init__(self, speaker_matching_service: SpeakerMatchingService | None = None):
-        super().__init__(use_session=True)
+    def __init__(
+        self,
+        speaker_matching_service: SpeakerMatchingService | None = None,
+        session: Session | None = None,
+    ):
+        super().__init__(use_session=True, session=session)
         self.speaker_matching_service = speaker_matching_service
 
     def save_speaker_and_speech_content_list(

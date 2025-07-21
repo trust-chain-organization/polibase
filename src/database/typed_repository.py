@@ -18,7 +18,13 @@ logger = logging.getLogger(__name__)
 class TypedRepository[T: PydanticBaseModel]:
     """Type-safe repository base class with common database operations."""
 
-    def __init__(self, model_class: type[T], table_name: str, use_session: bool = True):
+    def __init__(
+        self,
+        model_class: type[T],
+        table_name: str,
+        use_session: bool = True,
+        session: Session | None = None,
+    ):
         """
         Initialize repository with model class and table name.
 
@@ -26,6 +32,8 @@ class TypedRepository[T: PydanticBaseModel]:
             model_class: The Pydantic model class this repository handles
             table_name: Name of the database table
             use_session: If True, use SQLAlchemy session. If False, use engine directly.
+            session: Optional external session to use. If provided, this session will be
+                used instead of creating a new one.
         """
         self.model_class = model_class
         self.table_name = table_name
@@ -34,7 +42,7 @@ class TypedRepository[T: PydanticBaseModel]:
         self._engine: Engine | None = None
 
         if use_session:
-            self._session = get_db_session()
+            self._session = session if session is not None else get_db_session()
         else:
             self._engine = get_db_engine()
 
