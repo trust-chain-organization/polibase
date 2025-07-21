@@ -89,7 +89,8 @@ def manage_conferences():
                                     st.code(seed_content, language="sql")
                             except Exception as e:
                                 st.error(
-                                    f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
+                                    "❌ SEEDファイル生成中にエラーが発生しました: "
+                                    f"{str(e)}"
                                 )
 
             st.markdown("---")
@@ -378,8 +379,8 @@ def manage_conferences():
             st.info("編集する会議体がありません")
         else:
             # 会議体選択
-            conf_options = []
-            conf_map = {}
+            conf_options: list[str] = []
+            conf_map: dict[str, dict[str, Any]] = {}
             for conf in conferences:
                 display_name = f"{conf['governing_body_name']} - {conf['name']}"
                 if conf.get("type"):

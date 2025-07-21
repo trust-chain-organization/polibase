@@ -420,7 +420,10 @@ class PoliticianMatchingService:
                         stats["high_confidence_matches"] += 1
 
                     logger.info(
-                        f"マッチ成功: {speaker_name} → {match_result.politician_name} ({match_result.political_party_name}) (信頼度: {match_result.confidence:.2f})"
+                        f"マッチ成功: {speaker_name} → "
+                        f"{match_result.politician_name} "
+                        f"({match_result.political_party_name}) "
+                        f"(信頼度: {match_result.confidence:.2f})"
                     )
                 else:
                     stats["failed_matches"] += 1

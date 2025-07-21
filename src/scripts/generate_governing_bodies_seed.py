@@ -131,7 +131,8 @@ def main():
         f.write(f"-- Generated from database on {now}\n")
         f.write("-- governing_bodies seed data\n\n")
         f.write(
-            "INSERT INTO governing_bodies (name, type, organization_code, organization_type) VALUES\n"
+            "INSERT INTO governing_bodies "
+            "(name, type, organization_code, organization_type) VALUES\n"
         )
 
         # Group by type for better organization

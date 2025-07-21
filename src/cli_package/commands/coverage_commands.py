@@ -78,10 +78,12 @@ def coverage():
 
         click.echo(f"Total governing bodies: {total_governing_bodies:,}")
         click.echo(
-            f"Bodies with conferences: {bodies_with_conferences:,} ({conference_coverage:.1f}%)"
+            f"Bodies with conferences: {bodies_with_conferences:,} "
+            f"({conference_coverage:.1f}%)"
         )
         click.echo(
-            f"Bodies with meetings: {bodies_with_meetings:,} ({meeting_coverage:.1f}%)\n"
+            f"Bodies with meetings: {bodies_with_meetings:,} "
+            f"({meeting_coverage:.1f}%)\n"
         )
 
         click.echo("Breakdown by type:")
@@ -109,5 +111,6 @@ def coverage():
             click.echo("-" * 50)
             for body in uncovered_bodies:
                 click.echo(
-                    f"- {body.name} ({body.organization_type}, code: {body.organization_code})"
+                    f"- {body.name} ({body.organization_type}, "
+                    f"code: {body.organization_code})"
                 )

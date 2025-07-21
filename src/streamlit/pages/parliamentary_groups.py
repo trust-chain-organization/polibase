@@ -94,7 +94,8 @@ def manage_parliamentary_groups():
                                     st.code(seed_content, language="sql")
                             except Exception as e:
                                 st.error(
-                                    f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
+                                    "❌ SEEDファイル生成中にエラーが発生しました: "
+                                    f"{str(e)}"
                                 )
 
             st.markdown("---")
@@ -446,7 +447,8 @@ def manage_parliamentary_groups():
                             )
                         else:
                             st.success(
-                                f"✅ {len(extraction_result.extracted_members)}名のメンバーを抽出しました"
+                                f"✅ {len(extraction_result.extracted_members)}名の"
+                                "メンバーを抽出しました"
                             )
 
                             # 抽出されたメンバーを表示
@@ -488,7 +490,8 @@ def manage_parliamentary_groups():
                                 if r.politician_id is not None
                             )
                             st.info(
-                                f"マッチング成功: {matched_count}/{len(matching_results)}名"
+                                f"マッチング成功: {matched_count}/"
+                                f"{len(matching_results)}名"
                             )
 
                             # マッチング詳細を表示
@@ -525,7 +528,8 @@ def manage_parliamentary_groups():
                                         )
 
                                         st.success(
-                                            f"✅ {creation_result.created_count}件のメンバーシップを作成しました"
+                                            f"✅ {creation_result.created_count}件の"
+                                            "メンバーシップを作成しました"
                                         )
 
                                         if creation_result.errors:
@@ -547,7 +551,8 @@ def manage_parliamentary_groups():
                                     f"- 作成予定: {creation_result.created_count}件"
                                 )
                                 st.write(
-                                    f"- スキップ（既存）: {creation_result.skipped_count}件"
+                                    f"- スキップ（既存）: "
+                                    f"{creation_result.skipped_count}件"
                                 )
 
                                 if creation_result.errors:
@@ -555,9 +560,8 @@ def manage_parliamentary_groups():
                                     for error in creation_result.errors[:5]:
                                         st.write(f"  - {error}")
                                     if len(creation_result.errors) > 5:
-                                        st.write(
-                                            f"  ... 他 {len(creation_result.errors) - 5}件"
-                                        )
+                                        remaining = len(creation_result.errors) - 5
+                                        st.write(f"  ... 他 {remaining}件")
 
                                 if not dry_run and creation_result.created_count > 0:
                                     st.info(

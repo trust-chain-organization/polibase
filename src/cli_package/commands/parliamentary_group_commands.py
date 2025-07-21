@@ -203,7 +203,8 @@ def extract_group_members(
 
                 # グループごとの結果を表示
                 click.echo(
-                    f"\n{click.style(group['name'], fg='green')} (会議体: {group.get('conference_name', 'N/A')})"
+                    f"\n{click.style(group['name'], fg='green')} "
+                    f"(会議体: {group.get('conference_name', 'N/A')})"
                 )
                 click.echo(f"  抽出: {creation_result.total_extracted}名")
                 click.echo(f"  マッチング: {creation_result.matched_count}名")

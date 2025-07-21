@@ -95,7 +95,8 @@ def manage_governing_bodies():
                                     st.code(seed_content, language="sql")
                             except Exception as e:
                                 st.error(
-                                    f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
+                                    "❌ SEEDファイル生成中にエラーが発生しました: "
+                                    f"{str(e)}"
                                 )
 
             st.markdown("---")

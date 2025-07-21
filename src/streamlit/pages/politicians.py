@@ -70,10 +70,10 @@ def show_politicians_list():
             speaker_linked = len(df[df["has_speaker"] == "✅"])  # type: ignore[arg-type,index]
             st.metric("発言者リンク済み", f"{speaker_linked} / {len(df)}")
         with col3:
-            parties_count = df["party_id"].nunique()  # type: ignore[union-attr]
-            st.metric("政党数", parties_count)  # type: ignore[arg-type]
+            parties_count = df["party_id"].nunique()
+            st.metric("政党数", parties_count)
         with col4:
-            avg_conferences = df["conference_count"].mean()  # type: ignore[union-attr]
+            avg_conferences = df["conference_count"].mean()
             st.metric("平均所属会議体数", f"{avg_conferences:.1f}")
 
         # フィルタリング機能
@@ -100,16 +100,16 @@ def show_politicians_list():
         filtered_df = df.copy()
 
         if selected_party != "すべて":
-            filtered_df = filtered_df[filtered_df["party_name"] == selected_party]  # type: ignore[index]
+            filtered_df = filtered_df[filtered_df["party_name"] == selected_party]
 
         if selected_speaker == "リンク済み":
-            filtered_df = filtered_df[filtered_df["has_speaker"] == "✅"]  # type: ignore[index]
+            filtered_df = filtered_df[filtered_df["has_speaker"] == "✅"]
         elif selected_speaker == "未リンク":
-            filtered_df = filtered_df[filtered_df["has_speaker"] == "❌"]  # type: ignore[index]
+            filtered_df = filtered_df[filtered_df["has_speaker"] == "❌"]
 
         if search_name:
-            filtered_df = filtered_df[  # type: ignore[index]
-                filtered_df["name"].str.contains(search_name, na=False)  # type: ignore[union-attr]
+            filtered_df = filtered_df[
+                filtered_df["name"].str.contains(search_name, na=False)
             ]
 
         # 表示カラムの選択
@@ -253,7 +253,7 @@ def show_politician_details():
 
                 if affiliations:
                     aff_df = pd.DataFrame(affiliations)
-                    aff_df["期間"] = aff_df.apply(  # type: ignore[union-attr]
+                    aff_df["期間"] = aff_df.apply(
                         lambda x: f"{x['start_date']} ～ {x['end_date'] or '現在'}",
                         axis=1,
                     )
@@ -266,7 +266,7 @@ def show_politician_details():
                             "role": "役職",
                         }
                     )
-                    st.dataframe(  # type: ignore[call-arg]
+                    st.dataframe(
                         display_aff_df, use_container_width=True, hide_index=True
                     )
                 else:

@@ -450,7 +450,9 @@ class SpeakerMatchingService:
 
                     confidence_emoji = "🟢" if match_result.confidence >= 0.9 else "🟡"
                     logger.info(
-                        f"  {confidence_emoji} マッチ成功: {speaker_name} → {match_result.speaker_name} (信頼度: {match_result.confidence:.2f})"
+                        f"  {confidence_emoji} マッチ成功: {speaker_name} → "
+                        f"{match_result.speaker_name} "
+                        f"(信頼度: {match_result.confidence:.2f})"
                     )
                 else:
                     stats["failed_matches"] += 1

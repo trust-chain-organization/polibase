@@ -204,11 +204,13 @@ class SeedGenerator:
                 if conf.get("type"):
                     conf_type = conf["type"].replace("'", "''")
                     lines.append(
-                        f"('{conf_name}', '{conf_type}', {governing_body_part}, {members_url}){comma}"
+                        f"('{conf_name}', '{conf_type}', "
+                        f"{governing_body_part}, {members_url}){comma}"
                     )
                 else:
                     lines.append(
-                        f"('{conf_name}', NULL, {governing_body_part}, {members_url}){comma}"
+                        f"('{conf_name}', NULL, "
+                        f"{governing_body_part}, {members_url}){comma}"
                     )
 
             first_group = False
@@ -346,7 +348,13 @@ class SeedGenerator:
                 is_active = "true" if group.get("is_active", True) else "false"
 
                 lines.append(
-                    f"('{name}', (SELECT c.id FROM conferences c JOIN governing_bodies gb ON c.governing_body_id = gb.id WHERE c.name = '{conf_name_escaped}' AND gb.name = '{body_name_escaped}' AND gb.type = '{body_type_escaped}'), {url}, {description}, {is_active}){comma}"
+                    f"('{name}', "
+                    f"(SELECT c.id FROM conferences c "
+                    f"JOIN governing_bodies gb ON c.governing_body_id = gb.id "
+                    f"WHERE c.name = '{conf_name_escaped}' "
+                    f"AND gb.name = '{body_name_escaped}' "
+                    f"AND gb.type = '{body_type_escaped}'), "
+                    f"{url}, {description}, {is_active}){comma}"
                 )
 
             first_group = False
@@ -421,7 +429,12 @@ class SeedGenerator:
             )
 
             lines.append(
-                f"((SELECT c.id FROM conferences c JOIN governing_bodies gb ON c.governing_body_id = gb.id WHERE c.name = '{conf_name_escaped}' AND gb.name = '{body_name_escaped}' AND gb.type = '{body_type_escaped}'), '{date_str}', {url}, {gcs_pdf_uri}, {gcs_text_uri}){comma}"
+                f"((SELECT c.id FROM conferences c "
+                f"JOIN governing_bodies gb ON c.governing_body_id = gb.id "
+                f"WHERE c.name = '{conf_name_escaped}' "
+                f"AND gb.name = '{body_name_escaped}' "
+                f"AND gb.type = '{body_type_escaped}'), "
+                f"'{date_str}', {url}, {gcs_pdf_uri}, {gcs_text_uri}){comma}"
             )
 
         lines.append(";")

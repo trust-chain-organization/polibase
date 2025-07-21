@@ -101,7 +101,8 @@ class SyncLLMHistoryHelper:
 
             match_status = "matched" if matched else "not matched"
             logger.debug(
-                f"Recorded speaker matching history: {speaker_name} -> {match_status} (confidence: {confidence})"
+                f"Recorded speaker matching history: {speaker_name} -> "
+                f"{match_status} (confidence: {confidence})"
             )
 
         except Exception as e:

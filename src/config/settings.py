@@ -116,7 +116,8 @@ class Settings:
         # Warn about missing API keys (not required for all operations)
         if not self.google_api_key:
             logger.warning(
-                "GOOGLE_API_KEY is not set. LLM features will not work. Please set it in your .env file or environment variables."
+                "GOOGLE_API_KEY is not set. LLM features will not work. "
+                "Please set it in your .env file or environment variables."
             )
 
     def _validate_paths(self) -> None:

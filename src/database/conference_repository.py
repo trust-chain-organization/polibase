@@ -364,7 +364,8 @@ class ConferenceRepository:
 
             if count > 0:
                 logger.warning(
-                    f"Cannot delete conference {conference_id}: has {count} related meetings"
+                    f"Cannot delete conference {conference_id}: "
+                    f"has {count} related meetings"
                 )
                 return False
 

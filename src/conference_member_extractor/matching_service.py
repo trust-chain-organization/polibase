@@ -150,7 +150,9 @@ class ConferenceMemberMatchingService:
             if 1 <= selected_num <= len(candidates):
                 selected_politician_id = candidates[selected_num - 1]["id"]
                 logger.info(
-                    f"LLM matched '{extracted_member['extracted_name']}' to politician ID {selected_politician_id} with confidence {confidence}"
+                    f"LLM matched '{extracted_member['extracted_name']}' to "
+                    f"politician ID {selected_politician_id} with confidence "
+                    f"{confidence}"
                 )
                 return selected_politician_id, confidence
             else:
@@ -316,7 +318,8 @@ class ConferenceMemberMatchingService:
                             affiliation_id=existing["id"], end_date=end_date
                         )
                         logger.info(
-                            f"Ended existing affiliation {existing['id']} for politician {member['politician_name']} on {end_date}"
+                            f"Ended existing affiliation {existing['id']} for "
+                            f"politician {member['politician_name']} on {end_date}"
                         )
 
                 # 所属情報をUPSERT
@@ -330,7 +333,8 @@ class ConferenceMemberMatchingService:
                 if affiliation_id:
                     results["created"] += 1
                     logger.info(
-                        f"Created/Updated affiliation for politician {member['politician_name']} in {member['conference_name']}"
+                        f"Created/Updated affiliation for politician "
+                        f"{member['politician_name']} in {member['conference_name']}"
                     )
                 else:
                     results["failed"] += 1

@@ -201,7 +201,11 @@ def execute_minutes_processes():
                     else "URLなし"
                 )
                 st.info(
-                    f"**選択された会議の詳細:**\n- 開催主体: {selected_meeting_info['governing_body_name']}\n- 会議体: {selected_meeting_info['conference_name']}\n- 開催日: {meeting_date_str}\n- URL: {meeting_url}"
+                    f"**選択された会議の詳細:**\n"
+                    f"- 開催主体: {selected_meeting_info['governing_body_name']}\n"
+                    f"- 会議体: {selected_meeting_info['conference_name']}\n"
+                    f"- 開催日: {meeting_date_str}\n"
+                    f"- URL: {meeting_url}"
                 )
 
         repo.close()
@@ -604,7 +608,10 @@ def execute_conference_member_processes():
 
     with col1:
         st.info(
-            f"**会議体情報:**\n- 開催主体: {selected_conf.governing_body_name}\n- 会議体名: {selected_conf.name}\n- 議員紹介URL: {selected_conf.members_introduction_url}"
+            f"**会議体情報:**\n"
+            f"- 開催主体: {selected_conf.governing_body_name}\n"
+            f"- 会議体名: {selected_conf.name}\n"
+            f"- 議員紹介URL: {selected_conf.members_introduction_url}"
         )
 
     with col2:
@@ -701,14 +708,18 @@ def execute_conference_member_processes():
             # 3つのコマンドを順番に実行
             commands = [
                 (
-                    f"uv run polibase extract-conference-members --conference-id {conference_id}"
-                    + (" --force" if batch_force else "")
+                    "uv run polibase extract-conference-members "
+                    f"--conference-id {conference_id}"
+                )
+                + (" --force" if batch_force else ""),
+                (
+                    "uv run polibase match-conference-members "
+                    f"--conference-id {conference_id}"
                 ),
                 (
-                    f"uv run polibase match-conference-members --conference-id {conference_id}"
-                ),
-                (
-                    f"uv run polibase create-affiliations --conference-id {conference_id} --start-date {batch_start_date.strftime('%Y-%m-%d')}"
+                    "uv run polibase create-affiliations "
+                    f"--conference-id {conference_id} "
+                    f"--start-date {batch_start_date.strftime('%Y-%m-%d')}"
                 ),
             ]
 
@@ -833,7 +844,8 @@ def execute_conference_member_processes():
                         )
                         role: str = member.extracted_role or "委員"
                         st.success(
-                            f"{member.extracted_name} ({role}) → {member.politician_name} {confidence_text}"
+                            f"{member.extracted_name} ({role}) → "
+                            f"{member.politician_name} {confidence_text}"
                         )
 
                 # 要確認
@@ -848,7 +860,8 @@ def execute_conference_member_processes():
                         )
                         role: str = member.extracted_role or "委員"
                         st.warning(
-                            f"{member.extracted_name} ({role}) → {member.politician_name} {confidence_text}"
+                            f"{member.extracted_name} ({role}) → "
+                            f"{member.politician_name} {confidence_text}"
                         )
 
                 # 未処理
@@ -929,7 +942,11 @@ def execute_scraping_processes():
             else:
                 # 会議選択のためのフォーマット
                 meeting_options = ["選択してください"] + [
-                    f"{meeting.date} - {meeting.governing_body_name} {meeting.conference_name} {meeting.name or ''} (ID: {meeting.id})"
+                    (
+                        f"{meeting.date} - {meeting.governing_body_name} "
+                        f"{meeting.conference_name} {meeting.name or ''} "
+                        f"(ID: {meeting.id})"
+                    )
                     for meeting in meetings
                 ]
 

@@ -141,7 +141,8 @@ class SpeakerExtractorFromMinutes:
 
             stats = matching_service.batch_link_speakers_to_politicians()
             logger.info(
-                f"LLMマッチング完了 - 成功: {stats['successfully_matched']}件, 失敗: {stats['failed_matches']}件"
+                f"LLMマッチング完了 - 成功: {stats['successfully_matched']}件, "
+                f"失敗: {stats['failed_matches']}件"
             )
         else:
             # 従来のルールベースマッチング
@@ -271,16 +272,20 @@ class SpeakerExtractorFromMinutes:
                             else:
                                 matched_politician_id = politician.id
                             logger.info(
-                                f"政党名で絞り込み紐付け: {speaker['name']} ({speaker['political_party_name']}) -> 政治家ID: {matched_politician_id}"
+                                f"政党名で絞り込み紐付け: {speaker['name']} "
+                                f"({speaker['political_party_name']}) -> "
+                                f"政治家ID: {matched_politician_id}"
                             )
                             linked_count += 1
                         else:
                             logger.warning(
-                                f"複数の政治家候補が存在: {speaker['name']} ({len(politicians)}件)"
+                                f"複数の政治家候補が存在: {speaker['name']} "
+                                f"({len(politicians)}件)"
                             )
                     else:
                         logger.warning(
-                            f"政党名が不明で複数の政治家候補が存在: {speaker['name']} ({len(politicians)}件)"
+                            f"政党名が不明で複数の政治家候補が存在: "
+                            f"{speaker['name']} ({len(politicians)}件)"
                         )
 
             self.session.commit()
@@ -340,7 +345,8 @@ class SpeakerExtractorFromMinutes:
                         {"speaker_id": matched_speaker["id"], "id": conversation_id},
                     )
                     logger.debug(
-                        f"LLMマッチング成功: '{speaker_name}' -> Speaker ID: {matched_speaker['id']}"
+                        f"LLMマッチング成功: '{speaker_name}' -> "
+                        f"Speaker ID: {matched_speaker['id']}"
                     )
                 else:
                     logger.debug(f"LLMマッチング失敗: '{speaker_name}'")

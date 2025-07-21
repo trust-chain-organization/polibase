@@ -335,7 +335,8 @@ JSONで回答してください。
             # 信頼度が閾値未満
             if match.confidence_score < confidence_threshold:
                 result.errors.append(
-                    f"{match.extracted_member.name}: 信頼度が低い ({match.confidence_score:.2f} < {confidence_threshold})"
+                    f"{match.extracted_member.name}: 信頼度が低い "
+                    f"({match.confidence_score:.2f} < {confidence_threshold})"
                 )
                 continue
 

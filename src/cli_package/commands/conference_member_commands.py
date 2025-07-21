@@ -143,7 +143,8 @@ class ConferenceMemberCommands(BaseCommand):
                         total_saved += int(result["saved_count"])
 
                         ConferenceMemberCommands.echo_success(
-                            f"  ✓ {conf['name']}: {result['extracted_count']}人を抽出、{result['saved_count']}人を保存"
+                            f"  ✓ {conf['name']}: {result['extracted_count']}人を抽出、"
+                            f"{result['saved_count']}人を保存"
                         )
 
                 except (ScrapingError, DatabaseError) as e:
@@ -349,7 +350,9 @@ class ConferenceMemberCommands(BaseCommand):
                         else ""
                     )
                     ConferenceMemberCommands.echo_success(
-                        f"  • {member['extracted_name']}{role} → {member['politician_name']} (信頼度: {member['matching_confidence']:.2f})"
+                        f"  • {member['extracted_name']}{role} → "
+                        f"{member['politician_name']} "
+                        f"(信頼度: {member['matching_confidence']:.2f})"
                     )
                 if len(matched) > 10:
                     ConferenceMemberCommands.echo_success(
