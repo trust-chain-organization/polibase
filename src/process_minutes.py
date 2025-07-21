@@ -4,6 +4,8 @@
 Processes meeting minutes PDF files and extracts individual conversations.
 """
 
+import argparse
+import os
 import sys
 
 from src.common.app_logic import (
@@ -13,7 +15,7 @@ from src.common.app_logic import (
 )
 from src.common.instrumentation import measure_time
 from src.common.logging import get_logger
-from src.common.metrics import CommonMetrics
+from src.common.metrics import CommonMetrics, setup_metrics
 from src.config import config
 from src.database.conversation_repository import ConversationRepository
 from src.exceptions import (
@@ -146,8 +148,6 @@ def process_minutes(
 
     try:
         # Check for API key
-        import os
-
         if not os.getenv("GOOGLE_API_KEY"):
             raise APIKeyError(
                 "GOOGLE_API_KEY not set. Please configure it in your .env file",
@@ -212,8 +212,16 @@ def main() -> list[int] | None:
         # 環境設定
         setup_environment()
 
+        # メトリクスの初期化（Streamlitから実行される場合はPrometheusを無効化）
+        enable_prometheus = os.getenv("STREAMLIT_RUNNING") != "true"
+        setup_metrics(
+            service_name="polibase",
+            service_version="1.0.0",
+            prometheus_port=9090,
+            enable_prometheus=enable_prometheus,
+        )
+
         # コマンドライン引数からmeeting_idを取得（オプション）
-        import argparse
 
         parser = argparse.ArgumentParser(description="Process meeting minutes")
         parser.add_argument(
