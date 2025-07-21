@@ -279,6 +279,101 @@ class TestConversationRepository(unittest.TestCase):
         # close()は呼ばれないはず
         self.mock_session.close.assert_not_called()
 
+    def test_get_conversations_with_pagination(self):
+        """ページネーション付き発言データ取得テスト"""
+        # モックデータの準備
+        # 総件数取得のモック
+        mock_count_result = MagicMock()
+        mock_count_result.fetchone.return_value = [100]
+
+        # データ取得のモック
+        mock_data_result = MagicMock()
+        mock_conversations = [
+            (
+                1,
+                1,
+                123,
+                "委員長(田中太郎)",
+                "議事を開始します。",
+                1,
+                1,
+                1,
+                "2024-01-01",
+                "2024-01-01",
+                "田中太郎",
+                1,
+                "2024-01-01",
+                1,
+                "本会議",
+                1,
+                "東京都",
+                "都道府県",
+            ),
+            (
+                2,
+                1,
+                None,
+                "◆委員(佐藤花子)",
+                "質問があります。",
+                2,
+                1,
+                2,
+                "2024-01-01",
+                "2024-01-01",
+                None,
+                1,
+                "2024-01-01",
+                1,
+                "本会議",
+                1,
+                "東京都",
+                "都道府県",
+            ),
+        ]
+        mock_data_result.fetchall.return_value = mock_conversations
+        mock_data_result.keys.return_value = [
+            "id",
+            "minutes_id",
+            "speaker_id",
+            "speaker_name",
+            "comment",
+            "sequence_number",
+            "chapter_number",
+            "sub_chapter_number",
+            "created_at",
+            "updated_at",
+            "linked_speaker_name",
+            "meeting_id",
+            "meeting_date",
+            "conference_id",
+            "conference_name",
+            "governing_body_id",
+            "governing_body_name",
+            "governing_body_type",
+        ]
+
+        # executeが2回呼ばれる（カウントクエリとデータクエリ）
+        self.mock_session.execute.side_effect = [mock_count_result, mock_data_result]
+
+        # 実行
+        result = self.repository.get_conversations_with_pagination(
+            limit=50, offset=0, conference_id=1
+        )
+
+        # 検証
+        self.assertEqual(result["total"], 100)
+        self.assertEqual(result["limit"], 50)
+        self.assertEqual(result["offset"], 0)
+        self.assertEqual(len(result["conversations"]), 2)
+        self.assertEqual(result["conversations"][0]["id"], 1)
+        self.assertEqual(result["conversations"][0]["conference_name"], "本会議")
+        self.assertEqual(result["conversations"][1]["speaker_id"], None)
+
+        # executeが2回呼ばれていることを確認
+        self.assertEqual(self.mock_session.execute.call_count, 2)
+        # close()は呼ばれないはず
+        self.mock_session.close.assert_not_called()
+
     def test_update_speaker_links_success(self):
         """発言者紐付け更新成功テスト"""
         # 紐付けされていない発言データをモック

@@ -24,6 +24,7 @@ from src.interfaces.web.llm_history_page import manage_llm_history  # noqa: E402
 from src.streamlit.pages import (  # noqa: E402
     execute_processes,
     manage_conferences,
+    manage_conversations,
     manage_conversations_speakers,
     manage_governing_bodies,
     manage_meetings,
@@ -74,6 +75,7 @@ def home_page():
 
         ### 📊 [LLM履歴](/llm-history)
         LLM処理履歴の確認と検索
+
         """)
 
 
