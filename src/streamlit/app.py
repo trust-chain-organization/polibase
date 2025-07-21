@@ -24,6 +24,7 @@ from src.interfaces.web.llm_history_page import manage_llm_history  # noqa: E402
 from src.streamlit.pages import (  # noqa: E402
     execute_processes,
     manage_conferences,
+    manage_conversations,
     manage_conversations_speakers,
     manage_governing_bodies,
     manage_meetings,
@@ -74,6 +75,9 @@ def home_page():
 
         ### 📊 [LLM履歴](/llm-history)
         LLM処理履歴の確認と検索
+
+        ### 💬 [発言レコード一覧](/conversations)
+        議事録分割で生成された発言レコード一覧
         """)
 
 
@@ -118,6 +122,12 @@ def main():
             icon="💬",
         ),
         st.Page(manage_llm_history, title="LLM履歴", url_path="llm-history", icon="📊"),
+        st.Page(
+            manage_conversations,
+            title="発言レコード一覧",
+            url_path="conversations",
+            icon="💬",
+        ),
     ]
 
     # ナビゲーション設定

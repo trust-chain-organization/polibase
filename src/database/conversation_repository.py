@@ -329,6 +329,97 @@ class ConversationRepository(BaseRepository):
         results = self.fetch_as_dict(query, {"minutes_id": minutes_id})
         return results
 
+    def get_conversations_with_pagination(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        conference_id: int | None = None,
+        meeting_id: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        ページネーション付きでConversationレコードを取得する
+
+        Args:
+            limit: 取得件数
+            offset: オフセット
+            conference_id: 会議体IDでフィルタ（オプション）
+            meeting_id: 会議IDでフィルタ（オプション）
+
+        Returns:
+            dict: {
+                "conversations": List[dict],  # Conversationレコードのリスト
+                "total": int,  # 総件数
+                "limit": int,  # 取得件数
+                "offset": int  # オフセット
+            }
+        """
+        # 基本クエリ
+        base_query = """
+            FROM conversations c
+            LEFT JOIN speakers s ON c.speaker_id = s.id
+            LEFT JOIN minutes min ON c.minutes_id = min.id
+            LEFT JOIN meetings m ON min.meeting_id = m.id
+            LEFT JOIN conferences conf ON m.conference_id = conf.id
+            LEFT JOIN governing_bodies gb ON conf.governing_body_id = gb.id
+        """
+
+        # WHERE句の構築
+        where_conditions = []
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+
+        if conference_id is not None:
+            where_conditions.append("m.conference_id = :conference_id")
+            params["conference_id"] = conference_id
+
+        if meeting_id is not None:
+            where_conditions.append("m.id = :meeting_id")
+            params["meeting_id"] = meeting_id
+
+        where_clause = (
+            " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+        )
+
+        # 総件数を取得
+        count_query = f"SELECT COUNT(*) {base_query} {where_clause}"
+        total_count = self.fetch_one(count_query, params)
+        total = total_count[0] if total_count else 0
+
+        # データ取得クエリ
+        data_query = f"""
+            SELECT
+                c.id,
+                c.minutes_id,
+                c.speaker_id,
+                c.speaker_name,
+                c.comment,
+                c.sequence_number,
+                c.chapter_number,
+                c.sub_chapter_number,
+                c.created_at,
+                c.updated_at,
+                s.name as linked_speaker_name,
+                m.id as meeting_id,
+                m.date as meeting_date,
+                conf.id as conference_id,
+                conf.name as conference_name,
+                gb.id as governing_body_id,
+                gb.name as governing_body_name,
+                gb.type as governing_body_type
+            {base_query}
+            {where_clause}
+            ORDER BY c.created_at DESC, c.sequence_number ASC
+            LIMIT :limit OFFSET :offset
+        """
+
+        conversations = self.fetch_as_dict(data_query, params)
+
+        return {
+            "conversations": conversations,
+            "total": int(total),
+            "limit": limit,
+            "offset": offset,
+        }
+
     def get_all_conversations_without_speaker_id(self) -> list[dict[str, Any]]:
         """
         speaker_idが設定されていない全てのConversationレコードを取得する

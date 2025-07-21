@@ -1,6 +1,7 @@
 """Streamlit page modules"""
 
 from .conferences import manage_conferences
+from .conversations import manage_conversations
 from .conversations_speakers import manage_conversations_speakers
 from .governing_bodies import manage_governing_bodies
 from .meetings import manage_meetings
@@ -11,6 +12,7 @@ from .processes import execute_processes
 
 __all__ = [
     "manage_conferences",
+    "manage_conversations",
     "manage_conversations_speakers",
     "manage_governing_bodies",
     "manage_meetings",
