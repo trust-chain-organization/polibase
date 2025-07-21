@@ -71,7 +71,7 @@ def show_politicians_list():
             st.metric("発言者リンク済み", f"{speaker_linked} / {len(df)}")
         with col3:
             parties_count = df["party_id"].nunique()
-            st.metric("政党数", parties_count)
+            st.metric("政党数", parties_count)  # type: ignore[arg-type]
         with col4:
             avg_conferences = df["conference_count"].mean()
             st.metric("平均所属会議体数", f"{avg_conferences:.1f}")
@@ -109,7 +109,7 @@ def show_politicians_list():
 
         if search_name:
             filtered_df = filtered_df[
-                filtered_df["name"].str.contains(search_name, na=False)
+                filtered_df["name"].str.contains(search_name, na=False)  # type: ignore[union-attr]
             ]
 
         # 表示カラムの選択
