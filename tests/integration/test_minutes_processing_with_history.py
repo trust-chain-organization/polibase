@@ -133,6 +133,13 @@ class TestMinutesProcessingWithHistory:
         mock_service._input_reference_type = None
         mock_service._input_reference_id = None
 
+        # Add set_input_reference method to the mock
+        def set_input_reference(ref_type, ref_id):
+            mock_service._input_reference_type = ref_type
+            mock_service._input_reference_id = ref_id
+
+        mock_service.set_input_reference = Mock(side_effect=set_input_reference)
+
         # Configure factory to return our mock
         mock_factory = Mock()
         mock_factory.create_advanced.return_value = mock_service
@@ -147,7 +154,10 @@ class TestMinutesProcessingWithHistory:
             # Call process_minutes with meeting_id
             process_minutes("テストテキスト", meeting_id=456)
 
-            # Verify meeting context was set
+            # Verify set_input_reference was called
+            mock_service.set_input_reference.assert_called_once_with("meeting", 456)
+
+            # Verify meeting context was set via our side_effect
             assert mock_service._input_reference_type == "meeting"
             assert mock_service._input_reference_id == 456
 

@@ -143,8 +143,7 @@ class ConferenceMemberCommands(BaseCommand):
                         total_saved += int(result["saved_count"])
 
                         ConferenceMemberCommands.echo_success(
-                            f"  ✓ {conf['name']}: "
-                            f"{result['extracted_count']}人を抽出、"
+                            f"  ✓ {conf['name']}: {result['extracted_count']}人を抽出、"
                             f"{result['saved_count']}人を保存"
                         )
 
@@ -351,8 +350,8 @@ class ConferenceMemberCommands(BaseCommand):
                         else ""
                     )
                     ConferenceMemberCommands.echo_success(
-                        f"  • {member['extracted_name']}{role} "
-                        f"→ {member['politician_name']} "
+                        f"  • {member['extracted_name']}{role} → "
+                        f"{member['politician_name']} "
                         f"(信頼度: {member['matching_confidence']:.2f})"
                     )
                 if len(matched) > 10:

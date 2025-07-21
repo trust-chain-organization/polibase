@@ -50,7 +50,7 @@ class SpeakerMatchingService:
         if llm_service is None:
             # Use fast model with low temperature for consistency
             # Type ignore for unknown kwargs in LLMService
-            self.llm_service = LLMService.create_fast_instance(  # type: ignore[call-arg]
+            self.llm_service = LLMService.create_fast_instance(
                 temperature=0.1, max_tokens=1000
             )
         else:
@@ -64,7 +64,7 @@ class SpeakerMatchingService:
         self.model_name = getattr(self.llm_service, "model_name", "gemini-1.5-flash")
 
         # Create matching chain
-        self._matching_chain: Any = self.chain_factory.create_speaker_matching_chain(  # type: ignore[misc]
+        self._matching_chain: Any = self.chain_factory.create_speaker_matching_chain(
             SpeakerMatch
         )
 
@@ -115,7 +115,7 @@ class SpeakerMatchingService:
             )
 
             # Use chain factory with retry logic
-            result = self.chain_factory.invoke_with_retry(  # type: ignore[misc]
+            result = self.chain_factory.invoke_with_retry(
                 self._matching_chain,
                 {
                     "speaker_name": speaker_name,

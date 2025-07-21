@@ -134,8 +134,7 @@ class SpeakerExtractorFromMinutes:
 
             stats = matching_service.batch_link_speakers_to_politicians()
             logger.info(
-                f"LLMマッチング完了 - "
-                f"成功: {stats['successfully_matched']}件, "
+                f"LLMマッチング完了 - 成功: {stats['successfully_matched']}件, "
                 f"失敗: {stats['failed_matches']}件"
             )
         else:
@@ -168,9 +167,9 @@ class SpeakerExtractorFromMinutes:
                     politician_id: int | None
                     party_name: str | None
                     if isinstance(politician, dict):
-                        pol_id = politician.get("id")
+                        pol_id: Any = politician.get("id")
                         politician_id = pol_id if isinstance(pol_id, int) else None
-                        party_name_val = politician.get("political_party_name")
+                        party_name_val: Any = politician.get("political_party_name")
                         party_name = (
                             party_name_val if isinstance(party_name_val, str) else None
                         )
@@ -211,8 +210,11 @@ class SpeakerExtractorFromMinutes:
                         matched_politicians: list[Any] = []
                         for p in politicians:
                             if isinstance(p, dict):
+                                party_name_from_dict: Any = p.get(
+                                    "political_party_name"
+                                )
                                 if (
-                                    p.get("political_party_name")
+                                    party_name_from_dict
                                     == speaker["political_party_name"]
                                 ):
                                     matched_politicians.append(p)
@@ -246,9 +248,9 @@ class SpeakerExtractorFromMinutes:
                             self.speaker_repo.execute_query(
                                 update_query, {"id": speaker["id"]}
                             )
-                            # politicianが辞書の場合とオブジェクトの場合の両方に対応
+                            # politicianが辞書の場合とオブジェクトの場合の両方に対忎
                             if isinstance(politician, dict):
-                                pol_id = politician.get("id")
+                                pol_id: Any = politician.get("id")
                                 matched_politician_id: int | None = (
                                     pol_id if isinstance(pol_id, int) else None
                                 )

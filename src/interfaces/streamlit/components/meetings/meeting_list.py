@@ -65,7 +65,7 @@ def show_meetings_list():
         # DataFrameに変換
         df = pd.DataFrame(meetings)
         df["date"] = pd.to_datetime(df["date"])  # type: ignore
-        df = df.sort_values("date", ascending=False)  # type: ignore
+        df = df.sort_values("date", ascending=False)
 
         # 表示用のカラムを整形
         df["開催日"] = df["date"].dt.strftime("%Y年%m月%d日")  # type: ignore
@@ -74,7 +74,7 @@ def show_meetings_list():
         )
 
         # 編集・削除ボタン用のカラム
-        for _idx, row in df.iterrows():  # type: ignore
+        for _idx, row in df.iterrows():
             col1, col2, col3 = st.columns([6, 1, 1])
 
             with col1:
