@@ -203,7 +203,8 @@ class InstrumentedLLMService(ILLMService):
 
         # Get reference info from context
         reference_type = "speaker"
-        reference_id = context.get("speaker_id", 0)
+        # TypedDict doesn't have speaker_id, use speaker_name as reference
+        reference_id = hash(context.get("speaker_name", "")) % 1000000
 
         return await self._record_processing(
             ProcessingType.SPEAKER_MATCHING,
