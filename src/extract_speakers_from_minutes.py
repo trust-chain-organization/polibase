@@ -210,9 +210,7 @@ class SpeakerExtractorFromMinutes:
                         matched_politicians: list[Any] = []
                         for p in politicians:
                             if isinstance(p, dict):
-                                party_name_from_dict = p.get(
-                                    "political_party_name"
-                                )
+                                party_name_from_dict = p.get("political_party_name")
                                 if (
                                     party_name_from_dict
                                     == speaker["political_party_name"]
