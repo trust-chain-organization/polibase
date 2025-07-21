@@ -23,33 +23,6 @@ gcloud auth application-default login  # Authenticate for GCS access
 # Edit .env to set GCS_BUCKET_NAME and GCS_UPLOAD_ENABLED=true
 ```
 
-#### Git Worktree Support
-
-When using git worktree for parallel development, Docker ports are automatically assigned to avoid conflicts:
-
-```bash
-# Initial setup (one-time per repository clone)
-# Configure git to use project hooks
-./scripts/setup-git-hooks.sh
-
-# For each worktree (runs automatically on checkout if hooks are configured)
-./scripts/setup-worktree-ports.sh
-
-# Then use standard Docker commands as usual
-docker compose -f docker/docker-compose.yml up -d
-```
-
-The setup process:
-1. `setup-git-hooks.sh` configures git to use `.githooks/` directory
-2. Post-checkout hook automatically runs `setup-worktree-ports.sh`
-3. Creates `docker-compose.override.yml` with unique ports based on worktree name
-4. Port assignment is deterministic (same worktree name = same ports)
-
-Example port assignments:
-- Base ports: polibase=8000, streamlit=8501, monitoring=8502, postgres=5432
-- Offset calculated from worktree directory name (0-990)
-- Each worktree gets a unique set of ports to prevent conflicts
-
 ### Running the Application
 
 #### Using the Unified CLI (Recommended)
