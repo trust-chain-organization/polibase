@@ -1,5 +1,7 @@
 """発言・発言者管理ページ"""
 
+from typing import cast
+
 import pandas as pd
 
 import streamlit as st
@@ -98,9 +100,10 @@ def show_speakers_list():
 
         with col1:
             # 種別フィルタ
-            type_series: pd.Series = df["type"]
+            type_series = cast(pd.Series, df["type"])
             non_null_types = type_series[type_series.notna()]
-            unique_types = non_null_types.unique()
+            # uniqueメソッドを直接使用
+            unique_types = cast(pd.Series, non_null_types).unique()
             type_options = ["すべて"] + sorted(unique_types.tolist())
             selected_type = st.selectbox(
                 "種別", type_options, key="speaker_type_filter"
@@ -120,7 +123,7 @@ def show_speakers_list():
             )
 
         # フィルタリング適用
-        filtered_df: pd.DataFrame = df.copy()
+        filtered_df = df.copy()
 
         if selected_type != "すべて":
             filtered_df = filtered_df[filtered_df["type"] == selected_type]
@@ -131,7 +134,7 @@ def show_speakers_list():
             filtered_df = filtered_df[~filtered_df["is_politician"]]
 
         if search_name:
-            name_series: pd.Series = filtered_df["name"]
+            name_series = cast(pd.Series, filtered_df["name"])
             name_mask = name_series.astype(str).str.contains(
                 search_name, case=False, na=False
             )
@@ -164,7 +167,8 @@ def show_speakers_list():
         # ページネーション適用
         start_idx = (current_page - 1) * items_per_page
         end_idx = min(start_idx + items_per_page, total_items)
-        page_df = filtered_df.iloc[start_idx:end_idx].copy()
+        # DataFrameとして明示的にキャスト
+        page_df = cast(pd.DataFrame, filtered_df).iloc[start_idx:end_idx].copy()
 
         # 表示用のDataFrameを作成
         display_df = page_df.copy()
