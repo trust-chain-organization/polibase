@@ -50,3 +50,16 @@ class SpeakerMatchingDTO:
     matched_politician_name: str | None
     confidence_score: float
     matching_method: str  # "rule-based", "llm", "manual"
+
+
+@dataclass
+class SpeakerWithConversationCountDTO:
+    """DTO for speaker with conversation count."""
+
+    id: int
+    name: str
+    type: str | None
+    political_party_name: str | None
+    position: str | None
+    is_politician: bool
+    conversation_count: int

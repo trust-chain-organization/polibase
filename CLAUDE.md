@@ -23,6 +23,13 @@ gcloud auth application-default login  # Authenticate for GCS access
 # Edit .env to set GCS_BUCKET_NAME and GCS_UPLOAD_ENABLED=true
 ```
 
+#### Port Configuration with docker-compose.override.yml
+git worktreeを使用している場合、`docker/docker-compose.override.yml`が自動生成されポート番号が上書きされます：
+- このファイルは各worktreeで異なるポート番号を使用し、ポートの衝突を防ぎます
+- 実際のポート番号は`docker ps`で確認するか、`docker/docker-compose.override.yml`を参照してください
+- 例: Streamlitが9291番、APIが8790番、Monitoringが9292番など（worktreeによって異なります）
+- コンテナ内部のポート番号（8501など）は変わりませんが、ホストからアクセスする際のポート番号が変更されます
+
 ### Running the Application
 
 #### Using the Unified CLI (Recommended)

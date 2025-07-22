@@ -2,10 +2,11 @@
 
 from typing import Any
 
-from sqlalchemy import and_
+from sqlalchemy import and_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from src.application.dtos.speaker_dto import SpeakerWithConversationCountDTO
 from src.domain.entities.speaker import Speaker
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
@@ -104,3 +105,70 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
         model.political_party_name = entity.political_party_name
         model.position = entity.position
         model.is_politician = entity.is_politician
+
+    async def get_speakers_with_conversation_count(
+        self,
+        limit: int | None = None,
+        offset: int | None = None,
+        speaker_type: str | None = None,
+        is_politician: bool | None = None,
+    ) -> list[SpeakerWithConversationCountDTO]:
+        """Get speakers with their conversation count."""
+        # Build the WHERE clause conditions
+        conditions = []
+        params = {}
+
+        if speaker_type is not None:
+            conditions.append("s.type = :speaker_type")
+            params["speaker_type"] = speaker_type
+
+        if is_politician is not None:
+            conditions.append("s.is_politician = :is_politician")
+            params["is_politician"] = is_politician
+
+        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+        # Build the pagination clause
+        pagination_clause = ""
+        if limit is not None:
+            pagination_clause += " LIMIT :limit"
+            params["limit"] = limit
+        if offset is not None:
+            pagination_clause += " OFFSET :offset"
+            params["offset"] = offset
+
+        # Execute the query
+        query = text(f"""
+            SELECT
+                s.id,
+                s.name,
+                s.type,
+                s.political_party_name,
+                s.position,
+                s.is_politician,
+                COUNT(c.id) as conversation_count
+            FROM speakers s
+            LEFT JOIN conversations c ON s.id = c.speaker_id
+            {where_clause}
+            GROUP BY s.id, s.name, s.type, s.political_party_name,
+                     s.position, s.is_politician
+            ORDER BY s.name
+            {pagination_clause}
+        """)
+
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        # Convert rows to DTOs
+        return [
+            SpeakerWithConversationCountDTO(
+                id=row.id,
+                name=row.name,
+                type=row.type,
+                political_party_name=row.political_party_name,
+                position=row.position,
+                is_politician=row.is_politician,
+                conversation_count=row.conversation_count,
+            )
+            for row in rows
+        ]
