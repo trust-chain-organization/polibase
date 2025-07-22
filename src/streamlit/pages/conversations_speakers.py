@@ -50,53 +50,44 @@ def show_speakers_list():
     speaker_repo = SpeakerRepository()
 
     try:
-        # 発言者データを発言数と共に取得
-        query = """
-        SELECT
-            s.id,
-            s.name,
-            s.type,
-            s.political_party_name,
-            s.position,
-            s.is_politician,
-            COUNT(c.id) as conversation_count
-        FROM speakers s
-        LEFT JOIN conversations c ON s.id = c.speaker_id
-        GROUP BY s.id, s.name, s.type, s.political_party_name,
-                 s.position, s.is_politician
-        ORDER BY s.name
-        """
+        # 政治家情報を含む発言者データを取得
+        speakers_data = speaker_repo.get_speakers_with_politician_info()
 
-        # 生のクエリ結果を取得してdictに変換
-        result = speaker_repo.execute_query(query)
-        columns = result.keys()
-        rows = result.fetchall()
-
-        if not rows:
+        if not speakers_data:
             st.info("発言者データがまだ登録されていません")
             return
 
-        # 結果をdictのリストに変換
-        speakers_data = [dict(zip(columns, row, strict=False)) for row in rows]
         df: pd.DataFrame = pd.DataFrame(speakers_data)
 
+        # 紐付け状況の統計情報を取得
+        stats = speaker_repo.get_speaker_politician_stats()
+
         # 統計情報の表示
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.metric("総発言者数", len(df))
+            st.metric("総発言者数", stats["total_speakers"])
         with col2:
-            politicians_count = len(df[df["is_politician"]])
-            st.metric("政治家", politicians_count)
+            st.metric("政治家", stats["politician_speakers"])
         with col3:
+            st.metric("紐付け済み", stats["linked_speakers"])
+        with col4:
+            st.metric("未紐付け", stats["unlinked_politician_speakers"])
+        with col5:
+            st.metric("紐付け率", f"{stats['link_rate']:.1f}%")
+
+        # 発言数の統計
+        st.markdown("#### 発言数統計")
+        col1, col2 = st.columns(2)
+        with col1:
             total_conversations = df["conversation_count"].sum()
             st.metric("総発言数", total_conversations)
-        with col4:
+        with col2:
             avg_conversations = df["conversation_count"].mean()
             st.metric("平均発言数", f"{avg_conversations:.1f}")
 
         # フィルタリング機能
         st.markdown("### フィルタリング")
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
 
         with col1:
             # 種別フィルタ
@@ -110,13 +101,20 @@ def show_speakers_list():
             )
 
         with col2:
+            # 紐付け状況フィルタ
+            link_options = ["すべて", "紐付け済み", "未紐付け（政治家）", "政治家以外"]
+            selected_link_status = st.selectbox(
+                "紐付け状況", link_options, key="link_status_filter"
+            )
+
+        with col3:
             # 政治家フラグフィルタ
             politician_options = ["すべて", "政治家のみ", "政治家以外"]
             selected_politician = st.selectbox(
                 "政治家フラグ", politician_options, key="politician_filter"
             )
 
-        with col3:
+        with col4:
             # 名前検索
             search_name = st.text_input(
                 "名前検索", placeholder="発言者名を入力", key="speaker_name_search"
@@ -127,6 +125,17 @@ def show_speakers_list():
 
         if selected_type != "すべて":
             filtered_df = filtered_df[filtered_df["type"] == selected_type]
+
+        if selected_link_status == "紐付け済み":
+            politician_id_series = cast(pd.Series, filtered_df["politician_id"])
+            filtered_df = filtered_df[politician_id_series.notna()]
+        elif selected_link_status == "未紐付け（政治家）":
+            politician_id_series = cast(pd.Series, filtered_df["politician_id"])
+            filtered_df = filtered_df[
+                (filtered_df["is_politician"]) & (politician_id_series.isna())
+            ]
+        elif selected_link_status == "政治家以外":
+            filtered_df = filtered_df[~filtered_df["is_politician"]]
 
         if selected_politician == "政治家のみ":
             filtered_df = filtered_df[filtered_df["is_politician"]]
@@ -173,9 +182,29 @@ def show_speakers_list():
         # 表示用のDataFrameを作成
         display_df = page_df.copy()
 
-        # 政治家フラグを視覚的に表示
-        display_df["政治家"] = display_df["is_politician"].apply(
-            lambda x: "✓" if x else "✗"
+        # 紐付け状況を視覚的に表示
+        def format_link_status(row: pd.Series) -> str:
+            if row["is_politician"]:
+                if pd.notna(row["politician_id"]):
+                    return "✅ 紐付け済み"
+                else:
+                    return "❌ 未紐付け"
+            else:
+                return "➖ 対象外"
+
+        display_df["紐付け状況"] = display_df.apply(format_link_status, axis=1)
+
+        # 政治家名を表示（紐付けられている場合）
+        display_df["紐付け政治家"] = display_df["politician_name"].fillna("－")
+
+        # 政党名を統合（politiciansテーブルの政党名を優先）
+        display_df["政党名（統合）"] = display_df.apply(
+            lambda row: row["party_name_from_politician"]
+            if pd.notna(row["party_name_from_politician"])
+            else row["political_party_name"]
+            if pd.notna(row["political_party_name"])
+            else "－",
+            axis=1,
         )
 
         # カラム名を日本語に変更
@@ -183,7 +212,6 @@ def show_speakers_list():
             columns={
                 "name": "発言者名",
                 "type": "種別",
-                "political_party_name": "政党名",
                 "position": "役職",
                 "conversation_count": "発言数",
             }
@@ -193,9 +221,10 @@ def show_speakers_list():
         columns_to_display = [
             "発言者名",
             "種別",
-            "政党名",
+            "政党名（統合）",
             "役職",
-            "政治家",
+            "紐付け状況",
+            "紐付け政治家",
             "発言数",
         ]
 
@@ -207,9 +236,10 @@ def show_speakers_list():
             column_config={
                 "発言者名": st.column_config.TextColumn("発言者名", width="medium"),
                 "種別": st.column_config.TextColumn("種別", width="small"),
-                "政党名": st.column_config.TextColumn("政党名", width="medium"),
+                "政党名（統合）": st.column_config.TextColumn("政党名", width="medium"),
                 "役職": st.column_config.TextColumn("役職", width="medium"),
-                "政治家": st.column_config.TextColumn("政治家", width="small"),
+                "紐付け状況": st.column_config.TextColumn("紐付け", width="small"),
+                "紐付け政治家": st.column_config.TextColumn("政治家名", width="medium"),
                 "発言数": st.column_config.NumberColumn(
                     "発言数", format="%d", width="small"
                 ),
