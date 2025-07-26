@@ -100,9 +100,9 @@ class PoliticianCommands(BaseCommand):
             # スクレイピング実行
             total_scraped = 0
 
-            # HTMLフェッチャーとエクストラクターを初期化
+            # HTMLフェッチャーを初期化
             with spinner("Initializing extractors"):
-                extractor = PartyMemberExtractor()
+                pass  # extractor will be initialized per party
 
             async with PartyMemberPageFetcher() as fetcher:
                 with ProgressTracker(len(parties), "Processing parties") as tracker:
@@ -113,6 +113,9 @@ class PoliticianCommands(BaseCommand):
                         PoliticianCommands.show_progress(
                             f"  URL: {party.members_list_url}"
                         )
+
+                        # Initialize extractor with party_id for history tracking
+                        extractor = PartyMemberExtractor(party_id=party.id)
 
                         # HTMLページを取得（ページネーション対応）
                         with spinner(

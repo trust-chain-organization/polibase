@@ -70,13 +70,6 @@ class SyncLLMHistoryHelper:
                 ),
                 "started_at": datetime.now(UTC),
                 "completed_at": datetime.now(UTC),
-                "token_usage": json.dumps(
-                    {
-                        "prompt_tokens": 0,
-                        "completion_tokens": 0,
-                        "total_tokens": 0,
-                    }
-                ),
             }
 
             # Save to database using direct SQL
@@ -86,13 +79,13 @@ class SyncLLMHistoryHelper:
                     prompt_template, prompt_variables,
                     input_reference_type, input_reference_id,
                     status, processing_metadata,
-                    started_at, completed_at, token_usage
+                    started_at, completed_at
                 ) VALUES (
                     :processing_type, :model_name, :model_version,
                     :prompt_template, :prompt_variables,
                     :input_reference_type, :input_reference_id,
                     :status, :processing_metadata,
-                    :started_at, :completed_at, :token_usage
+                    :started_at, :completed_at
                 )
             """)
 
@@ -108,6 +101,92 @@ class SyncLLMHistoryHelper:
         except Exception as e:
             session.rollback()
             logger.error(f"Failed to record speaker matching history: {e}")
+            # Don't raise - history recording should not break main flow
+        finally:
+            session.close()
+
+    def record_politician_extraction(
+        self,
+        party_name: str,
+        page_url: str,
+        extracted_count: int,
+        party_id: int | None,
+        model_name: str = "gemini-2.0-flash-exp",
+        prompt_template: str = "party_member_extract",
+    ) -> None:
+        """
+        Record politician extraction operation synchronously.
+
+        Args:
+            party_name: Name of the party being extracted
+            page_url: URL of the page being extracted from
+            extracted_count: Number of politicians extracted
+            party_id: ID of the party (if available)
+            model_name: Name of the LLM model used
+            prompt_template: Template used for the prompt
+        """
+        session = self.session_maker()
+        try:
+            # Create history entry directly in the database
+            history_data: dict[str, object] = {
+                "processing_type": "politician_extraction",
+                "model_name": model_name,
+                "model_version": "latest",
+                "prompt_template": prompt_template,
+                "prompt_variables": json.dumps(
+                    {
+                        "party_name": party_name,
+                        "page_url": page_url,
+                    }
+                ),
+                "input_reference_type": "party",
+                "input_reference_id": party_id if party_id else 0,
+                "status": "completed",
+                "processing_metadata": json.dumps(
+                    {
+                        "party_name": party_name,
+                        "page_url": page_url,
+                        "extracted_count": extracted_count,
+                    }
+                ),
+                "started_at": datetime.now(UTC),
+                "completed_at": datetime.now(UTC),
+                "result": json.dumps(
+                    {
+                        "success": True,
+                        "extracted_count": extracted_count,
+                    }
+                ),
+            }
+
+            # Save to database using direct SQL
+            insert_query = text("""
+                INSERT INTO llm_processing_history (
+                    processing_type, model_name, model_version,
+                    prompt_template, prompt_variables,
+                    input_reference_type, input_reference_id,
+                    status, processing_metadata, result,
+                    started_at, completed_at
+                ) VALUES (
+                    :processing_type, :model_name, :model_version,
+                    :prompt_template, :prompt_variables,
+                    :input_reference_type, :input_reference_id,
+                    :status, :processing_metadata, :result,
+                    :started_at, :completed_at
+                )
+            """)
+
+            session.execute(insert_query, history_data)
+            session.commit()
+
+            logger.debug(
+                f"Recorded politician extraction history: {party_name} -> "
+                f"{extracted_count} politicians from {page_url}"
+            )
+
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to record politician extraction history: {e}")
             # Don't raise - history recording should not break main flow
         finally:
             session.close()
