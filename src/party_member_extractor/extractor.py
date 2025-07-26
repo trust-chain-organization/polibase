@@ -82,7 +82,7 @@ class PartyMemberExtractor:
                 base_url=self._get_base_url(page.url),
                 content=main_content,
             )
-            raw_result = self.extraction_llm.invoke({"text": formatted_prompt})
+            raw_result = self.extraction_llm.invoke(formatted_prompt)
             result = cast(PartyMemberList, raw_result)
 
             # URLを絶寞URLに変換

@@ -487,29 +487,48 @@ def execute_politician_processes():
             )
 
             if st.button("政治家情報取得を実行", key="extract_politicians"):
-                # Playwrightの依存関係とブラウザをインストール
-                install_command = (
-                    "uv run playwright install-deps && "
-                    "uv run playwright install chromium"
-                )
+                # Playwrightの依存関係とブラウザをインストール（個別に実行）
+                with st.spinner("Playwrightの依存関係をインストール中..."):
+                    install_deps_result = subprocess.run(
+                        ["uv", "run", "playwright", "install-deps"],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if install_deps_result.returncode != 0:
+                        st.error(
+                            "依存関係のインストールに失敗しました: "
+                            f"{install_deps_result.stderr}"
+                        )
+                        return
 
-                # スクレイピングコマンドを構築
+                with st.spinner("Chromiumブラウザをインストール中..."):
+                    install_browser_result = subprocess.run(
+                        ["uv", "run", "playwright", "install", "chromium"],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if install_browser_result.returncode != 0:
+                        st.error(
+                            "Chromiumのインストールに失敗しました: "
+                            f"{install_browser_result.stderr}"
+                        )
+                        return
+
+                # スクレイピングコマンドを構築（リスト形式）
+                scrape_command = ["uv", "run", "polibase", "scrape-politicians"]
+
                 if selected_party == "すべての政党":
-                    scrape_command = "uv run polibase scrape-politicians --all-parties"
+                    scrape_command.append("--all-parties")
                 else:
                     # "党名 (ID: 123)" の形式からIDを抽出
                     party_id = int(selected_party.split("ID: ")[1].rstrip(")"))
-                    scrape_command = (
-                        f"uv run polibase scrape-politicians --party-id {party_id}"
-                    )
+                    scrape_command.extend(["--party-id", str(party_id)])
 
                 if dry_run:
-                    scrape_command += " --dry-run"
-
-                command = f"{install_command} && {scrape_command}"
+                    scrape_command.append("--dry-run")
 
                 with st.spinner("政治家情報取得処理を実行中..."):
-                    run_command_with_progress(command, "extract_politicians")
+                    run_command_with_progress(scrape_command, "extract_politicians")
 
         # 進捗表示
         if "extract_politicians" in st.session_state.process_status:

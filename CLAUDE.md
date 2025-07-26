@@ -30,6 +30,12 @@ git worktreeを使用している場合、`docker/docker-compose.override.yml`�
 - 例: Streamlitが9291番、APIが8790番、Monitoringが9292番など（worktreeによって異なります）
 - コンテナ内部のポート番号（8501など）は変わりませんが、ホストからアクセスする際のポート番号が変更されます
 
+**重要**: Streamlitを起動する際は、ポート番号を指定せずに以下のコマンドを使用してください：
+```bash
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit
+```
+これにより、docker-compose.override.ymlで設定されたポートが自動的に使用されます。
+
 ### Running the Application
 
 #### Using the Unified CLI (Recommended)
@@ -431,7 +437,7 @@ Polibase follows these core design principles:
 - **GCS URI Format**: Always use `gs://` format for GCS URIs, not HTTPS URLs
 - **Intermediate Files**: Always create temporary or intermediate files (including markdown files for planning, summaries, etc.) in the `tmp/` directory. This directory is gitignored to keep the repository clean
 - **UI Testing with Playwright**: When testing or verifying Streamlit UI behavior, use Playwright MCP tools (`mcp__playwright__*`) to:
-  - Navigate to the Streamlit app (usually http://localhost:8501)
+  - Navigate to the Streamlit app (check actual port with `docker ps` or `docker/docker-compose.override.yml`)
   - Take screenshots to verify UI changes
   - Interact with UI elements to test functionality
   - Capture and verify error messages or success notifications
