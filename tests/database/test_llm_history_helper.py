@@ -93,10 +93,7 @@ class TestSyncLLMHistoryHelper:
         assert metadata["confidence"] == 0.95
         assert metadata["reason"] == "完全一致"
 
-        token_usage = json.loads(data["token_usage"])
-        assert token_usage["prompt_tokens"] == 0
-        assert token_usage["completion_tokens"] == 0
-        assert token_usage["total_tokens"] == 0
+        # token_usage field has been removed from the implementation
 
     def test_record_speaker_matching_no_match(self, helper: Any) -> None:
         """Test recording when no match is found."""
