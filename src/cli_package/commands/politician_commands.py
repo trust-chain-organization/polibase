@@ -178,7 +178,10 @@ class PoliticianCommands(BaseCommand):
                             with spinner(
                                 f"Saving {len(result.members)} members to database..."
                             ):
-                                repo = PoliticianRepository()
+                                from src.config.database import get_db_session
+
+                                session = get_db_session()
+                                repo = PoliticianRepository(db=session)
 
                                 # Pydanticモデルを辞書に変換して
                                 # political_party_idを追加
@@ -189,7 +192,7 @@ class PoliticianCommands(BaseCommand):
                                     members_data.append(member_dict)
 
                                 stats = repo.bulk_create_politicians(members_data)
-                                repo.close()
+                                session.close()
 
                             # 統計情報を表示
                             PoliticianCommands.show_progress(

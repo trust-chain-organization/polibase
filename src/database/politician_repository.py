@@ -330,6 +330,9 @@ class PoliticianRepository(TypedRepository[Politician]):
                 )
                 errors.append({"data": data, "error": f"Unexpected error: {str(e)}"})
 
+        # トランザクションをコミット
+        self.commit()
+
         return {"created": created, "updated": updated, "errors": errors}
 
     def close(self):
