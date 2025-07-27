@@ -6,6 +6,7 @@ from typing import cast
 
 from bs4 import BeautifulSoup, Tag
 
+from ..database.llm_history_helper import SyncLLMHistoryHelper
 from ..infrastructure.interfaces.llm_service import ILLMService
 from ..services.llm_factory import LLMServiceFactory
 from .models import PartyMemberInfo, PartyMemberList, WebPageContent
@@ -16,12 +17,15 @@ logger = logging.getLogger(__name__)
 class PartyMemberExtractor:
     """LLMを使用して政党議員情報を抽出"""
 
-    def __init__(self, llm_service: ILLMService | None = None):
+    def __init__(
+        self, llm_service: ILLMService | None = None, party_id: int | None = None
+    ):
         """
         Initialize PartyMemberExtractor
 
         Args:
             llm_service: LLMService instance (creates default if not provided)
+            party_id: ID of the party being processed (for history tracking)
         """
         if llm_service is None:
             factory = LLMServiceFactory()
@@ -29,6 +33,8 @@ class PartyMemberExtractor:
 
         self.llm_service: ILLMService = llm_service
         self.extraction_llm = self.llm_service.get_structured_llm(PartyMemberList)
+        self.party_id = party_id
+        self.history_helper = SyncLLMHistoryHelper()
 
     def extract_from_pages(
         self, pages: list[WebPageContent], party_name: str
@@ -75,15 +81,36 @@ class PartyMemberExtractor:
 
         # LLMで抽出
         try:
-            # Directly use extraction_llm configured with PartyMemberList schema
+            # Get prompt and format it
             prompt = self.llm_service.get_prompt("party_member_extract")
             formatted_prompt = prompt.format(
                 party_name=party_name,
                 base_url=self._get_base_url(page.url),
                 content=main_content,
             )
+
+            # Record history before extraction if party_id is available
+            if self.party_id is not None:
+                self._record_extraction_to_history(
+                    party_name=party_name,
+                    page_url=page.url,
+                    content_length=len(main_content),
+                    status="started",
+                )
+
+            # Extract using LLM
             raw_result = self.extraction_llm.invoke(formatted_prompt)
             result = cast(PartyMemberList, raw_result)
+
+            # Record successful extraction
+            if self.party_id is not None and result:
+                self._record_extraction_to_history(
+                    party_name=party_name,
+                    page_url=page.url,
+                    content_length=len(main_content),
+                    status="completed",
+                    members_count=len(result.members) if result.members else 0,
+                )
 
             # URLを絶寞URLに変換
             base_url = self._get_base_url(page.url)
@@ -145,3 +172,38 @@ class PartyMemberExtractor:
 
         parsed = urlparse(url)
         return f"{parsed.scheme}://{parsed.netloc}/"
+
+    def _record_extraction_to_history(
+        self,
+        party_name: str,
+        page_url: str,
+        content_length: int,
+        status: str,
+        members_count: int = 0,
+    ) -> None:
+        """Record extraction to LLM history"""
+        try:
+            # Use the sync helper to record history
+            if status == "started":
+                # For now, we'll just log it
+                logger.debug(
+                    f"Starting extraction for {party_name} from {page_url} "
+                    f"(content_length: {content_length})"
+                )
+            elif status == "completed":
+                # Record using the history helper's new method
+                self.history_helper.record_politician_extraction(
+                    party_name=party_name,
+                    page_url=page_url,
+                    extracted_count=members_count,
+                    party_id=self.party_id,
+                    model_name=getattr(
+                        self.llm_service, "model_name", "gemini-2.0-flash-exp"
+                    ),
+                    prompt_template="party_member_extract",
+                )
+                logger.debug(
+                    f"Completed extraction for {party_name}: {members_count} members"
+                )
+        except Exception as e:
+            logger.error(f"Failed to record extraction history: {e}")
