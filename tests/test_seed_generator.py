@@ -173,6 +173,77 @@ class TestSeedGenerator:
         assert "'https://example.com', '都議会第一会派', true)" in result
         assert "ON CONFLICT (name, conference_id) DO NOTHING;" in result
 
+    def test_generate_politicians_seed(self, seed_generator):
+        """政治家SEEDファイル生成のテスト"""
+        # モックデータ
+        mock_rows = [
+            (
+                "山田太郎",
+                "衆議院議員",
+                "東京都",
+                "東京1区",
+                "https://example.com/yamada",
+                "自由民主党",
+            ),
+            (
+                "佐藤花子",
+                "参議院議員",
+                "大阪府",
+                "大阪府",
+                "https://example.com/sato",
+                "立憲民主党",
+            ),
+            (
+                "鈴木一郎",
+                "衆議院議員",
+                "北海道",
+                "北海道1区",
+                "https://example.com/suzuki",
+                None,
+            ),
+        ]
+
+        mock_result = MagicMock()
+        mock_result.__iter__ = MagicMock(return_value=iter(mock_rows))
+        mock_result.keys.return_value = [
+            "name",
+            "position",
+            "prefecture",
+            "electoral_district",
+            "profile_url",
+            "party_name",
+        ]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        seed_generator.engine = MagicMock()
+        seed_generator.engine.connect.return_value.__enter__.return_value = mock_conn
+
+        # 実行
+        result = seed_generator.generate_politicians_seed()
+
+        # 検証
+        assert "-- politicians seed data" in result
+        assert "INSERT INTO politicians" in result
+        assert "-- 自由民主党" in result
+        assert (
+            "('山田太郎', (SELECT id FROM political_parties "
+            "WHERE name = '自由民主党'), '衆議院議員', '東京都', '東京1区', "
+            "'https://example.com/yamada')" in result
+        )
+        assert "-- 立憲民主党" in result
+        assert (
+            "('佐藤花子', (SELECT id FROM political_parties "
+            "WHERE name = '立憲民主党'), '参議院議員', '大阪府', '大阪府', "
+            "'https://example.com/sato')" in result
+        )
+        assert "-- 無所属" in result
+        assert (
+            "('鈴木一郎', NULL, '衆議院議員', '北海道', '北海道1区', "
+            "'https://example.com/suzuki')" in result
+        )
+        assert ";" in result
+
     def test_sql_injection_protection(self, seed_generator):
         """SQLインジェクション対策のテスト"""
         # 悪意のあるデータ
@@ -244,13 +315,14 @@ class TestSeedGenerator:
         generate_all_seeds()
 
         # 検証 - 各ファイルが作成されること
-        assert mock_open.call_count == 5  # 5つのSEEDファイル
+        assert mock_open.call_count == 6  # 6つのSEEDファイル
         expected_files = [
             "database/seed_governing_bodies_generated.sql",
             "database/seed_conferences_generated.sql",
             "database/seed_political_parties_generated.sql",
             "database/seed_parliamentary_groups_generated.sql",
             "database/seed_meetings_generated.sql",
+            "database/seed_politicians_generated.sql",
         ]
         for call, expected_file in zip(
             mock_open.call_args_list, expected_files, strict=False
