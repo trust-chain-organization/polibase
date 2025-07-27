@@ -444,6 +444,116 @@ class SeedGenerator:
             output.write(result)
         return result
 
+    def generate_politicians_seed(self, output: TextIO | None = None) -> str:
+        """politiciansテーブルのSEEDファイルを生成する"""
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                text("""
+                    SELECT
+                        p.name,
+                        p.position,
+                        p.prefecture,
+                        p.electoral_district,
+                        p.profile_url,
+                        pp.name as party_name
+                    FROM politicians p
+                    LEFT JOIN political_parties pp ON p.political_party_id = pp.id
+                    ORDER BY pp.name, p.name
+                """)
+            )
+            columns = result.keys()
+            politicians = [dict(zip(columns, row, strict=False)) for row in result]
+
+        lines = [
+            (
+                f"-- Generated from database on "
+                f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            ),
+            "-- politicians seed data",
+            "",
+            (
+                "INSERT INTO politicians "
+                "(name, political_party_id, position, prefecture, "
+                "electoral_district, profile_url) VALUES"
+            ),
+        ]
+
+        # 政党ごとにグループ化
+        grouped_data: dict[str, list[dict[str, Any]]] = {}
+        for politician in politicians:
+            party_name = politician["party_name"] or "_無所属_"
+            if party_name not in grouped_data:
+                grouped_data[party_name] = []
+            grouped_data[party_name].append(politician)
+
+        first_group = True
+        group_keys: list[str] = list(grouped_data.keys())
+        for group_idx, (party_name, politicians_list) in enumerate(
+            grouped_data.items()
+        ):
+            if not first_group:
+                lines.append("")
+            if party_name != "_無所属_":
+                lines.append(f"-- {party_name}")
+            else:
+                lines.append("-- 無所属")
+
+            for i, politician in enumerate(politicians_list):
+                # SQLインジェクション対策のため、シングルクォートをエスケープ
+                name = politician["name"].replace("'", "''")
+
+                # 最後の要素かどうかチェック（全体での最後）
+                is_last = (
+                    group_idx == len(group_keys) - 1 and i == len(politicians_list) - 1
+                )
+                comma = "" if is_last else ","
+
+                # NULL値の処理
+                position = (
+                    f"'{politician['position'].replace(chr(39), chr(39) * 2)}'"
+                    if politician.get("position")
+                    else "NULL"
+                )
+                prefecture = (
+                    f"'{politician['prefecture'].replace(chr(39), chr(39) * 2)}'"
+                    if politician.get("prefecture")
+                    else "NULL"
+                )
+                if politician.get("electoral_district"):
+                    ed = politician["electoral_district"].replace("'", "''")
+                    electoral_district = f"'{ed}'"
+                else:
+                    electoral_district = "NULL"
+                profile_url = (
+                    f"'{politician['profile_url'].replace(chr(39), chr(39) * 2)}'"
+                    if politician.get("profile_url")
+                    else "NULL"
+                )
+
+                # political_party_idの処理
+                if party_name != "_無所属_":
+                    party_name_escaped = party_name.replace("'", "''")
+                    party_id_part = (
+                        f"(SELECT id FROM political_parties "
+                        f"WHERE name = '{party_name_escaped}')"
+                    )
+                else:
+                    party_id_part = "NULL"
+
+                lines.append(
+                    f"('{name}', {party_id_part}, {position}, {prefecture}, "
+                    f"{electoral_district}, {profile_url}){comma}"
+                )
+
+            first_group = False
+
+        lines.append(";")
+
+        result = "\n".join(lines) + "\n"
+        if output:
+            output.write(result)
+        return result
+
 
 def generate_all_seeds(output_dir: str = "database") -> None:
     """すべてのSEEDファイルを生成する"""
@@ -482,6 +592,12 @@ def generate_all_seeds(output_dir: str = "database") -> None:
     path = os.path.join(output_dir, "seed_meetings_generated.sql")
     with open(path, "w") as f:
         generator.generate_meetings_seed(f)
+        print(f"Generated: {path}")
+
+    # politicians
+    path = os.path.join(output_dir, "seed_politicians_generated.sql")
+    with open(path, "w") as f:
+        generator.generate_politicians_seed(f)
         print(f"Generated: {path}")
 
 

@@ -6,6 +6,7 @@ import streamlit as st
 from src.common.logging import get_logger
 from src.database.politician_repository import PoliticianRepository
 from src.models.politician import Politician
+from src.seed_generator import SeedGenerator
 
 logger = get_logger(__name__)
 
@@ -61,6 +62,42 @@ def show_politicians_list():
 
         # DataFrameに変換
         df = pd.DataFrame(politicians_data)
+
+        # SEEDファイル生成セクション（一番上に配置）
+        with st.container():
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown("### SEEDファイル生成")
+                st.markdown(
+                    "現在登録されている政治家データからSEEDファイルを生成します"
+                )
+            with col2:
+                if st.button(
+                    "SEEDファイル生成",
+                    key="generate_politicians_seed",
+                    type="primary",
+                ):
+                    with st.spinner("SEEDファイルを生成中..."):
+                        try:
+                            generator = SeedGenerator()
+                            seed_content = generator.generate_politicians_seed()
+
+                            # ファイルに保存
+                            output_path = "database/seed_politicians_generated.sql"
+                            with open(output_path, "w") as f:
+                                f.write(seed_content)
+
+                            st.success(f"✅ SEEDファイルを生成しました: {output_path}")
+
+                            # 生成内容をプレビュー表示
+                            with st.expander("生成されたSEEDファイル", expanded=False):
+                                st.code(seed_content, language="sql")
+                        except Exception as e:
+                            st.error(
+                                f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
+                            )
+
+        st.markdown("---")
 
         # 統計情報の表示
         col1, col2, col3, col4 = st.columns(4)
