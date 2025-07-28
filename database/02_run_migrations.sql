@@ -15,5 +15,8 @@
 \i /docker-entrypoint-initdb.d/02_migrations/010_add_name_to_meetings.sql
 \i /docker-entrypoint-initdb.d/02_migrations/011_add_organization_code_to_governing_bodies.sql
 \i /docker-entrypoint-initdb.d/02_migrations/012_remove_conference_governing_body_fk.sql
+\i /docker-entrypoint-initdb.d/02_migrations/013_create_llm_processing_history.sql
+\i /docker-entrypoint-initdb.d/02_migrations/014_create_prompt_versions.sql
+\i /docker-entrypoint-initdb.d/02_migrations/015_add_party_position_to_politicians.sql
 
 \echo 'Migrations completed.'
