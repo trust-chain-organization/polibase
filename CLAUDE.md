@@ -222,8 +222,12 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase databa
 # Reset database
 ./reset-database.sh
 
-# Apply new migrations
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -f /docker-entrypoint-initdb.d/migrations/004_add_gcs_uri_to_meetings.sql
+# Apply new migrations manually (if needed)
+docker compose -f docker/docker-compose.yml exec polibase cat /app/database/migrations/013_create_llm_processing_history.sql | docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db
+
+# Important: When adding new migration files
+# 1. Create migration file in database/migrations/ with sequential numbering (e.g., 016_*.sql)
+# 2. Add the migration to database/02_run_migrations.sql to ensure it runs on reset-database.sh
 ```
 
 ## Architecture
@@ -433,7 +437,11 @@ Polibase follows these core design principles:
 - **Party Member Scraping**: Before scraping, set `members_list_url` for parties via Streamlit UI's "政党管理" tab
 - **Playwright Dependencies**: Docker image includes Chromium and dependencies for web scraping
 - **Duplicate Prevention**: Politician scraper checks existing records by name + party to avoid duplicates
-- **Database Migrations**: Run migrations after pulling updates that modify database schema
+- **Database Migrations**:
+  - Run migrations after pulling updates that modify database schema
+  - When creating new migration files:
+    1. Create in `database/migrations/` with sequential numbering (e.g., `016_*.sql`)
+    2. **必ず** `database/02_run_migrations.sql` に追加して、`reset-database.sh` 実行時に適用されるようにする
 - **GCS URI Format**: Always use `gs://` format for GCS URIs, not HTTPS URLs
 - **Intermediate Files**: Always create temporary or intermediate files (including markdown files for planning, summaries, etc.) in the `tmp/` directory. This directory is gitignored to keep the repository clean
 - **UI Testing with Playwright**: When testing or verifying Streamlit UI behavior, use Playwright MCP tools (`mcp__playwright__*`) to:
