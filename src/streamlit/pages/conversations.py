@@ -86,7 +86,7 @@ def manage_conversations():
     col1, col2 = st.columns([1, 3])
     with col1:
         items_per_page = st.selectbox(
-            "表示件数", [25, 50, 100, 200], index=1, key="conv_items_per_page"
+            "表示件数", [10, 20, 50, 100], index=1, key="conv_items_per_page"
         )
 
     # 現在のページ番号（セッション状態で管理）
@@ -139,6 +139,11 @@ def manage_conversations():
     # 発言レコード一覧表示
     if conversations:
         st.markdown("### 📝 発言レコード一覧")
+
+        # 表示範囲の計算
+        start_index = offset + 1
+        end_index = min(offset + items_per_page, total_count)
+        st.info(f"表示中: {start_index}-{end_index} / 全{total_count}件")
 
         # ページネーションコントロール
         col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
@@ -237,6 +242,8 @@ def manage_conversations():
                 st.divider()
 
         # ページネーションコントロール（下部）
+        st.info(f"表示中: {start_index}-{end_index} / 全{total_count}件")
+
         col1, col2, col3 = st.columns([1, 2, 1])
 
         with col1:
