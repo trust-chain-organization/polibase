@@ -6,6 +6,7 @@ import pandas as pd
 
 import streamlit as st
 from src.common.logging import get_logger
+from src.database.conversation_repository import ConversationRepository
 from src.database.speaker_repository import SpeakerRepository
 
 logger = get_logger(__name__)
@@ -30,17 +31,137 @@ def show_conversations_list():
     """発言一覧を表示"""
     st.subheader("発言一覧")
 
-    # PBI-002で実装予定
-    st.info("発言一覧機能は現在開発中です（PBI-002で実装予定）")
-    st.markdown(
-        """
-        ### 実装予定の機能
-        - 議事録分割処理で生成された発言レコードの一覧表示
-        - 発言内容、発言者名、発言順序、章番号の表示
-        - 関連する議事録情報（会議名、開催日）の表示
-        - ページネーション機能
-        """
-    )
+    conversation_repo = ConversationRepository()
+
+    try:
+        # ページネーション設定
+        st.markdown("### フィルタリング")
+        items_per_page = st.selectbox(
+            "表示件数",
+            options=[10, 20, 50, 100],
+            index=1,
+            key="conversations_per_page",
+        )
+
+        # ページ番号の初期化と表示
+        if "conversation_page_number" not in st.session_state:
+            st.session_state.conversation_page_number = 1
+
+        # データ取得
+        offset = (st.session_state.conversation_page_number - 1) * items_per_page
+        result = conversation_repo.get_conversations_with_pagination(
+            limit=items_per_page,
+            offset=offset,
+        )
+
+        conversations = result["conversations"]
+        total_items = result["total"]
+
+        if not conversations:
+            st.info("発言データがまだ登録されていません")
+            return
+
+        # 総件数の表示
+        st.metric("総発言数", total_items)
+
+        # データフレームの作成
+        df = pd.DataFrame(conversations)
+
+        # 表示用のDataFrameを作成
+        display_df = df.copy()
+
+        # カラム名を日本語に変更
+        display_df = display_df.rename(
+            columns={
+                "speaker_name": "発言者名",
+                "comment": "発言内容",
+                "sequence_number": "発言順序",
+                "chapter_number": "章番号",
+                "sub_chapter_number": "節番号",
+                "meeting_date": "開催日",
+                "conference_name": "会議名",
+                "governing_body_name": "自治体名",
+                "linked_speaker_name": "紐付け発言者",
+            }
+        )
+
+        # 日付のフォーマット
+        if "開催日" in display_df.columns:
+            date_series = cast(pd.Series, display_df["開催日"])
+            display_df["開催日"] = pd.to_datetime(date_series).dt.strftime("%Y-%m-%d")
+
+        # 表示するカラムを選択
+        columns_to_display = [
+            "発言順序",
+            "発言者名",
+            "発言内容",
+            "章番号",
+            "節番号",
+            "会議名",
+            "開催日",
+            "自治体名",
+            "紐付け発言者",
+        ]
+
+        # 存在するカラムのみを選択
+        available_columns = [
+            col for col in columns_to_display if col in display_df.columns
+        ]
+
+        # ページネーション計算
+        total_pages = max(1, (total_items - 1) // items_per_page + 1)
+
+        # ページ選択
+        col1, col2, col3 = st.columns([1, 3, 1])
+        with col2:
+            current_page = st.number_input(
+                "ページ",
+                min_value=1,
+                max_value=total_pages,
+                value=st.session_state.conversation_page_number,
+                key="conversation_page_input",
+            )
+            if current_page != st.session_state.conversation_page_number:
+                st.session_state.conversation_page_number = current_page
+                st.rerun()
+
+        # データを表示
+        st.dataframe(
+            display_df[available_columns],
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "発言順序": st.column_config.NumberColumn(
+                    "順序", format="%d", width="small"
+                ),
+                "発言者名": st.column_config.TextColumn("発言者名", width="medium"),
+                "発言内容": st.column_config.TextColumn("発言内容", width="large"),
+                "章番号": st.column_config.NumberColumn(
+                    "章", format="%d", width="small"
+                ),
+                "節番号": st.column_config.NumberColumn(
+                    "節", format="%d", width="small"
+                ),
+                "会議名": st.column_config.TextColumn("会議名", width="medium"),
+                "開催日": st.column_config.TextColumn("開催日", width="small"),
+                "自治体名": st.column_config.TextColumn("自治体名", width="medium"),
+                "紐付け発言者": st.column_config.TextColumn(
+                    "紐付け発言者", width="medium"
+                ),
+            },
+        )
+
+        # ページング情報
+        start_idx = offset + 1
+        end_idx = min(offset + items_per_page, total_items)
+        st.caption(
+            f"表示中: {start_idx}-{end_idx} / 全{total_items}件 "
+            f"(ページ {current_page}/{total_pages})"
+        )
+
+    except Exception as e:
+        logger.error(f"発言一覧の取得中にエラーが発生しました: {str(e)}")
+        st.error(f"データの取得中にエラーが発生しました: {str(e)}")
 
 
 def show_speakers_list():
