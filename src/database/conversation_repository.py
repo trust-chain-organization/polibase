@@ -274,19 +274,49 @@ class ConversationRepository(BaseRepository):
         count = self.count("conversations", where={})
         return count
 
-    def get_speaker_linking_stats(self) -> dict[str, int]:
+    def get_speaker_linking_stats(self) -> dict[str, int | float]:
         """
         発言者の紐付け統計を取得する
 
         Returns:
-            dict: 紐付け統計（総数、紐付けあり、紐付けなし）
+            dict: 紐付け統計（総数、紐付けあり、紐付けなし、政治家紐付け数、紐付け率）
         """
         query = """
+            WITH conversation_stats AS (
+                SELECT
+                    COUNT(*) as total_conversations,
+                    COUNT(c.speaker_id) as speaker_linked_conversations,
+                    COUNT(
+                        CASE WHEN c.speaker_id IS NOT NULL AND p.id IS NOT NULL
+                        THEN 1 END
+                    ) as politician_linked_conversations,
+                    COUNT(*) - COUNT(c.speaker_id) as unlinked_conversations
+                FROM conversations c
+                LEFT JOIN speakers s ON c.speaker_id = s.id
+                LEFT JOIN politicians p ON s.id = p.speaker_id
+            )
             SELECT
-                COUNT(*) as total_conversations,
-                COUNT(speaker_id) as linked_conversations,
-                COUNT(*) - COUNT(speaker_id) as unlinked_conversations
-            FROM conversations
+                total_conversations,
+                speaker_linked_conversations,
+                politician_linked_conversations,
+                unlinked_conversations,
+                CASE
+                    WHEN total_conversations > 0
+                    THEN ROUND(
+                        CAST(speaker_linked_conversations AS NUMERIC) * 100.0
+                        / total_conversations, 1
+                    )
+                    ELSE 0
+                END as speaker_link_rate,
+                CASE
+                    WHEN total_conversations > 0
+                    THEN ROUND(
+                        CAST(politician_linked_conversations AS NUMERIC) * 100.0
+                        / total_conversations, 1
+                    )
+                    ELSE 0
+                END as politician_link_rate
+            FROM conversation_stats
         """
 
         row = self.fetch_one(query)
@@ -294,14 +324,20 @@ class ConversationRepository(BaseRepository):
         if row is None:
             return {
                 "total_conversations": 0,
-                "linked_conversations": 0,
+                "speaker_linked_conversations": 0,
+                "politician_linked_conversations": 0,
                 "unlinked_conversations": 0,
+                "speaker_link_rate": 0.0,
+                "politician_link_rate": 0.0,
             }
 
         stats = {
             "total_conversations": int(row[0]),
-            "linked_conversations": int(row[1]),
-            "unlinked_conversations": int(row[2]),
+            "speaker_linked_conversations": int(row[1]),
+            "politician_linked_conversations": int(row[2]),
+            "unlinked_conversations": int(row[3]),
+            "speaker_link_rate": float(row[4]),
+            "politician_link_rate": float(row[5]),
         }
 
         return stats
@@ -398,6 +434,13 @@ class ConversationRepository(BaseRepository):
                 c.created_at,
                 c.updated_at,
                 s.name as linked_speaker_name,
+                s.type as speaker_type,
+                s.political_party_name as speaker_party_name,
+                s.position as speaker_position,
+                s.is_politician as speaker_is_politician,
+                p.id as politician_id,
+                p.name as politician_name,
+                pp.name as politician_party_name,
                 m.id as meeting_id,
                 m.date as meeting_date,
                 conf.id as conference_id,
@@ -406,6 +449,8 @@ class ConversationRepository(BaseRepository):
                 gb.name as governing_body_name,
                 gb.type as governing_body_type
             {base_query}
+            LEFT JOIN politicians p ON s.id = p.speaker_id
+            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
             {where_clause}
             ORDER BY c.created_at DESC, c.sequence_number ASC
             LIMIT :limit OFFSET :offset

@@ -260,10 +260,13 @@ class TestConversationRepository(unittest.TestCase):
         """発言者紐付け統計取得テスト"""
         mock_result = MagicMock()
         mock_result.fetchone.return_value = [
-            100,
-            75,
-            25,
-        ]  # 総数, 紐付けあり, 紐付けなし
+            100,  # total_conversations
+            75,  # speaker_linked_conversations
+            50,  # politician_linked_conversations
+            25,  # unlinked_conversations
+            75.0,  # speaker_link_rate
+            50.0,  # politician_link_rate
+        ]
         self.mock_session.execute.return_value = mock_result
 
         # 実行
@@ -272,8 +275,11 @@ class TestConversationRepository(unittest.TestCase):
         # 検証
         expected_stats = {
             "total_conversations": 100,
-            "linked_conversations": 75,
+            "speaker_linked_conversations": 75,
+            "politician_linked_conversations": 50,
             "unlinked_conversations": 25,
+            "speaker_link_rate": 75.0,
+            "politician_link_rate": 50.0,
         }
         self.assertEqual(result, expected_stats)
         # close()は呼ばれないはず
