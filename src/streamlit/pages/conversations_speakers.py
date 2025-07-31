@@ -6,7 +6,9 @@ import pandas as pd
 
 import streamlit as st
 from src.common.logging import get_logger
+from src.database.conference_repository import ConferenceRepository
 from src.database.conversation_repository import ConversationRepository
+from src.database.meeting_repository import MeetingRepository
 from src.database.speaker_repository import SpeakerRepository
 
 logger = get_logger(__name__)
@@ -34,24 +36,121 @@ def show_conversations_list():
     conversation_repo = ConversationRepository()
 
     try:
-        # ページネーション設定
+        # 紐付け統計情報を取得
+        stats = conversation_repo.get_speaker_linking_stats()
+
+        # 統計情報の表示
+        st.markdown("### 紐付け状況サマリー")
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+        with col1:
+            st.metric("総発言数", stats["total_conversations"])
+        with col2:
+            st.metric("Speaker紐付け済", stats["speaker_linked_conversations"])
+        with col3:
+            st.metric("政治家紐付け済", stats["politician_linked_conversations"])
+        with col4:
+            st.metric("未紐付け", stats["unlinked_conversations"])
+        with col5:
+            st.metric("Speaker紐付け率", f"{stats['speaker_link_rate']:.1f}%")
+        with col6:
+            st.metric("政治家紐付け率", f"{stats['politician_link_rate']:.1f}%")
+
+        # フィルタリング設定
         st.markdown("### フィルタリング")
-        items_per_page = st.selectbox(
-            "表示件数",
-            options=[10, 20, 50, 100],
-            index=1,
-            key="conversations_per_page",
-        )
+
+        # フィルタリング列の作成
+        col1, col2, col3 = st.columns([2, 2, 1])
+
+        with col1:
+            # 会議体一覧を取得
+            conference_repo = ConferenceRepository()
+            with conference_repo:
+                conferences = conference_repo.get_all_conferences()
+
+            # 選択肢を作成
+            conference_options = ["すべて"] + [
+                f"{conf['name']} ({conf['governing_body_name']})"
+                for conf in conferences
+            ]
+            conference_ids = [None] + [conf["id"] for conf in conferences]
+
+            selected_index = st.selectbox(
+                "会議体",
+                range(len(conference_options)),
+                format_func=lambda x: conference_options[x],
+                key="conversation_conference_filter",
+            )
+            selected_conference_id = conference_ids[selected_index]
+
+        with col2:
+            # 選択された会議体に基づいて会議一覧を取得
+            meeting_repo = MeetingRepository()
+            meetings = meeting_repo.get_meetings(
+                conference_id=selected_conference_id,
+                limit=1000,  # 十分な数の会議を取得
+            )
+
+            # 選択肢を作成
+            meeting_options = ["すべて"]
+            meeting_ids = [None]
+
+            if meetings:
+                # 日付でソート（新しい順）
+                meetings.sort(
+                    key=lambda x: x["date"] if x["date"] else "", reverse=True
+                )
+
+                for meeting in meetings:
+                    date_str = (
+                        meeting["date"].strftime("%Y-%m-%d")
+                        if meeting["date"]
+                        else "日付なし"
+                    )
+                    meeting_options.append(f"{date_str} - {meeting['conference_name']}")
+                    meeting_ids.append(meeting["id"])
+
+            selected_meeting_index = st.selectbox(
+                "議事録（会議）",
+                range(len(meeting_options)),
+                format_func=lambda x: meeting_options[x],
+                key="conversation_meeting_filter",
+                disabled=(selected_conference_id is None and len(meetings) == 0),
+            )
+            selected_meeting_id = meeting_ids[selected_meeting_index]
+
+        with col3:
+            items_per_page = st.selectbox(
+                "表示件数",
+                options=[10, 20, 50, 100],
+                index=1,
+                key="conversations_per_page",
+            )
 
         # ページ番号の初期化と表示
         if "conversation_page_number" not in st.session_state:
             st.session_state.conversation_page_number = 1
+
+        # フィルタ選択が変更されたらページ番号をリセット
+        if "prev_conference_id" not in st.session_state:
+            st.session_state.prev_conference_id = selected_conference_id
+        if "prev_meeting_id" not in st.session_state:
+            st.session_state.prev_meeting_id = selected_meeting_id
+
+        if (
+            st.session_state.prev_conference_id != selected_conference_id
+            or st.session_state.prev_meeting_id != selected_meeting_id
+        ):
+            st.session_state.conversation_page_number = 1
+            st.session_state.prev_conference_id = selected_conference_id
+            st.session_state.prev_meeting_id = selected_meeting_id
 
         # データ取得
         offset = (st.session_state.conversation_page_number - 1) * items_per_page
         result = conversation_repo.get_conversations_with_pagination(
             limit=items_per_page,
             offset=offset,
+            conference_id=selected_conference_id,
+            meeting_id=selected_meeting_id,
         )
 
         conversations = result["conversations"]
@@ -61,14 +160,38 @@ def show_conversations_list():
             st.info("発言データがまだ登録されていません")
             return
 
-        # 総件数の表示
-        st.metric("総発言数", total_items)
-
         # データフレームの作成
         df = pd.DataFrame(conversations)
 
         # 表示用のDataFrameを作成
         display_df = df.copy()
+
+        # 紐付け状況を視覚的に表示する関数
+        def format_link_status(row: pd.Series) -> str:
+            if pd.notna(row["politician_id"]):
+                return "✅ 完全紐付け"
+            elif pd.notna(row["speaker_id"]):
+                return "⚠️ Speaker紐付けのみ"
+            else:
+                return "❌ 未紐付け"
+
+        display_df["紐付け状況"] = display_df.apply(format_link_status, axis=1)
+
+        # 政治家名を表示（紐付けられている場合）
+        display_df["紐付け政治家"] = display_df["politician_name"].fillna("－")
+
+        # 政党名を統合（politiciansテーブルの政党名を優先）
+        display_df["政党名"] = display_df.apply(
+            lambda row: row["politician_party_name"]
+            if pd.notna(row["politician_party_name"])
+            else row["speaker_party_name"]
+            if pd.notna(row["speaker_party_name"])
+            else "－",
+            axis=1,
+        )
+
+        # Speaker種別を追加
+        display_df["発言者種別"] = display_df["speaker_type"].fillna("－")
 
         # カラム名を日本語に変更
         display_df = display_df.rename(
@@ -81,7 +204,7 @@ def show_conversations_list():
                 "meeting_date": "開催日",
                 "conference_name": "会議名",
                 "governing_body_name": "自治体名",
-                "linked_speaker_name": "紐付け発言者",
+                "linked_speaker_name": "紐付けSpeaker",
             }
         )
 
@@ -94,13 +217,17 @@ def show_conversations_list():
         columns_to_display = [
             "発言順序",
             "発言者名",
+            "紐付け状況",
+            "紐付けSpeaker",
+            "紐付け政治家",
+            "政党名",
+            "発言者種別",
             "発言内容",
             "章番号",
             "節番号",
             "会議名",
             "開催日",
             "自治体名",
-            "紐付け発言者",
         ]
 
         # 存在するカラムのみを選択
@@ -135,6 +262,11 @@ def show_conversations_list():
                     "順序", format="%d", width="small"
                 ),
                 "発言者名": st.column_config.TextColumn("発言者名", width="medium"),
+                "紐付け状況": st.column_config.TextColumn("紐付け", width="small"),
+                "紐付けSpeaker": st.column_config.TextColumn("Speaker", width="medium"),
+                "紐付け政治家": st.column_config.TextColumn("政治家", width="medium"),
+                "政党名": st.column_config.TextColumn("政党", width="small"),
+                "発言者種別": st.column_config.TextColumn("種別", width="small"),
                 "発言内容": st.column_config.TextColumn("発言内容", width="large"),
                 "章番号": st.column_config.NumberColumn(
                     "章", format="%d", width="small"
@@ -145,9 +277,6 @@ def show_conversations_list():
                 "会議名": st.column_config.TextColumn("会議名", width="medium"),
                 "開催日": st.column_config.TextColumn("開催日", width="small"),
                 "自治体名": st.column_config.TextColumn("自治体名", width="medium"),
-                "紐付け発言者": st.column_config.TextColumn(
-                    "紐付け発言者", width="medium"
-                ),
             },
         )
 
