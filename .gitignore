@@ -16,3 +16,6 @@ tmp/
 
 # Docker compose override for worktree-specific ports
 docker/docker-compose.override.yml
+
+# Serena cache
+.serena/cache/
