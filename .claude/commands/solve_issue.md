@@ -1,4 +1,5 @@
 ---
+allowed-tools: Read, Glob, Grep, Edit, MultiEdit, Write, Bash, TodoWrite, mcp__serena__check_onboarding_performed, mcp__serena__delete_memory, mcp__serena__find_file, mcp__serena__find_referencing_symbols, mcp__serena__find_symbol, mcp__serena__get_symbols_overview, mcp__serena__insert_after_symbol, mcp__serena__insert_before_symbol, mcp__serena__list_dir, mcp__serena__list_memories, mcp__serena__onboarding, mcp__serena__read_memory, mcp__serena__remove_project, mcp__serena__replace_regex, mcp__serena__replace_symbol_body, mcp__serena__restart_language_server, mcp__serena__search_for_pattern, mcp__serena__switch_modes, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, mcp__serena__write_memory, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 description: GitHub Issueを自動的に解決するコマンド
 ---
 ultrathink
@@ -26,6 +27,7 @@ Issue番号: $ARGUMENTS
 
 2. **技術的な解決策**
    - 実装方法を検討する
+     - serena MCPを使用してコードベースを調査します。
    - 必要なファイルの変更を特定する
    - ユニットテストが必要な箇所を特定する
 
@@ -39,6 +41,9 @@ Issue番号: $ARGUMENTS
 
 1. **コードの実装**
    - 特定したファイルを修正する
+     - serena MCPを使用して関連するコードを調査し、必要な変更を行います。
+       - DRY原則に従い、重複コードを避けます
+     - context7 MCPを使用してライブラリのドキュメントを確認し、適切なAPIとパッケージを使用します
    - 必要に応じて新しいファイルを作成する
    - コーディング規約に従う（Ruff、型チェック）
 
