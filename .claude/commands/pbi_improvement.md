@@ -1,4 +1,5 @@
 ---
+allowed-tools: Read, Glob, Grep, Edit, MultiEdit, Write, Bash, TodoWrite, mcp__serena__check_onboarding_performed, mcp__serena__delete_memory, mcp__serena__find_file, mcp__serena__find_referencing_symbols, mcp__serena__find_symbol, mcp__serena__get_symbols_overview, mcp__serena__insert_after_symbol, mcp__serena__insert_before_symbol, mcp__serena__list_dir, mcp__serena__list_memories, mcp__serena__onboarding, mcp__serena__read_memory, mcp__serena__remove_project, mcp__serena__replace_regex, mcp__serena__replace_symbol_body, mcp__serena__restart_language_server, mcp__serena__search_for_pattern, mcp__serena__switch_modes, mcp__serena__think_about_collected_information, mcp__serena__think_about_task_adherence, mcp__serena__think_about_whether_you_are_done, mcp__serena__write_memory, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 description: PBIラベルのついたIssueをコードベースを調査して詳細化するコマンド
 ---
 ultrathink
@@ -33,6 +34,7 @@ Issue番号: $ARGUMENTS
 ## 3. コードベースの調査
 
 PBIに関連するコードベースを調査して、以下の情報を収集してください：
+なお、コードベースの調査には serena MCP を使用します。
 
 ### 関連ファイルの特定
 1. **既存の実装を調査**
