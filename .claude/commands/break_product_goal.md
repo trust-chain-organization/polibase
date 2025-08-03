@@ -122,34 +122,89 @@ PBIの実装順序を以下の観点で決定してください：
 - PBI-006: [タイトル]
 ```
 
-## 6. GitHub Issueの作成準備
+## 6. GitHub Issueの作成
 
 ### 各PBIのIssue作成
 
-分解したPBIごとに個別のIssueを作成するための情報を準備してください：
+分解したPBIごとに個別のIssueを直接作成してください。以下の手順で進めます：
 
-```bash
-# PBI-001のIssue作成例
-gh issue create \
-  --title "[PBI-001] [タイトル]" \
-  --body "[PBIの詳細内容]" \
-  --label "pbi,enhancement" \
-  --milestone "[関連するマイルストーン]" \
-  --project "[プロジェクトボード名]"
-```
+1. **最初のPBI作成**
+   ```bash
+   gh issue create \
+     --title "[PBI-001] [タイトル]" \
+     --body "[PBIの詳細内容]" \
+     --label "pbi,enhancement" \
+     --assignee "[担当者]"
+   ```
+
+2. **作成されたIssue番号を記録**
+   各PBIのIssue作成後、返されるIssue番号を記録し、依存関係のあるPBIのbodyに反映する
+
+3. **依存関係の更新**
+   後続のPBIを作成する際は、前提PBIのIssue番号を含めて作成：
+   ```bash
+   gh issue create \
+     --title "[PBI-002] [タイトル]" \
+     --body "## 概要
+   [内容]
+
+   ## 依存関係
+   - 前提PBI: #[実際のIssue番号]
+   - ブロック対象: [後で更新]
+
+   [その他の内容]" \
+     --label "pbi,enhancement" \
+     --assignee "[担当者]"
+   ```
+
+4. **Issue番号の管理**
+   作成したIssue番号を管理するため、以下の形式で記録：
+   ```
+   PBI-001: #[Issue番号]
+   PBI-002: #[Issue番号]
+   ...
+   ```
 
 ### 親Issueとの関連付け
 
-元のIssue（#$ARGUMENTS）に各PBIへのリンクを追加：
+全てのPBIを作成した後、元のIssue（#$ARGUMENTS）にコメントを追加：
 
-```markdown
-## 分解されたPBI
+```bash
+gh issue comment $ARGUMENTS --body "## 分解されたPBI
 
-このIssueは以下のPBIに分解されました：
+このProduct Goalを以下のPBIに分解しました：
 
 - [ ] #[PBI-001のIssue番号]: [タイトル]
 - [ ] #[PBI-002のIssue番号]: [タイトル]
 - [ ] #[PBI-003のIssue番号]: [タイトル]
+- [ ] #[PBI-004のIssue番号]: [タイトル]
+- [ ] #[PBI-005のIssue番号]: [タイトル]
+- [ ] #[PBI-006のIssue番号]: [タイトル]
+
+## 実装計画
+
+### Phase 1: 基盤構築（[期間]）
+- #[番号]: [タイトル]
+- #[番号]: [タイトル]
+
+### Phase 2: コア機能実装（[期間]）
+- #[番号]: [タイトル]
+- #[番号]: [タイトル]
+
+### Phase 3: 拡張機能（[期間]）
+- #[番号]: [タイトル]
+- #[番号]: [タイトル]
+
+詳細な技術設計とロードマップは各PBIを参照してください。"
+```
+
+### 依存関係の更新
+
+必要に応じて、作成したPBIの依存関係を更新：
+
+```bash
+# ブロック対象のPBI番号が確定した後
+gh issue edit [Issue番号] --body "[更新されたbody内容]"
 ```
 
 ## 7. プロジェクト管理の設定
@@ -192,3 +247,6 @@ gh issue create \
 - 技術的負債の解消もPBIとして含める
 - ドキュメント作成やテスト作成も独立したPBIとして扱う
 - 不確実性の高い部分は調査スパイクとして別PBIにする
+- **Issue作成は実際にghコマンドで実行し、作成されたIssue番号を記録する**
+- **依存関係は実際のIssue番号で管理し、後から更新が必要な場合はgh issue editで更新する**
+- **tmpディレクトリにシェルスクリプトを作成するのではなく、直接ghコマンドを実行する**
