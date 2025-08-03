@@ -230,4 +230,79 @@ class MinutesProcessAgent:
         if not isinstance(divided_speech_list, list):
             raise TypeError("divided_speech_list must be a list")
 
-        return divided_speech_list  # type: ignore[return-value]
+        print(f"DEBUG: Retrieved {len(divided_speech_list)} speeches from memory")
+
+        # Filter out invalid speeches at the aggregate level
+        print(f"Filtering speeches from {len(divided_speech_list)} items...")
+        filtered_list = []
+        seen_contents = {}
+
+        for item in divided_speech_list:
+            # Skip if speech content is empty or too short (likely a section title)
+            if not item.speech_content or len(item.speech_content.strip()) < 20:
+                content_preview = (
+                    item.speech_content[:50] if item.speech_content else ""
+                )
+                print(
+                    f"Filtering out short/empty speech: "
+                    f"{item.speaker} - '{content_preview}'"
+                )
+                continue
+
+            # Skip if speech content matches common section titles or patterns
+            section_titles = [
+                "正副委員長の互選",
+                "開会",
+                "閉会",
+                "議事",
+                "出席委員",
+                "欠席委員",
+                "委員会記録",
+                "配付資料",
+                "要求資料",
+                "特記事項",
+            ]
+            if item.speech_content in section_titles:
+                print(
+                    f"Filtering out section title: "
+                    f"{item.speaker} - {item.speech_content}"
+                )
+                continue
+
+            # Skip if this looks like a misattributed closing statement
+            # (common pattern: chairman's name appears after closing statement)
+            if (
+                "散会" in item.speech_content or "閉会" in item.speech_content
+            ) and "委員長" in item.speaker:
+                print(
+                    f"Filtering out likely misattributed closing: "
+                    f"{item.speaker} - {item.speech_content[:50]}"
+                )
+                continue
+
+            # Track how many times we've seen this exact content
+            content_key = item.speech_content.strip()
+            seen_contents[content_key] = seen_contents.get(content_key, 0) + 1
+
+            filtered_list.append(item)
+
+        # Second pass: remove speeches where the same content appears for many speakers
+        final_list = []
+        for item in filtered_list:
+            content_key = item.speech_content.strip()
+            # If more than 5 speakers have the exact same content, it's likely an error
+            if seen_contents[content_key] > 5:
+                print(
+                    f"Filtering out duplicate speech "
+                    f"({seen_contents[content_key]} occurrences): {item.speaker}"
+                )
+                continue
+            final_list.append(item)
+
+        # Re-number speech_order for remaining items
+        for i, item in enumerate(final_list):
+            item.speech_order = i + 1
+
+        print(f"Filtered speeches: {len(divided_speech_list)} -> {len(final_list)}")
+
+        return final_list  # type: ignore[return-value]
