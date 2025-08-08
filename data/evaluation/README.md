@@ -124,9 +124,15 @@ PDFや文字列形式の議事録を個別の発言に分割するタスク。
 
 ### 5. ファイル命名規則
 
-データセットファイルは以下の命名規則に従います：
-- `{description}_v{version}.json`
-- 例: `sample_v1.json`, `complex_cases_v2.1.0.json`
+データセットファイルは**用途・カテゴリベース**の命名を推奨します：
+- `basic_cases.json` - 基本的なテストケース
+- `edge_cases.json` - エッジケース
+- `complex_cases.json` - 複雑なパターン
+- `{source}_cases.json` - 特定ソースからのケース
+- `golden_set.json` - 正解が確定したゴールデンセット
+
+**避けるべき命名**:
+- `sample_v1.json` - ファイル名でのバージョン管理は避ける（データセット内のversionフィールドで管理）
 
 ## データセットの検証
 
