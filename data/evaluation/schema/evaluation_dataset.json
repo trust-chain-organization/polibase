@@ -97,34 +97,69 @@
                 }
               },
               {
-                "description": "Input for speaker_matching task",
-                "required": ["speaker_name", "context"],
+                "description": "Input for speaker_matching task (batch processing)",
+                "required": ["speakers", "politician_candidates"],
                 "properties": {
-                  "speaker_name": {
-                    "type": "string",
-                    "description": "Speaker name to match"
+                  "speakers": {
+                    "type": "array",
+                    "description": "List of speakers extracted from minutes to match",
+                    "items": {
+                      "type": "object",
+                      "required": ["speaker_id", "name", "is_politician"],
+                      "properties": {
+                        "speaker_id": {
+                          "type": "integer",
+                          "description": "Database ID of the speaker"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Speaker name from minutes"
+                        },
+                        "political_party_name": {
+                          "type": ["string", "null"],
+                          "description": "Party name extracted from minutes (string)"
+                        },
+                        "type": {
+                          "type": "string",
+                          "description": "Speaker type (politician, government_official, chairman, witness)"
+                        },
+                        "is_politician": {
+                          "type": "boolean",
+                          "description": "Whether the speaker is a politician"
+                        },
+                        "position": {
+                          "type": ["string", "null"],
+                          "description": "Position or title"
+                        }
+                      }
+                    }
                   },
-                  "context": {
-                    "type": "object",
-                    "properties": {
-                      "meeting_context": {
-                        "type": "string"
-                      },
-                      "candidates": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "properties": {
-                            "politician_id": {
-                              "type": "integer"
-                            },
-                            "name": {
-                              "type": "string"
-                            },
-                            "party": {
-                              "type": "string"
-                            }
-                          }
+                  "politician_candidates": {
+                    "type": "array",
+                    "description": "List of politicians from database to match against",
+                    "items": {
+                      "type": "object",
+                      "required": ["politician_id", "name"],
+                      "properties": {
+                        "politician_id": {
+                          "type": "integer",
+                          "description": "Database ID of the politician"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Politician name"
+                        },
+                        "political_party_id": {
+                          "type": ["integer", "null"],
+                          "description": "Political party ID"
+                        },
+                        "political_party_name": {
+                          "type": ["string", "null"],
+                          "description": "Political party name"
+                        },
+                        "speaker_id": {
+                          "type": ["integer", "null"],
+                          "description": "Linked speaker ID if already matched"
                         }
                       }
                     }
@@ -244,22 +279,109 @@
                 }
               },
               {
-                "description": "Output for speaker_matching task",
-                "required": ["matched_politician_id", "confidence"],
+                "description": "Output for speaker_matching task (batch processing)",
+                "required": ["matches", "statistics"],
                 "properties": {
-                  "matched_politician_id": {
-                    "type": ["integer", "null"],
-                    "description": "ID of matched politician, null if no match"
+                  "matches": {
+                    "type": "array",
+                    "description": "List of matching results for each speaker",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "speaker_id",
+                        "speaker_name",
+                        "confidence_score",
+                        "matching_method"
+                      ],
+                      "properties": {
+                        "speaker_id": {
+                          "type": "integer",
+                          "description": "Speaker ID"
+                        },
+                        "speaker_name": {
+                          "type": "string",
+                          "description": "Speaker name"
+                        },
+                        "matched_politician_id": {
+                          "type": ["integer", "null"],
+                          "description": "Matched politician ID (null if no match)"
+                        },
+                        "matched_politician_name": {
+                          "type": ["string", "null"],
+                          "description": "Matched politician name"
+                        },
+                        "confidence_score": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "description": "Confidence score of the match"
+                        },
+                        "matching_method": {
+                          "type": "string",
+                          "enum": ["existing", "rule_based", "llm", "none"],
+                          "description": "Method used for matching"
+                        },
+                        "match_reason": {
+                          "type": "string",
+                          "description": "Explanation of the matching decision"
+                        }
+                      }
+                    }
                   },
-                  "confidence": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1,
-                    "description": "Confidence score of the match"
-                  },
-                  "match_reason": {
-                    "type": "string",
-                    "description": "Explanation of the match decision"
+                  "statistics": {
+                    "type": "object",
+                    "description": "Overall matching statistics",
+                    "required": [
+                      "total_speakers",
+                      "politicians_only",
+                      "matched"
+                    ],
+                    "properties": {
+                      "total_speakers": {
+                        "type": "integer",
+                        "description": "Total number of speakers processed"
+                      },
+                      "politicians_only": {
+                        "type": "integer",
+                        "description": "Number of speakers identified as politicians"
+                      },
+                      "matched": {
+                        "type": "integer",
+                        "description": "Number of successfully matched politicians"
+                      },
+                      "no_match": {
+                        "type": "integer",
+                        "description": "Number of politicians with no match"
+                      },
+                      "rule_based_matches": {
+                        "type": "integer",
+                        "description": "Number of rule-based matches"
+                      },
+                      "llm_matches": {
+                        "type": "integer",
+                        "description": "Number of LLM-based matches"
+                      },
+                      "existing_links": {
+                        "type": "integer",
+                        "description": "Number of existing links used"
+                      },
+                      "match_rate": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Proportion of politicians successfully matched"
+                      },
+                      "avg_confidence": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Average confidence score across matches"
+                      },
+                      "processing_time_ms": {
+                        "type": "integer",
+                        "description": "Processing time in milliseconds (optional)"
+                      }
+                    }
                   }
                 }
               },

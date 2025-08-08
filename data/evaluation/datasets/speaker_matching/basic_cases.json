@@ -4,194 +4,651 @@
   "metadata": {
     "created_at": "2025-08-08T10:00:00Z",
     "created_by": "Polibase Development Team",
-    "description": "Sample dataset for speaker-politician matching task evaluation",
-    "tags": ["sample", "speaker_matching", "llm_matching"],
-    "source": "Sample council meeting speakers"
+    "description": "Batch speaker-politician matching test cases based on actual data flow",
+    "tags": ["batch_matching", "speaker_matching", "llm_matching"],
+    "source": "Speakers extracted from meeting minutes vs politicians database"
   },
   "test_cases": [
     {
-      "id": "sm_001",
-      "description": "Exact name match with party affiliation",
+      "id": "sm_batch_001",
+      "description": "Basic batch matching with various speaker types",
       "input": {
-        "speaker_name": "田中花子",
-        "context": {
-          "meeting_context": "市民の会所属の田中花子議員による質問",
-          "candidates": [
-            {
-              "politician_id": 101,
-              "name": "田中花子",
-              "party": "市民の会"
-            },
-            {
-              "politician_id": 102,
-              "name": "田中太郎",
-              "party": "自由民主党"
-            },
-            {
-              "politician_id": 103,
-              "name": "田中美智子",
-              "party": "市民の会"
-            }
-          ]
-        }
+        "speakers": [
+          {
+            "speaker_id": 1,
+            "name": "田中花子",
+            "political_party_name": "市民の会",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 2,
+            "name": "山田部長",
+            "political_party_name": null,
+            "type": "government_official",
+            "is_politician": false,
+            "position": "環境部長"
+          },
+          {
+            "speaker_id": 3,
+            "name": "佐藤議員",
+            "political_party_name": "公明党",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 4,
+            "name": "鈴木委員長",
+            "political_party_name": null,
+            "type": "chairman",
+            "is_politician": false,
+            "position": "委員長"
+          },
+          {
+            "speaker_id": 5,
+            "name": "やまだ太郎",
+            "political_party_name": "自民党",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          }
+        ],
+        "politician_candidates": [
+          {
+            "politician_id": 101,
+            "name": "田中花子",
+            "political_party_id": 1,
+            "political_party_name": "市民の会",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 102,
+            "name": "田中太郎",
+            "political_party_id": 2,
+            "political_party_name": "自由民主党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 103,
+            "name": "佐藤健一",
+            "political_party_id": 3,
+            "political_party_name": "公明党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 104,
+            "name": "佐藤美香",
+            "political_party_id": 3,
+            "political_party_name": "公明党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 105,
+            "name": "山田太郎",
+            "political_party_id": 2,
+            "political_party_name": "自由民主党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 106,
+            "name": "鈴木一郎",
+            "political_party_id": 4,
+            "political_party_name": "立憲民主党",
+            "speaker_id": null
+          }
+        ]
       },
       "expected_output": {
-        "matched_politician_id": 101,
-        "confidence": 0.95,
-        "match_reason": "Name exactly matches and party affiliation confirms the match"
+        "matches": [
+          {
+            "speaker_id": 1,
+            "speaker_name": "田中花子",
+            "matched_politician_id": 101,
+            "matched_politician_name": "田中花子",
+            "confidence_score": 0.95,
+            "matching_method": "rule_based",
+            "match_reason": "Exact name and party match"
+          },
+          {
+            "speaker_id": 2,
+            "speaker_name": "山田部長",
+            "matched_politician_id": null,
+            "matched_politician_name": null,
+            "confidence_score": 0.0,
+            "matching_method": "none",
+            "match_reason": "Not a politician (government official)"
+          },
+          {
+            "speaker_id": 3,
+            "speaker_name": "佐藤議員",
+            "matched_politician_id": 103,
+            "matched_politician_name": "佐藤健一",
+            "confidence_score": 0.75,
+            "matching_method": "llm",
+            "match_reason": "Partial name match with party confirmation, multiple candidates resolved by LLM"
+          },
+          {
+            "speaker_id": 4,
+            "speaker_name": "鈴木委員長",
+            "matched_politician_id": null,
+            "matched_politician_name": null,
+            "confidence_score": 0.0,
+            "matching_method": "none",
+            "match_reason": "Not a politician (chairman)"
+          },
+          {
+            "speaker_id": 5,
+            "speaker_name": "やまだ太郎",
+            "matched_politician_id": 105,
+            "matched_politician_name": "山田太郎",
+            "confidence_score": 0.85,
+            "matching_method": "llm",
+            "match_reason": "Name variation (hiragana/kanji), party abbreviation matches"
+          }
+        ],
+        "statistics": {
+          "total_speakers": 5,
+          "politicians_only": 3,
+          "matched": 3,
+          "no_match": 0,
+          "rule_based_matches": 1,
+          "llm_matches": 2,
+          "match_rate": 1.0,
+          "avg_confidence": 0.85
+        }
       },
       "evaluation_criteria": {
         "priority": "high",
-        "difficulty": "easy",
-        "notes": "Simple exact match case with party confirmation"
-      }
-    },
-    {
-      "id": "sm_002",
-      "description": "Name with honorific variation",
-      "input": {
-        "speaker_name": "山田部長",
-        "context": {
-          "meeting_context": "環境部長の山田氏による答弁",
-          "candidates": [
-            {
-              "politician_id": 201,
-              "name": "山田健一",
-              "party": null
-            },
-            {
-              "politician_id": 202,
-              "name": "山田次郎",
-              "party": null
-            },
-            {
-              "politician_id": 203,
-              "name": "山本健一",
-              "party": null
-            }
-          ]
-        }
-      },
-      "expected_output": {
-        "matched_politician_id": 201,
-        "confidence": 0.7,
-        "match_reason": "Surname matches with title variation, first candidate selected based on context"
-      },
-      "evaluation_criteria": {
-        "priority": "medium",
         "difficulty": "medium",
-        "notes": "Requires handling of title/honorific and partial name matching"
+        "notes": "Tests filtering non-politicians and handling name/party variations"
       }
     },
     {
-      "id": "sm_003",
-      "description": "No matching candidate",
+      "id": "sm_batch_002",
+      "description": "Complex party name variations and no matches",
       "input": {
-        "speaker_name": "鈴木委員長",
-        "context": {
-          "meeting_context": "委員長による議事進行",
-          "candidates": [
-            {
-              "politician_id": 301,
-              "name": "田中一郎",
-              "party": "自由民主党"
-            },
-            {
-              "politician_id": 302,
-              "name": "佐藤二郎",
-              "party": "公明党"
-            },
-            {
-              "politician_id": 303,
-              "name": "高橋三郎",
-              "party": "立憲民主党"
-            }
-          ]
-        }
+        "speakers": [
+          {
+            "speaker_id": 6,
+            "name": "高橋",
+            "political_party_name": "自民",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 7,
+            "name": "新人議員",
+            "political_party_name": "無所属",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 8,
+            "name": "伊藤議員",
+            "political_party_name": "立憲民主",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 9,
+            "name": "加藤（公明党）",
+            "political_party_name": "公明党",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 10,
+            "name": "山本議員",
+            "political_party_name": "日本維新の会",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          }
+        ],
+        "politician_candidates": [
+          {
+            "politician_id": 201,
+            "name": "高橋健太",
+            "political_party_id": 2,
+            "political_party_name": "自由民主党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 202,
+            "name": "高橋美香",
+            "political_party_id": 2,
+            "political_party_name": "自由民主党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 203,
+            "name": "伊藤一郎",
+            "political_party_id": 4,
+            "political_party_name": "立憲民主党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 204,
+            "name": "加藤健一",
+            "political_party_id": 3,
+            "political_party_name": "公明党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 205,
+            "name": "山本太郎",
+            "political_party_id": 5,
+            "political_party_name": "れいわ新選組",
+            "speaker_id": null
+          }
+        ]
       },
       "expected_output": {
-        "matched_politician_id": null,
-        "confidence": 0.0,
-        "match_reason": "No candidate with surname '鈴木' found in the provided list"
+        "matches": [
+          {
+            "speaker_id": 6,
+            "speaker_name": "高橋",
+            "matched_politician_id": 201,
+            "matched_politician_name": "高橋健太",
+            "confidence_score": 0.6,
+            "matching_method": "llm",
+            "match_reason": "Surname only, party abbreviation matches, LLM selected most likely candidate"
+          },
+          {
+            "speaker_id": 7,
+            "speaker_name": "新人議員",
+            "matched_politician_id": null,
+            "matched_politician_name": null,
+            "confidence_score": 0.0,
+            "matching_method": "none",
+            "match_reason": "No matching politician found"
+          },
+          {
+            "speaker_id": 8,
+            "speaker_name": "伊藤議員",
+            "matched_politician_id": 203,
+            "matched_politician_name": "伊藤一郎",
+            "confidence_score": 0.8,
+            "matching_method": "rule_based",
+            "match_reason": "Partial name and party match"
+          },
+          {
+            "speaker_id": 9,
+            "speaker_name": "加藤（公明党）",
+            "matched_politician_id": 204,
+            "matched_politician_name": "加藤健一",
+            "confidence_score": 0.85,
+            "matching_method": "rule_based",
+            "match_reason": "Name extracted from parentheses, party match"
+          },
+          {
+            "speaker_id": 10,
+            "speaker_name": "山本議員",
+            "matched_politician_id": null,
+            "matched_politician_name": null,
+            "confidence_score": 0.0,
+            "matching_method": "none",
+            "match_reason": "Party mismatch (日本維新の会 vs れいわ新選組)"
+          }
+        ],
+        "statistics": {
+          "total_speakers": 5,
+          "politicians_only": 5,
+          "matched": 3,
+          "no_match": 2,
+          "rule_based_matches": 2,
+          "llm_matches": 1,
+          "match_rate": 0.6,
+          "avg_confidence": 0.75
+        }
       },
       "evaluation_criteria": {
         "priority": "high",
-        "difficulty": "easy",
-        "notes": "Should correctly identify when no match exists"
-      }
-    },
-    {
-      "id": "sm_004",
-      "description": "Similar names requiring context disambiguation",
-      "input": {
-        "speaker_name": "佐藤議員",
-        "context": {
-          "meeting_context": "公明党の佐藤議員から環境問題について質問",
-          "candidates": [
-            {
-              "politician_id": 401,
-              "name": "佐藤健太",
-              "party": "自由民主党"
-            },
-            {
-              "politician_id": 402,
-              "name": "佐藤美香",
-              "party": "公明党"
-            },
-            {
-              "politician_id": 403,
-              "name": "佐藤一郎",
-              "party": "公明党"
-            }
-          ]
-        }
-      },
-      "expected_output": {
-        "matched_politician_id": 402,
-        "confidence": 0.6,
-        "match_reason": "Multiple candidates with same surname and party, additional context needed for higher confidence"
-      },
-      "evaluation_criteria": {
-        "priority": "medium",
         "difficulty": "hard",
-        "notes": "Multiple valid candidates, requires party context and possibly additional disambiguation"
+        "notes": "Tests party name variations, missing politicians, and party mismatches"
       }
     },
     {
-      "id": "sm_005",
-      "description": "Name with reading variation (kanji/hiragana)",
+      "id": "sm_batch_003",
+      "description": "Existing links and duplicate speakers",
       "input": {
-        "speaker_name": "やまだ太郎",
-        "context": {
-          "meeting_context": "山田太郎議員（自民党）の発言",
-          "candidates": [
-            {
-              "politician_id": 501,
-              "name": "山田太郎",
-              "party": "自由民主党"
-            },
-            {
-              "politician_id": 502,
-              "name": "山田次郎",
-              "party": "自由民主党"
-            },
-            {
-              "politician_id": 503,
-              "name": "やまだ花子",
-              "party": "公明党"
-            }
-          ]
-        }
+        "speakers": [
+          {
+            "speaker_id": 11,
+            "name": "田中太郎",
+            "political_party_name": "自由民主党",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 12,
+            "name": "田中太郎議員",
+            "political_party_name": "自民党",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 13,
+            "name": "田中",
+            "political_party_name": "自民",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          }
+        ],
+        "politician_candidates": [
+          {
+            "politician_id": 301,
+            "name": "田中太郎",
+            "political_party_id": 2,
+            "political_party_name": "自由民主党",
+            "speaker_id": 11
+          },
+          {
+            "politician_id": 302,
+            "name": "田中次郎",
+            "political_party_id": 2,
+            "political_party_name": "自由民主党",
+            "speaker_id": null
+          }
+        ]
       },
       "expected_output": {
-        "matched_politician_id": 501,
-        "confidence": 0.9,
-        "match_reason": "Name matches when considering kanji/hiragana variation, party confirms match"
+        "matches": [
+          {
+            "speaker_id": 11,
+            "speaker_name": "田中太郎",
+            "matched_politician_id": 301,
+            "matched_politician_name": "田中太郎",
+            "confidence_score": 1.0,
+            "matching_method": "existing",
+            "match_reason": "Already linked in database"
+          },
+          {
+            "speaker_id": 12,
+            "speaker_name": "田中太郎議員",
+            "matched_politician_id": 301,
+            "matched_politician_name": "田中太郎",
+            "confidence_score": 0.9,
+            "matching_method": "rule_based",
+            "match_reason": "Name variation matches existing politician"
+          },
+          {
+            "speaker_id": 13,
+            "speaker_name": "田中",
+            "matched_politician_id": 301,
+            "matched_politician_name": "田中太郎",
+            "confidence_score": 0.65,
+            "matching_method": "llm",
+            "match_reason": "Surname matches, party matches, likely same person as speaker_id 11"
+          }
+        ],
+        "statistics": {
+          "total_speakers": 3,
+          "politicians_only": 3,
+          "matched": 3,
+          "no_match": 0,
+          "rule_based_matches": 1,
+          "llm_matches": 1,
+          "existing_links": 1,
+          "match_rate": 1.0,
+          "avg_confidence": 0.85
+        }
       },
       "evaluation_criteria": {
-        "priority": "low",
+        "priority": "medium",
         "difficulty": "medium",
-        "notes": "Requires handling of Japanese script variations"
+        "notes": "Tests handling of existing links and duplicate speaker entries"
+      }
+    },
+    {
+      "id": "sm_batch_004",
+      "description": "Performance test with mixed speaker types",
+      "input": {
+        "speakers": [
+          {
+            "speaker_id": 14,
+            "name": "議長",
+            "political_party_name": null,
+            "type": "chairman",
+            "is_politician": false,
+            "position": "議長"
+          },
+          {
+            "speaker_id": 15,
+            "name": "鈴木一郎",
+            "political_party_name": "立憲民主党",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 16,
+            "name": "総務部長",
+            "political_party_name": null,
+            "type": "government_official",
+            "is_politician": false,
+            "position": "総務部長"
+          },
+          {
+            "speaker_id": 17,
+            "name": "渡辺議員",
+            "political_party_name": "共産党",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 18,
+            "name": "参考人A",
+            "political_party_name": null,
+            "type": "witness",
+            "is_politician": false,
+            "position": "参考人"
+          },
+          {
+            "speaker_id": 19,
+            "name": "小林健一",
+            "political_party_name": "国民民主党",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 20,
+            "name": "委員長",
+            "political_party_name": null,
+            "type": "chairman",
+            "is_politician": false,
+            "position": "委員長"
+          },
+          {
+            "speaker_id": 21,
+            "name": "木村太郎",
+            "political_party_name": "無所属",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          },
+          {
+            "speaker_id": 22,
+            "name": "副市長",
+            "political_party_name": null,
+            "type": "government_official",
+            "is_politician": false,
+            "position": "副市長"
+          },
+          {
+            "speaker_id": 23,
+            "name": "松本議員",
+            "political_party_name": "自民党",
+            "type": "politician",
+            "is_politician": true,
+            "position": null
+          }
+        ],
+        "politician_candidates": [
+          {
+            "politician_id": 401,
+            "name": "鈴木一郎",
+            "political_party_id": 4,
+            "political_party_name": "立憲民主党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 402,
+            "name": "渡辺美香",
+            "political_party_id": 6,
+            "political_party_name": "日本共産党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 403,
+            "name": "小林健一",
+            "political_party_id": 7,
+            "political_party_name": "国民民主党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 404,
+            "name": "木村太郎",
+            "political_party_id": null,
+            "political_party_name": null,
+            "speaker_id": null
+          },
+          {
+            "politician_id": 405,
+            "name": "松本花子",
+            "political_party_id": 2,
+            "political_party_name": "自由民主党",
+            "speaker_id": null
+          },
+          {
+            "politician_id": 406,
+            "name": "松本健太",
+            "political_party_id": 2,
+            "political_party_name": "自由民主党",
+            "speaker_id": null
+          }
+        ]
+      },
+      "expected_output": {
+        "matches": [
+          {
+            "speaker_id": 14,
+            "speaker_name": "議長",
+            "matched_politician_id": null,
+            "matched_politician_name": null,
+            "confidence_score": 0.0,
+            "matching_method": "none",
+            "match_reason": "Not a politician"
+          },
+          {
+            "speaker_id": 15,
+            "speaker_name": "鈴木一郎",
+            "matched_politician_id": 401,
+            "matched_politician_name": "鈴木一郎",
+            "confidence_score": 0.95,
+            "matching_method": "rule_based",
+            "match_reason": "Exact name and party match"
+          },
+          {
+            "speaker_id": 16,
+            "speaker_name": "総務部長",
+            "matched_politician_id": null,
+            "matched_politician_name": null,
+            "confidence_score": 0.0,
+            "matching_method": "none",
+            "match_reason": "Not a politician"
+          },
+          {
+            "speaker_id": 17,
+            "speaker_name": "渡辺議員",
+            "matched_politician_id": 402,
+            "matched_politician_name": "渡辺美香",
+            "confidence_score": 0.75,
+            "matching_method": "llm",
+            "match_reason": "Partial name match, party name variation"
+          },
+          {
+            "speaker_id": 18,
+            "speaker_name": "参考人A",
+            "matched_politician_id": null,
+            "matched_politician_name": null,
+            "confidence_score": 0.0,
+            "matching_method": "none",
+            "match_reason": "Not a politician"
+          },
+          {
+            "speaker_id": 19,
+            "speaker_name": "小林健一",
+            "matched_politician_id": 403,
+            "matched_politician_name": "小林健一",
+            "confidence_score": 0.95,
+            "matching_method": "rule_based",
+            "match_reason": "Exact name and party match"
+          },
+          {
+            "speaker_id": 20,
+            "speaker_name": "委員長",
+            "matched_politician_id": null,
+            "matched_politician_name": null,
+            "confidence_score": 0.0,
+            "matching_method": "none",
+            "match_reason": "Not a politician"
+          },
+          {
+            "speaker_id": 21,
+            "speaker_name": "木村太郎",
+            "matched_politician_id": 404,
+            "matched_politician_name": "木村太郎",
+            "confidence_score": 0.9,
+            "matching_method": "rule_based",
+            "match_reason": "Exact name match, both independent"
+          },
+          {
+            "speaker_id": 22,
+            "speaker_name": "副市長",
+            "matched_politician_id": null,
+            "matched_politician_name": null,
+            "confidence_score": 0.0,
+            "matching_method": "none",
+            "match_reason": "Not a politician"
+          },
+          {
+            "speaker_id": 23,
+            "speaker_name": "松本議員",
+            "matched_politician_id": 406,
+            "matched_politician_name": "松本健太",
+            "confidence_score": 0.7,
+            "matching_method": "llm",
+            "match_reason": "Partial name match, party match, LLM selected from multiple candidates"
+          }
+        ],
+        "statistics": {
+          "total_speakers": 10,
+          "politicians_only": 5,
+          "matched": 5,
+          "no_match": 0,
+          "rule_based_matches": 3,
+          "llm_matches": 2,
+          "match_rate": 1.0,
+          "avg_confidence": 0.85,
+          "processing_time_ms": 200
+        }
+      },
+      "evaluation_criteria": {
+        "priority": "high",
+        "difficulty": "medium",
+        "notes": "Performance test with filtering non-politicians and matching variations"
       }
     }
   ]
