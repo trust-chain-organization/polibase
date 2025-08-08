@@ -1,0 +1,181 @@
+{
+  "version": "1.0.0",
+  "task_type": "conference_member_matching",
+  "metadata": {
+    "created_at": "2025-08-08T10:00:00Z",
+    "created_by": "Polibase Development Team",
+    "description": "Sample dataset for conference member to politician matching",
+    "tags": ["sample", "conference_member_matching", "fuzzy_matching"],
+    "source": "Sample conference member lists"
+  },
+  "test_cases": [
+    {
+      "id": "cmm_001",
+      "description": "Exact match with party and role",
+      "input": {
+        "member_name": "田中太郎",
+        "party_affiliation": "自由民主党",
+        "conference_info": {
+          "conference_id": 10,
+          "conference_name": "サンプル市議会",
+          "governing_body": "サンプル市"
+        }
+      },
+      "expected_output": {
+        "politician_id": 1001,
+        "match_status": "matched",
+        "confidence": 0.95,
+        "role": "議長"
+      },
+      "evaluation_criteria": {
+        "priority": "high",
+        "difficulty": "easy",
+        "notes": "Direct exact match with high confidence"
+      }
+    },
+    {
+      "id": "cmm_002",
+      "description": "Name variation with similar party name",
+      "input": {
+        "member_name": "山田 花子",
+        "party_affiliation": "市民クラブ",
+        "conference_info": {
+          "conference_id": 11,
+          "conference_name": "サンプル県議会",
+          "governing_body": "サンプル県"
+        }
+      },
+      "expected_output": {
+        "politician_id": 1002,
+        "match_status": "matched",
+        "confidence": 0.8,
+        "role": null
+      },
+      "evaluation_criteria": {
+        "priority": "medium",
+        "difficulty": "medium",
+        "notes": "Handles space in name and similar party names"
+      }
+    },
+    {
+      "id": "cmm_003",
+      "description": "Low confidence match requiring review",
+      "input": {
+        "member_name": "佐藤",
+        "party_affiliation": "公明党",
+        "conference_info": {
+          "conference_id": 12,
+          "conference_name": "サンプル町議会",
+          "governing_body": "サンプル町"
+        }
+      },
+      "expected_output": {
+        "politician_id": 1003,
+        "match_status": "needs_review",
+        "confidence": 0.6,
+        "role": null
+      },
+      "evaluation_criteria": {
+        "priority": "high",
+        "difficulty": "medium",
+        "notes": "Partial name match with multiple candidates"
+      }
+    },
+    {
+      "id": "cmm_004",
+      "description": "No matching politician found",
+      "input": {
+        "member_name": "新人議員太郎",
+        "party_affiliation": "無所属",
+        "conference_info": {
+          "conference_id": 13,
+          "conference_name": "サンプル村議会",
+          "governing_body": "サンプル村"
+        }
+      },
+      "expected_output": {
+        "politician_id": null,
+        "match_status": "no_match",
+        "confidence": 0.0,
+        "role": null
+      },
+      "evaluation_criteria": {
+        "priority": "medium",
+        "difficulty": "easy",
+        "notes": "New politician not in database"
+      }
+    },
+    {
+      "id": "cmm_005",
+      "description": "Complex role extraction with name matching",
+      "input": {
+        "member_name": "鈴木一郎（副議長）",
+        "party_affiliation": "立憲民主党",
+        "conference_info": {
+          "conference_id": 14,
+          "conference_name": "サンプル市議会総務委員会",
+          "governing_body": "サンプル市"
+        }
+      },
+      "expected_output": {
+        "politician_id": 1005,
+        "match_status": "matched",
+        "confidence": 0.85,
+        "role": "副議長"
+      },
+      "evaluation_criteria": {
+        "priority": "low",
+        "difficulty": "hard",
+        "notes": "Extract role from name string and match politician"
+      }
+    },
+    {
+      "id": "cmm_006",
+      "description": "Parliamentary group member matching",
+      "input": {
+        "member_name": "高橋美智子",
+        "party_affiliation": "市民ネット・社民・無所属",
+        "conference_info": {
+          "conference_id": 15,
+          "conference_name": "サンプル市議会",
+          "governing_body": "サンプル市"
+        }
+      },
+      "expected_output": {
+        "politician_id": 1006,
+        "match_status": "matched",
+        "confidence": 0.75,
+        "role": null
+      },
+      "evaluation_criteria": {
+        "priority": "medium",
+        "difficulty": "hard",
+        "notes": "Complex parliamentary group name matching"
+      }
+    },
+    {
+      "id": "cmm_007",
+      "description": "Name with honorific title",
+      "input": {
+        "member_name": "委員長　中村健太",
+        "party_affiliation": "自由民主党",
+        "conference_info": {
+          "conference_id": 16,
+          "conference_name": "サンプル市議会建設委員会",
+          "governing_body": "サンプル市"
+        }
+      },
+      "expected_output": {
+        "politician_id": 1007,
+        "match_status": "matched",
+        "confidence": 0.9,
+        "role": "委員長"
+      },
+      "evaluation_criteria": {
+        "priority": "low",
+        "difficulty": "medium",
+        "notes": "Extract role prefix and match name"
+      }
+    }
+  ]
+}

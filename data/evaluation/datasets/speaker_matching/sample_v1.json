@@ -1,0 +1,198 @@
+{
+  "version": "1.0.0",
+  "task_type": "speaker_matching",
+  "metadata": {
+    "created_at": "2025-08-08T10:00:00Z",
+    "created_by": "Polibase Development Team",
+    "description": "Sample dataset for speaker-politician matching task evaluation",
+    "tags": ["sample", "speaker_matching", "llm_matching"],
+    "source": "Sample council meeting speakers"
+  },
+  "test_cases": [
+    {
+      "id": "sm_001",
+      "description": "Exact name match with party affiliation",
+      "input": {
+        "speaker_name": "田中花子",
+        "context": {
+          "meeting_context": "市民の会所属の田中花子議員による質問",
+          "candidates": [
+            {
+              "politician_id": 101,
+              "name": "田中花子",
+              "party": "市民の会"
+            },
+            {
+              "politician_id": 102,
+              "name": "田中太郎",
+              "party": "自由民主党"
+            },
+            {
+              "politician_id": 103,
+              "name": "田中美智子",
+              "party": "市民の会"
+            }
+          ]
+        }
+      },
+      "expected_output": {
+        "matched_politician_id": 101,
+        "confidence": 0.95,
+        "match_reason": "Name exactly matches and party affiliation confirms the match"
+      },
+      "evaluation_criteria": {
+        "priority": "high",
+        "difficulty": "easy",
+        "notes": "Simple exact match case with party confirmation"
+      }
+    },
+    {
+      "id": "sm_002",
+      "description": "Name with honorific variation",
+      "input": {
+        "speaker_name": "山田部長",
+        "context": {
+          "meeting_context": "環境部長の山田氏による答弁",
+          "candidates": [
+            {
+              "politician_id": 201,
+              "name": "山田健一",
+              "party": null
+            },
+            {
+              "politician_id": 202,
+              "name": "山田次郎",
+              "party": null
+            },
+            {
+              "politician_id": 203,
+              "name": "山本健一",
+              "party": null
+            }
+          ]
+        }
+      },
+      "expected_output": {
+        "matched_politician_id": 201,
+        "confidence": 0.7,
+        "match_reason": "Surname matches with title variation, first candidate selected based on context"
+      },
+      "evaluation_criteria": {
+        "priority": "medium",
+        "difficulty": "medium",
+        "notes": "Requires handling of title/honorific and partial name matching"
+      }
+    },
+    {
+      "id": "sm_003",
+      "description": "No matching candidate",
+      "input": {
+        "speaker_name": "鈴木委員長",
+        "context": {
+          "meeting_context": "委員長による議事進行",
+          "candidates": [
+            {
+              "politician_id": 301,
+              "name": "田中一郎",
+              "party": "自由民主党"
+            },
+            {
+              "politician_id": 302,
+              "name": "佐藤二郎",
+              "party": "公明党"
+            },
+            {
+              "politician_id": 303,
+              "name": "高橋三郎",
+              "party": "立憲民主党"
+            }
+          ]
+        }
+      },
+      "expected_output": {
+        "matched_politician_id": null,
+        "confidence": 0.0,
+        "match_reason": "No candidate with surname '鈴木' found in the provided list"
+      },
+      "evaluation_criteria": {
+        "priority": "high",
+        "difficulty": "easy",
+        "notes": "Should correctly identify when no match exists"
+      }
+    },
+    {
+      "id": "sm_004",
+      "description": "Similar names requiring context disambiguation",
+      "input": {
+        "speaker_name": "佐藤議員",
+        "context": {
+          "meeting_context": "公明党の佐藤議員から環境問題について質問",
+          "candidates": [
+            {
+              "politician_id": 401,
+              "name": "佐藤健太",
+              "party": "自由民主党"
+            },
+            {
+              "politician_id": 402,
+              "name": "佐藤美香",
+              "party": "公明党"
+            },
+            {
+              "politician_id": 403,
+              "name": "佐藤一郎",
+              "party": "公明党"
+            }
+          ]
+        }
+      },
+      "expected_output": {
+        "matched_politician_id": 402,
+        "confidence": 0.6,
+        "match_reason": "Multiple candidates with same surname and party, additional context needed for higher confidence"
+      },
+      "evaluation_criteria": {
+        "priority": "medium",
+        "difficulty": "hard",
+        "notes": "Multiple valid candidates, requires party context and possibly additional disambiguation"
+      }
+    },
+    {
+      "id": "sm_005",
+      "description": "Name with reading variation (kanji/hiragana)",
+      "input": {
+        "speaker_name": "やまだ太郎",
+        "context": {
+          "meeting_context": "山田太郎議員（自民党）の発言",
+          "candidates": [
+            {
+              "politician_id": 501,
+              "name": "山田太郎",
+              "party": "自由民主党"
+            },
+            {
+              "politician_id": 502,
+              "name": "山田次郎",
+              "party": "自由民主党"
+            },
+            {
+              "politician_id": 503,
+              "name": "やまだ花子",
+              "party": "公明党"
+            }
+          ]
+        }
+      },
+      "expected_output": {
+        "matched_politician_id": 501,
+        "confidence": 0.9,
+        "match_reason": "Name matches when considering kanji/hiragana variation, party confirms match"
+      },
+      "evaluation_criteria": {
+        "priority": "low",
+        "difficulty": "medium",
+        "notes": "Requires handling of Japanese script variations"
+      }
+    }
+  ]
+}

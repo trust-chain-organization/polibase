@@ -1,0 +1,310 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Polibase Evaluation Dataset Schema",
+  "description": "Schema for Polibase LLM evaluation datasets",
+  "type": "object",
+  "required": ["version", "task_type", "metadata", "test_cases"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Dataset version in semver format",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "task_type": {
+      "type": "string",
+      "description": "Type of evaluation task",
+      "enum": [
+        "minutes_division",
+        "speaker_matching",
+        "party_member_extraction",
+        "conference_member_matching"
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Dataset metadata",
+      "required": ["created_at", "created_by", "description"],
+      "properties": {
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 datetime when dataset was created"
+        },
+        "created_by": {
+          "type": "string",
+          "description": "Creator of the dataset"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the dataset"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional tags for categorization"
+        },
+        "source": {
+          "type": "string",
+          "description": "Source of the test data (e.g., URL, document name)"
+        }
+      }
+    },
+    "test_cases": {
+      "type": "array",
+      "description": "Array of test cases",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "input", "expected_output"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the test case"
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional description of the test case"
+          },
+          "input": {
+            "type": "object",
+            "description": "Input data for the test case",
+            "oneOf": [
+              {
+                "description": "Input for minutes_division task",
+                "required": ["text"],
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "description": "Raw minutes text to be divided"
+                  },
+                  "meeting_info": {
+                    "type": "object",
+                    "properties": {
+                      "meeting_date": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "governing_body": {
+                        "type": "string"
+                      },
+                      "conference": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "description": "Input for speaker_matching task",
+                "required": ["speaker_name", "context"],
+                "properties": {
+                  "speaker_name": {
+                    "type": "string",
+                    "description": "Speaker name to match"
+                  },
+                  "context": {
+                    "type": "object",
+                    "properties": {
+                      "meeting_context": {
+                        "type": "string"
+                      },
+                      "candidates": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "politician_id": {
+                              "type": "integer"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "party": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "description": "Input for party_member_extraction task",
+                "required": ["html_content"],
+                "properties": {
+                  "html_content": {
+                    "type": "string",
+                    "description": "HTML content of party member page"
+                  },
+                  "party_name": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              },
+              {
+                "description": "Input for conference_member_matching task",
+                "required": ["member_name", "conference_info"],
+                "properties": {
+                  "member_name": {
+                    "type": "string",
+                    "description": "Conference member name to match"
+                  },
+                  "party_affiliation": {
+                    "type": "string"
+                  },
+                  "conference_info": {
+                    "type": "object",
+                    "properties": {
+                      "conference_id": {
+                        "type": "integer"
+                      },
+                      "conference_name": {
+                        "type": "string"
+                      },
+                      "governing_body": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "expected_output": {
+            "type": "object",
+            "description": "Expected output for the test case",
+            "oneOf": [
+              {
+                "description": "Output for minutes_division task",
+                "required": ["conversations"],
+                "properties": {
+                  "conversations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["speaker", "content", "sequence"],
+                      "properties": {
+                        "speaker": {
+                          "type": "string"
+                        },
+                        "content": {
+                          "type": "string"
+                        },
+                        "sequence": {
+                          "type": "integer"
+                        },
+                        "party": {
+                          "type": ["string", "null"]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "description": "Output for speaker_matching task",
+                "required": ["matched_politician_id", "confidence"],
+                "properties": {
+                  "matched_politician_id": {
+                    "type": ["integer", "null"],
+                    "description": "ID of matched politician, null if no match"
+                  },
+                  "confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Confidence score of the match"
+                  },
+                  "match_reason": {
+                    "type": "string",
+                    "description": "Explanation of the match decision"
+                  }
+                }
+              },
+              {
+                "description": "Output for party_member_extraction task",
+                "required": ["politicians"],
+                "properties": {
+                  "politicians": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["name", "party"],
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "party": {
+                          "type": "string"
+                        },
+                        "position": {
+                          "type": "string"
+                        },
+                        "district": {
+                          "type": "string"
+                        },
+                        "profile_url": {
+                          "type": "string",
+                          "format": "uri"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "description": "Output for conference_member_matching task",
+                "required": ["politician_id", "match_status", "confidence"],
+                "properties": {
+                  "politician_id": {
+                    "type": ["integer", "null"]
+                  },
+                  "match_status": {
+                    "type": "string",
+                    "enum": ["matched", "needs_review", "no_match"]
+                  },
+                  "confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "role": {
+                    "type": ["string", "null"],
+                    "description": "Role in the conference if applicable"
+                  }
+                }
+              }
+            ]
+          },
+          "evaluation_criteria": {
+            "type": "object",
+            "description": "Optional evaluation criteria for this test case",
+            "properties": {
+              "priority": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "Priority of this test case"
+              },
+              "difficulty": {
+                "type": "string",
+                "enum": ["easy", "medium", "hard"],
+                "description": "Difficulty level of this test case"
+              },
+              "notes": {
+                "type": "string",
+                "description": "Additional notes for evaluation"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "version": "1.0.0",
+  "task_type": "minutes_division",
+  "metadata": {
+    "created_at": "2025-08-08T10:00:00Z",
+    "created_by": "Polibase Development Team",
+    "description": "Sample dataset for minutes division task evaluation",
+    "tags": ["sample", "minutes_division", "japanese"],
+    "source": "Sample local council meeting minutes"
+  },
+  "test_cases": [
+    {
+      "id": "md_001",
+      "description": "Basic conversation extraction from simple minutes",
+      "input": {
+        "text": "令和6年第1回定例会議事録\n日時：令和6年1月15日午後2時\n場所：市議会議事堂\n\n○議長（山田太郎君）　これより本日の会議を開きます。本日の議事日程は、お手元に配付したとおりであります。\n\n○田中花子議員（市民の会）　議長、発言の許可をお願いします。\n\n○議長（山田太郎君）　田中議員。\n\n○田中花子議員（市民の会）　昨年度の予算執行について質問いたします。特に、教育関連予算の執行率が低いことについて、その理由と今後の対策をお聞かせください。\n\n○教育部長（佐藤次郎君）　お答えいたします。教育関連予算の執行率が低い理由としては、コロナ禍による事業の中止や延期が主な要因です。今後は、オンライン化も含めた柔軟な事業実施を検討してまいります。\n\n○田中花子議員（市民の会）　ありがとうございます。オンライン化については賛成ですが、デジタル格差への配慮も必要だと考えますが、いかがでしょうか。",
+        "meeting_info": {
+          "meeting_date": "2024-01-15",
+          "governing_body": "サンプル市",
+          "conference": "市議会定例会"
+        }
+      },
+      "expected_output": {
+        "conversations": [
+          {
+            "speaker": "山田太郎",
+            "content": "これより本日の会議を開きます。本日の議事日程は、お手元に配付したとおりであります。",
+            "sequence": 1,
+            "party": null
+          },
+          {
+            "speaker": "田中花子",
+            "content": "議長、発言の許可をお願いします。",
+            "sequence": 2,
+            "party": "市民の会"
+          },
+          {
+            "speaker": "山田太郎",
+            "content": "田中議員。",
+            "sequence": 3,
+            "party": null
+          },
+          {
+            "speaker": "田中花子",
+            "content": "昨年度の予算執行について質問いたします。特に、教育関連予算の執行率が低いことについて、その理由と今後の対策をお聞かせください。",
+            "sequence": 4,
+            "party": "市民の会"
+          },
+          {
+            "speaker": "佐藤次郎",
+            "content": "お答えいたします。教育関連予算の執行率が低い理由としては、コロナ禍による事業の中止や延期が主な要因です。今後は、オンライン化も含めた柔軟な事業実施を検討してまいります。",
+            "sequence": 5,
+            "party": null
+          },
+          {
+            "speaker": "田中花子",
+            "content": "ありがとうございます。オンライン化については賛成ですが、デジタル格差への配慮も必要だと考えますが、いかがでしょうか。",
+            "sequence": 6,
+            "party": "市民の会"
+          }
+        ]
+      },
+      "evaluation_criteria": {
+        "priority": "high",
+        "difficulty": "easy",
+        "notes": "Basic pattern with clear speaker markers and party affiliations"
+      }
+    },
+    {
+      "id": "md_002",
+      "description": "Complex minutes with multiple speakers and interjections",
+      "input": {
+        "text": "○委員長（鈴木一郎君）　次に、環境問題について審議いたします。\n\n○高橋委員（自由民主党）　委員長。\n\n○委員長（鈴木一郎君）　高橋委員。\n\n○高橋委員（自由民主党）　市内のゴミ処理施設の老朽化について、現状と更新計画をお聞きしたい。また、新施設では、どのような環境配慮を行う予定でしょうか。\n\n（「そうだ」と呼ぶ者あり）\n\n○環境部長（伊藤健一君）　ゴミ処理施設については、築30年を経過しており、令和8年度に更新を予定しております。新施設では、最新の排ガス処理設備を導入し、CO2排出量を現在の半分以下に削減する計画です。\n\n○高橋委員（自由民主党）　それは素晴らしい計画ですね。住民説明会の予定はありますか。\n\n○環境部長（伊藤健一君）　来月から順次、各地区で説明会を開催する予定です。",
+        "meeting_info": {
+          "meeting_date": "2024-02-20",
+          "governing_body": "サンプル市",
+          "conference": "環境委員会"
+        }
+      },
+      "expected_output": {
+        "conversations": [
+          {
+            "speaker": "鈴木一郎",
+            "content": "次に、環境問題について審議いたします。",
+            "sequence": 1,
+            "party": null
+          },
+          {
+            "speaker": "高橋",
+            "content": "委員長。",
+            "sequence": 2,
+            "party": "自由民主党"
+          },
+          {
+            "speaker": "鈴木一郎",
+            "content": "高橋委員。",
+            "sequence": 3,
+            "party": null
+          },
+          {
+            "speaker": "高橋",
+            "content": "市内のゴミ処理施設の老朽化について、現状と更新計画をお聞きしたい。また、新施設では、どのような環境配慮を行う予定でしょうか。",
+            "sequence": 4,
+            "party": "自由民主党"
+          },
+          {
+            "speaker": "伊藤健一",
+            "content": "ゴミ処理施設については、築30年を経過しており、令和8年度に更新を予定しております。新施設では、最新の排ガス処理設備を導入し、CO2排出量を現在の半分以下に削減する計画です。",
+            "sequence": 5,
+            "party": null
+          },
+          {
+            "speaker": "高橋",
+            "content": "それは素晴らしい計画ですね。住民説明会の予定はありますか。",
+            "sequence": 6,
+            "party": "自由民主党"
+          },
+          {
+            "speaker": "伊藤健一",
+            "content": "来月から順次、各地区で説明会を開催する予定です。",
+            "sequence": 7,
+            "party": null
+          }
+        ]
+      },
+      "evaluation_criteria": {
+        "priority": "medium",
+        "difficulty": "medium",
+        "notes": "Contains interjections that should be filtered out"
+      }
+    }
+  ]
+}
