@@ -57,18 +57,36 @@ PDFや文字列形式の議事録を個別の発言に分割するタスク。
 - `politicians`: 名前、政党、役職、選挙区等を含む政治家情報の配列
 
 ### 4. conference_member_matching（議会メンバーマッチング）
-議会メンバーリストから政治家データベースへのマッチングを行うタスク。
+議会メンバーリストと政治家データベースのバッチ名寄せ処理を評価するタスク。
 
 **入力**:
-- `member_name`: 議会メンバー名
-- `party_affiliation`: 所属政党/会派
-- `conference_info`: 議会情報
+- `conference_members`: 名寄せ対象の議会メンバーリスト
+  - `member_id`: メンバーの一意識別子
+  - `name`: メンバー名
+  - `party_affiliation`: 所属政党/会派
+  - `role`: 議会での役職
+  - `conference_id`: 議会ID
+- `politician_candidates`: データベースから取得した政治家候補リスト
+  - `politician_id`: 政治家のデータベースID
+  - `name`: 政治家名
+  - `party`: 政党
+  - `district`: 選挙区
 
 **出力**:
-- `politician_id`: マッチした政治家のID
-- `match_status`: マッチステータス（matched/needs_review/no_match）
-- `confidence`: マッチング信頼度
-- `role`: 議会での役職
+- `matches`: 各メンバーのマッチング結果配列
+  - `member_id`: メンバーID
+  - `politician_id`: マッチした政治家のID
+  - `match_status`: マッチステータス（matched/needs_review/no_match）
+  - `confidence`: マッチング信頼度（0-1）
+  - `match_reason`: マッチング理由の説明
+  - `alternative_matches`: 曖昧なケースの代替候補
+- `statistics`: バッチ処理全体の統計
+  - `total_members`: 処理メンバー総数
+  - `matched`: 高信頼度マッチ数
+  - `needs_review`: レビュー必要数
+  - `no_match`: マッチなし数
+  - `match_rate`: マッチング成功率
+  - `avg_confidence`: 平均信頼度スコア
 
 ## データセット作成方法
 

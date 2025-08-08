@@ -4,177 +4,616 @@
   "metadata": {
     "created_at": "2025-08-08T10:00:00Z",
     "created_by": "Polibase Development Team",
-    "description": "Sample dataset for conference member to politician matching",
-    "tags": ["sample", "conference_member_matching", "fuzzy_matching"],
-    "source": "Sample conference member lists"
+    "description": "Batch matching test cases for conference members to politicians",
+    "tags": ["batch_matching", "name_resolution", "fuzzy_matching"],
+    "source": "Sample conference member lists with politician database"
   },
   "test_cases": [
     {
-      "id": "cmm_001",
-      "description": "Exact match with party and role",
+      "id": "cmm_batch_001",
+      "description": "Small batch with clear matches and variations",
       "input": {
-        "member_name": "田中太郎",
-        "party_affiliation": "自由民主党",
-        "conference_info": {
-          "conference_id": 10,
-          "conference_name": "サンプル市議会",
-          "governing_body": "サンプル市"
-        }
+        "conference_members": [
+          {
+            "member_id": "cm_001",
+            "name": "田中太郎",
+            "party_affiliation": "自由民主党",
+            "role": "議長",
+            "conference_id": 10
+          },
+          {
+            "member_id": "cm_002",
+            "name": "山田 花子",
+            "party_affiliation": "市民クラブ",
+            "role": null,
+            "conference_id": 10
+          },
+          {
+            "member_id": "cm_003",
+            "name": "佐藤",
+            "party_affiliation": "公明党",
+            "role": "副議長",
+            "conference_id": 10
+          }
+        ],
+        "politician_candidates": [
+          {
+            "politician_id": 1001,
+            "name": "田中太郎",
+            "party": "自由民主党",
+            "district": "東京1区"
+          },
+          {
+            "politician_id": 1002,
+            "name": "山田花子",
+            "party": "市民クラブ",
+            "district": "神奈川2区"
+          },
+          {
+            "politician_id": 1003,
+            "name": "佐藤健一",
+            "party": "公明党",
+            "district": "千葉3区"
+          },
+          {
+            "politician_id": 1004,
+            "name": "佐藤美香",
+            "party": "公明党",
+            "district": "千葉4区"
+          },
+          {
+            "politician_id": 1005,
+            "name": "鈴木一郎",
+            "party": "立憲民主党",
+            "district": "埼玉1区"
+          }
+        ]
       },
       "expected_output": {
-        "politician_id": 1001,
-        "match_status": "matched",
-        "confidence": 0.95,
-        "role": "議長"
+        "matches": [
+          {
+            "member_id": "cm_001",
+            "politician_id": 1001,
+            "confidence": 0.95,
+            "match_status": "matched",
+            "match_reason": "Exact name and party match"
+          },
+          {
+            "member_id": "cm_002",
+            "politician_id": 1002,
+            "confidence": 0.85,
+            "match_status": "matched",
+            "match_reason": "Name match with space variation, party match"
+          },
+          {
+            "member_id": "cm_003",
+            "politician_id": 1003,
+            "confidence": 0.6,
+            "match_status": "needs_review",
+            "match_reason": "Partial name match, multiple candidates with same party",
+            "alternative_matches": [
+              {
+                "politician_id": 1004,
+                "confidence": 0.55
+              }
+            ]
+          }
+        ],
+        "statistics": {
+          "total_members": 3,
+          "matched": 2,
+          "needs_review": 1,
+          "no_match": 0,
+          "match_rate": 0.67,
+          "avg_confidence": 0.8
+        }
       },
       "evaluation_criteria": {
         "priority": "high",
-        "difficulty": "easy",
-        "notes": "Direct exact match with high confidence"
+        "difficulty": "medium",
+        "notes": "Tests basic batch processing with name variations and ambiguous cases"
       }
     },
     {
-      "id": "cmm_002",
-      "description": "Name variation with similar party name",
+      "id": "cmm_batch_002",
+      "description": "Large batch with complex party names and missing politicians",
       "input": {
-        "member_name": "山田 花子",
-        "party_affiliation": "市民クラブ",
-        "conference_info": {
-          "conference_id": 11,
-          "conference_name": "サンプル県議会",
-          "governing_body": "サンプル県"
-        }
+        "conference_members": [
+          {
+            "member_id": "cm_004",
+            "name": "高橋美智子",
+            "party_affiliation": "市民ネット・社民・無所属",
+            "role": null,
+            "conference_id": 11
+          },
+          {
+            "member_id": "cm_005",
+            "name": "委員長　中村健太",
+            "party_affiliation": "自民党",
+            "role": "委員長",
+            "conference_id": 11
+          },
+          {
+            "member_id": "cm_006",
+            "name": "新人議員太郎",
+            "party_affiliation": "無所属",
+            "role": null,
+            "conference_id": 11
+          },
+          {
+            "member_id": "cm_007",
+            "name": "伊藤（公明）",
+            "party_affiliation": "公明党",
+            "role": null,
+            "conference_id": 11
+          },
+          {
+            "member_id": "cm_008",
+            "name": "やまだ太郎",
+            "party_affiliation": "自由民主党",
+            "role": null,
+            "conference_id": 11
+          }
+        ],
+        "politician_candidates": [
+          {
+            "politician_id": 2001,
+            "name": "高橋美智子",
+            "party": "社会民主党",
+            "district": "東京5区"
+          },
+          {
+            "politician_id": 2002,
+            "name": "中村健太",
+            "party": "自由民主党",
+            "district": "大阪1区"
+          },
+          {
+            "politician_id": 2003,
+            "name": "伊藤健一",
+            "party": "公明党",
+            "district": "福岡2区"
+          },
+          {
+            "politician_id": 2004,
+            "name": "伊藤次郎",
+            "party": "公明党",
+            "district": "福岡3区"
+          },
+          {
+            "politician_id": 2005,
+            "name": "山田太郎",
+            "party": "自由民主党",
+            "district": "北海道1区"
+          }
+        ]
       },
       "expected_output": {
-        "politician_id": 1002,
-        "match_status": "matched",
-        "confidence": 0.8,
-        "role": null
+        "matches": [
+          {
+            "member_id": "cm_004",
+            "politician_id": 2001,
+            "confidence": 0.75,
+            "match_status": "matched",
+            "match_reason": "Name match, complex party affiliation partially matches"
+          },
+          {
+            "member_id": "cm_005",
+            "politician_id": 2002,
+            "confidence": 0.9,
+            "match_status": "matched",
+            "match_reason": "Name match after removing title, party match"
+          },
+          {
+            "member_id": "cm_006",
+            "politician_id": null,
+            "confidence": 0.0,
+            "match_status": "no_match",
+            "match_reason": "No politician found with this name"
+          },
+          {
+            "member_id": "cm_007",
+            "politician_id": 2003,
+            "confidence": 0.55,
+            "match_status": "needs_review",
+            "match_reason": "Partial name in parentheses, multiple Ito candidates",
+            "alternative_matches": [
+              {
+                "politician_id": 2004,
+                "confidence": 0.5
+              }
+            ]
+          },
+          {
+            "member_id": "cm_008",
+            "politician_id": 2005,
+            "confidence": 0.85,
+            "match_status": "matched",
+            "match_reason": "Name match with hiragana/kanji variation, party match"
+          }
+        ],
+        "statistics": {
+          "total_members": 5,
+          "matched": 3,
+          "needs_review": 1,
+          "no_match": 1,
+          "match_rate": 0.6,
+          "avg_confidence": 0.61
+        }
+      },
+      "evaluation_criteria": {
+        "priority": "high",
+        "difficulty": "hard",
+        "notes": "Tests complex cases including titles, name variations, and missing politicians"
+      }
+    },
+    {
+      "id": "cmm_batch_003",
+      "description": "Duplicate names requiring additional context",
+      "input": {
+        "conference_members": [
+          {
+            "member_id": "cm_009",
+            "name": "田中",
+            "party_affiliation": "自民党",
+            "role": null,
+            "conference_id": 12
+          },
+          {
+            "member_id": "cm_010",
+            "name": "田中議員",
+            "party_affiliation": "自由民主党",
+            "role": null,
+            "conference_id": 12
+          },
+          {
+            "member_id": "cm_011",
+            "name": "田中太郎",
+            "party_affiliation": "自民",
+            "role": null,
+            "conference_id": 12
+          }
+        ],
+        "politician_candidates": [
+          {
+            "politician_id": 3001,
+            "name": "田中太郎",
+            "party": "自由民主党",
+            "district": "東京1区"
+          },
+          {
+            "politician_id": 3002,
+            "name": "田中次郎",
+            "party": "自由民主党",
+            "district": "東京2区"
+          },
+          {
+            "politician_id": 3003,
+            "name": "田中花子",
+            "party": "自由民主党",
+            "district": "東京3区"
+          }
+        ]
+      },
+      "expected_output": {
+        "matches": [
+          {
+            "member_id": "cm_009",
+            "politician_id": null,
+            "confidence": 0.4,
+            "match_status": "needs_review",
+            "match_reason": "Surname only, multiple candidates",
+            "alternative_matches": [
+              {
+                "politician_id": 3001,
+                "confidence": 0.4
+              },
+              {
+                "politician_id": 3002,
+                "confidence": 0.35
+              },
+              {
+                "politician_id": 3003,
+                "confidence": 0.35
+              }
+            ]
+          },
+          {
+            "member_id": "cm_010",
+            "politician_id": null,
+            "confidence": 0.4,
+            "match_status": "needs_review",
+            "match_reason": "Surname with title, multiple candidates",
+            "alternative_matches": [
+              {
+                "politician_id": 3001,
+                "confidence": 0.4
+              },
+              {
+                "politician_id": 3002,
+                "confidence": 0.35
+              },
+              {
+                "politician_id": 3003,
+                "confidence": 0.35
+              }
+            ]
+          },
+          {
+            "member_id": "cm_011",
+            "politician_id": 3001,
+            "confidence": 0.95,
+            "match_status": "matched",
+            "match_reason": "Full name match, party abbreviation matches"
+          }
+        ],
+        "statistics": {
+          "total_members": 3,
+          "matched": 1,
+          "needs_review": 2,
+          "no_match": 0,
+          "match_rate": 0.33,
+          "avg_confidence": 0.58
+        }
       },
       "evaluation_criteria": {
         "priority": "medium",
-        "difficulty": "medium",
-        "notes": "Handles space in name and similar party names"
+        "difficulty": "hard",
+        "notes": "Tests disambiguation of similar names and handling of partial information"
       }
     },
     {
-      "id": "cmm_003",
-      "description": "Low confidence match requiring review",
+      "id": "cmm_batch_004",
+      "description": "Performance test with realistic data volume",
       "input": {
-        "member_name": "佐藤",
-        "party_affiliation": "公明党",
-        "conference_info": {
-          "conference_id": 12,
-          "conference_name": "サンプル町議会",
-          "governing_body": "サンプル町"
-        }
+        "conference_members": [
+          {
+            "member_id": "cm_012",
+            "name": "鈴木一郎",
+            "party_affiliation": "立憲民主党",
+            "role": null,
+            "conference_id": 13
+          },
+          {
+            "member_id": "cm_013",
+            "name": "加藤",
+            "party_affiliation": "維新",
+            "role": null,
+            "conference_id": 13
+          },
+          {
+            "member_id": "cm_014",
+            "name": "渡辺美香",
+            "party_affiliation": "共産党",
+            "role": null,
+            "conference_id": 13
+          },
+          {
+            "member_id": "cm_015",
+            "name": "小林健一",
+            "party_affiliation": "国民民主党",
+            "role": null,
+            "conference_id": 13
+          },
+          {
+            "member_id": "cm_016",
+            "name": "斉藤",
+            "party_affiliation": "れいわ新選組",
+            "role": null,
+            "conference_id": 13
+          },
+          {
+            "member_id": "cm_017",
+            "name": "木村太郎",
+            "party_affiliation": "無所属",
+            "role": null,
+            "conference_id": 13
+          },
+          {
+            "member_id": "cm_018",
+            "name": "松本花子",
+            "party_affiliation": "自民党",
+            "role": null,
+            "conference_id": 13
+          },
+          {
+            "member_id": "cm_019",
+            "name": "橋本",
+            "party_affiliation": "公明党",
+            "role": null,
+            "conference_id": 13
+          },
+          {
+            "member_id": "cm_020",
+            "name": "吉田次郎",
+            "party_affiliation": "立憲民主",
+            "role": null,
+            "conference_id": 13
+          },
+          {
+            "member_id": "cm_021",
+            "name": "森田美智子",
+            "party_affiliation": "自由民主党",
+            "role": null,
+            "conference_id": 13
+          }
+        ],
+        "politician_candidates": [
+          {
+            "politician_id": 4001,
+            "name": "鈴木一郎",
+            "party": "立憲民主党",
+            "district": "埼玉1区"
+          },
+          {
+            "politician_id": 4002,
+            "name": "加藤健太",
+            "party": "日本維新の会",
+            "district": "大阪5区"
+          },
+          {
+            "politician_id": 4003,
+            "name": "加藤美香",
+            "party": "日本維新の会",
+            "district": "大阪6区"
+          },
+          {
+            "politician_id": 4004,
+            "name": "渡辺美香",
+            "party": "日本共産党",
+            "district": "京都1区"
+          },
+          {
+            "politician_id": 4005,
+            "name": "小林健一",
+            "party": "国民民主党",
+            "district": "愛知2区"
+          },
+          {
+            "politician_id": 4006,
+            "name": "斉藤太郎",
+            "party": "れいわ新選組",
+            "district": "東京10区"
+          },
+          {
+            "politician_id": 4007,
+            "name": "木村太郎",
+            "party": "無所属",
+            "district": "福島1区"
+          },
+          {
+            "politician_id": 4008,
+            "name": "松本花子",
+            "party": "自由民主党",
+            "district": "岡山3区"
+          },
+          {
+            "politician_id": 4009,
+            "name": "橋本健",
+            "party": "公明党",
+            "district": "兵庫2区"
+          },
+          {
+            "politician_id": 4010,
+            "name": "橋本美香",
+            "party": "公明党",
+            "district": "兵庫3区"
+          },
+          {
+            "politician_id": 4011,
+            "name": "吉田次郎",
+            "party": "立憲民主党",
+            "district": "新潟1区"
+          },
+          {
+            "politician_id": 4012,
+            "name": "森田美智子",
+            "party": "自由民主党",
+            "district": "広島2区"
+          },
+          {
+            "politician_id": 4013,
+            "name": "田中三郎",
+            "party": "自由民主党",
+            "district": "宮城1区"
+          },
+          {
+            "politician_id": 4014,
+            "name": "山田四郎",
+            "party": "立憲民主党",
+            "district": "静岡2区"
+          },
+          {
+            "politician_id": 4015,
+            "name": "佐々木五郎",
+            "party": "国民民主党",
+            "district": "青森1区"
+          }
+        ]
       },
       "expected_output": {
-        "politician_id": 1003,
-        "match_status": "needs_review",
-        "confidence": 0.6,
-        "role": null
+        "matches": [
+          {
+            "member_id": "cm_012",
+            "politician_id": 4001,
+            "confidence": 0.95,
+            "match_status": "matched"
+          },
+          {
+            "member_id": "cm_013",
+            "politician_id": 4002,
+            "confidence": 0.55,
+            "match_status": "needs_review",
+            "alternative_matches": [
+              { "politician_id": 4003, "confidence": 0.5 }
+            ]
+          },
+          {
+            "member_id": "cm_014",
+            "politician_id": 4004,
+            "confidence": 0.9,
+            "match_status": "matched"
+          },
+          {
+            "member_id": "cm_015",
+            "politician_id": 4005,
+            "confidence": 0.95,
+            "match_status": "matched"
+          },
+          {
+            "member_id": "cm_016",
+            "politician_id": 4006,
+            "confidence": 0.7,
+            "match_status": "matched"
+          },
+          {
+            "member_id": "cm_017",
+            "politician_id": 4007,
+            "confidence": 0.95,
+            "match_status": "matched"
+          },
+          {
+            "member_id": "cm_018",
+            "politician_id": 4008,
+            "confidence": 0.95,
+            "match_status": "matched"
+          },
+          {
+            "member_id": "cm_019",
+            "politician_id": 4009,
+            "confidence": 0.55,
+            "match_status": "needs_review",
+            "alternative_matches": [
+              { "politician_id": 4010, "confidence": 0.5 }
+            ]
+          },
+          {
+            "member_id": "cm_020",
+            "politician_id": 4011,
+            "confidence": 0.9,
+            "match_status": "matched"
+          },
+          {
+            "member_id": "cm_021",
+            "politician_id": 4012,
+            "confidence": 0.95,
+            "match_status": "matched"
+          }
+        ],
+        "statistics": {
+          "total_members": 10,
+          "matched": 8,
+          "needs_review": 2,
+          "no_match": 0,
+          "match_rate": 0.8,
+          "avg_confidence": 0.81,
+          "processing_time_ms": 150
+        }
       },
       "evaluation_criteria": {
         "priority": "high",
         "difficulty": "medium",
-        "notes": "Partial name match with multiple candidates"
-      }
-    },
-    {
-      "id": "cmm_004",
-      "description": "No matching politician found",
-      "input": {
-        "member_name": "新人議員太郎",
-        "party_affiliation": "無所属",
-        "conference_info": {
-          "conference_id": 13,
-          "conference_name": "サンプル村議会",
-          "governing_body": "サンプル村"
-        }
-      },
-      "expected_output": {
-        "politician_id": null,
-        "match_status": "no_match",
-        "confidence": 0.0,
-        "role": null
-      },
-      "evaluation_criteria": {
-        "priority": "medium",
-        "difficulty": "easy",
-        "notes": "New politician not in database"
-      }
-    },
-    {
-      "id": "cmm_005",
-      "description": "Complex role extraction with name matching",
-      "input": {
-        "member_name": "鈴木一郎（副議長）",
-        "party_affiliation": "立憲民主党",
-        "conference_info": {
-          "conference_id": 14,
-          "conference_name": "サンプル市議会総務委員会",
-          "governing_body": "サンプル市"
-        }
-      },
-      "expected_output": {
-        "politician_id": 1005,
-        "match_status": "matched",
-        "confidence": 0.85,
-        "role": "副議長"
-      },
-      "evaluation_criteria": {
-        "priority": "low",
-        "difficulty": "hard",
-        "notes": "Extract role from name string and match politician"
-      }
-    },
-    {
-      "id": "cmm_006",
-      "description": "Parliamentary group member matching",
-      "input": {
-        "member_name": "高橋美智子",
-        "party_affiliation": "市民ネット・社民・無所属",
-        "conference_info": {
-          "conference_id": 15,
-          "conference_name": "サンプル市議会",
-          "governing_body": "サンプル市"
-        }
-      },
-      "expected_output": {
-        "politician_id": 1006,
-        "match_status": "matched",
-        "confidence": 0.75,
-        "role": null
-      },
-      "evaluation_criteria": {
-        "priority": "medium",
-        "difficulty": "hard",
-        "notes": "Complex parliamentary group name matching"
-      }
-    },
-    {
-      "id": "cmm_007",
-      "description": "Name with honorific title",
-      "input": {
-        "member_name": "委員長　中村健太",
-        "party_affiliation": "自由民主党",
-        "conference_info": {
-          "conference_id": 16,
-          "conference_name": "サンプル市議会建設委員会",
-          "governing_body": "サンプル市"
-        }
-      },
-      "expected_output": {
-        "politician_id": 1007,
-        "match_status": "matched",
-        "confidence": 0.9,
-        "role": "委員長"
-      },
-      "evaluation_criteria": {
-        "priority": "low",
-        "difficulty": "medium",
-        "notes": "Extract role prefix and match name"
+        "notes": "Tests batch processing performance with realistic data volume"
       }
     }
   ]

@@ -149,27 +149,62 @@
                 }
               },
               {
-                "description": "Input for conference_member_matching task",
-                "required": ["member_name", "conference_info"],
+                "description": "Input for conference_member_matching task (batch processing)",
+                "required": ["conference_members", "politician_candidates"],
                 "properties": {
-                  "member_name": {
-                    "type": "string",
-                    "description": "Conference member name to match"
+                  "conference_members": {
+                    "type": "array",
+                    "description": "List of conference members to match",
+                    "items": {
+                      "type": "object",
+                      "required": ["member_id", "name", "party_affiliation"],
+                      "properties": {
+                        "member_id": {
+                          "type": "string",
+                          "description": "Unique identifier for the conference member"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Conference member name"
+                        },
+                        "party_affiliation": {
+                          "type": "string",
+                          "description": "Party or parliamentary group affiliation"
+                        },
+                        "role": {
+                          "type": ["string", "null"],
+                          "description": "Role in the conference"
+                        },
+                        "conference_id": {
+                          "type": "integer",
+                          "description": "Conference ID"
+                        }
+                      }
+                    }
                   },
-                  "party_affiliation": {
-                    "type": "string"
-                  },
-                  "conference_info": {
-                    "type": "object",
-                    "properties": {
-                      "conference_id": {
-                        "type": "integer"
-                      },
-                      "conference_name": {
-                        "type": "string"
-                      },
-                      "governing_body": {
-                        "type": "string"
+                  "politician_candidates": {
+                    "type": "array",
+                    "description": "List of politicians from database to match against",
+                    "items": {
+                      "type": "object",
+                      "required": ["politician_id", "name"],
+                      "properties": {
+                        "politician_id": {
+                          "type": "integer",
+                          "description": "Database ID of the politician"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Politician name"
+                        },
+                        "party": {
+                          "type": ["string", "null"],
+                          "description": "Political party affiliation"
+                        },
+                        "district": {
+                          "type": ["string", "null"],
+                          "description": "Electoral district"
+                        }
                       }
                     }
                   }
@@ -260,24 +295,102 @@
                 }
               },
               {
-                "description": "Output for conference_member_matching task",
-                "required": ["politician_id", "match_status", "confidence"],
+                "description": "Output for conference_member_matching task (batch processing)",
+                "required": ["matches", "statistics"],
                 "properties": {
-                  "politician_id": {
-                    "type": ["integer", "null"]
+                  "matches": {
+                    "type": "array",
+                    "description": "List of matching results for each conference member",
+                    "items": {
+                      "type": "object",
+                      "required": ["member_id", "match_status", "confidence"],
+                      "properties": {
+                        "member_id": {
+                          "type": "string",
+                          "description": "Conference member ID"
+                        },
+                        "politician_id": {
+                          "type": ["integer", "null"],
+                          "description": "Matched politician ID (null if no match or needs review)"
+                        },
+                        "match_status": {
+                          "type": "string",
+                          "enum": ["matched", "needs_review", "no_match"]
+                        },
+                        "confidence": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "description": "Confidence score of the match"
+                        },
+                        "match_reason": {
+                          "type": "string",
+                          "description": "Explanation of the matching decision"
+                        },
+                        "alternative_matches": {
+                          "type": "array",
+                          "description": "Alternative politician candidates for ambiguous cases",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "politician_id": {
+                                "type": "integer"
+                              },
+                              "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
-                  "match_status": {
-                    "type": "string",
-                    "enum": ["matched", "needs_review", "no_match"]
-                  },
-                  "confidence": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1
-                  },
-                  "role": {
-                    "type": ["string", "null"],
-                    "description": "Role in the conference if applicable"
+                  "statistics": {
+                    "type": "object",
+                    "description": "Overall matching statistics",
+                    "required": [
+                      "total_members",
+                      "matched",
+                      "needs_review",
+                      "no_match",
+                      "match_rate"
+                    ],
+                    "properties": {
+                      "total_members": {
+                        "type": "integer",
+                        "description": "Total number of conference members processed"
+                      },
+                      "matched": {
+                        "type": "integer",
+                        "description": "Number of high-confidence matches"
+                      },
+                      "needs_review": {
+                        "type": "integer",
+                        "description": "Number of ambiguous matches requiring review"
+                      },
+                      "no_match": {
+                        "type": "integer",
+                        "description": "Number of members with no matching politician"
+                      },
+                      "match_rate": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Proportion of successfully matched members"
+                      },
+                      "avg_confidence": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "Average confidence score across all matches"
+                      },
+                      "processing_time_ms": {
+                        "type": "integer",
+                        "description": "Processing time in milliseconds (optional)"
+                      }
+                    }
                   }
                 }
               }
