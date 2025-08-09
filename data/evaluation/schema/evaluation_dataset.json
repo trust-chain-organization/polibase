@@ -105,9 +105,9 @@
                     "description": "List of speakers extracted from minutes to match",
                     "items": {
                       "type": "object",
-                      "required": ["speaker_id", "name", "is_politician"],
+                      "required": ["id", "name", "is_politician"],
                       "properties": {
-                        "speaker_id": {
+                        "id": {
                           "type": "integer",
                           "description": "Database ID of the speaker"
                         },
@@ -115,21 +115,21 @@
                           "type": "string",
                           "description": "Speaker name from minutes"
                         },
+                        "type": {
+                          "type": ["string", "null"],
+                          "description": "Speaker type (政治家、参考人、議長、政府職員)"
+                        },
                         "political_party_name": {
                           "type": ["string", "null"],
                           "description": "Party name extracted from minutes (string)"
                         },
-                        "type": {
-                          "type": "string",
-                          "description": "Speaker type (politician, government_official, chairman, witness)"
+                        "position": {
+                          "type": ["string", "null"],
+                          "description": "Position or title (役職・肩書き)"
                         },
                         "is_politician": {
                           "type": "boolean",
                           "description": "Whether the speaker is a politician"
-                        },
-                        "position": {
-                          "type": ["string", "null"],
-                          "description": "Position or title"
                         }
                       }
                     }
@@ -139,9 +139,9 @@
                     "description": "List of politicians from database to match against",
                     "items": {
                       "type": "object",
-                      "required": ["politician_id", "name"],
+                      "required": ["id", "name"],
                       "properties": {
-                        "politician_id": {
+                        "id": {
                           "type": "integer",
                           "description": "Database ID of the politician"
                         },
@@ -151,11 +151,27 @@
                         },
                         "political_party_id": {
                           "type": ["integer", "null"],
-                          "description": "Political party ID"
+                          "description": "Political party ID (normalized)"
                         },
-                        "political_party_name": {
+                        "position": {
                           "type": ["string", "null"],
-                          "description": "Political party name"
+                          "description": "Position (衆議院議員、参議院議員など)"
+                        },
+                        "prefecture": {
+                          "type": ["string", "null"],
+                          "description": "Prefecture (都道府県)"
+                        },
+                        "electoral_district": {
+                          "type": ["string", "null"],
+                          "description": "Electoral district (選挙区)"
+                        },
+                        "profile_url": {
+                          "type": ["string", "null"],
+                          "description": "Profile page URL"
+                        },
+                        "party_position": {
+                          "type": ["string", "null"],
+                          "description": "Party position (代表、幹事長など)"
                         },
                         "speaker_id": {
                           "type": ["integer", "null"],

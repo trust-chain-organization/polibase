@@ -4,7 +4,7 @@
   "metadata": {
     "created_at": "2025-08-08T10:00:00Z",
     "created_by": "Polibase Development Team",
-    "description": "Batch speaker-politician matching test cases based on actual data flow",
+    "description": "Batch speaker-politician matching test cases based on actual model definitions",
     "tags": ["batch_matching", "speaker_matching", "llm_matching"],
     "source": "Speakers extracted from meeting minutes vs politicians database"
   },
@@ -15,87 +15,111 @@
       "input": {
         "speakers": [
           {
-            "speaker_id": 1,
+            "id": 1,
             "name": "田中花子",
+            "type": "政治家",
             "political_party_name": "市民の会",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 2,
+            "id": 2,
             "name": "山田部長",
+            "type": "政府職員",
             "political_party_name": null,
-            "type": "government_official",
-            "is_politician": false,
-            "position": "環境部長"
+            "position": "環境部長",
+            "is_politician": false
           },
           {
-            "speaker_id": 3,
+            "id": 3,
             "name": "佐藤議員",
+            "type": "政治家",
             "political_party_name": "公明党",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 4,
+            "id": 4,
             "name": "鈴木委員長",
+            "type": "議長",
             "political_party_name": null,
-            "type": "chairman",
-            "is_politician": false,
-            "position": "委員長"
+            "position": "委員長",
+            "is_politician": false
           },
           {
-            "speaker_id": 5,
+            "id": 5,
             "name": "やまだ太郎",
+            "type": "政治家",
             "political_party_name": "自民党",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           }
         ],
         "politician_candidates": [
           {
-            "politician_id": 101,
+            "id": 101,
             "name": "田中花子",
             "political_party_id": 1,
-            "political_party_name": "市民の会",
+            "position": "衆議院議員",
+            "prefecture": "東京都",
+            "electoral_district": "東京1区",
+            "profile_url": "https://example.com/tanaka",
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 102,
+            "id": 102,
             "name": "田中太郎",
             "political_party_id": 2,
-            "political_party_name": "自由民主党",
+            "position": "参議院議員",
+            "prefecture": "東京都",
+            "electoral_district": null,
+            "profile_url": "https://example.com/tanaka_taro",
+            "party_position": "政調会長",
             "speaker_id": null
           },
           {
-            "politician_id": 103,
+            "id": 103,
             "name": "佐藤健一",
             "political_party_id": 3,
-            "political_party_name": "公明党",
+            "position": "衆議院議員",
+            "prefecture": "千葉県",
+            "electoral_district": "千葉3区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 104,
+            "id": 104,
             "name": "佐藤美香",
             "political_party_id": 3,
-            "political_party_name": "公明党",
+            "position": "参議院議員",
+            "prefecture": "千葉県",
+            "electoral_district": null,
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 105,
+            "id": 105,
             "name": "山田太郎",
             "political_party_id": 2,
-            "political_party_name": "自由民主党",
+            "position": "衆議院議員",
+            "prefecture": "神奈川県",
+            "electoral_district": "神奈川2区",
+            "profile_url": "https://example.com/yamada",
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 106,
+            "id": 106,
             "name": "鈴木一郎",
             "political_party_id": 4,
-            "political_party_name": "立憲民主党",
+            "position": "衆議院議員",
+            "prefecture": "埼玉県",
+            "electoral_district": "埼玉1区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           }
         ]
@@ -109,7 +133,7 @@
             "matched_politician_name": "田中花子",
             "confidence_score": 0.95,
             "matching_method": "rule_based",
-            "match_reason": "Exact name and party match"
+            "match_reason": "Exact name match, party affiliation aligns"
           },
           {
             "speaker_id": 2,
@@ -171,80 +195,100 @@
       "input": {
         "speakers": [
           {
-            "speaker_id": 6,
+            "id": 6,
             "name": "高橋",
+            "type": "政治家",
             "political_party_name": "自民",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 7,
+            "id": 7,
             "name": "新人議員",
+            "type": "政治家",
             "political_party_name": "無所属",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 8,
+            "id": 8,
             "name": "伊藤議員",
+            "type": "政治家",
             "political_party_name": "立憲民主",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 9,
+            "id": 9,
             "name": "加藤（公明党）",
+            "type": "政治家",
             "political_party_name": "公明党",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 10,
+            "id": 10,
             "name": "山本議員",
+            "type": "政治家",
             "political_party_name": "日本維新の会",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           }
         ],
         "politician_candidates": [
           {
-            "politician_id": 201,
+            "id": 201,
             "name": "高橋健太",
             "political_party_id": 2,
-            "political_party_name": "自由民主党",
+            "position": "衆議院議員",
+            "prefecture": "大阪府",
+            "electoral_district": "大阪5区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 202,
+            "id": 202,
             "name": "高橋美香",
             "political_party_id": 2,
-            "political_party_name": "自由民主党",
+            "position": "参議院議員",
+            "prefecture": "大阪府",
+            "electoral_district": null,
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 203,
+            "id": 203,
             "name": "伊藤一郎",
             "political_party_id": 4,
-            "political_party_name": "立憲民主党",
+            "position": "衆議院議員",
+            "prefecture": "京都府",
+            "electoral_district": "京都1区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 204,
+            "id": 204,
             "name": "加藤健一",
             "political_party_id": 3,
-            "political_party_name": "公明党",
+            "position": "衆議院議員",
+            "prefecture": "福岡県",
+            "electoral_district": "福岡2区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 205,
+            "id": 205,
             "name": "山本太郎",
             "political_party_id": 5,
-            "political_party_name": "れいわ新選組",
+            "position": "参議院議員",
+            "prefecture": "東京都",
+            "electoral_district": null,
+            "profile_url": null,
+            "party_position": "代表",
             "speaker_id": null
           }
         ]
@@ -320,43 +364,51 @@
       "input": {
         "speakers": [
           {
-            "speaker_id": 11,
+            "id": 11,
             "name": "田中太郎",
+            "type": "政治家",
             "political_party_name": "自由民主党",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 12,
+            "id": 12,
             "name": "田中太郎議員",
+            "type": "政治家",
             "political_party_name": "自民党",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 13,
+            "id": 13,
             "name": "田中",
+            "type": "政治家",
             "political_party_name": "自民",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           }
         ],
         "politician_candidates": [
           {
-            "politician_id": 301,
+            "id": 301,
             "name": "田中太郎",
             "political_party_id": 2,
-            "political_party_name": "自由民主党",
+            "position": "衆議院議員",
+            "prefecture": "東京都",
+            "electoral_district": "東京2区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": 11
           },
           {
-            "politician_id": 302,
+            "id": 302,
             "name": "田中次郎",
             "political_party_id": 2,
-            "political_party_name": "自由民主党",
+            "position": "参議院議員",
+            "prefecture": "東京都",
+            "electoral_district": null,
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           }
         ]
@@ -415,127 +467,151 @@
       "input": {
         "speakers": [
           {
-            "speaker_id": 14,
+            "id": 14,
             "name": "議長",
+            "type": "議長",
             "political_party_name": null,
-            "type": "chairman",
-            "is_politician": false,
-            "position": "議長"
+            "position": "議長",
+            "is_politician": false
           },
           {
-            "speaker_id": 15,
+            "id": 15,
             "name": "鈴木一郎",
+            "type": "政治家",
             "political_party_name": "立憲民主党",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 16,
+            "id": 16,
             "name": "総務部長",
+            "type": "政府職員",
             "political_party_name": null,
-            "type": "government_official",
-            "is_politician": false,
-            "position": "総務部長"
+            "position": "総務部長",
+            "is_politician": false
           },
           {
-            "speaker_id": 17,
+            "id": 17,
             "name": "渡辺議員",
+            "type": "政治家",
             "political_party_name": "共産党",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 18,
+            "id": 18,
             "name": "参考人A",
+            "type": "参考人",
             "political_party_name": null,
-            "type": "witness",
-            "is_politician": false,
-            "position": "参考人"
+            "position": "参考人",
+            "is_politician": false
           },
           {
-            "speaker_id": 19,
+            "id": 19,
             "name": "小林健一",
+            "type": "政治家",
             "political_party_name": "国民民主党",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 20,
+            "id": 20,
             "name": "委員長",
+            "type": "議長",
             "political_party_name": null,
-            "type": "chairman",
-            "is_politician": false,
-            "position": "委員長"
+            "position": "委員長",
+            "is_politician": false
           },
           {
-            "speaker_id": 21,
+            "id": 21,
             "name": "木村太郎",
+            "type": "政治家",
             "political_party_name": "無所属",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           },
           {
-            "speaker_id": 22,
+            "id": 22,
             "name": "副市長",
+            "type": "政府職員",
             "political_party_name": null,
-            "type": "government_official",
-            "is_politician": false,
-            "position": "副市長"
+            "position": "副市長",
+            "is_politician": false
           },
           {
-            "speaker_id": 23,
+            "id": 23,
             "name": "松本議員",
+            "type": "政治家",
             "political_party_name": "自民党",
-            "type": "politician",
-            "is_politician": true,
-            "position": null
+            "position": null,
+            "is_politician": true
           }
         ],
         "politician_candidates": [
           {
-            "politician_id": 401,
+            "id": 401,
             "name": "鈴木一郎",
             "political_party_id": 4,
-            "political_party_name": "立憲民主党",
+            "position": "衆議院議員",
+            "prefecture": "埼玉県",
+            "electoral_district": "埼玉1区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 402,
+            "id": 402,
             "name": "渡辺美香",
             "political_party_id": 6,
-            "political_party_name": "日本共産党",
+            "position": "参議院議員",
+            "prefecture": "京都府",
+            "electoral_district": null,
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 403,
+            "id": 403,
             "name": "小林健一",
             "political_party_id": 7,
-            "political_party_name": "国民民主党",
+            "position": "衆議院議員",
+            "prefecture": "愛知県",
+            "electoral_district": "愛知2区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 404,
+            "id": 404,
             "name": "木村太郎",
             "political_party_id": null,
-            "political_party_name": null,
+            "position": "衆議院議員",
+            "prefecture": "福島県",
+            "electoral_district": "福島1区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 405,
+            "id": 405,
             "name": "松本花子",
             "political_party_id": 2,
-            "political_party_name": "自由民主党",
+            "position": "参議院議員",
+            "prefecture": "岡山県",
+            "electoral_district": null,
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           },
           {
-            "politician_id": 406,
+            "id": 406,
             "name": "松本健太",
             "political_party_id": 2,
-            "political_party_name": "自由民主党",
+            "position": "衆議院議員",
+            "prefecture": "岡山県",
+            "electoral_district": "岡山3区",
+            "profile_url": null,
+            "party_position": null,
             "speaker_id": null
           }
         ]
