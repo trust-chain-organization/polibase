@@ -73,14 +73,15 @@
             "oneOf": [
               {
                 "description": "Input for minutes_division task",
-                "required": ["text"],
+                "required": ["original_minutes"],
                 "properties": {
-                  "text": {
+                  "original_minutes": {
                     "type": "string",
-                    "description": "Raw minutes text to be divided"
+                    "description": "Raw minutes text to be divided (MinutesProcessAgent.run parameter)"
                   },
                   "meeting_info": {
                     "type": "object",
+                    "description": "Optional meeting metadata",
                     "properties": {
                       "meeting_date": {
                         "type": "string",
@@ -268,26 +269,37 @@
             "description": "Expected output for the test case",
             "oneOf": [
               {
-                "description": "Output for minutes_division task",
-                "required": ["conversations"],
+                "description": "Output for minutes_division task (SpeakerAndSpeechContent list)",
+                "required": ["speaker_and_speech_content_list"],
                 "properties": {
-                  "conversations": {
+                  "speaker_and_speech_content_list": {
                     "type": "array",
+                    "description": "List of extracted speeches from MinutesProcessAgent",
                     "items": {
                       "type": "object",
-                      "required": ["speaker", "content", "sequence"],
+                      "required": ["speaker", "speech_content", "speech_order"],
                       "properties": {
                         "speaker": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "発言者名"
                         },
-                        "content": {
-                          "type": "string"
+                        "speech_content": {
+                          "type": "string",
+                          "description": "発言内容"
                         },
-                        "sequence": {
-                          "type": "integer"
+                        "chapter_number": {
+                          "type": "integer",
+                          "description": "分割した文字列を前から順に割り振った番号",
+                          "default": 1
                         },
-                        "party": {
-                          "type": ["string", "null"]
+                        "sub_chapter_number": {
+                          "type": "integer",
+                          "description": "再分割した場合の文字列番号",
+                          "default": 1
+                        },
+                        "speech_order": {
+                          "type": "integer",
+                          "description": "発言順"
                         }
                       }
                     }
