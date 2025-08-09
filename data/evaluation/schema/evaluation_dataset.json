@@ -184,19 +184,35 @@
                 }
               },
               {
-                "description": "Input for party_member_extraction task",
-                "required": ["html_content"],
+                "description": "Input for party_member_extraction task (WebPageContent model)",
+                "required": ["pages", "party_name"],
                 "properties": {
-                  "html_content": {
-                    "type": "string",
-                    "description": "HTML content of party member page"
+                  "pages": {
+                    "type": "array",
+                    "description": "List of WebPageContent objects to extract from",
+                    "items": {
+                      "type": "object",
+                      "required": ["url", "html_content"],
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "ページのURL"
+                        },
+                        "html_content": {
+                          "type": "string",
+                          "description": "HTMLコンテンツ"
+                        },
+                        "page_number": {
+                          "type": ["integer", "null"],
+                          "description": "ページ番号（ページネーションがある場合）"
+                        }
+                      }
+                    }
                   },
                   "party_name": {
-                    "type": "string"
-                  },
-                  "url": {
                     "type": "string",
-                    "format": "uri"
+                    "description": "Political party name for context"
                   }
                 }
               },
@@ -414,33 +430,51 @@
                 }
               },
               {
-                "description": "Output for party_member_extraction task",
-                "required": ["politicians"],
+                "description": "Output for party_member_extraction task (PartyMemberList model)",
+                "required": ["members", "total_count"],
                 "properties": {
-                  "politicians": {
+                  "members": {
                     "type": "array",
+                    "description": "抽出された議員のリスト",
                     "items": {
                       "type": "object",
-                      "required": ["name", "party"],
+                      "required": ["name"],
                       "properties": {
                         "name": {
-                          "type": "string"
-                        },
-                        "party": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "議員の氏名（姓名）"
                         },
                         "position": {
-                          "type": "string"
+                          "type": ["string", "null"],
+                          "description": "役職（衆議院議員、参議院議員など）"
                         },
-                        "district": {
-                          "type": "string"
+                        "electoral_district": {
+                          "type": ["string", "null"],
+                          "description": "選挙区（例：東京1区、比例北海道）"
+                        },
+                        "prefecture": {
+                          "type": ["string", "null"],
+                          "description": "都道府県（例：東京都、北海道）"
                         },
                         "profile_url": {
-                          "type": "string",
-                          "format": "uri"
+                          "type": ["string", "null"],
+                          "format": "uri",
+                          "description": "プロフィールページのURL"
+                        },
+                        "party_position": {
+                          "type": ["string", "null"],
+                          "description": "党内役職（代表、幹事長など）"
                         }
                       }
                     }
+                  },
+                  "total_count": {
+                    "type": "integer",
+                    "description": "抽出された議員の総数"
+                  },
+                  "party_name": {
+                    "type": ["string", "null"],
+                    "description": "政党名"
                   }
                 }
               },

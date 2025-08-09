@@ -4,8 +4,8 @@
   "metadata": {
     "created_at": "2025-08-08T10:00:00Z",
     "created_by": "Polibase Development Team",
-    "description": "Sample dataset for party member extraction from HTML pages",
-    "tags": ["sample", "party_member_extraction", "web_scraping"],
+    "description": "Test dataset for party member extraction based on PartyMemberInfo model",
+    "tags": ["party_member_extraction", "web_scraping", "llm_extraction"],
     "source": "Sample party member list pages"
   },
   "test_cases": [
@@ -13,149 +13,233 @@
       "id": "pme_001",
       "description": "Simple table-based member list extraction",
       "input": {
-        "html_content": "<html><body><h1>議員一覧</h1><table class='members'><thead><tr><th>氏名</th><th>選挙区</th><th>役職</th></tr></thead><tbody><tr><td><a href='/member/tanaka'>田中太郎</a></td><td>東京1区</td><td>幹事長</td></tr><tr><td><a href='/member/yamada'>山田花子</a></td><td>大阪2区</td><td>政調会長</td></tr><tr><td><a href='/member/suzuki'>鈴木一郎</a></td><td>愛知3区</td><td>国対委員長</td></tr></tbody></table></body></html>",
-        "party_name": "サンプル党",
-        "url": "https://example-party.jp/members"
+        "pages": [
+          {
+            "url": "https://example-party.jp/members",
+            "html_content": "<html><body><h1>議員一覧</h1><table class='members'><thead><tr><th>氏名</th><th>選挙区</th><th>役職</th></tr></thead><tbody><tr><td><a href='/member/tanaka'>田中太郎</a></td><td>東京1区</td><td>幹事長</td></tr><tr><td><a href='/member/yamada'>山田花子</a></td><td>大阪2区</td><td>政調会長</td></tr><tr><td><a href='/member/suzuki'>鈴木一郎</a></td><td>愛知3区</td><td>国対委員長</td></tr></tbody></table></body></html>",
+            "page_number": null
+          }
+        ],
+        "party_name": "サンプル党"
       },
       "expected_output": {
-        "politicians": [
+        "members": [
           {
             "name": "田中太郎",
-            "party": "サンプル党",
-            "position": "幹事長",
-            "district": "東京1区",
-            "profile_url": "https://example-party.jp/member/tanaka"
+            "position": "衆議院議員",
+            "electoral_district": "東京1区",
+            "prefecture": "東京都",
+            "profile_url": "https://example-party.jp/member/tanaka",
+            "party_position": "幹事長"
           },
           {
             "name": "山田花子",
-            "party": "サンプル党",
-            "position": "政調会長",
-            "district": "大阪2区",
-            "profile_url": "https://example-party.jp/member/yamada"
+            "position": "衆議院議員",
+            "electoral_district": "大阪2区",
+            "prefecture": "大阪府",
+            "profile_url": "https://example-party.jp/member/yamada",
+            "party_position": "政調会長"
           },
           {
             "name": "鈴木一郎",
-            "party": "サンプル党",
-            "position": "国対委員長",
-            "district": "愛知3区",
-            "profile_url": "https://example-party.jp/member/suzuki"
+            "position": "衆議院議員",
+            "electoral_district": "愛知3区",
+            "prefecture": "愛知県",
+            "profile_url": "https://example-party.jp/member/suzuki",
+            "party_position": "国対委員長"
           }
-        ]
+        ],
+        "total_count": 3,
+        "party_name": "サンプル党"
       },
       "evaluation_criteria": {
         "priority": "high",
         "difficulty": "easy",
-        "notes": "Well-structured HTML table extraction"
+        "notes": "Well-structured HTML table extraction with party positions"
       }
     },
     {
       "id": "pme_002",
-      "description": "Card-based layout with divs",
+      "description": "Card-based layout member list with mixed positions",
       "input": {
-        "html_content": "<html><body><div class='member-cards'><div class='member-card'><img src='/photo/sato.jpg'/><h3>佐藤健太</h3><p class='position'>副代表</p><p class='district'>神奈川5区</p><a href='/profile/sato' class='profile-link'>詳細</a></div><div class='member-card'><img src='/photo/ito.jpg'/><h3>伊藤美香</h3><p class='position'>広報委員長</p><p class='district'>千葉2区</p><a href='/profile/ito' class='profile-link'>詳細</a></div></div></body></html>",
-        "party_name": "市民の党",
-        "url": "https://citizens-party.jp/members"
+        "pages": [
+          {
+            "url": "https://party-example.org/members/list",
+            "html_content": "<html><body><div class='member-cards'><div class='card'><img src='/img/sato.jpg'/><h3>佐藤健一</h3><p class='position'>参議院議員</p><p class='district'>比例代表</p><p class='role'>党代表</p><a href='/profile/sato'>詳細</a></div><div class='card'><img src='/img/takahashi.jpg'/><h3>高橋美香</h3><p class='position'>衆議院議員</p><p class='district'>神奈川5区</p><a href='/profile/takahashi'>詳細</a></div><div class='card'><img src='/img/ito.jpg'/><h3>伊藤次郎</h3><p class='position'>参議院議員</p><p class='district'>千葉県選挙区</p><p class='role'>幹事長代理</p><a href='/profile/ito'>詳細</a></div></div></body></html>",
+            "page_number": null
+          }
+        ],
+        "party_name": "民主党"
       },
       "expected_output": {
-        "politicians": [
+        "members": [
           {
-            "name": "佐藤健太",
-            "party": "市民の党",
-            "position": "副代表",
-            "district": "神奈川5区",
-            "profile_url": "https://citizens-party.jp/profile/sato"
+            "name": "佐藤健一",
+            "position": "参議院議員",
+            "electoral_district": "比例代表",
+            "prefecture": null,
+            "profile_url": "https://party-example.org/profile/sato",
+            "party_position": "党代表"
           },
           {
-            "name": "伊藤美香",
-            "party": "市民の党",
-            "position": "広報委員長",
-            "district": "千葉2区",
-            "profile_url": "https://citizens-party.jp/profile/ito"
+            "name": "高橋美香",
+            "position": "衆議院議員",
+            "electoral_district": "神奈川5区",
+            "prefecture": "神奈川県",
+            "profile_url": "https://party-example.org/profile/takahashi",
+            "party_position": null
+          },
+          {
+            "name": "伊藤次郎",
+            "position": "参議院議員",
+            "electoral_district": "千葉県選挙区",
+            "prefecture": "千葉県",
+            "profile_url": "https://party-example.org/profile/ito",
+            "party_position": "幹事長代理"
           }
-        ]
+        ],
+        "total_count": 3,
+        "party_name": "民主党"
       },
       "evaluation_criteria": {
-        "priority": "medium",
+        "priority": "high",
         "difficulty": "medium",
-        "notes": "Modern card-based layout extraction"
+        "notes": "Card-based layout with mixed House members and party positions"
       }
     },
     {
       "id": "pme_003",
-      "description": "List with mixed structure and missing data",
+      "description": "List format with paginated results",
       "input": {
-        "html_content": "<html><body><ul class='members-list'><li><strong>高橋次郎</strong> - 埼玉1区</li><li><strong>渡辺三郎</strong> - 総務会長 - 福岡3区 <a href='/watanabe'>プロフィール</a></li><li><strong>小林四郎</strong> - 北海道2区</li></ul></body></html>",
-        "party_name": "改革党",
-        "url": "https://reform-party.jp/members"
+        "pages": [
+          {
+            "url": "https://new-party.jp/lawmakers?page=1",
+            "html_content": "<html><body><h2>所属議員一覧（1/2ページ）</h2><ul class='lawmakers'><li><strong>木村太郎</strong> - 衆議院議員（東京10区）<a href='#kimura'>詳細</a></li><li><strong>渡辺花子</strong> - 参議院議員（全国比例）/ 副代表 <a href='#watanabe'>詳細</a></li><li><strong>中村一郎</strong> - 衆議院議員（北海道1区）/ 国会対策委員長 <a href='#nakamura'>詳細</a></li></ul><a href='?page=2'>次のページ</a></body></html>",
+            "page_number": 1
+          },
+          {
+            "url": "https://new-party.jp/lawmakers?page=2",
+            "html_content": "<html><body><h2>所属議員一覧（2/2ページ）</h2><ul class='lawmakers'><li><strong>小林美香</strong> - 参議院議員（福岡県選挙区）<a href='#kobayashi'>詳細</a></li><li><strong>松本健太</strong> - 衆議院議員（大阪3区）/ 政務調査会長代理 <a href='#matsumoto'>詳細</a></li></ul><a href='?page=1'>前のページ</a></body></html>",
+            "page_number": 2
+          }
+        ],
+        "party_name": "新党"
       },
       "expected_output": {
-        "politicians": [
+        "members": [
           {
-            "name": "高橋次郎",
-            "party": "改革党",
-            "position": null,
-            "district": "埼玉1区",
-            "profile_url": null
+            "name": "木村太郎",
+            "position": "衆議院議員",
+            "electoral_district": "東京10区",
+            "prefecture": "東京都",
+            "profile_url": "https://new-party.jp/lawmakers#kimura",
+            "party_position": null
           },
           {
-            "name": "渡辺三郎",
-            "party": "改革党",
-            "position": "総務会長",
-            "district": "福岡3区",
-            "profile_url": "https://reform-party.jp/watanabe"
+            "name": "渡辺花子",
+            "position": "参議院議員",
+            "electoral_district": "全国比例",
+            "prefecture": null,
+            "profile_url": "https://new-party.jp/lawmakers#watanabe",
+            "party_position": "副代表"
           },
           {
-            "name": "小林四郎",
-            "party": "改革党",
-            "position": null,
-            "district": "北海道2区",
-            "profile_url": null
+            "name": "中村一郎",
+            "position": "衆議院議員",
+            "electoral_district": "北海道1区",
+            "prefecture": "北海道",
+            "profile_url": "https://new-party.jp/lawmakers#nakamura",
+            "party_position": "国会対策委員長"
+          },
+          {
+            "name": "小林美香",
+            "position": "参議院議員",
+            "electoral_district": "福岡県選挙区",
+            "prefecture": "福岡県",
+            "profile_url": "https://new-party.jp/lawmakers#kobayashi",
+            "party_position": null
+          },
+          {
+            "name": "松本健太",
+            "position": "衆議院議員",
+            "electoral_district": "大阪3区",
+            "prefecture": "大阪府",
+            "profile_url": "https://new-party.jp/lawmakers#matsumoto",
+            "party_position": "政務調査会長代理"
           }
-        ]
+        ],
+        "total_count": 5,
+        "party_name": "新党"
       },
       "evaluation_criteria": {
         "priority": "high",
         "difficulty": "hard",
-        "notes": "Handles missing data and inconsistent structure"
+        "notes": "Multi-page extraction with pagination handling"
       }
     },
     {
       "id": "pme_004",
-      "description": "Complex nested structure with categories",
+      "description": "Complex layout with regional grouping",
       "input": {
-        "html_content": "<html><body><section><h2>衆議院議員</h2><div class='house-members'><article><h4>関東ブロック</h4><p><span class='name'>中村五郎</span>（<span class='district'>東京3区</span>）- <span class='role'>党首</span></p><p><span class='name'>林六郎</span>（<span class='district'>神奈川1区</span>）</p></article></div><h2>参議院議員</h2><div class='house-members'><article><p><span class='name'>森七子</span>（<span class='district'>比例区</span>）- <span class='role'>幹事</span></p></article></div></section></body></html>",
-        "party_name": "新党",
-        "url": "https://new-party.jp/members"
+        "pages": [
+          {
+            "url": "https://regional-party.jp/members",
+            "html_content": "<html><body><div class='members-by-region'><section><h3>関東ブロック</h3><div class='member'>【衆院】山田太郎（東京1区）- 選対委員長</div><div class='member'>【参院】田中花子（埼玉県）</div></section><section><h3>関西ブロック</h3><div class='member'>【衆院】佐藤一郎（大阪5区）- 幹事長</div><div class='member'>【参院】鈴木美香（京都府）- 広報委員長</div></section><section><h3>九州ブロック</h3><div class='member'>【衆院】高橋健一（福岡2区）</div></section></div></body></html>",
+            "page_number": null
+          }
+        ],
+        "party_name": "地域政党"
       },
       "expected_output": {
-        "politicians": [
+        "members": [
           {
-            "name": "中村五郎",
-            "party": "新党",
-            "position": "党首",
-            "district": "東京3区",
-            "profile_url": null
+            "name": "山田太郎",
+            "position": "衆議院議員",
+            "electoral_district": "東京1区",
+            "prefecture": "東京都",
+            "profile_url": null,
+            "party_position": "選対委員長"
           },
           {
-            "name": "林六郎",
-            "party": "新党",
-            "position": null,
-            "district": "神奈川1区",
-            "profile_url": null
+            "name": "田中花子",
+            "position": "参議院議員",
+            "electoral_district": "埼玉県",
+            "prefecture": "埼玉県",
+            "profile_url": null,
+            "party_position": null
           },
           {
-            "name": "森七子",
-            "party": "新党",
-            "position": "幹事",
-            "district": "比例区",
-            "profile_url": null
+            "name": "佐藤一郎",
+            "position": "衆議院議員",
+            "electoral_district": "大阪5区",
+            "prefecture": "大阪府",
+            "profile_url": null,
+            "party_position": "幹事長"
+          },
+          {
+            "name": "鈴木美香",
+            "position": "参議院議員",
+            "electoral_district": "京都府",
+            "prefecture": "京都府",
+            "profile_url": null,
+            "party_position": "広報委員長"
+          },
+          {
+            "name": "高橋健一",
+            "position": "衆議院議員",
+            "electoral_district": "福岡2区",
+            "prefecture": "福岡県",
+            "profile_url": null,
+            "party_position": null
           }
-        ]
+        ],
+        "total_count": 5,
+        "party_name": "地域政党"
       },
       "evaluation_criteria": {
-        "priority": "low",
+        "priority": "medium",
         "difficulty": "hard",
-        "notes": "Complex nested structure with multiple categories"
+        "notes": "Complex layout with regional sections and abbreviated position indicators"
       }
     }
   ]
