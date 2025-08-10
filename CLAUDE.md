@@ -123,6 +123,11 @@ docker compose -f docker/docker-compose.yml exec polibase uv run pytest
 
 # Test database connection
 docker compose -f docker/docker-compose.yml exec polibase uv run python -c "from src.config.database import test_connection; test_connection()"
+
+# Run LLM evaluation tests (local - uses mock by default)
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase evaluate --all
+# Note: Evaluation tests are excluded from CI to save API costs
+# Run manually via GitHub Actions workflow_dispatch for real LLM testing
 ```
 
 #### Testing Guidelines
