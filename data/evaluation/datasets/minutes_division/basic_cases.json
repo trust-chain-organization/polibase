@@ -1,0 +1,286 @@
+{
+  "version": "1.0.0",
+  "task_type": "minutes_division",
+  "metadata": {
+    "created_at": "2025-08-08T10:00:00Z",
+    "created_by": "Polibase Development Team",
+    "description": "Test dataset for minutes division task based on SpeakerAndSpeechContent model",
+    "tags": ["minutes_division", "japanese", "langgraph"],
+    "source": "Sample local council meeting minutes"
+  },
+  "test_cases": [
+    {
+      "id": "md_001",
+      "description": "Basic conversation extraction from simple minutes",
+      "input": {
+        "original_minutes": "令和6年第1回定例会議事録\n日時：令和6年1月15日午後2時\n場所：市議会議事堂\n\n○議長（山田太郎君）　これより本日の会議を開きます。本日の議事日程は、お手元に配付したとおりであります。\n\n○田中花子議員（市民の会）　議長、発言の許可をお願いします。\n\n○議長（山田太郎君）　田中議員。\n\n○田中花子議員（市民の会）　昨年度の予算執行について質問いたします。特に、教育関連予算の執行率が低いことについて、その理由と今後の対策をお聞かせください。\n\n○教育部長（佐藤次郎君）　お答えいたします。教育関連予算の執行率が低い理由としては、コロナ禍による事業の中止や延期が主な要因です。今後は、オンライン化も含めた柔軟な事業実施を検討してまいります。\n\n○田中花子議員（市民の会）　ありがとうございます。オンライン化については賛成ですが、デジタル格差への配慮も必要だと考えますが、いかがでしょうか。",
+        "meeting_info": {
+          "meeting_date": "2024-01-15",
+          "governing_body": "サンプル市",
+          "conference": "市議会定例会"
+        }
+      },
+      "expected_output": {
+        "speaker_and_speech_content_list": [
+          {
+            "speaker": "議長（山田太郎君）",
+            "speech_content": "これより本日の会議を開きます。本日の議事日程は、お手元に配付したとおりであります。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 1
+          },
+          {
+            "speaker": "田中花子議員（市民の会）",
+            "speech_content": "議長、発言の許可をお願いします。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 2
+          },
+          {
+            "speaker": "議長（山田太郎君）",
+            "speech_content": "田中議員。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 3
+          },
+          {
+            "speaker": "田中花子議員（市民の会）",
+            "speech_content": "昨年度の予算執行について質問いたします。特に、教育関連予算の執行率が低いことについて、その理由と今後の対策をお聞かせください。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 4
+          },
+          {
+            "speaker": "教育部長（佐藤次郎君）",
+            "speech_content": "お答えいたします。教育関連予算の執行率が低い理由としては、コロナ禍による事業の中止や延期が主な要因です。今後は、オンライン化も含めた柔軟な事業実施を検討してまいります。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 5
+          },
+          {
+            "speaker": "田中花子議員（市民の会）",
+            "speech_content": "ありがとうございます。オンライン化については賛成ですが、デジタル格差への配慮も必要だと考えますが、いかがでしょうか。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 6
+          }
+        ]
+      },
+      "evaluation_criteria": {
+        "priority": "high",
+        "difficulty": "easy",
+        "notes": "Basic pattern with clear speaker markers including party affiliations and positions"
+      }
+    },
+    {
+      "id": "md_002",
+      "description": "Complex minutes with multiple speakers and interjections",
+      "input": {
+        "original_minutes": "○委員長（鈴木一郎君）　次に、環境問題について審議いたします。\n\n○高橋委員（自由民主党）　委員長。\n\n○委員長（鈴木一郎君）　高橋委員。\n\n○高橋委員（自由民主党）　市内のゴミ処理施設の老朽化について、現状と更新計画をお聞きしたい。また、新施設では、どのような環境配慮を行う予定でしょうか。\n\n（「そうだ」と呼ぶ者あり）\n\n○環境部長（伊藤健一君）　ゴミ処理施設については、築30年を経過しており、令和8年度に更新を予定しております。新施設では、最新の排ガス処理設備を導入し、CO2排出量を現在の半分以下に削減する計画です。\n\n○高橋委員（自由民主党）　それは素晴らしい計画ですね。住民説明会の予定はありますか。\n\n○環境部長（伊藤健一君）　来月から順次、各地区で説明会を開催する予定です。",
+        "meeting_info": {
+          "meeting_date": "2024-02-20",
+          "governing_body": "サンプル市",
+          "conference": "環境委員会"
+        }
+      },
+      "expected_output": {
+        "speaker_and_speech_content_list": [
+          {
+            "speaker": "委員長（鈴木一郎君）",
+            "speech_content": "次に、環境問題について審議いたします。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 1
+          },
+          {
+            "speaker": "高橋委員（自由民主党）",
+            "speech_content": "委員長。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 2
+          },
+          {
+            "speaker": "委員長（鈴木一郎君）",
+            "speech_content": "高橋委員。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 3
+          },
+          {
+            "speaker": "高橋委員（自由民主党）",
+            "speech_content": "市内のゴミ処理施設の老朽化について、現状と更新計画をお聞きしたい。また、新施設では、どのような環境配慮を行う予定でしょうか。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 4
+          },
+          {
+            "speaker": "環境部長（伊藤健一君）",
+            "speech_content": "ゴミ処理施設については、築30年を経過しており、令和8年度に更新を予定しております。新施設では、最新の排ガス処理設備を導入し、CO2排出量を現在の半分以下に削減する計画です。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 5
+          },
+          {
+            "speaker": "高橋委員（自由民主党）",
+            "speech_content": "それは素晴らしい計画ですね。住民説明会の予定はありますか。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 6
+          },
+          {
+            "speaker": "環境部長（伊藤健一君）",
+            "speech_content": "来月から順次、各地区で説明会を開催する予定です。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 7
+          }
+        ]
+      },
+      "evaluation_criteria": {
+        "priority": "medium",
+        "difficulty": "medium",
+        "notes": "Contains interjections that should be filtered out, speakers include full titles and affiliations"
+      }
+    },
+    {
+      "id": "md_003",
+      "description": "Long minutes requiring section division",
+      "input": {
+        "original_minutes": "令和6年第2回臨時会議事録\n\n【第1章　開会】\n○議長（佐々木健一君）　ただいまから令和6年第2回臨時会を開会いたします。\n\n【第2章　市長提案理由説明】\n○市長（山本太郎君）　本日提案いたしました補正予算について説明いたします。この度の補正予算は、緊急経済対策として総額5億円を計上しております。内訳としては、中小企業支援に3億円、子育て世帯支援に2億円となっております。\n\n○財政部長（田中一郎君）　補足説明をさせていただきます。財源については、国の交付金3億円と市の財政調整基金2億円を充当する予定です。\n\n【第3章　質疑応答】\n○鈴木議員（市民クラブ）　中小企業支援の具体的な内容について教えてください。\n\n○経済部長（高橋花子君）　中小企業への直接給付金として1事業者あたり最大100万円を予定しております。対象は約300社を見込んでおります。\n\n○鈴木議員（市民クラブ）　ありがとうございます。申請手続きはどのように行われますか。\n\n○経済部長（高橋花子君）　オンライン申請を基本とし、デジタルに不慣れな方向けに窓口相談も設置いたします。",
+        "meeting_info": {
+          "meeting_date": "2024-03-10",
+          "governing_body": "サンプル市",
+          "conference": "臨時会"
+        }
+      },
+      "expected_output": {
+        "speaker_and_speech_content_list": [
+          {
+            "speaker": "議長（佐々木健一君）",
+            "speech_content": "ただいまから令和6年第2回臨時会を開会いたします。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 1
+          },
+          {
+            "speaker": "市長（山本太郎君）",
+            "speech_content": "本日提案いたしました補正予算について説明いたします。この度の補正予算は、緊急経済対策として総額5億円を計上しております。内訳としては、中小企業支援に3億円、子育て世帯支援に2億円となっております。",
+            "chapter_number": 2,
+            "sub_chapter_number": 1,
+            "speech_order": 2
+          },
+          {
+            "speaker": "財政部長（田中一郎君）",
+            "speech_content": "補足説明をさせていただきます。財源については、国の交付金3億円と市の財政調整基金2億円を充当する予定です。",
+            "chapter_number": 2,
+            "sub_chapter_number": 1,
+            "speech_order": 3
+          },
+          {
+            "speaker": "鈴木議員（市民クラブ）",
+            "speech_content": "中小企業支援の具体的な内容について教えてください。",
+            "chapter_number": 3,
+            "sub_chapter_number": 1,
+            "speech_order": 4
+          },
+          {
+            "speaker": "経済部長（高橋花子君）",
+            "speech_content": "中小企業への直接給付金として1事業者あたり最大100万円を予定しております。対象は約300社を見込んでおります。",
+            "chapter_number": 3,
+            "sub_chapter_number": 1,
+            "speech_order": 5
+          },
+          {
+            "speaker": "鈴木議員（市民クラブ）",
+            "speech_content": "ありがとうございます。申請手続きはどのように行われますか。",
+            "chapter_number": 3,
+            "sub_chapter_number": 1,
+            "speech_order": 6
+          },
+          {
+            "speaker": "経済部長（高橋花子君）",
+            "speech_content": "オンライン申請を基本とし、デジタルに不慣れな方向けに窓口相談も設置いたします。",
+            "chapter_number": 3,
+            "sub_chapter_number": 1,
+            "speech_order": 7
+          }
+        ]
+      },
+      "evaluation_criteria": {
+        "priority": "high",
+        "difficulty": "hard",
+        "notes": "Tests chapter division capability with section headers"
+      }
+    },
+    {
+      "id": "md_004",
+      "description": "Minutes with varied speaker notation styles",
+      "input": {
+        "original_minutes": "◎議長　山田太郎　本日の会議を開きます。\n\n◆田中議員　環境問題について質問します。\n\n▼環境部長　お答えします。リサイクル率は昨年度比5％向上しました。\n\n◆田中議員　それは良い成果ですね。今後の目標は？\n\n▼環境部長　来年度はさらに10％の向上を目指します。\n\n【佐藤議員（公明党）】　関連質問ですが、ゴミの分別方法について市民への周知はどのように行っていますか。\n\n▼環境部長　広報誌とSNSを活用し、月2回の情報発信を行っています。",
+        "meeting_info": {
+          "meeting_date": "2024-04-05",
+          "governing_body": "サンプル市",
+          "conference": "定例会"
+        }
+      },
+      "expected_output": {
+        "speaker_and_speech_content_list": [
+          {
+            "speaker": "議長　山田太郎",
+            "speech_content": "本日の会議を開きます。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 1
+          },
+          {
+            "speaker": "田中議員",
+            "speech_content": "環境問題について質問します。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 2
+          },
+          {
+            "speaker": "環境部長",
+            "speech_content": "お答えします。リサイクル率は昨年度比5％向上しました。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 3
+          },
+          {
+            "speaker": "田中議員",
+            "speech_content": "それは良い成果ですね。今後の目標は？",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 4
+          },
+          {
+            "speaker": "環境部長",
+            "speech_content": "来年度はさらに10％の向上を目指します。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 5
+          },
+          {
+            "speaker": "佐藤議員（公明党）",
+            "speech_content": "関連質問ですが、ゴミの分別方法について市民への周知はどのように行っていますか。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 6
+          },
+          {
+            "speaker": "環境部長",
+            "speech_content": "広報誌とSNSを活用し、月2回の情報発信を行っています。",
+            "chapter_number": 1,
+            "sub_chapter_number": 1,
+            "speech_order": 7
+          }
+        ]
+      },
+      "evaluation_criteria": {
+        "priority": "medium",
+        "difficulty": "medium",
+        "notes": "Tests handling of various speaker notation markers (◎, ◆, ▼, 【】)"
+      }
+    }
+  ]
+}
