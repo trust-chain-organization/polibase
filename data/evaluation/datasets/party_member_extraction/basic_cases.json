@@ -3,54 +3,58 @@
   "test_cases": [
     {
       "id": "pm_001",
-      "description": "基本的な党員情報抽出テスト",
+      "description": "国民民主党の実際のHTML構造からの党員情報抽出",
       "input": {
-        "party_id": 1,
-        "party_name": "自民党",
-        "url": "https://example.com/members",
-        "html_content": "<div class='member'>山田太郎 代表 東京1区</div><div class='member'>田中花子 副代表 東京2区</div>"
+        "party_id": 7,
+        "party_name": "国民民主党",
+        "url": "https://new-kokumin.jp/member",
+        "html_content": "<div class='member-list'><div><a href='https://new-kokumin.jp/member/tamaki-yuichiro'><img src='member1.jpg'><span>玉木 雄一郎</span><span>たまき ゆういちろう</span><span>衆議院議員</span><span>香川2区</span></a></div><div><a href='https://new-kokumin.jp/member/usuki-hidetake'><img src='member2.jpg'><span>臼木 秀剛</span><span>うすき ひでたけ</span><span>衆議院議員</span><span>比例北海道</span></a></div><div><a href='https://new-kokumin.jp/member/muraoka-toshihide'><img src='member3.jpg'><span>村岡 敏英</span><span>むらおか としひで</span><span>衆議院議員</span><span>秋田3区</span></a></div></div>"
       },
       "expected_output": {
         "members": [
           {
-            "name": "山田太郎",
-            "position": "代表",
-            "district": "東京1区",
-            "party": "自民党"
+            "name": "玉木雄一郎",
+            "position": "衆議院議員",
+            "district": "香川2区",
+            "party": "国民民主党"
           },
           {
-            "name": "田中花子",
-            "position": "副代表",
-            "district": "東京2区",
-            "party": "自民党"
+            "name": "臼木秀剛",
+            "position": "衆議院議員",
+            "district": "比例北海道",
+            "party": "国民民主党"
+          },
+          {
+            "name": "村岡敏英",
+            "position": "衆議院議員",
+            "district": "秋田3区",
+            "party": "国民民主党"
           }
         ]
       }
     },
     {
       "id": "pm_002",
-      "description": "詳細情報を含む党員抽出",
+      "description": "国民民主党の参議院議員を含む抽出テスト",
       "input": {
-        "party_id": 2,
-        "party_name": "立憲民主党",
-        "url": "https://example.com/members2",
-        "html_content": "<ul><li>佐藤次郎 - 幹事長 - 大阪1区 - sato@example.com</li><li>鈴木一郎 - 政調会長 - 大阪2区 - suzuki@example.com</li></ul>"
+        "party_id": 7,
+        "party_name": "国民民主党",
+        "url": "https://new-kokumin.jp/member",
+        "html_content": "<section class='members'><article><h3>伊藤 孝恵</h3><p>いとう たかえ</p><p>参議院議員</p><p>愛知県選挙区</p></article><article><h3>大塚 耕平</h3><p>おおつか こうへい</p><p>参議院議員</p><p>愛知県選挙区</p></article></section>"
       },
       "expected_output": {
         "members": [
           {
-            "name": "佐藤次郎",
-            "position": "幹事長",
-            "district": "大阪1区",
-            "email": "sato@example.com",
-            "party": "立憲民主党"
+            "name": "伊藤孝恵",
+            "position": "参議院議員",
+            "district": "愛知県選挙区",
+            "party": "国民民主党"
           },
           {
-            "name": "鈴木一郎",
-            "position": "政調会長",
-            "district": "大阪2区",
-            "email": "suzuki@example.com",
-            "party": "立憲民主党"
+            "name": "大塚耕平",
+            "position": "参議院議員",
+            "district": "愛知県選挙区",
+            "party": "国民民主党"
           }
         ]
       }
