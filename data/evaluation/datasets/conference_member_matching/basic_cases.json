@@ -1,548 +1,76 @@
 {
-  "version": "1.0.0",
   "task_type": "conference_member_matching",
-  "metadata": {
-    "created_at": "2025-08-08T10:00:00Z",
-    "created_by": "Polibase Development Team",
-    "description": "Test dataset for conference member to politician matching based on ExtractedConferenceMember model",
-    "tags": ["conference_member_matching", "batch_processing", "llm_matching"],
-    "source": "Sample extracted conference member data"
-  },
   "test_cases": [
     {
-      "id": "cmm_001",
-      "description": "Batch matching of extracted conference members with LLM-based matching",
+      "id": "cm_001",
+      "description": "基本的な会議メンバーマッチングテスト",
       "input": {
+        "conference_id": 1,
         "extracted_members": [
-          {
-            "id": 1,
-            "conference_id": 185,
-            "extracted_name": "田中太郎",
-            "extracted_party_name": "自由民主党",
-            "extracted_role": "委員長",
-            "source_url": "https://example.com/kyoto_city/members",
-            "conference_name": "京都市議会",
-            "governing_body_name": "京都市"
-          },
-          {
-            "id": 2,
-            "conference_id": 185,
-            "extracted_name": "山田花子",
-            "extracted_party_name": "立憲民主党",
-            "extracted_role": null,
-            "source_url": "https://example.com/kyoto_city/members",
-            "conference_name": "京都市議会",
-            "governing_body_name": "京都市"
-          },
-          {
-            "id": 3,
-            "conference_id": 185,
-            "extracted_name": "佐藤健一",
-            "extracted_party_name": "日本維新の会",
-            "extracted_role": "副委員長",
-            "source_url": "https://example.com/kyoto_city/members",
-            "conference_name": "京都市議会",
-            "governing_body_name": "京都市"
-          },
-          {
-            "id": 4,
-            "conference_id": 185,
-            "extracted_name": "鈴木美香",
-            "extracted_party_name": "公明党",
-            "extracted_role": null,
-            "source_url": "https://example.com/kyoto_city/members",
-            "conference_name": "京都市議会",
-            "governing_body_name": "京都市"
-          },
-          {
-            "id": 5,
-            "conference_id": 185,
-            "extracted_name": "高橋一郎",
-            "extracted_party_name": "無所属",
-            "extracted_role": null,
-            "source_url": "https://example.com/kyoto_city/members",
-            "conference_name": "京都市議会",
-            "governing_body_name": "京都市"
-          }
+          { "name": "山田太郎", "party": "自民党", "role": "委員長" },
+          { "name": "田中花子", "party": "立憲民主党", "role": "副委員長" },
+          { "name": "佐藤次郎", "party": "公明党", "role": "委員" }
         ],
-        "politician_candidates": [
-          {
-            "id": 101,
-            "name": "田中太郎",
-            "party_name": "自由民主党",
-            "position": "市議会議員",
-            "prefecture": "京都府",
-            "electoral_district": "京都市中京区"
-          },
-          {
-            "id": 102,
-            "name": "山田花子",
-            "party_name": "立憲民主党",
-            "position": "市議会議員",
-            "prefecture": "京都府",
-            "electoral_district": "京都市左京区"
-          },
-          {
-            "id": 103,
-            "name": "佐藤健一",
-            "party_name": "日本維新の会",
-            "position": "市議会議員",
-            "prefecture": "京都府",
-            "electoral_district": "京都市右京区"
-          },
-          {
-            "id": 104,
-            "name": "鈴木みか",
-            "party_name": "公明党",
-            "position": "市議会議員",
-            "prefecture": "京都府",
-            "electoral_district": "京都市下京区"
-          },
-          {
-            "id": 105,
-            "name": "高橋一朗",
-            "party_name": "無所属",
-            "position": "市議会議員",
-            "prefecture": "京都府",
-            "electoral_district": "京都市北区"
-          },
-          {
-            "id": 106,
-            "name": "田中次郎",
-            "party_name": "自由民主党",
-            "position": "市議会議員",
-            "prefecture": "京都府",
-            "electoral_district": "京都市伏見区"
-          }
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" }
         ]
       },
       "expected_output": {
-        "processed_members": [
+        "matched_members": [
           {
-            "extracted_member_id": 1,
-            "extracted_name": "田中太郎",
-            "status": "matched",
+            "member_name": "山田太郎",
             "politician_id": 101,
-            "confidence": 0.95
+            "status": "matched"
           },
           {
-            "extracted_member_id": 2,
-            "extracted_name": "山田花子",
-            "status": "matched",
+            "member_name": "田中花子",
             "politician_id": 102,
-            "confidence": 0.95
+            "status": "matched"
           },
           {
-            "extracted_member_id": 3,
-            "extracted_name": "佐藤健一",
-            "status": "matched",
+            "member_name": "佐藤次郎",
             "politician_id": 103,
-            "confidence": 0.95
-          },
-          {
-            "extracted_member_id": 4,
-            "extracted_name": "鈴木美香",
-            "status": "needs_review",
-            "politician_id": 104,
-            "confidence": 0.65
-          },
-          {
-            "extracted_member_id": 5,
-            "extracted_name": "高橋一郎",
-            "status": "matched",
-            "politician_id": 105,
-            "confidence": 0.85
+            "status": "matched"
           }
-        ],
-        "statistics": {
-          "total": 5,
-          "matched": 4,
-          "needs_review": 1,
-          "no_match": 0,
-          "error": 0
-        }
-      },
-      "evaluation_criteria": {
-        "priority": "high",
-        "difficulty": "medium",
-        "notes": "Tests basic LLM-based matching with name variations"
+        ]
       }
     },
     {
-      "id": "cmm_002",
-      "description": "Batch matching with multiple candidates and no matches",
+      "id": "cm_002",
+      "description": "名前のバリエーションを含むマッチング",
       "input": {
+        "conference_id": 2,
         "extracted_members": [
-          {
-            "id": 6,
-            "conference_id": 186,
-            "extracted_name": "伊藤太郎",
-            "extracted_party_name": "大阪維新の会",
-            "extracted_role": "議長",
-            "source_url": "https://example.com/osaka_city/members",
-            "conference_name": "大阪市議会",
-            "governing_body_name": "大阪市"
-          },
-          {
-            "id": 7,
-            "conference_id": 186,
-            "extracted_name": "小林幸子",
-            "extracted_party_name": "公明党",
-            "extracted_role": null,
-            "source_url": "https://example.com/osaka_city/members",
-            "conference_name": "大阪市議会",
-            "governing_body_name": "大阪市"
-          },
-          {
-            "id": 8,
-            "conference_id": 186,
-            "extracted_name": "新人議員",
-            "extracted_party_name": "無所属",
-            "extracted_role": null,
-            "source_url": "https://example.com/osaka_city/members",
-            "conference_name": "大阪市議会",
-            "governing_body_name": "大阪市"
-          }
+          { "name": "山田太郎", "party": "自由民主党", "role": "議長" },
+          { "name": "田中はなこ", "party": "立憲", "role": "委員" },
+          { "name": "佐藤じろう", "party": "公明", "role": "委員" }
         ],
-        "politician_candidates": [
-          {
-            "id": 201,
-            "name": "伊藤太郎",
-            "party_name": "日本維新の会",
-            "position": "市議会議員",
-            "prefecture": "大阪府",
-            "electoral_district": "大阪市北区"
-          },
-          {
-            "id": 202,
-            "name": "伊藤次郎",
-            "party_name": "大阪維新の会",
-            "position": "市議会議員",
-            "prefecture": "大阪府",
-            "electoral_district": "大阪市中央区"
-          },
-          {
-            "id": 203,
-            "name": "小林さちこ",
-            "party_name": "公明党",
-            "position": "市議会議員",
-            "prefecture": "大阪府",
-            "electoral_district": "大阪市天王寺区"
-          },
-          {
-            "id": 204,
-            "name": "小林雪子",
-            "party_name": "公明党",
-            "position": "市議会議員",
-            "prefecture": "大阪府",
-            "electoral_district": "大阪市浪速区"
-          }
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" }
         ]
       },
       "expected_output": {
-        "processed_members": [
+        "matched_members": [
           {
-            "extracted_member_id": 6,
-            "extracted_name": "伊藤太郎",
-            "status": "needs_review",
-            "politician_id": 202,
-            "confidence": 0.6
+            "member_name": "山田太郎",
+            "politician_id": 101,
+            "status": "matched"
           },
           {
-            "extracted_member_id": 7,
-            "extracted_name": "小林幸子",
-            "status": "needs_review",
-            "politician_id": 203,
-            "confidence": 0.5
+            "member_name": "田中はなこ",
+            "politician_id": 102,
+            "status": "matched"
           },
           {
-            "extracted_member_id": 8,
-            "extracted_name": "新人議員",
-            "status": "no_match",
-            "politician_id": null,
-            "confidence": 0.0
-          }
-        ],
-        "statistics": {
-          "total": 3,
-          "matched": 0,
-          "needs_review": 2,
-          "no_match": 1,
-          "error": 0
-        }
-      },
-      "evaluation_criteria": {
-        "priority": "high",
-        "difficulty": "hard",
-        "notes": "Tests ambiguous matching and cases with no clear matches"
-      }
-    },
-    {
-      "id": "cmm_003",
-      "description": "Large batch processing with parliamentary groups",
-      "input": {
-        "extracted_members": [
-          {
-            "id": 9,
-            "conference_id": 187,
-            "extracted_name": "渡辺一郎",
-            "extracted_party_name": "都民ファーストの会",
-            "extracted_role": "団長",
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          },
-          {
-            "id": 10,
-            "conference_id": 187,
-            "extracted_name": "中村美香",
-            "extracted_party_name": "都民ファーストの会",
-            "extracted_role": "幹事長",
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          },
-          {
-            "id": 11,
-            "conference_id": 187,
-            "extracted_name": "木村太郎",
-            "extracted_party_name": "自由民主党",
-            "extracted_role": null,
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          },
-          {
-            "id": 12,
-            "conference_id": 187,
-            "extracted_name": "松本花子",
-            "extracted_party_name": "自由民主党",
-            "extracted_role": null,
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          },
-          {
-            "id": 13,
-            "conference_id": 187,
-            "extracted_name": "斎藤健一",
-            "extracted_party_name": "立憲民主党・民主クラブ",
-            "extracted_role": null,
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          },
-          {
-            "id": 14,
-            "conference_id": 187,
-            "extracted_name": "加藤美智子",
-            "extracted_party_name": "立憲民主党・民主クラブ",
-            "extracted_role": null,
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          },
-          {
-            "id": 15,
-            "conference_id": 187,
-            "extracted_name": "吉田次郎",
-            "extracted_party_name": "公明党",
-            "extracted_role": null,
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          },
-          {
-            "id": 16,
-            "conference_id": 187,
-            "extracted_name": "林真理子",
-            "extracted_party_name": "日本共産党",
-            "extracted_role": null,
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          },
-          {
-            "id": 17,
-            "conference_id": 187,
-            "extracted_name": "青木健太",
-            "extracted_party_name": "東京維新の会",
-            "extracted_role": null,
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          },
-          {
-            "id": 18,
-            "conference_id": 187,
-            "extracted_name": "新議員太郎",
-            "extracted_party_name": "無所属",
-            "extracted_role": null,
-            "source_url": "https://example.com/tokyo_metro/members",
-            "conference_name": "東京都議会",
-            "governing_body_name": "東京都"
-          }
-        ],
-        "politician_candidates": [
-          {
-            "id": 301,
-            "name": "渡辺一郎",
-            "party_name": "都民ファーストの会",
-            "position": "都議会議員",
-            "prefecture": "東京都",
-            "electoral_district": "新宿区"
-          },
-          {
-            "id": 302,
-            "name": "中村美香",
-            "party_name": "都民ファーストの会",
-            "position": "都議会議員",
-            "prefecture": "東京都",
-            "electoral_district": "世田谷区"
-          },
-          {
-            "id": 303,
-            "name": "木村太郎",
-            "party_name": "自由民主党",
-            "position": "都議会議員",
-            "prefecture": "東京都",
-            "electoral_district": "品川区"
-          },
-          {
-            "id": 304,
-            "name": "松本花子",
-            "party_name": "自由民主党",
-            "position": "都議会議員",
-            "prefecture": "東京都",
-            "electoral_district": "目黒区"
-          },
-          {
-            "id": 305,
-            "name": "斉藤健一",
-            "party_name": "立憲民主党",
-            "position": "都議会議員",
-            "prefecture": "東京都",
-            "electoral_district": "杉並区"
-          },
-          {
-            "id": 306,
-            "name": "加藤みちこ",
-            "party_name": "立憲民主党",
-            "position": "都議会議員",
-            "prefecture": "東京都",
-            "electoral_district": "中野区"
-          },
-          {
-            "id": 307,
-            "name": "吉田次郎",
-            "party_name": "公明党",
-            "position": "都議会議員",
-            "prefecture": "東京都",
-            "electoral_district": "足立区"
-          },
-          {
-            "id": 308,
-            "name": "林まりこ",
-            "party_name": "日本共産党",
-            "position": "都議会議員",
-            "prefecture": "東京都",
-            "electoral_district": "練馬区"
-          },
-          {
-            "id": 309,
-            "name": "青木けんた",
-            "party_name": "日本維新の会",
-            "position": "都議会議員",
-            "prefecture": "東京都",
-            "electoral_district": "江東区"
+            "member_name": "佐藤じろう",
+            "politician_id": 103,
+            "status": "matched"
           }
         ]
-      },
-      "expected_output": {
-        "processed_members": [
-          {
-            "extracted_member_id": 9,
-            "extracted_name": "渡辺一郎",
-            "status": "matched",
-            "politician_id": 301,
-            "confidence": 0.95
-          },
-          {
-            "extracted_member_id": 10,
-            "extracted_name": "中村美香",
-            "status": "matched",
-            "politician_id": 302,
-            "confidence": 0.95
-          },
-          {
-            "extracted_member_id": 11,
-            "extracted_name": "木村太郎",
-            "status": "matched",
-            "politician_id": 303,
-            "confidence": 0.95
-          },
-          {
-            "extracted_member_id": 12,
-            "extracted_name": "松本花子",
-            "status": "matched",
-            "politician_id": 304,
-            "confidence": 0.95
-          },
-          {
-            "extracted_member_id": 13,
-            "extracted_name": "斎藤健一",
-            "status": "matched",
-            "politician_id": 305,
-            "confidence": 0.85
-          },
-          {
-            "extracted_member_id": 14,
-            "extracted_name": "加藤美智子",
-            "status": "needs_review",
-            "politician_id": 306,
-            "confidence": 0.6
-          },
-          {
-            "extracted_member_id": 15,
-            "extracted_name": "吉田次郎",
-            "status": "matched",
-            "politician_id": 307,
-            "confidence": 0.95
-          },
-          {
-            "extracted_member_id": 16,
-            "extracted_name": "林真理子",
-            "status": "needs_review",
-            "politician_id": 308,
-            "confidence": 0.55
-          },
-          {
-            "extracted_member_id": 17,
-            "extracted_name": "青木健太",
-            "status": "matched",
-            "politician_id": 309,
-            "confidence": 0.75
-          },
-          {
-            "extracted_member_id": 18,
-            "extracted_name": "新議員太郎",
-            "status": "no_match",
-            "politician_id": null,
-            "confidence": 0.0
-          }
-        ],
-        "statistics": {
-          "total": 10,
-          "matched": 7,
-          "needs_review": 2,
-          "no_match": 1,
-          "error": 0
-        }
-      },
-      "evaluation_criteria": {
-        "priority": "high",
-        "difficulty": "hard",
-        "notes": "Tests large batch processing with parliamentary groups and name variations"
       }
     }
   ]

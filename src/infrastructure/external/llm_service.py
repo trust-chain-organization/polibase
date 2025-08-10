@@ -400,3 +400,25 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
         except Exception as e:
             logger.error(f"Chain invocation failed: {e}")
             raise
+
+    def invoke_llm(self, messages: list[dict[str, str]]) -> str:
+        """Invoke the LLM with messages and return the response content.
+
+        Args:
+            messages: List of message dictionaries with 'role' and 'content' keys
+
+        Returns:
+            The response content from the LLM
+        """
+        try:
+            response = self._llm.invoke(messages)
+            # Ensure we return a string
+            content = response.content
+            if isinstance(content, str):
+                return content
+            else:
+                # Convert to string if necessary
+                return str(content)
+        except Exception as e:
+            logger.error(f"LLM invocation failed: {e}")
+            raise

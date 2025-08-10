@@ -89,7 +89,8 @@ jobs:
         env:
           CI: true
         run: |
-          uv run pytest -v --tb=short --cov=src --cov-report=html --cov-report=term --cov-report=xml --cov-report=json
+          # Exclude evaluation tests from CI to save costs (run manually via workflow_dispatch)
+          uv run pytest -v --tb=short --cov=src --cov-report=html --cov-report=term --cov-report=xml --cov-report=json --ignore=tests/evaluation/
 
       - name: Check coverage threshold
         run: |

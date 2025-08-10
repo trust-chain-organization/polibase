@@ -1,0 +1,212 @@
+name: LLM Evaluation Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Task to evaluate (leave empty for all)"
+        required: false
+        type: choice
+        options:
+          - "" # All tasks
+          - "minutes_division"
+          - "speaker_matching"
+          - "party_member_extraction"
+          - "conference_member_matching"
+      dataset:
+        description: "Custom dataset path (optional)"
+        required: false
+        type: string
+      use_real_llm:
+        description: "Use real LLM API (requires GOOGLE_API_KEY secret)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  evaluate:
+    name: Run LLM Evaluation
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: polibase_user
+          POSTGRES_PASSWORD: polibase_password
+          POSTGRES_DB: polibase_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: |
+            **/pyproject.toml
+            **/uv.lock
+
+      - name: Install dependencies
+        run: |
+          uv sync --extra dev
+
+      - name: Set up environment
+        run: |
+          cp .env.example .env
+          echo "DATABASE_URL=postgresql://polibase_user:polibase_password@localhost:5432/polibase_db" >> .env
+
+          # Use real API key if provided and use_real_llm is true
+          if [[ "${{ inputs.use_real_llm }}" == "true" ]] && [[ -n "${{ secrets.GOOGLE_API_KEY }}" ]]; then
+            echo "Using real Google API key for LLM evaluation"
+            echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> .env
+            echo "USE_REAL_LLM=true" >> .env
+          else
+            echo "Using mock responses for evaluation"
+            echo "GOOGLE_API_KEY=test-api-key" >> .env
+            echo "USE_REAL_LLM=false" >> .env
+          fi
+
+      - name: Initialize database
+        run: |
+          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/init_ci.sql
+          # Apply migrations
+          for file in database/migrations/*.sql; do
+            if [ -f "$file" ]; then
+              echo "Applying migration: $file"
+              PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f "$file"
+            fi
+          done
+
+      - name: Run evaluation tests
+        run: |
+          # Determine task parameter
+          TASK_PARAM=""
+          if [[ -n "${{ inputs.task }}" ]]; then
+            TASK_PARAM="--task ${{ inputs.task }}"
+          else
+            TASK_PARAM="--all"
+          fi
+
+          # Add dataset parameter if provided
+          DATASET_PARAM=""
+          if [[ -n "${{ inputs.dataset }}" ]]; then
+            DATASET_PARAM="--dataset ${{ inputs.dataset }}"
+          fi
+
+          echo "Running evaluation with parameters: $TASK_PARAM $DATASET_PARAM"
+          uv run polibase evaluate $TASK_PARAM $DATASET_PARAM
+
+      - name: Upload evaluation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-results-${{ github.run_number }}
+          path: |
+            evaluation-results*.json
+            evaluation-report*.txt
+
+      - name: Generate summary report
+        if: always()
+        run: |
+          echo "## LLM Evaluation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ -n "${{ inputs.task }}" ]]; then
+            echo "**Task**: ${{ inputs.task }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Task**: All tasks" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ inputs.use_real_llm }}" == "true" ]]; then
+            echo "**Mode**: Real LLM API" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Mode**: Mock responses" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Extract and format results if available
+          if command -v uv &> /dev/null; then
+            echo "### Evaluation Metrics" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            # Run evaluation again with summary output
+            if [[ -n "${{ inputs.task }}" ]]; then
+              uv run polibase evaluate --task ${{ inputs.task }} 2>/dev/null | tail -20 >> $GITHUB_STEP_SUMMARY || true
+            else
+              uv run polibase evaluate --all 2>/dev/null | tail -50 >> $GITHUB_STEP_SUMMARY || true
+            fi
+          fi
+
+      - name: Create issue on failure
+        if: failure() && inputs.use_real_llm == true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `LLM Evaluation Failed - Run #${context.runNumber}`,
+              body: `## LLM Evaluation Test Failed
+
+              **Workflow Run**: [#${context.runNumber}](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+              **Task**: ${{ inputs.task || 'All tasks' }}
+              **Mode**: ${{ inputs.use_real_llm ? 'Real LLM API' : 'Mock responses' }}
+
+              Please check the workflow logs for details.`,
+              labels: ['evaluation', 'automated']
+            });
+            console.log(`Created issue #${issue.data.number}`);
+
+  cost-estimation:
+    name: Estimate API Costs
+    runs-on: ubuntu-latest
+    if: inputs.use_real_llm == true
+    needs: evaluate
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Calculate estimated costs
+        run: |
+          echo "## API Cost Estimation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Rough estimation based on task type
+          # These are placeholder values - adjust based on actual usage
+          if [[ "${{ inputs.task }}" == "minutes_division" ]]; then
+            echo "**Estimated tokens**: ~50,000" >> $GITHUB_STEP_SUMMARY
+            echo "**Estimated cost**: ~$0.50" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ inputs.task }}" == "speaker_matching" ]]; then
+            echo "**Estimated tokens**: ~30,000" >> $GITHUB_STEP_SUMMARY
+            echo "**Estimated cost**: ~$0.30" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ inputs.task }}" == "party_member_extraction" ]]; then
+            echo "**Estimated tokens**: ~40,000" >> $GITHUB_STEP_SUMMARY
+            echo "**Estimated cost**: ~$0.40" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ inputs.task }}" == "conference_member_matching" ]]; then
+            echo "**Estimated tokens**: ~35,000" >> $GITHUB_STEP_SUMMARY
+            echo "**Estimated cost**: ~$0.35" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Estimated tokens**: ~155,000 (all tasks)" >> $GITHUB_STEP_SUMMARY
+            echo "**Estimated cost**: ~$1.55 (all tasks)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "*Note: Costs are estimates based on Gemini API pricing*" >> $GITHUB_STEP_SUMMARY

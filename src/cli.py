@@ -19,6 +19,7 @@ from src.cli_package.commands import (
     get_conference_member_commands,
     get_coverage_commands,
     get_database_commands,
+    get_evaluation_commands,
     get_minutes_commands,
     get_parliamentary_group_commands,
     get_politician_commands,
@@ -71,6 +72,7 @@ def register_commands(cli_group: click.Group) -> None:
         get_parliamentary_group_commands,
         get_seed_commands,
         get_coverage_commands,
+        get_evaluation_commands,
     ]
 
     for getter in command_getters:
