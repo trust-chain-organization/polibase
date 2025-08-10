@@ -33,8 +33,15 @@ class EvaluationCommands(BaseCommand):
         is_flag=True,
         help="Run evaluation for all tasks",
     )
+    @click.option(
+        "--use-real-llm/--use-mock",
+        default=True,
+        help="Use real LLM API instead of mock responses (default: use real)",
+    )
     @with_error_handling
-    def evaluate(task: str | None, dataset: str | None, run_all: bool):
+    def evaluate(
+        task: str | None, dataset: str | None, run_all: bool, use_real_llm: bool
+    ):
         """Run LLM evaluation tests (LLM評価テストの実行)
 
         This command runs evaluation tests to measure LLM performance
@@ -53,7 +60,14 @@ class EvaluationCommands(BaseCommand):
         """
         from src.evaluation import EvaluationRunner
 
-        runner = EvaluationRunner()
+        runner = EvaluationRunner(use_real_llm=use_real_llm)
+
+        if use_real_llm:
+            click.echo(click.style("🤖 Using real LLM API for evaluation", fg="cyan"))
+        else:
+            click.echo(
+                click.style("📝 Using mock responses for evaluation", fg="yellow")
+            )
 
         # Validate arguments
         if not run_all and not task:

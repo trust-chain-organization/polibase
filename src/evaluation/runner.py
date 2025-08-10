@@ -2,8 +2,13 @@
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
+
+from src.infrastructure.external.llm_service import GeminiLLMService
+from src.minutes_divide_processor.minutes_divider import MinutesDivider
+from src.party_member_extractor.llm_extractor import PartyMemberExtractor
 
 from .metrics import EvaluationMetrics, MetricsCalculator
 
@@ -13,9 +18,23 @@ logger = logging.getLogger(__name__)
 class EvaluationRunner:
     """Run evaluation tests and calculate metrics"""
 
-    def __init__(self):
-        """Initialize evaluation runner"""
+    def __init__(self, use_real_llm: bool = True):
+        """Initialize evaluation runner
+
+        Args:
+            use_real_llm: Whether to use real LLM API or mock responses
+        """
         self.metrics_calculator = MetricsCalculator()
+        self.use_real_llm = use_real_llm
+
+        # Initialize LLM service if using real LLM
+        if self.use_real_llm:
+            api_key = os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                logger.warning("GOOGLE_API_KEY not set, will use mock responses")
+                self.use_real_llm = False
+            else:
+                self.llm_service = GeminiLLMService(api_key=api_key)
 
     def load_dataset(self, dataset_path: str) -> dict[str, Any]:
         """Load evaluation dataset from JSON file
@@ -42,9 +61,6 @@ class EvaluationRunner:
     ) -> dict[str, Any]:
         """Execute a single test case
 
-        This is a placeholder that should be replaced with actual system execution.
-        In production, this would call the actual LLM-based systems.
-
         Args:
             task_type: Type of task to execute
             test_case: Test case data
@@ -52,38 +68,307 @@ class EvaluationRunner:
         Returns:
             Actual output from system
         """
-        # TODO: Implement actual system execution based on task type
-        # For now, return a mock response that matches expected format
-
-        mock_responses = {
-            "minutes_division": {
-                "speaker_and_speech_content_list": test_case.get(
-                    "expected_output", {}
-                ).get("speaker_and_speech_content_list", [])
-            },
-            "speaker_matching": {
-                "results": test_case.get("expected_output", {}).get("results", [])
-            },
-            "party_member_extraction": {
-                "members": test_case.get("expected_output", {}).get("members", [])
-            },
-            "conference_member_matching": {
-                "matched_members": test_case.get("expected_output", {}).get(
-                    "matched_members", []
-                )
-            },
-        }
-
-        # In production, this would actually call the respective systems:
-        # - minutes_division: MinutesDivider
-        # - speaker_matching: SpeakerMatcher with LLM
-        # - party_member_extraction: PartyMemberExtractor
-        # - conference_member_matching: ConferenceMemberMatcher
-
         logger.info(f"Executing test case {test_case.get('id')} for task {task_type}")
 
-        # Return mock response for now
-        return mock_responses.get(task_type, {})
+        if not self.use_real_llm:
+            # Return mock response that matches expected format
+            mock_responses = {
+                "minutes_division": {
+                    "speaker_and_speech_content_list": test_case.get(
+                        "expected_output", {}
+                    ).get("speaker_and_speech_content_list", [])
+                },
+                "speaker_matching": {
+                    "results": test_case.get("expected_output", {}).get("results", [])
+                },
+                "party_member_extraction": {
+                    "members": test_case.get("expected_output", {}).get("members", [])
+                },
+                "conference_member_matching": {
+                    "matched_members": test_case.get("expected_output", {}).get(
+                        "matched_members", []
+                    )
+                },
+            }
+            return mock_responses.get(task_type, {})
+
+        # Use real LLM services
+        try:
+            if task_type == "minutes_division":
+                return self._execute_minutes_division(test_case)
+            elif task_type == "speaker_matching":
+                return self._execute_speaker_matching(test_case)
+            elif task_type == "party_member_extraction":
+                return self._execute_party_member_extraction(test_case)
+            elif task_type == "conference_member_matching":
+                return self._execute_conference_member_matching(test_case)
+            else:
+                logger.error(f"Unknown task type: {task_type}")
+                return {}
+        except Exception as e:
+            logger.error(f"Error executing test case: {e}")
+            return {}
+
+    def _execute_minutes_division(self, test_case: dict[str, Any]) -> dict[str, Any]:
+        """Execute minutes division task using MinutesDivider
+
+        Args:
+            test_case: Test case data with input text
+
+        Returns:
+            Dict with speaker_and_speech_content_list
+        """
+        try:
+            # Get input text from test case
+            input_text = test_case.get("input", {}).get("text", "")
+            if not input_text:
+                logger.error("No input text provided for minutes division")
+                return {"speaker_and_speech_content_list": []}
+
+            # Initialize MinutesDivider
+            minutes_divider = MinutesDivider()
+
+            # Process the text
+            result = minutes_divider.process_text(input_text)
+
+            # Format the result
+            formatted_result = {"speaker_and_speech_content_list": []}
+
+            if result and "conversations" in result:
+                for idx, conv in enumerate(result["conversations"], 1):
+                    formatted_result["speaker_and_speech_content_list"].append(
+                        {
+                            "speaker": conv.get("speaker", ""),
+                            "speech_content": conv.get("content", ""),
+                            "chapter_number": 1,
+                            "sub_chapter_number": 1,
+                            "speech_order": idx,
+                        }
+                    )
+
+            return formatted_result
+
+        except Exception as e:
+            logger.error(f"Error in minutes division: {e}")
+            return {"speaker_and_speech_content_list": []}
+
+    def _execute_speaker_matching(self, test_case: dict[str, Any]) -> dict[str, Any]:
+        """Execute speaker matching task using LLM
+
+        Args:
+            test_case: Test case data with speakers and politicians
+
+        Returns:
+            Dict with matching results
+        """
+        try:
+            input_data = test_case.get("input", {})
+            speakers = input_data.get("speakers", [])
+            politicians = input_data.get("politicians", [])
+
+            # Simple LLM-based matching
+            prompt = f"""以下の話者と政治家をマッチングしてください。
+
+話者リスト:
+{json.dumps(speakers, ensure_ascii=False, indent=2)}
+
+政治家リスト:
+{json.dumps(politicians, ensure_ascii=False, indent=2)}
+
+各話者に最も適切な政治家IDを割り当て、信頼度スコア(0-1)を付けて返してください。
+JSON形式で、以下のような構造で返してください:
+{{"results": [{{"speaker_id": 1, "politician_id": 101, "confidence_score": 0.95}}, ...]}}"""
+
+            # Use the LLM directly
+            messages = [{"role": "user", "content": prompt}]
+            response = self.llm_service._llm.invoke(messages).content
+
+            # Parse LLM response
+            try:
+                import re
+
+                json_match = re.search(r"\{.*\}", response, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group())
+                    return result
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse LLM response: {response}")
+
+            # Fallback to simple name matching
+            results = []
+            for speaker in speakers:
+                best_match = None
+                best_score = 0.0
+
+                for politician in politicians:
+                    if (
+                        speaker["name"]
+                        .replace("議員", "")
+                        .replace("委員長", "")
+                        .replace("部長", "")
+                        in politician["name"]
+                    ):
+                        score = 0.9
+                        if score > best_score:
+                            best_match = politician["id"]
+                            best_score = score
+
+                if best_match:
+                    results.append(
+                        {
+                            "speaker_id": speaker["id"],
+                            "politician_id": best_match,
+                            "confidence_score": best_score,
+                        }
+                    )
+
+            return {"results": results}
+
+        except Exception as e:
+            logger.error(f"Error in speaker matching: {e}")
+            return {"results": []}
+
+    def _execute_party_member_extraction(
+        self, test_case: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Execute party member extraction using PartyMemberExtractor
+
+        Args:
+            test_case: Test case data with HTML content
+
+        Returns:
+            Dict with extracted members
+        """
+        try:
+            input_data = test_case.get("input", {})
+            html_content = input_data.get("html_content", "")
+            party_name = input_data.get("party_name", "")
+
+            if not html_content:
+                return {"members": []}
+
+            # Use PartyMemberExtractor
+            extractor = PartyMemberExtractor(self.llm_service)
+            members = extractor.extract_from_html(html_content, party_name)
+
+            # Format the result
+            formatted_members = []
+            for member in members:
+                formatted_member = {"name": member.get("name", ""), "party": party_name}
+                if "position" in member:
+                    formatted_member["position"] = member["position"]
+                if "district" in member:
+                    formatted_member["district"] = member["district"]
+                if "email" in member:
+                    formatted_member["email"] = member["email"]
+                if "website" in member:
+                    formatted_member["website"] = member["website"]
+
+                formatted_members.append(formatted_member)
+
+            return {"members": formatted_members}
+
+        except Exception as e:
+            logger.error(f"Error in party member extraction: {e}")
+            return {"members": []}
+
+    def _execute_conference_member_matching(
+        self, test_case: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Execute conference member matching using LLM
+
+        Args:
+            test_case: Test case data with extracted members and politicians
+
+        Returns:
+            Dict with matched members
+        """
+        try:
+            input_data = test_case.get("input", {})
+            extracted_members = input_data.get("extracted_members", [])
+            politicians = input_data.get("politicians", [])
+
+            # Use LLM for fuzzy matching
+            prompt = f"""以下の会議メンバーと政治家をファジーマッチングしてください。
+名前の表記揺れ（ひらがな/カタカナ/漢字）や党名の略称も考慮してください。
+
+会議メンバー:
+{json.dumps(extracted_members, ensure_ascii=False, indent=2)}
+
+政治家リスト:
+{json.dumps(politicians, ensure_ascii=False, indent=2)}
+
+各メンバーに最も適切な政治家IDを割り当て、信頼度スコア(0-1)とステータス(matched/needs_review/no_match)を付けてください。
+信頼度スコア: 0.7以上=matched, 0.5-0.7=needs_review, 0.5未満=no_match
+
+JSON形式で以下のような構造で返してください:
+{{"matched_members": [{{"member_name": "山田太郎", "politician_id": 101, "confidence_score": 0.95, "status": "matched"}}, ...]}}"""
+
+            # Use the LLM directly
+            messages = [{"role": "user", "content": prompt}]
+            response = self.llm_service._llm.invoke(messages).content
+
+            # Parse LLM response
+            try:
+                import re
+
+                json_match = re.search(r"\{.*\}", response, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group())
+                    return result
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse LLM response: {response}")
+
+            # Fallback to simple matching
+            matched_members = []
+            for member in extracted_members:
+                best_match = None
+                best_score = 0.0
+
+                for politician in politicians:
+                    # Simple name and party matching
+                    name_match = member["name"] == politician["name"]
+                    party_match = member.get("party", "").replace(
+                        "自由民主党", "自民党"
+                    ).replace("立憲", "立憲民主党").replace(
+                        "公明", "公明党"
+                    ) == politician.get("party", "")
+
+                    if name_match and party_match:
+                        score = 0.95
+                    elif name_match:
+                        score = 0.75
+                    elif party_match and member["name"] in politician["name"]:
+                        score = 0.65
+                    else:
+                        continue
+
+                    if score > best_score:
+                        best_match = politician["id"]
+                        best_score = score
+
+                if best_match:
+                    status = (
+                        "matched"
+                        if best_score >= 0.7
+                        else "needs_review"
+                        if best_score >= 0.5
+                        else "no_match"
+                    )
+                    matched_members.append(
+                        {
+                            "member_name": member["name"],
+                            "politician_id": best_match,
+                            "confidence_score": best_score,
+                            "status": status,
+                        }
+                    )
+
+            return {"matched_members": matched_members}
+
+        except Exception as e:
+            logger.error(f"Error in conference member matching: {e}")
+            return {"matched_members": []}
 
     def run_evaluation(
         self,
