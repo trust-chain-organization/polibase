@@ -29,88 +29,6 @@ class MetricsCalculator:
     """Calculate metrics for different evaluation tasks"""
 
     @staticmethod
-    def calculate_minutes_division_metrics(
-        expected: dict[str, Any] | None, actual: dict[str, Any] | None
-    ) -> EvaluationMetrics:
-        """Calculate metrics for minutes division task
-
-        Metrics:
-        - speaker_match_rate: Percentage of correctly identified speakers
-        - content_similarity: Average similarity of speech content
-        - order_accuracy: Whether the order of speeches is correct
-        """
-        test_case_id = expected.get("id", "unknown") if expected else "unknown"
-        metrics = EvaluationMetrics(
-            task_type="minutes_division", test_case_id=test_case_id
-        )
-
-        try:
-            expected_speeches = (
-                expected.get("expected_output", {}).get(
-                    "speaker_and_speech_content_list", []
-                )
-                if expected
-                else []
-            )
-            actual_speeches = (
-                actual.get("speaker_and_speech_content_list", []) if actual else []
-            )
-
-            # Calculate speaker match rate
-            if expected_speeches:
-                speaker_matches = 0
-                for i, exp_speech in enumerate(expected_speeches):
-                    if i < len(actual_speeches):
-                        if exp_speech["speaker"] == actual_speeches[i]["speaker"]:
-                            speaker_matches += 1
-
-                metrics.metrics["speaker_match_rate"] = speaker_matches / len(
-                    expected_speeches
-                )
-            else:
-                metrics.metrics["speaker_match_rate"] = 0.0
-
-            # Calculate content similarity (simple exact match for now)
-            if expected_speeches:
-                content_matches = 0
-                for i, exp_speech in enumerate(expected_speeches):
-                    if i < len(actual_speeches):
-                        exp_content = exp_speech["speech_content"].strip()
-                        act_content = (
-                            actual_speeches[i].get("speech_content", "").strip()
-                        )
-                        # Simple substring check for now
-                        if exp_content in act_content or act_content in exp_content:
-                            content_matches += 1
-
-                metrics.metrics["content_similarity"] = content_matches / len(
-                    expected_speeches
-                )
-            else:
-                metrics.metrics["content_similarity"] = 0.0
-
-            # Check order accuracy
-            metrics.metrics["order_accuracy"] = len(actual_speeches) == len(
-                expected_speeches
-            )
-
-            # Count differences
-            metrics.metrics["expected_count"] = len(expected_speeches)
-            metrics.metrics["actual_count"] = len(actual_speeches)
-
-            # Determine if test passed (80% threshold for speaker match and content)
-            metrics.passed = (
-                metrics.metrics["speaker_match_rate"] >= 0.8
-                and metrics.metrics["content_similarity"] >= 0.8
-            )
-
-        except Exception as e:
-            metrics.error = str(e)
-            metrics.passed = False
-
-        return metrics
-
-    @staticmethod
     def calculate_speaker_matching_metrics(
         expected: dict[str, Any], actual: dict[str, Any]
     ) -> EvaluationMetrics:
@@ -365,7 +283,6 @@ class MetricsCalculator:
             Calculated metrics
         """
         calculators = {
-            "minutes_division": cls.calculate_minutes_division_metrics,
             "speaker_matching": cls.calculate_speaker_matching_metrics,
             "party_member_extraction": cls.calculate_party_member_extraction_metrics,
             "conference_member_matching": (

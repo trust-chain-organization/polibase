@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from src.infrastructure.external.llm_service import GeminiLLMService
-from src.minutes_divide_processor.minutes_divider import MinutesDivider
 from src.party_member_extractor.llm_extractor import PartyMemberExtractor
 
 from .metrics import EvaluationMetrics, MetricsCalculator
@@ -94,9 +93,7 @@ class EvaluationRunner:
 
         # Use real LLM services
         try:
-            if task_type == "minutes_division":
-                return self._execute_minutes_division(test_case)
-            elif task_type == "speaker_matching":
+            if task_type == "speaker_matching":
                 return self._execute_speaker_matching(test_case)
             elif task_type == "party_member_extraction":
                 return self._execute_party_member_extraction(test_case)
@@ -108,49 +105,6 @@ class EvaluationRunner:
         except Exception as e:
             logger.error(f"Error executing test case: {e}")
             return {}
-
-    def _execute_minutes_division(self, test_case: dict[str, Any]) -> dict[str, Any]:
-        """Execute minutes division task using MinutesDivider
-
-        Args:
-            test_case: Test case data with input text
-
-        Returns:
-            Dict with speaker_and_speech_content_list
-        """
-        try:
-            # Get input text from test case
-            input_text = test_case.get("input", {}).get("text", "")
-            if not input_text:
-                logger.error("No input text provided for minutes division")
-                return {"speaker_and_speech_content_list": []}
-
-            # Initialize MinutesDivider
-            minutes_divider = MinutesDivider()
-
-            # Process the text
-            result = minutes_divider.process_text(input_text)
-
-            # Format the result
-            formatted_result = {"speaker_and_speech_content_list": []}
-
-            if result and "conversations" in result:
-                for idx, conv in enumerate(result["conversations"], 1):
-                    formatted_result["speaker_and_speech_content_list"].append(
-                        {
-                            "speaker": conv.get("speaker", ""),
-                            "speech_content": conv.get("content", ""),
-                            "chapter_number": 1,
-                            "sub_chapter_number": 1,
-                            "speech_order": idx,
-                        }
-                    )
-
-            return formatted_result
-
-        except Exception as e:
-            logger.error(f"Error in minutes division: {e}")
-            return {"speaker_and_speech_content_list": []}
 
     def _execute_speaker_matching(self, test_case: dict[str, Any]) -> dict[str, Any]:
         """Execute speaker matching task using LLM

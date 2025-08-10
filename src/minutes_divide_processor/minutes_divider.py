@@ -52,56 +52,6 @@ class MinutesDivider:
         )
         self.k = k
 
-    def process_text(self, text: str) -> dict[str, Any]:
-        """Process raw text and extract conversations
-
-        Simple implementation for evaluation testing
-
-        Args:
-            text: Raw text input
-
-        Returns:
-            Dict with conversations list
-        """
-        try:
-            # Simple regex-based extraction for evaluation
-            conversations = []
-
-            # Pattern: "Speaker: Content" or "Speaker：Content"
-            pattern = r"([^：:\n]+)[：:](.+?)(?=\n[^：:\n]+[：:]|\Z)"
-            matches = re.findall(pattern, text, re.DOTALL)
-
-            for speaker, content in matches:
-                conversations.append(
-                    {"speaker": speaker.strip(), "content": content.strip()}
-                )
-
-            # If no pattern matches, try LLM-based extraction
-            if not conversations:
-                prompt = f"""以下のテキストから発言者と発言内容を抽出してください。
-
-テキスト:
-{text}
-
-JSON形式で以下のような構造で返してください:
-{{"conversations": [{{"speaker": "発言者名", "content": "発言内容"}}, ...]}}"""
-
-                # Use the LLM directly
-                messages = [{"role": "user", "content": prompt}]
-                response = self.llm_service.invoke_llm(messages)
-
-                # Parse JSON response
-                json_match = re.search(r"\{.*\}", response, re.DOTALL)
-                if json_match:
-                    result = json.loads(json_match.group())
-                    conversations = result.get("conversations", [])
-
-            return {"conversations": conversations}
-
-        except Exception as e:
-            logger.error(f"Error processing text: {e}")
-            return {"conversations": []}
-
     # 議事録の文字列に対する前処理を行う
     def pre_process(self, original_minutes: str) -> str:
         # 議事録の改行とスペースを削除します

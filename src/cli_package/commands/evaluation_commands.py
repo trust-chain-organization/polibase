@@ -14,7 +14,6 @@ class EvaluationCommands(BaseCommand):
         "--task",
         type=click.Choice(
             [
-                "minutes_division",
                 "speaker_matching",
                 "party_member_extraction",
                 "conference_member_matching",

@@ -30,82 +30,6 @@ class TestEvaluationMetrics:
 class TestMetricsCalculator:
     """Test MetricsCalculator class"""
 
-    def test_calculate_minutes_division_metrics_success(self):
-        """Test successful minutes division metrics calculation"""
-        expected = {
-            "id": "md_001",
-            "expected_output": {
-                "speaker_and_speech_content_list": [
-                    {
-                        "speaker": "山田太郎",
-                        "speech_content": "こんにちは",
-                        "chapter_number": 1,
-                        "sub_chapter_number": 1,
-                        "speech_order": 1,
-                    },
-                    {
-                        "speaker": "田中花子",
-                        "speech_content": "よろしくお願いします",
-                        "chapter_number": 1,
-                        "sub_chapter_number": 1,
-                        "speech_order": 2,
-                    },
-                ]
-            },
-        }
-
-        actual = {
-            "speaker_and_speech_content_list": [
-                {
-                    "speaker": "山田太郎",
-                    "speech_content": "こんにちは",
-                    "chapter_number": 1,
-                    "sub_chapter_number": 1,
-                    "speech_order": 1,
-                },
-                {
-                    "speaker": "田中花子",
-                    "speech_content": "よろしくお願いします",
-                    "chapter_number": 1,
-                    "sub_chapter_number": 1,
-                    "speech_order": 2,
-                },
-            ]
-        }
-
-        metrics = MetricsCalculator.calculate_minutes_division_metrics(expected, actual)
-
-        assert metrics.task_type == "minutes_division"
-        assert metrics.test_case_id == "md_001"
-        assert metrics.metrics["speaker_match_rate"] == 1.0
-        assert metrics.metrics["content_similarity"] == 1.0
-        assert metrics.metrics["order_accuracy"] is True
-        assert metrics.passed is True
-
-    def test_calculate_minutes_division_metrics_partial_match(self):
-        """Test minutes division metrics with partial match"""
-        expected = {
-            "id": "md_002",
-            "expected_output": {
-                "speaker_and_speech_content_list": [
-                    {"speaker": "山田太郎", "speech_content": "こんにちは"},
-                    {"speaker": "田中花子", "speech_content": "よろしく"},
-                ]
-            },
-        }
-
-        actual = {
-            "speaker_and_speech_content_list": [
-                {"speaker": "山田太郎", "speech_content": "こんにちは"},
-                {"speaker": "佐藤次郎", "speech_content": "よろしく"},  # Wrong speaker
-            ]
-        }
-
-        metrics = MetricsCalculator.calculate_minutes_division_metrics(expected, actual)
-
-        assert metrics.metrics["speaker_match_rate"] == 0.5
-        assert metrics.passed is False  # Below 80% threshold
-
     def test_calculate_speaker_matching_metrics_success(self):
         """Test successful speaker matching metrics calculation"""
         expected = {
@@ -222,13 +146,13 @@ class TestMetricsCalculator:
 
     def test_calculate_metrics_with_none_values(self):
         """Test metrics calculation handles None values gracefully"""
-        expected = None  # Invalid data
+        expected = {"id": "sm_001", "expected_output": {"results": None}}
         actual = {}
 
-        metrics = MetricsCalculator.calculate_minutes_division_metrics(expected, actual)
+        metrics = MetricsCalculator.calculate_speaker_matching_metrics(expected, actual)
 
-        # Should handle None gracefully with default values
-        assert metrics.error is None
+        # Should handle None gracefully with default values and set error
+        assert metrics.error is not None  # Error is expected when results is None
         assert metrics.passed is False
-        assert metrics.metrics["speaker_match_rate"] == 0.0
-        assert metrics.metrics["content_similarity"] == 0.0
+        assert metrics.metrics["politician_id_match_rate"] == 0.0
+        assert metrics.metrics["confidence_score_mean"] == 0.0
