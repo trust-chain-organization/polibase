@@ -22,19 +22,16 @@
           {
             "member_name": "山田太郎",
             "politician_id": 101,
-            "confidence_score": 0.95,
             "status": "matched"
           },
           {
             "member_name": "田中花子",
             "politician_id": 102,
-            "confidence_score": 0.93,
             "status": "matched"
           },
           {
             "member_name": "佐藤次郎",
             "politician_id": 103,
-            "confidence_score": 0.92,
             "status": "matched"
           }
         ]
@@ -61,19 +58,16 @@
           {
             "member_name": "山田太郎",
             "politician_id": 101,
-            "confidence_score": 0.85,
             "status": "matched"
           },
           {
             "member_name": "田中はなこ",
             "politician_id": 102,
-            "confidence_score": 0.75,
             "status": "matched"
           },
           {
             "member_name": "佐藤じろう",
             "politician_id": 103,
-            "confidence_score": 0.78,
             "status": "matched"
           }
         ]
