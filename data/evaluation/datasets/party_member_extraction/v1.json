@@ -1,0 +1,245 @@
+{
+  "task_type": "party_member_extraction",
+  "description": "政党メンバー抽出タスクの評価データセット - 異なる政党のWebページ構造をカバー",
+  "version": "1.0.0",
+  "metadata": {
+    "created_at": "2025-08-10",
+    "total_cases": 7,
+    "difficulty_levels": ["basic", "intermediate", "advanced"],
+    "parties_covered": [
+      "国民民主党",
+      "自民党",
+      "立憲民主党",
+      "公明党",
+      "日本維新の会",
+      "共産党",
+      "れいわ新選組"
+    ]
+  },
+  "test_cases": [
+    {
+      "id": "pm_001",
+      "description": "国民民主党の実際のHTML構造からの党員情報抽出",
+      "difficulty": "basic",
+      "input": {
+        "party_id": 7,
+        "party_name": "国民民主党",
+        "url": "https://new-kokumin.jp/member",
+        "html_content": "<div class='member-list'><div><a href='https://new-kokumin.jp/member/tamaki-yuichiro'><img src='member1.jpg'><span>玉木 雄一郎</span><span>たまき ゆういちろう</span><span>衆議院議員</span><span>香川2区</span></a></div><div><a href='https://new-kokumin.jp/member/usuki-hidetake'><img src='member2.jpg'><span>臼木 秀剛</span><span>うすき ひでたけ</span><span>衆議院議員</span><span>比例北海道</span></a></div><div><a href='https://new-kokumin.jp/member/muraoka-toshihide'><img src='member3.jpg'><span>村岡 敏英</span><span>むらおか としひで</span><span>衆議院議員</span><span>秋田3区</span></a></div></div>"
+      },
+      "expected_output": {
+        "members": [
+          {
+            "name": "玉木雄一郎",
+            "position": "衆議院議員",
+            "district": "香川2区",
+            "party": "国民民主党"
+          },
+          {
+            "name": "臼木秀剛",
+            "position": "衆議院議員",
+            "district": "比例北海道",
+            "party": "国民民主党"
+          },
+          {
+            "name": "村岡敏英",
+            "position": "衆議院議員",
+            "district": "秋田3区",
+            "party": "国民民主党"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pm_002",
+      "description": "国民民主党の参議院議員を含む抽出テスト",
+      "difficulty": "basic",
+      "input": {
+        "party_id": 7,
+        "party_name": "国民民主党",
+        "url": "https://new-kokumin.jp/member",
+        "html_content": "<section class='members'><article><h3>伊藤 孝恵</h3><p>いとう たかえ</p><p>参議院議員</p><p>愛知県選挙区</p></article><article><h3>大塚 耕平</h3><p>おおつか こうへい</p><p>参議院議員</p><p>愛知県選挙区</p></article></section>"
+      },
+      "expected_output": {
+        "members": [
+          {
+            "name": "伊藤孝恵",
+            "position": "参議院議員",
+            "district": "愛知県選挙区",
+            "party": "国民民主党"
+          },
+          {
+            "name": "大塚耕平",
+            "position": "参議院議員",
+            "district": "愛知県選挙区",
+            "party": "国民民主党"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pm_003",
+      "description": "自民党のテーブル形式HTML構造からの抽出",
+      "difficulty": "intermediate",
+      "input": {
+        "party_id": 1,
+        "party_name": "自民党",
+        "url": "https://www.jimin.jp/member",
+        "html_content": "<table class='member-table'><tbody><tr><td class='name'>岸田 文雄</td><td class='kana'>きしだ ふみお</td><td class='position'>衆議院</td><td class='district'>広島1区</td><td class='role'>総裁</td></tr><tr><td class='name'>麻生 太郎</td><td class='kana'>あそう たろう</td><td class='position'>衆議院</td><td class='district'>福岡8区</td><td class='role'>副総裁</td></tr><tr><td class='name'>茂木 敏充</td><td class='kana'>もてぎ としみつ</td><td class='position'>衆議院</td><td class='district'>栃木5区</td><td class='role'>幹事長</td></tr></tbody></table>"
+      },
+      "expected_output": {
+        "members": [
+          {
+            "name": "岸田文雄",
+            "position": "衆議院議員",
+            "district": "広島1区",
+            "party": "自民党",
+            "role": "総裁"
+          },
+          {
+            "name": "麻生太郎",
+            "position": "衆議院議員",
+            "district": "福岡8区",
+            "party": "自民党",
+            "role": "副総裁"
+          },
+          {
+            "name": "茂木敏充",
+            "position": "衆議院議員",
+            "district": "栃木5区",
+            "party": "自民党",
+            "role": "幹事長"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pm_004",
+      "description": "立憲民主党のカード形式レイアウトからの抽出",
+      "difficulty": "intermediate",
+      "input": {
+        "party_id": 2,
+        "party_name": "立憲民主党",
+        "url": "https://cdp-japan.jp/members",
+        "html_content": "<div class='member-cards'><div class='card'><div class='card-header'><img src='izumi.jpg' alt='泉健太'></div><div class='card-body'><h4 class='name'>泉 健太</h4><p class='ruby'>いずみ けんた</p><p class='info'><span class='badge'>衆議院</span><span class='district'>京都3区</span></p><p class='role'>代表</p></div></div><div class='card'><div class='card-header'><img src='edano.jpg' alt='枝野幸男'></div><div class='card-body'><h4 class='name'>枝野 幸男</h4><p class='ruby'>えだの ゆきお</p><p class='info'><span class='badge'>衆議院</span><span class='district'>埼玉5区</span></p><p class='role'>前代表</p></div></div></div>"
+      },
+      "expected_output": {
+        "members": [
+          {
+            "name": "泉健太",
+            "position": "衆議院議員",
+            "district": "京都3区",
+            "party": "立憲民主党",
+            "role": "代表"
+          },
+          {
+            "name": "枝野幸男",
+            "position": "衆議院議員",
+            "district": "埼玉5区",
+            "party": "立憲民主党",
+            "role": "前代表"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pm_005",
+      "description": "公明党のリスト形式と役職付きメンバー",
+      "difficulty": "advanced",
+      "input": {
+        "party_id": 3,
+        "party_name": "公明党",
+        "url": "https://www.komei.or.jp/member",
+        "html_content": "<ul class='member-list'><li class='member-item'><div class='member-photo'><img src='yamaguchi.jpg'></div><div class='member-info'><h3>山口 那津男<span class='yomi'>（やまぐち なつお）</span></h3><div class='details'><span class='chamber'>参議院</span>｜<span class='constituency'>東京都選挙区</span></div><div class='position'>代表</div></div></li><li class='member-item'><div class='member-photo'><img src='ishii.jpg'></div><div class='member-info'><h3>石井 啓一<span class='yomi'>（いしい けいいち）</span></h3><div class='details'><span class='chamber'>衆議院</span>｜<span class='constituency'>比例北関東ブロック</span></div><div class='position'>幹事長</div></div></li></ul>"
+      },
+      "expected_output": {
+        "members": [
+          {
+            "name": "山口那津男",
+            "position": "参議院議員",
+            "district": "東京都選挙区",
+            "party": "公明党",
+            "role": "代表"
+          },
+          {
+            "name": "石井啓一",
+            "position": "衆議院議員",
+            "district": "比例北関東ブロック",
+            "party": "公明党",
+            "role": "幹事長"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pm_006",
+      "description": "日本維新の会の複雑な入れ子構造とJavaScript生成コンテンツ",
+      "difficulty": "advanced",
+      "input": {
+        "party_id": 4,
+        "party_name": "日本維新の会",
+        "url": "https://o-ishin.jp/member",
+        "html_content": "<div id='member-container' data-members='[{\"name\":\"馬場伸幸\",\"kana\":\"ばばのぶゆき\",\"house\":\"衆議院\",\"area\":\"大阪17区\",\"title\":\"代表\"},{\"name\":\"吉村洋文\",\"kana\":\"よしむらひろふみ\",\"house\":\"知事\",\"area\":\"大阪府\",\"title\":\"副代表\"},{\"name\":\"藤田文武\",\"kana\":\"ふじたふみたけ\",\"house\":\"衆議院\",\"area\":\"大阪12区\",\"title\":\"幹事長\"}]'><script>// Members will be rendered here</script><noscript><div class='member'>馬場伸幸（衆・大阪17区）代表</div><div class='member'>吉村洋文（知事・大阪府）副代表</div><div class='member'>藤田文武（衆・大阪12区）幹事長</div></noscript></div>"
+      },
+      "expected_output": {
+        "members": [
+          {
+            "name": "馬場伸幸",
+            "position": "衆議院議員",
+            "district": "大阪17区",
+            "party": "日本維新の会",
+            "role": "代表"
+          },
+          {
+            "name": "吉村洋文",
+            "position": "知事",
+            "district": "大阪府",
+            "party": "日本維新の会",
+            "role": "副代表"
+          },
+          {
+            "name": "藤田文武",
+            "position": "衆議院議員",
+            "district": "大阪12区",
+            "party": "日本維新の会",
+            "role": "幹事長"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pm_007",
+      "description": "れいわ新選組のシンプルな構造と少人数メンバー",
+      "difficulty": "basic",
+      "input": {
+        "party_id": 9,
+        "party_name": "れいわ新選組",
+        "url": "https://reiwa-shinsengumi.com/member",
+        "html_content": "<main class='members-page'><section class='representative'><h2>代表</h2><article><h3>山本 太郎</h3><p>やまもと たろう</p><p>前参議院議員</p><p>東京選挙区</p></article></section><section class='members'><h2>所属議員</h2><article><h3>大石 あきこ</h3><p>おおいし あきこ</p><p>衆議院議員</p><p>大阪5区</p></article><article><h3>櫛渕 万里</h3><p>くしぶち まり</p><p>衆議院議員</p><p>比例東京ブロック</p></article></section></main>"
+      },
+      "expected_output": {
+        "members": [
+          {
+            "name": "山本太郎",
+            "position": "前参議院議員",
+            "district": "東京選挙区",
+            "party": "れいわ新選組",
+            "role": "代表"
+          },
+          {
+            "name": "大石あきこ",
+            "position": "衆議院議員",
+            "district": "大阪5区",
+            "party": "れいわ新選組"
+          },
+          {
+            "name": "櫛渕万里",
+            "position": "衆議院議員",
+            "district": "比例東京ブロック",
+            "party": "れいわ新選組"
+          }
+        ]
+      }
+    }
+  ]
+}
