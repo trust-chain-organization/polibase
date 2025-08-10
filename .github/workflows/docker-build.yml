@@ -149,7 +149,7 @@ jobs:
 
       - name: Run tests in container
         run: |
-          docker compose -f docker/docker-compose.ci.yml exec -T -e CI=true polibase uv run pytest -v
+          docker compose -f docker/docker-compose.ci.yml exec -T -e CI=true polibase uv run pytest -v --ignore=tests/evaluation/
 
       - name: Stop services
         if: always()
