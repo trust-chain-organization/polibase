@@ -30,7 +30,7 @@ class MetricsCalculator:
 
     @staticmethod
     def calculate_minutes_division_metrics(
-        expected: dict[str, Any], actual: dict[str, Any]
+        expected: dict[str, Any] | None, actual: dict[str, Any] | None
     ) -> EvaluationMetrics:
         """Calculate metrics for minutes division task
 
@@ -39,11 +39,12 @@ class MetricsCalculator:
         - content_similarity: Average similarity of speech content
         - order_accuracy: Whether the order of speeches is correct
         """
+        test_case_id = expected.get("id", "unknown") if expected else "unknown"
+        metrics = EvaluationMetrics(
+            task_type="minutes_division", test_case_id=test_case_id
+        )
+
         try:
-            test_case_id = expected.get("id", "unknown") if expected else "unknown"
-            metrics = EvaluationMetrics(
-                task_type="minutes_division", test_case_id=test_case_id
-            )
             expected_speeches = (
                 expected.get("expected_output", {}).get(
                     "speaker_and_speech_content_list", []
