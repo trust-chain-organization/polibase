@@ -88,7 +88,7 @@ JSON形式で以下のような構造で返してください:
 
                 # Use the LLM directly
                 messages = [{"role": "user", "content": prompt}]
-                response = self.llm_service._llm.invoke(messages).content
+                response = self.llm_service.invoke_llm(messages)
 
                 # Parse JSON response
                 json_match = re.search(r"\{.*\}", response, re.DOTALL)

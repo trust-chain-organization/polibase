@@ -177,17 +177,22 @@ class EvaluationRunner:
 
 各話者に最も適切な政治家IDを割り当て、信頼度スコア(0-1)を付けて返してください。
 JSON形式で、以下のような構造で返してください:
-{{"results": [{{"speaker_id": 1, "politician_id": 101, "confidence_score": 0.95}}, ...]}}"""
+{{"results": [{{"speaker_id": 1, "politician_id": 101,
+ "confidence_score": 0.95}}, ...]}}"""
 
             # Use the LLM directly
             messages = [{"role": "user", "content": prompt}]
-            response = self.llm_service._llm.invoke(messages).content
+            response = self.llm_service.invoke_llm(messages)
 
             # Parse LLM response
             try:
                 import re
 
-                json_match = re.search(r"\{.*\}", response, re.DOTALL)
+                # Ensure response is a string
+                response_text = (
+                    str(response) if not isinstance(response, str) else response
+                )
+                json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
                 if json_match:
                     result = json.loads(json_match.group())
                     return result
@@ -302,17 +307,22 @@ JSON形式で、以下のような構造で返してください:
 信頼度スコア: 0.7以上=matched, 0.5-0.7=needs_review, 0.5未満=no_match
 
 JSON形式で以下のような構造で返してください:
-{{"matched_members": [{{"member_name": "山田太郎", "politician_id": 101, "confidence_score": 0.95, "status": "matched"}}, ...]}}"""
+{{"matched_members": [{{"member_name": "山田太郎", "politician_id": 101,
+"confidence_score": 0.95, "status": "matched"}}, ...]}}"""
 
             # Use the LLM directly
             messages = [{"role": "user", "content": prompt}]
-            response = self.llm_service._llm.invoke(messages).content
+            response = self.llm_service.invoke_llm(messages)
 
             # Parse LLM response
             try:
                 import re
 
-                json_match = re.search(r"\{.*\}", response, re.DOTALL)
+                # Ensure response is a string
+                response_text = (
+                    str(response) if not isinstance(response, str) else response
+                )
+                json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
                 if json_match:
                     result = json.loads(json_match.group())
                     return result

@@ -324,6 +324,10 @@ class InstrumentedLLMService(ILLMService):
         """Delegate to wrapped LLM service."""
         return self._llm_service.invoke_with_retry(chain, inputs)
 
+    def invoke_llm(self, messages: list[dict[str, str]]) -> str:
+        """Delegate to wrapped LLM service."""
+        return self._llm_service.invoke_llm(messages)
+
     def __getattr__(self, name: str) -> Any:
         """Delegate unknown attributes to wrapped service."""
         return getattr(self._llm_service, name)

@@ -130,3 +130,14 @@ class ILLMService(Protocol):
             Result from the chain invocation
         """
         ...
+
+    def invoke_llm(self, messages: list[dict[str, str]]) -> str:
+        """Invoke the LLM with messages and return the response content.
+
+        Args:
+            messages: List of message dictionaries with 'role' and 'content' keys
+
+        Returns:
+            The response content from the LLM
+        """
+        ...

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class PartyMemberExtractor:
     """Extract party member information from HTML using LLM"""
 
-    def __init__(self, llm_service):
+    def __init__(self, llm_service: Any):
         """Initialize extractor with LLM service
 
         Args:
@@ -48,11 +48,12 @@ HTML:
 - website: ウェブサイト（あれば）
 
 JSON形式で、以下のような構造で返してください:
-{{"members": [{{"name": "山田太郎", "position": "代表", "district": "東京1区"}}, ...]}}"""
+{{"members": [{{"name": "山田太郎", "position": "代表",
+"district": "東京1区"}}, ...]}}"""
 
             # Call LLM service directly
             messages = [{"role": "user", "content": prompt}]
-            response = self.llm_service._llm.invoke(messages).content
+            response = self.llm_service.invoke_llm(messages)
 
             # Parse JSON response
             try:
@@ -77,17 +78,20 @@ JSON形式で、以下のような構造で返してください:
                     self.current_text = []
                     self.in_member = False
 
-                def handle_starttag(self, tag, attrs):
+                def handle_starttag(
+                    self, tag: str, attrs: list[tuple[str, str | None]]
+                ) -> None:
                     attrs_dict = dict(attrs)
-                    if "class" in attrs_dict and "member" in attrs_dict["class"]:
+                    class_attr = attrs_dict.get("class")
+                    if class_attr and "member" in class_attr:
                         self.in_member = True
                         self.current_text = []
 
-                def handle_data(self, data):
+                def handle_data(self, data: str) -> None:
                     if self.in_member:
                         self.current_text.append(data.strip())
 
-                def handle_endtag(self, tag):
+                def handle_endtag(self, tag: str) -> None:
                     if self.in_member:
                         self.in_member = False
                         text = " ".join(self.current_text)
