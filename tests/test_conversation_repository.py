@@ -380,6 +380,177 @@ class TestConversationRepository(unittest.TestCase):
         # close()は呼ばれないはず
         self.mock_session.close.assert_not_called()
 
+    def test_get_conversations_with_pagination_chapter_sorting(self):
+        """章番号によるソート順のテスト"""
+        # モックデータの準備
+        # 総件数取得のモック
+        mock_count_result = MagicMock()
+        mock_count_result.fetchone.return_value = [5]
+
+        # データ取得のモック（章番号順になっていることを確認するためのデータ）
+        mock_data_result = MagicMock()
+        mock_conversations = [
+            # 第1章
+            (
+                1,
+                1,
+                123,
+                "委員長(田中太郎)",
+                "第1章の発言1",
+                1,
+                1,
+                None,
+                "2024-01-01",
+                "2024-01-01",
+                "田中太郎",
+                1,
+                "2024-01-01",
+                1,
+                "本会議",
+                1,
+                "東京都",
+                "都道府県",
+            ),
+            # 第1章-1
+            (
+                2,
+                1,
+                None,
+                "◆委員(佐藤花子)",
+                "第1章-1の発言",
+                2,
+                1,
+                1,
+                "2024-01-01",
+                "2024-01-01",
+                None,
+                1,
+                "2024-01-01",
+                1,
+                "本会議",
+                1,
+                "東京都",
+                "都道府県",
+            ),
+            # 第2章
+            (
+                3,
+                1,
+                124,
+                "議員(山田次郎)",
+                "第2章の発言",
+                3,
+                2,
+                None,
+                "2024-01-01",
+                "2024-01-01",
+                "山田次郎",
+                1,
+                "2024-01-01",
+                1,
+                "本会議",
+                1,
+                "東京都",
+                "都道府県",
+            ),
+            # 第3章（sequence_numberが前後する例）
+            (
+                4,
+                1,
+                125,
+                "議員(鈴木三郎)",
+                "第3章の発言1",
+                5,
+                3,
+                None,
+                "2024-01-01",
+                "2024-01-01",
+                "鈴木三郎",
+                1,
+                "2024-01-01",
+                1,
+                "本会議",
+                1,
+                "東京都",
+                "都道府県",
+            ),
+            (
+                5,
+                1,
+                126,
+                "議員(高橋四郎)",
+                "第3章の発言2",
+                4,
+                3,
+                None,
+                "2024-01-01",
+                "2024-01-01",
+                "高橋四郎",
+                1,
+                "2024-01-01",
+                1,
+                "本会議",
+                1,
+                "東京都",
+                "都道府県",
+            ),
+        ]
+        mock_data_result.fetchall.return_value = mock_conversations
+        mock_data_result.keys.return_value = [
+            "id",
+            "minutes_id",
+            "speaker_id",
+            "speaker_name",
+            "comment",
+            "sequence_number",
+            "chapter_number",
+            "sub_chapter_number",
+            "created_at",
+            "updated_at",
+            "linked_speaker_name",
+            "meeting_id",
+            "meeting_date",
+            "conference_id",
+            "conference_name",
+            "governing_body_id",
+            "governing_body_name",
+            "governing_body_type",
+        ]
+
+        # executeが2回呼ばれる（カウントクエリとデータクエリ）
+        self.mock_session.execute.side_effect = [mock_count_result, mock_data_result]
+
+        # 実行
+        result = self.repository.get_conversations_with_pagination(limit=10, offset=0)
+
+        # 検証
+        self.assertEqual(result["total"], 5)
+        self.assertEqual(len(result["conversations"]), 5)
+
+        # 章番号順にソートされていることを確認
+        chapters = [
+            (
+                conv["chapter_number"],
+                conv["sub_chapter_number"],
+                conv["sequence_number"],
+            )
+            for conv in result["conversations"]
+        ]
+        expected_order = [
+            (1, None, 1),  # 第1章
+            (1, 1, 2),  # 第1章-1
+            (2, None, 3),  # 第2章
+            (3, None, 5),  # 第3章（sequence_number=5）
+            (3, None, 4),  # 第3章（sequence_number=4）
+        ]
+        self.assertEqual(chapters, expected_order)
+
+        # ORDER BY句に章番号ソートが含まれていることを確認
+        call_args = self.mock_session.execute.call_args_list[1][0][0]
+        self.assertIn("ORDER BY c.chapter_number ASC NULLS LAST", str(call_args))
+        self.assertIn("c.sub_chapter_number ASC NULLS LAST", str(call_args))
+        self.assertIn("c.sequence_number ASC", str(call_args))
+
     def test_update_speaker_links_success(self):
         """発言者紐付け更新成功テスト"""
         # 紐付けされていない発言データをモック

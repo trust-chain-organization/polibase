@@ -1,5 +1,7 @@
 """発言レコード一覧ページ"""
 
+from typing import Any
+
 import streamlit as st
 from src.database.conversation_repository import ConversationRepository
 from src.database.meeting_repository import MeetingRepository
@@ -176,70 +178,101 @@ def manage_conversations():
                 st.session_state.conv_current_page += 1
                 st.rerun()
 
-        # 発言レコードの表示
-        for conv in conversations:
-            with st.container():
-                col1, col2 = st.columns([3, 1])
+        # 章ごとにグループ化して表示
+        from itertools import groupby
 
-                with col1:
-                    # 発言者情報
-                    speaker_display = conv["speaker_name"] or "発言者不明"
-                    if conv["speaker_id"]:
-                        if conv["linked_speaker_name"]:
-                            speaker_display = (
-                                f"{speaker_display} → {conv['linked_speaker_name']} "
-                                f"(ID: {conv['speaker_id']})"
+        # 章番号でグループ化（None値は"その他"として扱う）
+        def get_chapter_key(conv: dict[str, Any]) -> tuple[Any, Any]:
+            if conv["chapter_number"] is None:
+                return ("その他", None)
+            else:
+                return (conv["chapter_number"], conv.get("sub_chapter_number"))
+
+        grouped_conversations = []
+        for key, group in groupby(conversations, key=get_chapter_key):
+            grouped_conversations.append((key, list(group)))
+
+        # グループごとに表示
+        for (chapter_num, sub_chapter_num), group_convs in grouped_conversations:
+            # 章のヘッダー
+            if chapter_num == "その他":
+                chapter_title = "📌 章番号なしの発言"
+            else:
+                if sub_chapter_num:
+                    chapter_title = f"📖 第{chapter_num}章-{sub_chapter_num}"
+                else:
+                    chapter_title = f"📖 第{chapter_num}章"
+
+            # 展開/折りたたみ可能なエクスパンダーで表示
+            with st.expander(
+                f"{chapter_title} （{len(group_convs)}件の発言）", expanded=True
+            ):
+                for conv in group_convs:
+                    with st.container():
+                        col1, col2 = st.columns([3, 1])
+
+                        with col1:
+                            # 発言者情報
+                            speaker_display = conv["speaker_name"] or "発言者不明"
+                            if conv["speaker_id"]:
+                                if conv["linked_speaker_name"]:
+                                    speaker_display = (
+                                        f"{speaker_display} → "
+                                        f"{conv['linked_speaker_name']} "
+                                        f"(ID: {conv['speaker_id']})"
+                                    )
+                                else:
+                                    speaker_display = (
+                                        f"{speaker_display} "
+                                        f"(Speaker ID: {conv['speaker_id']})"
+                                    )
+                            else:
+                                speaker_display = f"{speaker_display} (未紐付け)"
+
+                            st.markdown(f"**👤 {speaker_display}**")
+
+                            # 発言内容（最大300文字で表示）
+                            comment = conv["comment"]
+                            if len(comment) > 300:
+                                comment_display = comment[:300] + "..."
+                            else:
+                                comment_display = comment
+
+                            st.text_area(
+                                "発言内容",
+                                value=comment_display,
+                                height=100,
+                                disabled=True,
+                                key=f"comment_{conv['id']}",
                             )
-                        else:
-                            speaker_display = (
-                                f"{speaker_display} (Speaker ID: {conv['speaker_id']})"
-                            )
-                    else:
-                        speaker_display = f"{speaker_display} (未紐付け)"
 
-                    st.markdown(f"**👤 {speaker_display}**")
+                        with col2:
+                            # メタ情報
+                            st.markdown("**📋 詳細情報**")
+                            st.markdown(f"ID: {conv['id']}")
+                            st.markdown(f"発言順序: {conv['sequence_number']}")
+                            if conv["chapter_number"]:
+                                chapter_info = f"章: {conv['chapter_number']}"
+                                if conv["sub_chapter_number"]:
+                                    chapter_info += f"-{conv['sub_chapter_number']}"
+                                st.markdown(chapter_info)
 
-                    # 発言内容（最大300文字で表示）
-                    comment = conv["comment"]
-                    if len(comment) > 300:
-                        comment_display = comment[:300] + "..."
-                    else:
-                        comment_display = comment
+                            # 会議情報
+                            st.markdown("**🏛️ 会議情報**")
+                            if conv["meeting_date"]:
+                                meeting_date_str = conv["meeting_date"].strftime(
+                                    "%Y年%m月%d日"
+                                )
+                                st.markdown(f"開催日: {meeting_date_str}")
+                            if conv["governing_body_name"]:
+                                st.markdown(
+                                    f"{conv['governing_body_name']} "
+                                    f"({conv['governing_body_type']})"
+                                )
+                            if conv["conference_name"]:
+                                st.markdown(f"会議体: {conv['conference_name']}")
 
-                    st.text_area(
-                        "発言内容",
-                        value=comment_display,
-                        height=100,
-                        disabled=True,
-                        key=f"comment_{conv['id']}",
-                    )
-
-                with col2:
-                    # メタ情報
-                    st.markdown("**📋 詳細情報**")
-                    st.markdown(f"ID: {conv['id']}")
-                    st.markdown(f"発言順序: {conv['sequence_number']}")
-                    if conv["chapter_number"]:
-                        chapter_info = f"章: {conv['chapter_number']}"
-                        if conv["sub_chapter_number"]:
-                            chapter_info += f"-{conv['sub_chapter_number']}"
-                        st.markdown(chapter_info)
-
-                    # 会議情報
-                    st.markdown("**🏛️ 会議情報**")
-                    if conv["meeting_date"]:
-                        st.markdown(
-                            f"開催日: {conv['meeting_date'].strftime('%Y年%m月%d日')}"
-                        )
-                    if conv["governing_body_name"]:
-                        st.markdown(
-                            f"{conv['governing_body_name']} "
-                            f"({conv['governing_body_type']})"
-                        )
-                    if conv["conference_name"]:
-                        st.markdown(f"会議体: {conv['conference_name']}")
-
-                st.divider()
+                        st.divider()
 
         # ページネーションコントロール（下部）
         st.info(f"表示中: {start_index}-{end_index} / 全{total_count}件")
