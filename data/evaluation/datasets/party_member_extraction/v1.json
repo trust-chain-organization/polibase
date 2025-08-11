@@ -57,17 +57,53 @@
     },
     {
       "id": "pm_002",
-      "description": "自民党の検索ページHTMLファイル（議員データなし）からの抽出テスト",
+      "description": "自民党の議員一覧HTMLファイルからの党員情報抽出",
       "difficulty": "real_world",
       "input": {
         "party_id": 1,
         "party_name": "自民党",
-        "url": "https://www.jimin.jp/member/search/",
+        "url": "https://www.jimin.jp/member/search/?sangiin=100&shuugiin=100",
         "html_file": "data/evaluation/datasets/party_member_extraction/jimintouin.html"
       },
       "expected_output": {
-        "note": "検索フォームページのため議員データは含まれていない",
-        "members": []
+        "note": "実際のHTMLファイルから抽出すべきメンバー例（全体の一部）",
+        "members": [
+          {
+            "name": "逢沢一郎",
+            "furigana": "あいさわいちろう",
+            "position": "衆議院議員",
+            "district": "岡山県第1区",
+            "party": "自民党"
+          },
+          {
+            "name": "赤澤亮正",
+            "furigana": "あかざわりょうせい",
+            "position": "衆議院議員",
+            "district": "鳥取県第2区",
+            "party": "自民党"
+          },
+          {
+            "name": "あかま二郎",
+            "furigana": "あかまじろう",
+            "position": "衆議院議員",
+            "district": "神奈川県第14区",
+            "party": "自民党"
+          },
+          {
+            "name": "麻生太郎",
+            "furigana": "あそうたろう",
+            "position": "衆議院議員",
+            "district": "福岡県第8区",
+            "party": "自民党"
+          },
+          {
+            "name": "石破茂",
+            "furigana": "いしばしげる",
+            "position": "衆議院議員",
+            "district": "鳥取県第1区",
+            "party": "自民党"
+          }
+        ]
       }
     }
   ]
