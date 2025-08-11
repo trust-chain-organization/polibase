@@ -65,6 +65,7 @@ class MatchSpeakersUseCase:
                         matched_politician_name=existing_politician.name,
                         confidence_score=1.0,
                         matching_method="existing",
+                        matching_reason="Already linked to politician",
                     )
                 )
                 continue
@@ -88,6 +89,7 @@ class MatchSpeakersUseCase:
                         matched_politician_name=None,
                         confidence_score=0.0,
                         matching_method="none",
+                        matching_reason="No matching politician found",
                     )
                 )
 
@@ -127,12 +129,13 @@ class MatchSpeakersUseCase:
                 matched_politician_name=best_match.name,
                 confidence_score=best_score,
                 matching_method="rule-based",
+                matching_reason=f"Name similarity score: {best_score:.2f}",
             )
 
         return None
 
     async def _llm_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
-        """Perform LLM-based speaker matching."""
+        """Perform LLM-based speaker matching with history recording."""
         # Get potential candidates
         candidates = await self.politician_repo.get_all(limit=100)
 
@@ -156,7 +159,18 @@ class MatchSpeakersUseCase:
             ],
         )
 
-        # Call LLM service
+        # Add metadata for history recording (metadata passed via set_input_reference)
+
+        # Set input reference for history tracking if supported
+        # Check if llm_service is an InstrumentedLLMService
+        if hasattr(self.llm_service, "set_input_reference"):
+            # Use type: ignore since ILLMService doesn't have this method
+            self.llm_service.set_input_reference(  # type: ignore[attr-defined]
+                reference_type="speaker",
+                reference_id=speaker.id if speaker.id else 0,
+            )
+
+        # Call LLM service with metadata
         match_result = await self.llm_service.match_speaker_to_politician(context)
 
         if match_result and match_result.get("matched_id"):
@@ -172,6 +186,7 @@ class MatchSpeakersUseCase:
                         matched_politician_name=politician.name,
                         confidence_score=match_result.get("confidence", 0.8),
                         matching_method="llm",
+                        matching_reason=match_result.get("reason", ""),
                     )
 
         return None

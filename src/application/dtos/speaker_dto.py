@@ -49,7 +49,10 @@ class SpeakerMatchingDTO:
     matched_politician_id: int | None
     matched_politician_name: str | None
     confidence_score: float
-    matching_method: str  # "rule-based", "llm", "manual"
+    matching_method: str  # "rule-based", "llm", "manual", "existing", "none"
+    matching_reason: str = (
+        ""  # Reason for the matching decision  # "rule-based", "llm", "manual"
+    )
 
 
 @dataclass
