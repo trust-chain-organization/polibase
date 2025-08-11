@@ -40,6 +40,7 @@ class LLMProcessingHistoryModel(Base):
     processing_metadata = Column(JSON, nullable=False, default={})
     started_at = Column(DateTime)
     completed_at = Column(DateTime)
+    created_by = Column(String(100), default="system")
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(
         DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
@@ -270,6 +271,7 @@ class LLMProcessingHistoryRepositoryImpl(
             processing_metadata=model.processing_metadata or {},
             started_at=model.started_at,
             completed_at=model.completed_at,
+            created_by=getattr(model, "created_by", "system"),
             id=model.id,
         )
         entity.created_at = model.created_at
@@ -292,6 +294,7 @@ class LLMProcessingHistoryRepositoryImpl(
             processing_metadata=entity.processing_metadata,
             started_at=entity.started_at,
             completed_at=entity.completed_at,
+            created_by=entity.created_by,
         )
 
     def _update_model(self, model: Any, entity: LLMProcessingHistory) -> None:
@@ -309,3 +312,4 @@ class LLMProcessingHistoryRepositoryImpl(
         model.processing_metadata = entity.processing_metadata
         model.started_at = entity.started_at
         model.completed_at = entity.completed_at
+        model.created_by = entity.created_by

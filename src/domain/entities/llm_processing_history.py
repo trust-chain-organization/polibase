@@ -45,6 +45,7 @@ class LLMProcessingHistory(BaseEntity):
         processing_metadata: dict[str, Any] | None = None,
         started_at: datetime | None = None,
         completed_at: datetime | None = None,
+        created_by: str | None = None,
         id: int | None = None,
     ) -> None:
         """Initialize LLM processing history.
@@ -62,8 +63,10 @@ class LLMProcessingHistory(BaseEntity):
             result: Processing result (if completed)
             error_message: Error message (if failed)
             processing_metadata: Additional metadata about the processing
+                (e.g., token_count_input, token_count_output, processing_time_ms)
             started_at: When processing started
             completed_at: When processing completed
+            created_by: User or system that initiated the processing
             id: Entity ID
         """
         super().__init__(id)
@@ -80,6 +83,7 @@ class LLMProcessingHistory(BaseEntity):
         self.processing_metadata = processing_metadata or {}
         self.started_at = started_at
         self.completed_at = completed_at
+        self.created_by = created_by or "system"
 
     def start_processing(self) -> None:
         """Mark processing as started."""
@@ -104,6 +108,21 @@ class LLMProcessingHistory(BaseEntity):
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
         return None
+
+    @property
+    def token_count_input(self) -> int | None:
+        """Get input token count from metadata."""
+        return self.processing_metadata.get("token_count_input")
+
+    @property
+    def token_count_output(self) -> int | None:
+        """Get output token count from metadata."""
+        return self.processing_metadata.get("token_count_output")
+
+    @property
+    def processing_time_ms(self) -> int | None:
+        """Get processing time in milliseconds from metadata."""
+        return self.processing_metadata.get("processing_time_ms")
 
     def __str__(self) -> str:
         return (

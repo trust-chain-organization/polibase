@@ -24,6 +24,7 @@ class TestLLMProcessingHistory:
             input_reference_id=123,
             status=ProcessingStatus.PENDING,
             processing_metadata={"temperature": 0.7},
+            created_by="test_user",
         )
 
         assert entity.processing_type == ProcessingType.MINUTES_DIVISION
@@ -39,6 +40,7 @@ class TestLLMProcessingHistory:
         assert entity.error_message is None
         assert entity.started_at is None
         assert entity.completed_at is None
+        assert entity.created_by == "test_user"
 
     def test_start_processing(self):
         """Test starting processing updates status and timestamp."""
@@ -188,3 +190,38 @@ class TestLLMProcessingHistory:
                 status=status,
             )
             assert entity.status == status
+
+    def test_token_count_properties(self):
+        """Test token count and processing time properties."""
+        entity = LLMProcessingHistory(
+            processing_type=ProcessingType.MINUTES_DIVISION,
+            model_name="gemini-2.0-flash",
+            model_version="2.0.0",
+            prompt_template="test",
+            prompt_variables={},
+            input_reference_type="meeting",
+            input_reference_id=1,
+            processing_metadata={
+                "token_count_input": 100,
+                "token_count_output": 200,
+                "processing_time_ms": 1500,
+            },
+        )
+
+        assert entity.token_count_input == 100
+        assert entity.token_count_output == 200
+        assert entity.processing_time_ms == 1500
+
+    def test_default_created_by(self):
+        """Test default value for created_by field."""
+        entity = LLMProcessingHistory(
+            processing_type=ProcessingType.SPEAKER_MATCHING,
+            model_name="gemini-2.0-flash",
+            model_version="2.0.0",
+            prompt_template="Match speaker",
+            prompt_variables={},
+            input_reference_type="speaker",
+            input_reference_id=456,
+        )
+
+        assert entity.created_by == "system"
