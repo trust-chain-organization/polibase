@@ -1,0 +1,797 @@
+{
+  "task_type": "conference_member_matching",
+  "description": "会議メンバーマッチングタスクの評価データセット - 役職付き、無所属、名前の類似など多様なケース",
+  "version": "1.0.0",
+  "metadata": {
+    "created_at": "2025-08-10",
+    "total_cases": 17,
+    "difficulty_levels": ["basic", "intermediate", "advanced"],
+    "matching_types": [
+      "exact",
+      "fuzzy",
+      "role_based",
+      "party_variation",
+      "no_match"
+    ]
+  },
+  "test_cases": [
+    {
+      "id": "cm_001",
+      "description": "基本的な会議メンバーマッチングテスト",
+      "difficulty": "basic",
+      "input": {
+        "conference_id": 1,
+        "extracted_members": [
+          { "name": "山田太郎", "party": "自民党", "role": "委員長" },
+          { "name": "田中花子", "party": "立憲民主党", "role": "副委員長" },
+          { "name": "佐藤次郎", "party": "公明党", "role": "委員" }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田太郎",
+            "politician_id": 101,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "田中花子",
+            "politician_id": 102,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "佐藤次郎",
+            "politician_id": 103,
+            "status": "matched",
+            "confidence": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_002",
+      "description": "名前のバリエーションを含むマッチング",
+      "difficulty": "intermediate",
+      "input": {
+        "conference_id": 2,
+        "extracted_members": [
+          { "name": "山田太郎", "party": "自由民主党", "role": "議長" },
+          { "name": "田中はなこ", "party": "立憲", "role": "委員" },
+          { "name": "佐藤じろう", "party": "公明", "role": "委員" }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田太郎",
+            "politician_id": 101,
+            "status": "matched",
+            "confidence": 0.95
+          },
+          {
+            "member_name": "田中はなこ",
+            "politician_id": 102,
+            "status": "matched",
+            "confidence": 0.85
+          },
+          {
+            "member_name": "佐藤じろう",
+            "politician_id": 103,
+            "status": "matched",
+            "confidence": 0.85
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_003",
+      "description": "無所属議員のマッチング",
+      "difficulty": "intermediate",
+      "input": {
+        "conference_id": 3,
+        "extracted_members": [
+          { "name": "独立太郎", "party": "無所属", "role": "委員" },
+          { "name": "無党派花子", "party": null, "role": "委員" },
+          { "name": "中立次郎", "party": "無所属", "role": "委員" }
+        ],
+        "politicians": [
+          { "id": 104, "name": "独立太郎", "party": "無所属" },
+          { "id": 105, "name": "無党派花子", "party": null },
+          { "id": 106, "name": "中立次郎", "party": "無所属" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "独立太郎",
+            "politician_id": 104,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "無党派花子",
+            "politician_id": 105,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "中立次郎",
+            "politician_id": 106,
+            "status": "matched",
+            "confidence": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_004",
+      "description": "同姓同名で異なる政党のマッチング",
+      "difficulty": "advanced",
+      "input": {
+        "conference_id": 4,
+        "extracted_members": [
+          { "name": "山田太郎", "party": "自民党", "role": "委員長" },
+          { "name": "山田太郎", "party": "立憲民主党", "role": "委員" },
+          { "name": "田中花子", "party": "公明党", "role": "副委員長" }
+        ],
+        "politicians": [
+          { "id": 107, "name": "山田太郎", "party": "自民党" },
+          { "id": 108, "name": "山田太郎", "party": "立憲民主党" },
+          { "id": 109, "name": "田中花子", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田太郎",
+            "politician_id": 107,
+            "status": "matched",
+            "confidence": 0.95
+          },
+          {
+            "member_name": "山田太郎",
+            "politician_id": 108,
+            "status": "matched",
+            "confidence": 0.95
+          },
+          {
+            "member_name": "田中花子",
+            "politician_id": 109,
+            "status": "matched",
+            "confidence": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_005",
+      "description": "旧字体・異体字を含む名前のマッチング",
+      "difficulty": "advanced",
+      "input": {
+        "conference_id": 5,
+        "extracted_members": [
+          { "name": "齋藤太郎", "party": "自民党", "role": "理事" },
+          { "name": "渡邊花子", "party": "立憲民主党", "role": "理事" },
+          { "name": "髙橋次郎", "party": "公明党", "role": "理事" }
+        ],
+        "politicians": [
+          { "id": 110, "name": "斉藤太郎", "party": "自民党" },
+          { "id": 111, "name": "渡辺花子", "party": "立憲民主党" },
+          { "id": 112, "name": "高橋次郎", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "齋藤太郎",
+            "politician_id": 110,
+            "status": "matched",
+            "confidence": 0.9
+          },
+          {
+            "member_name": "渡邊花子",
+            "politician_id": 111,
+            "status": "matched",
+            "confidence": 0.9
+          },
+          {
+            "member_name": "髙橋次郎",
+            "politician_id": 112,
+            "status": "matched",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_006",
+      "description": "会派名での記載と政党名のマッチング",
+      "difficulty": "intermediate",
+      "input": {
+        "conference_id": 6,
+        "extracted_members": [
+          { "name": "山田太郎", "party": "市民クラブ", "role": "代表" },
+          { "name": "田中花子", "party": "改革の会", "role": "幹事" },
+          { "name": "佐藤次郎", "party": "みらい", "role": "会計" }
+        ],
+        "politicians": [
+          {
+            "id": 113,
+            "name": "山田太郎",
+            "party": "自民党",
+            "parliamentary_group": "市民クラブ"
+          },
+          {
+            "id": 114,
+            "name": "田中花子",
+            "party": "立憲民主党",
+            "parliamentary_group": "改革の会"
+          },
+          {
+            "id": 115,
+            "name": "佐藤次郎",
+            "party": "公明党",
+            "parliamentary_group": "みらい"
+          }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田太郎",
+            "politician_id": 113,
+            "status": "matched",
+            "confidence": 0.85
+          },
+          {
+            "member_name": "田中花子",
+            "politician_id": 114,
+            "status": "matched",
+            "confidence": 0.85
+          },
+          {
+            "member_name": "佐藤次郎",
+            "politician_id": 115,
+            "status": "matched",
+            "confidence": 0.85
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_007",
+      "description": "部分的なマッチングが必要なケース",
+      "difficulty": "intermediate",
+      "input": {
+        "conference_id": 7,
+        "extracted_members": [
+          { "name": "山田", "party": "自民", "role": "委員" },
+          { "name": "田中", "party": "立憲", "role": "委員" },
+          { "name": "佐藤", "party": "公明", "role": "委員" }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 116, "name": "山田次郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田",
+            "politician_id": null,
+            "status": "needs_review",
+            "confidence": 0.6
+          },
+          {
+            "member_name": "田中",
+            "politician_id": 102,
+            "status": "matched",
+            "confidence": 0.75
+          },
+          {
+            "member_name": "佐藤",
+            "politician_id": 103,
+            "status": "matched",
+            "confidence": 0.75
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_008",
+      "description": "新人議員でマッチング候補なし",
+      "difficulty": "basic",
+      "input": {
+        "conference_id": 8,
+        "extracted_members": [
+          { "name": "新人太郎", "party": "自民党", "role": "委員" },
+          { "name": "初当選花子", "party": "立憲民主党", "role": "委員" },
+          { "name": "新顔次郎", "party": "公明党", "role": "委員" }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "新人太郎",
+            "politician_id": null,
+            "status": "no_match",
+            "confidence": 0.0
+          },
+          {
+            "member_name": "初当選花子",
+            "politician_id": null,
+            "status": "no_match",
+            "confidence": 0.0
+          },
+          {
+            "member_name": "新顔次郎",
+            "politician_id": null,
+            "status": "no_match",
+            "confidence": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_009",
+      "description": "複雑な役職名とマッチング",
+      "difficulty": "advanced",
+      "input": {
+        "conference_id": 9,
+        "extracted_members": [
+          {
+            "name": "山田太郎",
+            "party": "自民党",
+            "role": "総務文教常任委員会委員長"
+          },
+          {
+            "name": "田中花子",
+            "party": "立憲民主党",
+            "role": "建設環境常任委員会副委員長"
+          },
+          {
+            "name": "佐藤次郎",
+            "party": "公明党",
+            "role": "議会運営委員会理事"
+          }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田太郎",
+            "politician_id": 101,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "田中花子",
+            "politician_id": 102,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "佐藤次郎",
+            "politician_id": 103,
+            "status": "matched",
+            "confidence": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_010",
+      "description": "スペースや記号の有無による表記揺れ",
+      "difficulty": "intermediate",
+      "input": {
+        "conference_id": 10,
+        "extracted_members": [
+          { "name": "山田 太郎", "party": "自民党", "role": "委員" },
+          { "name": "田中・花子", "party": "立憲民主党", "role": "委員" },
+          { "name": "佐藤　次郎", "party": "公明党", "role": "委員" }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田 太郎",
+            "politician_id": 101,
+            "status": "matched",
+            "confidence": 0.95
+          },
+          {
+            "member_name": "田中・花子",
+            "politician_id": 102,
+            "status": "matched",
+            "confidence": 0.9
+          },
+          {
+            "member_name": "佐藤　次郎",
+            "politician_id": 103,
+            "status": "matched",
+            "confidence": 0.95
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_011",
+      "description": "政党移籍による不整合",
+      "difficulty": "advanced",
+      "input": {
+        "conference_id": 11,
+        "extracted_members": [
+          { "name": "移籍太郎", "party": "日本維新の会", "role": "委員" },
+          { "name": "転党花子", "party": "国民民主党", "role": "委員" },
+          { "name": "離党次郎", "party": "無所属", "role": "委員" }
+        ],
+        "politicians": [
+          {
+            "id": 117,
+            "name": "移籍太郎",
+            "party": "自民党",
+            "former_party": "日本維新の会"
+          },
+          {
+            "id": 118,
+            "name": "転党花子",
+            "party": "立憲民主党",
+            "former_party": "国民民主党"
+          },
+          {
+            "id": 119,
+            "name": "離党次郎",
+            "party": "公明党",
+            "former_party": "無所属"
+          }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "移籍太郎",
+            "politician_id": 117,
+            "status": "needs_review",
+            "confidence": 0.7
+          },
+          {
+            "member_name": "転党花子",
+            "politician_id": 118,
+            "status": "needs_review",
+            "confidence": 0.7
+          },
+          {
+            "member_name": "離党次郎",
+            "politician_id": 119,
+            "status": "needs_review",
+            "confidence": 0.7
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_012",
+      "description": "カタカナ表記の名前",
+      "difficulty": "intermediate",
+      "input": {
+        "conference_id": 12,
+        "extracted_members": [
+          { "name": "ヤマダタロウ", "party": "自民党", "role": "委員" },
+          { "name": "タナカハナコ", "party": "立憲民主党", "role": "委員" },
+          { "name": "サトウジロウ", "party": "公明党", "role": "委員" }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "ヤマダタロウ",
+            "politician_id": 101,
+            "status": "matched",
+            "confidence": 0.85
+          },
+          {
+            "member_name": "タナカハナコ",
+            "politician_id": 102,
+            "status": "matched",
+            "confidence": 0.85
+          },
+          {
+            "member_name": "サトウジロウ",
+            "politician_id": 103,
+            "status": "matched",
+            "confidence": 0.85
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_013",
+      "description": "議長・副議長のマッチング",
+      "difficulty": "basic",
+      "input": {
+        "conference_id": 13,
+        "extracted_members": [
+          { "name": "議長太郎", "party": "自民党", "role": "議長" },
+          { "name": "副議長花子", "party": "立憲民主党", "role": "副議長" },
+          { "name": "事務局長次郎", "party": null, "role": "事務局長" }
+        ],
+        "politicians": [
+          { "id": 120, "name": "議長太郎", "party": "自民党" },
+          { "id": 121, "name": "副議長花子", "party": "立憲民主党" },
+          { "id": 122, "name": "事務局長次郎", "party": "公明党" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "議長太郎",
+            "politician_id": 120,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "副議長花子",
+            "politician_id": 121,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "事務局長次郎",
+            "politician_id": null,
+            "status": "no_match",
+            "confidence": 0.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_014",
+      "description": "略称政党名のマッチング",
+      "difficulty": "intermediate",
+      "input": {
+        "conference_id": 14,
+        "extracted_members": [
+          { "name": "山田太郎", "party": "自", "role": "委員" },
+          { "name": "田中花子", "party": "立", "role": "委員" },
+          { "name": "佐藤次郎", "party": "公", "role": "委員" },
+          { "name": "高橋四郎", "party": "維", "role": "委員" }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" },
+          { "id": 123, "name": "高橋四郎", "party": "日本維新の会" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田太郎",
+            "politician_id": 101,
+            "status": "matched",
+            "confidence": 0.9
+          },
+          {
+            "member_name": "田中花子",
+            "politician_id": 102,
+            "status": "matched",
+            "confidence": 0.9
+          },
+          {
+            "member_name": "佐藤次郎",
+            "politician_id": 103,
+            "status": "matched",
+            "confidence": 0.9
+          },
+          {
+            "member_name": "高橋四郎",
+            "politician_id": 123,
+            "status": "matched",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_015",
+      "description": "特別職・オブザーバーを含むケース",
+      "difficulty": "advanced",
+      "input": {
+        "conference_id": 15,
+        "extracted_members": [
+          { "name": "山田太郎", "party": "自民党", "role": "正委員" },
+          { "name": "田中花子", "party": "立憲民主党", "role": "正委員" },
+          { "name": "佐藤次郎", "party": "公明党", "role": "オブザーバー" },
+          { "name": "高橋四郎", "party": null, "role": "特別委員" }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" },
+          { "id": 124, "name": "高橋四郎", "party": "日本維新の会" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田太郎",
+            "politician_id": 101,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "田中花子",
+            "politician_id": 102,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "佐藤次郎",
+            "politician_id": 103,
+            "status": "matched",
+            "confidence": 1.0
+          },
+          {
+            "member_name": "高橋四郎",
+            "politician_id": 124,
+            "status": "needs_review",
+            "confidence": 0.7
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_016",
+      "description": "改姓による名前変更",
+      "difficulty": "advanced",
+      "input": {
+        "conference_id": 16,
+        "extracted_members": [
+          { "name": "鈴木花子", "party": "自民党", "role": "委員" },
+          { "name": "高橋美咲", "party": "立憲民主党", "role": "委員" },
+          { "name": "伊藤由美", "party": "公明党", "role": "委員" }
+        ],
+        "politicians": [
+          {
+            "id": 125,
+            "name": "山田花子",
+            "party": "自民党",
+            "former_name": "鈴木花子"
+          },
+          {
+            "id": 126,
+            "name": "佐藤美咲",
+            "party": "立憲民主党",
+            "former_name": "高橋美咲"
+          },
+          {
+            "id": 127,
+            "name": "田中由美",
+            "party": "公明党",
+            "former_name": "伊藤由美"
+          }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "鈴木花子",
+            "politician_id": 125,
+            "status": "matched",
+            "confidence": 0.9
+          },
+          {
+            "member_name": "高橋美咲",
+            "politician_id": 126,
+            "status": "matched",
+            "confidence": 0.9
+          },
+          {
+            "member_name": "伊藤由美",
+            "politician_id": 127,
+            "status": "matched",
+            "confidence": 0.9
+          }
+        ]
+      }
+    },
+    {
+      "id": "cm_017",
+      "description": "混合難易度の総合テスト",
+      "difficulty": "advanced",
+      "input": {
+        "conference_id": 17,
+        "extracted_members": [
+          { "name": "山田太郎", "party": "自民", "role": "委員長" },
+          { "name": "田中はなこ", "party": "立憲", "role": "副委員長" },
+          { "name": "佐藤", "party": "公明党", "role": "理事" },
+          { "name": "髙橋四郎", "party": "維新", "role": "委員" },
+          { "name": "新人五郎", "party": "国民", "role": "委員" },
+          { "name": "無所属六郎", "party": null, "role": "委員" }
+        ],
+        "politicians": [
+          { "id": 101, "name": "山田太郎", "party": "自民党" },
+          { "id": 102, "name": "田中花子", "party": "立憲民主党" },
+          { "id": 103, "name": "佐藤次郎", "party": "公明党" },
+          { "id": 128, "name": "佐藤三郎", "party": "公明党" },
+          { "id": 129, "name": "高橋四郎", "party": "日本維新の会" },
+          { "id": 130, "name": "無所属六郎", "party": "無所属" }
+        ]
+      },
+      "expected_output": {
+        "matched_members": [
+          {
+            "member_name": "山田太郎",
+            "politician_id": 101,
+            "status": "matched",
+            "confidence": 0.95
+          },
+          {
+            "member_name": "田中はなこ",
+            "politician_id": 102,
+            "status": "matched",
+            "confidence": 0.85
+          },
+          {
+            "member_name": "佐藤",
+            "politician_id": null,
+            "status": "needs_review",
+            "confidence": 0.6
+          },
+          {
+            "member_name": "髙橋四郎",
+            "politician_id": 129,
+            "status": "matched",
+            "confidence": 0.85
+          },
+          {
+            "member_name": "新人五郎",
+            "politician_id": null,
+            "status": "no_match",
+            "confidence": 0.0
+          },
+          {
+            "member_name": "無所属六郎",
+            "politician_id": 130,
+            "status": "matched",
+            "confidence": 0.9
+          }
+        ]
+      }
+    }
+  ]
+}
