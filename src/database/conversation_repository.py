@@ -452,7 +452,9 @@ class ConversationRepository(BaseRepository):
             LEFT JOIN politicians p ON s.id = p.speaker_id
             LEFT JOIN political_parties pp ON p.political_party_id = pp.id
             {where_clause}
-            ORDER BY c.created_at DESC, c.sequence_number ASC
+            ORDER BY c.chapter_number ASC NULLS LAST,
+                     c.sub_chapter_number ASC NULLS LAST,
+                     c.sequence_number ASC
             LIMIT :limit OFFSET :offset
         """
 
