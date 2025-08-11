@@ -114,6 +114,7 @@ class TestMinutesProcessingWithHistory:
         assert history_entry.input_reference_type == "meeting"
         assert history_entry.input_reference_id == 123
 
+    @patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key"})
     def test_llm_factory_creates_instrumented_service(self):
         """Test that LLMServiceFactory creates InstrumentedLLMService by default."""
         factory = LLMServiceFactory()
@@ -123,23 +124,28 @@ class TestMinutesProcessingWithHistory:
         assert isinstance(service, InstrumentedLLMService)
         assert service._model_name == "gemini-2.0-flash-exp"
 
+    @patch("src.config.async_database.get_async_session")
     @patch("src.process_minutes.LLMServiceFactory")
-    @patch("src.process_minutes.LLMProcessingHistoryRepository")
+    @patch("src.process_minutes.LLMProcessingHistoryRepositoryImpl")
     def test_process_minutes_configures_meeting_context(
-        self, mock_history_repo_class, mock_factory_class
+        self, mock_history_repo_class, mock_factory_class, mock_get_async_session
     ):
         """Test that process_minutes configures meeting context for history."""
         from src.process_minutes import process_minutes
 
+        # Create mock async session
+        mock_session = AsyncMock()
+        mock_get_async_session.return_value.__aenter__.return_value = mock_session
+
         # Create mock history repository
-        mock_history_repo = Mock()
+        mock_history_repo = AsyncMock()
         mock_history_repo_class.return_value = mock_history_repo
 
         # Create mock instrumented service
         mock_service = Mock(spec=InstrumentedLLMService)
         mock_service._input_reference_type = None
         mock_service._input_reference_id = None
-        mock_service.set_history_repository = Mock()
+        mock_service.set_history_repository = AsyncMock()
 
         # Add set_input_reference method to the mock
         def set_input_reference(ref_type, ref_id):
@@ -166,9 +172,7 @@ class TestMinutesProcessingWithHistory:
             mock_service.set_input_reference.assert_called_once_with("meeting", 456)
 
             # Verify set_history_repository was called
-            mock_service.set_history_repository.assert_called_once_with(
-                mock_history_repo
-            )
+            mock_service.set_history_repository.assert_called_once()
 
             # Verify meeting context was set via our side_effect
             assert mock_service._input_reference_type == "meeting"

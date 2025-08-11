@@ -169,7 +169,7 @@ def process_minutes(
             # Set up history repository for recording
             import asyncio
 
-            from src.infrastructure.persistence.database_config import get_async_session
+            from src.config.async_database import get_async_session
 
             # Create and set history repository
             async def setup_history():
