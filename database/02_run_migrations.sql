@@ -18,5 +18,6 @@
 \i /docker-entrypoint-initdb.d/02_migrations/013_create_llm_processing_history.sql
 \i /docker-entrypoint-initdb.d/02_migrations/014_create_prompt_versions.sql
 \i /docker-entrypoint-initdb.d/02_migrations/015_add_party_position_to_politicians.sql
+\i /docker-entrypoint-initdb.d/02_migrations/016_add_created_by_to_llm_processing_history.sql
 
 \echo 'Migrations completed.'

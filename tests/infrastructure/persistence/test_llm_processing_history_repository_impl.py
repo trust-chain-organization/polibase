@@ -45,9 +45,15 @@ class TestLLMProcessingHistoryRepositoryImpl:
             input_reference_id=123,
             status=ProcessingStatus.COMPLETED,
             result={"sections": []},
-            processing_metadata={"tokens": 1000},
+            processing_metadata={
+                "tokens": 1000,
+                "token_count_input": 500,
+                "token_count_output": 500,
+                "processing_time_ms": 1200,
+            },
             started_at=datetime.now() - timedelta(minutes=5),
             completed_at=datetime.now(),
+            created_by="test_user",
             id=1,
         )
 
@@ -65,11 +71,17 @@ class TestLLMProcessingHistoryRepositoryImpl:
         model.input_reference_id = 123
         model.status = "completed"
         model.result = {"sections": []}
-        model.processing_metadata = {"tokens": 1000}
+        model.processing_metadata = {
+            "tokens": 1000,
+            "token_count_input": 500,
+            "token_count_output": 500,
+            "processing_time_ms": 1200,
+        }
         model.started_at = datetime.now() - timedelta(minutes=5)
         model.completed_at = datetime.now()
         model.created_at = datetime.now()
         model.updated_at = datetime.now()
+        model.created_by = "test_user"
         return model
 
     def test_to_entity(
@@ -94,6 +106,7 @@ class TestLLMProcessingHistoryRepositoryImpl:
         assert entity.processing_metadata == sample_model.processing_metadata
         assert entity.created_at == sample_model.created_at
         assert entity.updated_at == sample_model.updated_at
+        assert entity.created_by == sample_model.created_by
 
     def test_to_model(self, repository, sample_entity):
         """Test converting entity to model."""
@@ -110,6 +123,7 @@ class TestLLMProcessingHistoryRepositoryImpl:
         assert model.status == "completed"
         assert model.result == sample_entity.result
         assert model.processing_metadata == sample_entity.processing_metadata
+        assert model.created_by == sample_entity.created_by
 
     def test_update_model(self, repository, sample_entity):
         """Test updating model from entity."""
@@ -120,6 +134,7 @@ class TestLLMProcessingHistoryRepositoryImpl:
         assert model.model_name == sample_entity.model_name
         assert model.model_version == sample_entity.model_version
         assert model.status == "completed"
+        assert model.created_by == sample_entity.created_by
 
     @pytest.mark.asyncio
     @patch(
