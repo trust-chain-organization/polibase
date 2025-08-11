@@ -19,22 +19,17 @@
   "test_cases": [
     {
       "id": "pm_001",
-      "description": "国民民主党の実際のHTML構造からの党員情報抽出",
-      "difficulty": "basic",
+      "description": "国民民主党の実際のHTMLファイルからの党員情報抽出",
+      "difficulty": "real_world",
       "input": {
         "party_id": 7,
         "party_name": "国民民主党",
         "url": "https://new-kokumin.jp/member",
-        "html_content": "<div class='member-list'><div><a href='https://new-kokumin.jp/member/tamaki-yuichiro'><img src='member1.jpg'><span>玉木 雄一郎</span><span>たまき ゆういちろう</span><span>衆議院議員</span><span>香川2区</span></a></div><div><a href='https://new-kokumin.jp/member/usuki-hidetake'><img src='member2.jpg'><span>臼木 秀剛</span><span>うすき ひでたけ</span><span>衆議院議員</span><span>比例北海道</span></a></div><div><a href='https://new-kokumin.jp/member/muraoka-toshihide'><img src='member3.jpg'><span>村岡 敏英</span><span>むらおか としひで</span><span>衆議院議員</span><span>秋田3区</span></a></div></div>"
+        "html_file": "data/evaluation/datasets/party_member_extraction/kokumin_minshu.html"
       },
       "expected_output": {
+        "note": "実際のHTMLファイルから抽出すべきメンバー例（全体の一部）",
         "members": [
-          {
-            "name": "玉木雄一郎",
-            "position": "衆議院議員",
-            "district": "香川2区",
-            "party": "国民民主党"
-          },
           {
             "name": "臼木秀剛",
             "position": "衆議院議員",
@@ -46,19 +41,37 @@
             "position": "衆議院議員",
             "district": "秋田3区",
             "party": "国民民主党"
+          },
+          {
+            "name": "菊池大二郎",
+            "position": "衆議院議員",
+            "district": "山形2区（比例東北）",
+            "party": "国民民主党"
+          },
+          {
+            "name": "浅野哲",
+            "position": "衆議院議員",
+            "district": "茨城5区",
+            "party": "国民民主党"
+          },
+          {
+            "name": "岸田光広",
+            "position": "衆議院議員",
+            "district": "比例北関東",
+            "party": "国民民主党"
           }
         ]
       }
     },
     {
       "id": "pm_002",
-      "description": "国民民主党の参議院議員を含む抽出テスト",
+      "description": "HTMLコンテンツ直接指定での抽出テスト（国民民主党スタイル）",
       "difficulty": "basic",
       "input": {
         "party_id": 7,
         "party_name": "国民民主党",
         "url": "https://new-kokumin.jp/member",
-        "html_content": "<section class='members'><article><h3>伊藤 孝恵</h3><p>いとう たかえ</p><p>参議院議員</p><p>愛知県選挙区</p></article><article><h3>大塚 耕平</h3><p>おおつか こうへい</p><p>参議院議員</p><p>愛知県選挙区</p></article></section>"
+        "html_content": "<div class='member-list'><div class='member-card'><dl class='profile'><dt class='name'><a href='/member/ito-takae'>伊藤 孝恵</a></dt><dd><div class='kana'>いとう たかえ</div><div class='area'>参議院議員</div><div class='times'>愛知県選挙区</div></dd></dl></div><div class='member-card'><dl class='profile'><dt class='name'><a href='/member/otsuka-kohei'>大塚 耕平</a></dt><dd><div class='kana'>おおつか こうへい</div><div class='area'>参議院議員</div><div class='times'>愛知県選挙区</div></dd></dl></div></div>"
       },
       "expected_output": {
         "members": [
