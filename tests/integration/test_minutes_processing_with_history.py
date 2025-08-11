@@ -124,14 +124,22 @@ class TestMinutesProcessingWithHistory:
         assert service._model_name == "gemini-2.0-flash-exp"
 
     @patch("src.process_minutes.LLMServiceFactory")
-    def test_process_minutes_configures_meeting_context(self, mock_factory_class):
+    @patch("src.process_minutes.LLMProcessingHistoryRepository")
+    def test_process_minutes_configures_meeting_context(
+        self, mock_history_repo_class, mock_factory_class
+    ):
         """Test that process_minutes configures meeting context for history."""
         from src.process_minutes import process_minutes
+
+        # Create mock history repository
+        mock_history_repo = Mock()
+        mock_history_repo_class.return_value = mock_history_repo
 
         # Create mock instrumented service
         mock_service = Mock(spec=InstrumentedLLMService)
         mock_service._input_reference_type = None
         mock_service._input_reference_id = None
+        mock_service.set_history_repository = Mock()
 
         # Add set_input_reference method to the mock
         def set_input_reference(ref_type, ref_id):
@@ -156,6 +164,11 @@ class TestMinutesProcessingWithHistory:
 
             # Verify set_input_reference was called
             mock_service.set_input_reference.assert_called_once_with("meeting", 456)
+
+            # Verify set_history_repository was called
+            mock_service.set_history_repository.assert_called_once_with(
+                mock_history_repo
+            )
 
             # Verify meeting context was set via our side_effect
             assert mock_service._input_reference_type == "meeting"
@@ -227,3 +240,122 @@ class TestMinutesProcessingWithHistory:
 
         # Processing should work without history recording
         # (actual processing would happen here in a real test)
+
+    def test_invoke_with_retry_records_history(
+        self, mock_llm_service, mock_history_repository
+    ):
+        """Test that invoke_with_retry records history for minutes processing."""
+        # Configure mock LLM service to return a result
+        mock_result = Mock(
+            section_info_list=[
+                Mock(chapter_number=1, keyword="開会"),
+                Mock(chapter_number=2, keyword="議事"),
+            ]
+        )
+        mock_llm_service.invoke_with_retry = Mock(return_value=mock_result)
+
+        # Create instrumented service with meeting context
+        service = InstrumentedLLMService(
+            llm_service=mock_llm_service,
+            history_repository=mock_history_repository,
+            model_name="gemini-2.0-flash-exp",
+            model_version="latest",
+            input_reference_type="meeting",
+            input_reference_id=123,
+        )
+
+        # Create a mock chain
+        mock_chain = Mock()
+        mock_chain.first = Mock()
+        mock_chain.first.template = "Test template for minutes division"
+
+        # Call invoke_with_retry
+        inputs = {"minutes": "テスト議事録"}
+        result = service.invoke_with_retry(mock_chain, inputs)
+
+        # Verify result
+        assert result == mock_result
+
+        # Verify history was recorded (called in sync context with run_until_complete)
+        assert mock_history_repository.create.called
+        assert mock_history_repository.update.called
+
+        # Check the history entry
+        history_entry = mock_history_repository.create.call_args[0][0]
+        assert isinstance(history_entry, LLMProcessingHistory)
+        assert history_entry.processing_type == ProcessingType.MINUTES_DIVISION
+        assert history_entry.model_name == "gemini-2.0-flash-exp"
+        assert history_entry.input_reference_type == "meeting"
+        assert history_entry.input_reference_id == 123
+        assert history_entry.prompt_variables == inputs
+
+    def test_invoke_with_retry_handles_speech_extraction(
+        self, mock_llm_service, mock_history_repository
+    ):
+        """Test that invoke_with_retry correctly identifies speech extraction."""
+        # Configure mock
+        mock_result = Mock(
+            speaker_and_speech_content_list=[
+                Mock(speaker="田中議員", content="発言内容", speech_order=1)
+            ]
+        )
+        mock_llm_service.invoke_with_retry = Mock(return_value=mock_result)
+
+        # Create instrumented service
+        service = InstrumentedLLMService(
+            llm_service=mock_llm_service,
+            history_repository=mock_history_repository,
+            model_name="gemini-2.0-flash-exp",
+            model_version="latest",
+            input_reference_type="meeting",
+            input_reference_id=456,
+        )
+
+        # Create a mock chain with speech template
+        mock_chain = Mock()
+        mock_chain.first = Mock()
+        mock_chain.first.template = "Extract speeches from section"
+
+        # Call with section_string in inputs (indicates speech extraction)
+        inputs = {"section_string": "議事録セクション"}
+        result = service.invoke_with_retry(mock_chain, inputs)
+
+        # Verify result
+        assert result == mock_result
+
+        # Check that it was recorded as speech extraction
+        history_entry = mock_history_repository.create.call_args[0][0]
+        assert history_entry.processing_type == ProcessingType.SPEECH_EXTRACTION
+        assert history_entry.prompt_template == "speech_extraction"
+
+    def test_invoke_with_retry_handles_errors_with_history(
+        self, mock_llm_service, mock_history_repository
+    ):
+        """Test that invoke_with_retry records errors in history."""
+        # Configure mock to raise error
+        mock_llm_service.invoke_with_retry = Mock(
+            side_effect=Exception("Processing failed")
+        )
+
+        # Create instrumented service
+        service = InstrumentedLLMService(
+            llm_service=mock_llm_service,
+            history_repository=mock_history_repository,
+            model_name="test-model",
+            model_version="1.0",
+            input_reference_type="meeting",
+            input_reference_id=789,
+        )
+
+        # Call should raise the error
+        with pytest.raises(Exception, match="Processing failed"):
+            service.invoke_with_retry(Mock(), {"test": "data"})
+
+        # Verify history was still recorded with failed status
+        assert mock_history_repository.create.called
+        assert mock_history_repository.update.called
+
+        # Check that status was marked as failed
+        update_call = mock_history_repository.update.call_args[0][0]
+        assert update_call.status == ProcessingStatus.FAILED
+        assert update_call.error_message == "Processing failed"

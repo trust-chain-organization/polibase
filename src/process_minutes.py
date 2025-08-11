@@ -25,6 +25,9 @@ from src.exceptions import (
     ProcessingError,
 )
 from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
+from src.infrastructure.persistence.llm_processing_history_repository_impl import (
+    LLMProcessingHistoryRepositoryImpl,
+)
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 from src.services.llm_factory import LLMServiceFactory
@@ -158,15 +161,34 @@ def process_minutes(
         factory = LLMServiceFactory()
         llm_service = factory.create_advanced(temperature=0.0)
 
-        # If it's an InstrumentedLLMService, configure meeting context
+        # If it's an InstrumentedLLMService, configure meeting context and history repo
         if isinstance(llm_service, InstrumentedLLMService) and meeting_id:
             # Configure the service with meeting context for history recording
             llm_service.set_input_reference("meeting", meeting_id)
+
+            # Set up history repository for recording
+            import asyncio
+
+            from src.infrastructure.persistence.database_config import get_async_session
+
+            # Create and set history repository
+            async def setup_history():
+                async with get_async_session() as session:
+                    history_repo = LLMProcessingHistoryRepositoryImpl(session)
+                    await llm_service.set_history_repository(history_repo)
+
+            # Run async setup in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(setup_history())
+            finally:
+                loop.close()
+
             logger.info(
-                "Configured InstrumentedLLMService for meeting", meeting_id=meeting_id
+                "Configured InstrumentedLLMService for meeting with history recording",
+                meeting_id=meeting_id,
             )
-            # Note: History repository should be configured at application startup
-            # in a proper async context, not here in sync code
 
         agent = MinutesProcessAgent(llm_service=llm_service)  # type: ignore[arg-type]
 
