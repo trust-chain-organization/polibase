@@ -201,7 +201,17 @@ JSON形式で、以下のような構造で返してください:
         try:
             input_data = test_case.get("input", {})
             html_content = input_data.get("html_content", "")
+            html_file = input_data.get("html_file", "")
             party_name = input_data.get("party_name", "")
+
+            # Load HTML content from file if html_file is provided
+            if html_file and not html_content:
+                try:
+                    with open(html_file, encoding="utf-8") as f:
+                        html_content = f.read()
+                except FileNotFoundError:
+                    logger.error(f"HTML file not found: {html_file}")
+                    return {"members": []}
 
             if not html_content:
                 return {"members": []}
