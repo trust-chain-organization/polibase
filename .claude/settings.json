@@ -40,6 +40,7 @@
       "Bash(git merge:*)",
       "Bash(git switch:*)",
       "Bash(gh issue view:*)",
+      "Bash(gh issue create:*)",
       "Bash(docker compose logs:*)",
       "Bash(git fetch:*)",
       "Bash(git stash:*)",
