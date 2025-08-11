@@ -43,6 +43,26 @@ class AsyncDatabase:
             finally:
                 await session.close()
 
+    @asynccontextmanager
+    async def get_session_autocommit(self) -> AsyncGenerator[AsyncSession]:
+        """Get an async database session with autocommit behavior.
+
+        Each operation commits immediately, useful for batch operations
+        where individual failures shouldn't affect others.
+
+        Yields:
+            AsyncSession: Database session with autocommit
+        """
+        async with self.async_session_maker() as session:
+            try:
+                yield session
+                # Don't auto-commit here, let caller manage
+            except Exception:
+                await session.rollback()
+                raise
+            finally:
+                await session.close()
+
 
 # Global instance
 async_db = AsyncDatabase()

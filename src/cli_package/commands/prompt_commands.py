@@ -239,8 +239,9 @@ class PromptCommands(BaseCommand):
             # Check if prompts already exist
             existing = await repository.get_all_active_versions()
             if existing:
-                msg = f"Found {len(existing)} existing prompt versions. Continue?"
-                if not click.confirm(msg, default=False):
+                click.echo(f"Found {len(existing)} existing prompt versions.")
+                msg = "Skip existing and migrate only new prompts?"
+                if not click.confirm(msg, default=True):
                     click.echo("ℹ Migration cancelled")
                     return
 
