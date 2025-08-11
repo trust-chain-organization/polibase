@@ -25,6 +25,9 @@
       "mcp__serena__read_file",
       "mcp__serena__read_memory",
       "mcp__serena__search_for_pattern",
+      "mcp__serena__replace_regex",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
@@ -59,5 +62,6 @@
         ]
       }
     ]
-  }
+  },
+  "enabledMcpjsonServers": ["playwright", "serena", "context7"]
 }
