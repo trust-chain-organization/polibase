@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "metadata": {
     "created_at": "2025-08-10",
-    "total_cases": 1,
+    "total_cases": 2,
     "difficulty_levels": ["real_world"],
-    "parties_covered": ["国民民主党"]
+    "parties_covered": ["国民民主党", "自民党"]
   },
   "test_cases": [
     {
@@ -53,6 +53,21 @@
             "party": "国民民主党"
           }
         ]
+      }
+    },
+    {
+      "id": "pm_002",
+      "description": "自民党の検索ページHTMLファイル（議員データなし）からの抽出テスト",
+      "difficulty": "real_world",
+      "input": {
+        "party_id": 1,
+        "party_name": "自民党",
+        "url": "https://www.jimin.jp/member/search/",
+        "html_file": "data/evaluation/datasets/party_member_extraction/jimintouin.html"
+      },
+      "expected_output": {
+        "note": "検索フォームページのため議員データは含まれていない",
+        "members": []
       }
     }
   ]
