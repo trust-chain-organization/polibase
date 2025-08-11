@@ -219,9 +219,23 @@ class VersionedPromptManager(PromptManager):
             return 0
 
         migrated = 0
+        skipped = 0
+
+        # Get existing versions to check for duplicates
+        # Check all versions with version "1.0.0" to avoid duplicate initial migrations
+        existing_versions = await self.repository.search(limit=1000)
+        existing_migrations = {
+            v.prompt_key for v in existing_versions if v.version == "1.0.0"
+        }
 
         # Migrate static prompts
         for prompt_key, template in self.PROMPTS.items():
+            # Skip if already exists with version 1.0.0
+            if prompt_key in existing_migrations:
+                logger.info(f"Skipping existing prompt: {prompt_key}")
+                skipped += 1
+                continue
+
             try:
                 # Extract variables from template
                 prompt_version = PromptVersion(
@@ -248,6 +262,9 @@ class VersionedPromptManager(PromptManager):
 
             except Exception as e:
                 logger.error(f"Failed to migrate prompt {prompt_key}: {e}")
+
+        if skipped > 0:
+            logger.info(f"Skipped {skipped} existing prompts")
 
         return migrated
 
