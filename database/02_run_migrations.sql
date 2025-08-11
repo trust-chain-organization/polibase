@@ -20,5 +20,6 @@
 \i /docker-entrypoint-initdb.d/02_migrations/015_add_party_position_to_politicians.sql
 \i /docker-entrypoint-initdb.d/02_migrations/016_add_created_by_to_llm_processing_history.sql
 \i /docker-entrypoint-initdb.d/02_migrations/017_add_process_id_to_minutes.sql
+\i /docker-entrypoint-initdb.d/02_migrations/018_add_matching_history_to_speakers.sql
 
 \echo 'Migrations completed.'

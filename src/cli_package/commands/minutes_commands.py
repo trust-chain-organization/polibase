@@ -66,4 +66,12 @@ class MinutesCommands(BaseCommand):
 
 def get_minutes_commands():
     """Get all minutes-related commands"""
-    return [MinutesCommands.process_minutes, MinutesCommands.update_speakers]
+    from src.cli_package.commands.analyze_matching_history import (
+        get_analyze_matching_history_command,
+    )
+
+    return [
+        MinutesCommands.process_minutes,
+        MinutesCommands.update_speakers,
+        get_analyze_matching_history_command(),
+    ]
