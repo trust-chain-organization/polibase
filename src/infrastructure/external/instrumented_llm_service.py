@@ -202,10 +202,12 @@ class InstrumentedLLMService(ILLMService):
             "candidates_count": len(context.get("candidates", [])),
         }
 
-        # Get reference info from context
-        reference_type = "speaker"
-        # TypedDict doesn't have speaker_id, use speaker_name as reference
-        reference_id = hash(context.get("speaker_name", "")) % 1000000
+        # Use configured reference if set via set_input_reference, else defaults
+        reference_type = self._input_reference_type or "speaker"
+        reference_id = self._input_reference_id
+        if reference_id is None:
+            # TypedDict doesn't have speaker_id, use speaker_name as reference
+            reference_id = hash(context.get("speaker_name", "")) % 1000000
 
         return await self._record_processing(
             ProcessingType.SPEAKER_MATCHING,

@@ -66,19 +66,38 @@ class TestMatchSpeakersUseCaseWithHistory:
     def mock_history_repo(self) -> AsyncMock:
         """Create mock history repository."""
         repo = AsyncMock()
-        repo.create = AsyncMock(
-            return_value=LLMProcessingHistory(
-                processing_type=ProcessingType.SPEAKER_MATCHING,
-                status=ProcessingStatus.COMPLETED,
-                model_name="gemini-2.0-flash",
-                model_version="2.0",
-                prompt_template="speaker_matching",
-                prompt_variables={"speaker_name": "山田太郎"},
-                input_reference_type="speaker",
-                input_reference_id=1,
-                result={"matched_id": 1, "confidence": 0.95},
-            )
+
+        # Create a proper history entry that starts in IN_PROGRESS and gets updated
+        history_entry = LLMProcessingHistory(
+            processing_type=ProcessingType.SPEAKER_MATCHING,
+            status=ProcessingStatus.IN_PROGRESS,
+            model_name="gemini-2.0-flash",
+            model_version="2.0",
+            prompt_template="speaker_matching",
+            prompt_variables={"speaker_name": "山田太郎"},
+            input_reference_type="speaker",
+            input_reference_id=1,
+            result={"matched_id": 1, "confidence": 0.95},
         )
+
+        # Mock create to return the entry and update to modify it
+        async def mock_create(entry: LLMProcessingHistory) -> LLMProcessingHistory:
+            # Copy the entry's properties to our fixture
+            history_entry.status = entry.status
+            history_entry.processing_type = entry.processing_type
+            history_entry.model_name = entry.model_name
+            history_entry.model_version = entry.model_version
+            return history_entry
+
+        async def mock_update(entry: LLMProcessingHistory) -> LLMProcessingHistory:
+            # Update status when update is called
+            history_entry.status = entry.status
+            history_entry.result = entry.result
+            return history_entry
+
+        repo.create = AsyncMock(side_effect=mock_create)
+        repo.update = AsyncMock(side_effect=mock_update)
+
         return repo
 
     @pytest.fixture
@@ -160,8 +179,13 @@ class TestMatchSpeakersUseCaseWithHistory:
         mock_history_repo.create.assert_called_once()
         history_call = mock_history_repo.create.call_args[0][0]
         assert history_call.processing_type == ProcessingType.SPEAKER_MATCHING
-        assert history_call.status == ProcessingStatus.COMPLETED
+        assert history_call.status == ProcessingStatus.IN_PROGRESS  # Initial status
         assert history_call.model_name == "gemini-2.0-flash"
+
+        # Verify history was updated with completion
+        mock_history_repo.update.assert_called_once()
+        updated_history = mock_history_repo.update.call_args[0][0]
+        assert updated_history.status == ProcessingStatus.COMPLETED
 
     @pytest.mark.asyncio
     async def test_rule_based_matching_no_history(
