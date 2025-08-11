@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Awaitable, Callable
+from datetime import UTC
 from typing import Any
 
 from src.domain.entities.llm_processing_history import (
@@ -321,7 +322,90 @@ class InstrumentedLLMService(ILLMService):
         return self._llm_service.get_prompt(prompt_name)
 
     def invoke_with_retry(self, chain: Any, inputs: dict[str, Any]) -> Any:
-        """Delegate to wrapped LLM service."""
+        """Invoke chain with retry and history recording for minutes processing."""
+        # If we have a history repository and this looks like minutes processing
+        if self._history_repository and self._input_reference_type == "meeting":
+            import asyncio
+            import uuid
+            from datetime import datetime
+
+            # Generate a process ID
+            process_id = str(uuid.uuid4())
+
+            # Determine processing type based on inputs
+            processing_type = ProcessingType.MINUTES_DIVISION
+            if "section_string" in inputs:
+                processing_type = ProcessingType.SPEECH_EXTRACTION
+
+            # Extract prompt info from chain if possible
+            prompt_name = "minutes_division"
+            if hasattr(chain, "first") and hasattr(chain.first, "template"):
+                # Try to extract prompt name from template
+                template_str = str(chain.first.template)
+                if "speech" in template_str.lower():
+                    prompt_name = "speech_extraction"
+
+            # Create history record
+            history = LLMProcessingHistory(
+                processing_type=processing_type,
+                model_name=self._model_name,
+                model_version=self._model_version,
+                prompt_template=prompt_name,
+                prompt_variables=inputs,
+                input_reference_type=self._input_reference_type or "meeting",
+                input_reference_id=self._input_reference_id or 0,
+                status=ProcessingStatus.IN_PROGRESS,
+                started_at=datetime.now(UTC),
+                processing_metadata={
+                    "process_id": process_id,
+                    "chain_type": type(chain).__name__,
+                },
+            )
+
+            # Run async create in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(self._history_repository.create(history))
+            finally:
+                loop.close()
+
+            try:
+                # Execute the actual processing
+                result = self._llm_service.invoke_with_retry(chain, inputs)
+
+                # Update history with success
+                history.status = ProcessingStatus.COMPLETED
+                history.completed_at = datetime.now(UTC)
+                history.result = self._extract_result_metadata(result)
+
+                # Run async update in sync context
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(self._history_repository.update(history))
+                finally:
+                    loop.close()
+
+                return result
+
+            except Exception as e:
+                # Update history with failure
+                history.status = ProcessingStatus.FAILED
+                history.completed_at = datetime.now(UTC)
+                history.error_message = str(e)
+
+                # Run async update in sync context
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    loop.run_until_complete(self._history_repository.update(history))
+                finally:
+                    loop.close()
+
+                raise
+
+        # Fallback to simple delegation
         return self._llm_service.invoke_with_retry(chain, inputs)
 
     def invoke_llm(self, messages: list[dict[str, str]]) -> str:
