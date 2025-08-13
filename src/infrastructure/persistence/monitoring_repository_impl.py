@@ -1,9 +1,90 @@
 """Monitoring repository implementation for Clean Architecture."""
 
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+class ActivityDetails(TypedDict, total=False):
+    """Type definition for activity details."""
+
+    conference: str | None
+    governing_body: str | None
+    party: str | None
+
+
+class Activity(TypedDict):
+    """Type definition for activity."""
+
+    type: str
+    id: int
+    name: str
+    date: str | None
+    created_at: str | None
+    details: ActivityDetails
+
+
+class ConferenceCoverage(TypedDict):
+    """Type definition for conference coverage."""
+
+    id: int
+    name: str
+    governing_body: str
+    meetings: int
+    politicians: int
+    conversations: int
+    period: dict[str, str | None]
+
+
+class TimelineEntry(TypedDict):
+    """Type definition for timeline entry."""
+
+    date: str
+    count: int
+
+
+class PartyCoverage(TypedDict):
+    """Type definition for party coverage."""
+
+    id: int
+    name: str
+    politicians: int
+    speakers: int
+    conversations: int
+
+
+class PrefectureCoverage(TypedDict):
+    """Type definition for prefecture coverage."""
+
+    id: int
+    name: str
+    type: str
+    organization_code: str | None
+    organization_type: str | None
+    status: str
+    conferences: int
+    meetings: int
+    politicians: int
+    conversations: int
+    period: dict[str, str | None]
+
+
+class PrefectureSummary(TypedDict):
+    """Type definition for prefecture summary."""
+
+    total: int
+    with_data: int
+    coverage: float
+
+
+class CommitteeType(TypedDict):
+    """Type definition for committee type."""
+
+    type: str
+    conferences: int
+    meetings: int
+    governing_bodies: int
 
 
 class MonitoringRepositoryImpl:
@@ -114,7 +195,7 @@ class MonitoringRepositoryImpl:
             },
         }
 
-    async def get_recent_activities(self, limit: int = 10) -> list[dict[str, Any]]:
+    async def get_recent_activities(self, limit: int = 10) -> list[Activity]:
         """Get recent system activities."""
         query = text("""
             WITH recent_activities AS (
@@ -164,10 +245,10 @@ class MonitoringRepositoryImpl:
         """)
 
         result = await self.session.execute(query, {"limit": limit})
-        activities = []
+        activities: list[Activity] = []
 
         for row in result:
-            activity = {
+            activity: Activity = {
                 "type": row.type,
                 "id": row.id,
                 "name": row.name,
@@ -186,7 +267,7 @@ class MonitoringRepositoryImpl:
 
         return activities
 
-    async def get_conference_coverage(self) -> list[dict[str, Any]]:
+    async def get_conference_coverage(self) -> list[ConferenceCoverage]:
         """Get coverage statistics by conference."""
         query = text("""
             SELECT
@@ -208,7 +289,7 @@ class MonitoringRepositoryImpl:
         """)
 
         result = await self.session.execute(query)
-        coverage_data = []
+        coverage_data: list[ConferenceCoverage] = []
 
         for row in result:
             coverage_data.append(
@@ -238,7 +319,7 @@ class MonitoringRepositoryImpl:
 
     async def get_timeline_data(
         self, period_days: int = 30
-    ) -> dict[str, list[dict[str, Any]]]:
+    ) -> dict[str, list[TimelineEntry]]:
         """Get timeline data for various metrics."""
         query = text("""
             WITH date_series AS (
@@ -334,9 +415,9 @@ class MonitoringRepositoryImpl:
 
         result = await self.session.execute(query)
 
-        meetings_timeline = []
-        conversations_timeline = []
-        politicians_timeline = []
+        meetings_timeline: list[TimelineEntry] = []
+        conversations_timeline: list[TimelineEntry] = []
+        politicians_timeline: list[TimelineEntry] = []
 
         for row in result:
             date_str = row.date.isoformat()
@@ -354,7 +435,7 @@ class MonitoringRepositoryImpl:
             "politicians": politicians_timeline,
         }
 
-    async def get_party_coverage(self) -> list[dict[str, Any]]:
+    async def get_party_coverage(self) -> list[PartyCoverage]:
         """Get coverage statistics by political party."""
         query = text("""
             SELECT
@@ -372,7 +453,7 @@ class MonitoringRepositoryImpl:
         """)
 
         result = await self.session.execute(query)
-        party_data = []
+        party_data: list[PartyCoverage] = []
 
         for row in result:
             party_data.append(
@@ -387,7 +468,7 @@ class MonitoringRepositoryImpl:
 
         return party_data
 
-    async def get_prefecture_detailed_coverage(self) -> list[dict[str, Any]]:
+    async def get_prefecture_detailed_coverage(self) -> list[PrefectureCoverage]:
         """Get detailed coverage statistics by prefecture."""
         query = text("""
             WITH prefecture_stats AS (
@@ -424,7 +505,7 @@ class MonitoringRepositoryImpl:
         """)
 
         result = await self.session.execute(query)
-        coverage_data = []
+        coverage_data: list[PrefectureCoverage] = []
 
         for row in result:
             coverage_data.append(
@@ -481,10 +562,10 @@ class MonitoringRepositoryImpl:
         """)
 
         result = await self.session.execute(query)
-        summary = {"prefectures": {}, "municipalities": {}}
+        summary: dict[str, Any] = {"prefectures": {}, "municipalities": {}}
 
         for row in result:
-            data = {
+            data: PrefectureSummary = {
                 "total": row.total,
                 "with_data": row.with_data,
                 "coverage": float(row.coverage_percentage),
@@ -497,7 +578,7 @@ class MonitoringRepositoryImpl:
 
         return summary
 
-    async def get_committee_type_coverage(self) -> list[dict[str, Any]]:
+    async def get_committee_type_coverage(self) -> list[CommitteeType]:
         """Get coverage by committee type."""
         query = text("""
             SELECT
@@ -513,7 +594,7 @@ class MonitoringRepositoryImpl:
         """)
 
         result = await self.session.execute(query)
-        committee_data = []
+        committee_data: list[CommitteeType] = []
 
         for row in result:
             committee_data.append(

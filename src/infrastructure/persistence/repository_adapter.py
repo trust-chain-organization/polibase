@@ -2,10 +2,12 @@
 
 import asyncio
 import logging
+import types
+from collections.abc import Awaitable
 from typing import Any, TypeVar
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import Session
 
 from src.config.database import DATABASE_URL
 
@@ -60,13 +62,11 @@ class RepositoryAdapter:
                 async_db_url = db_url
 
             engine = create_async_engine(async_db_url, echo=False)
-            async_session_maker = sessionmaker(
-                engine, class_=AsyncSession, expire_on_commit=False
-            )
+            async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
             self._async_session = async_session_maker()
         return self._async_session
 
-    def _run_async(self, coro):
+    def _run_async(self, coro: Awaitable[T]) -> T:
         """Run an async coroutine from sync context."""
         try:
             loop = self._get_or_create_event_loop()
@@ -97,7 +97,7 @@ class RepositoryAdapter:
 
                 if exception:
                     raise exception
-                return result
+                return result  # type: ignore
             else:
                 # Normal case: run in the current thread
                 return loop.run_until_complete(coro)
@@ -112,13 +112,13 @@ class RepositoryAdapter:
         This allows the adapter to be used as if it were the repository itself.
         """
 
-        async def async_wrapper(*args, **kwargs):
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             session = self._get_async_session()
             repo = self.async_repository_class(session)
             method = getattr(repo, name)
             return await method(*args, **kwargs)
 
-        def sync_wrapper(*args, **kwargs):
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
             return self._run_async(async_wrapper(*args, **kwargs))
 
         return sync_wrapper
@@ -133,6 +133,11 @@ class RepositoryAdapter:
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Context manager exit."""
         self.close()

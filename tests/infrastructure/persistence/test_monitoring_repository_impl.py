@@ -1,10 +1,11 @@
 """Tests for MonitoringRepositoryImpl."""
 
+from collections.abc import AsyncGenerator
+
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.infrastructure.persistence.monitoring_repository_impl import (
     MonitoringRepositoryImpl,
@@ -12,7 +13,7 @@ from src.infrastructure.persistence.monitoring_repository_impl import (
 
 
 @pytest_asyncio.fixture
-async def async_session():
+async def async_session() -> AsyncGenerator[AsyncSession]:
     """Create an async session for testing."""
     # Use SQLite in-memory database for testing
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -106,9 +107,7 @@ async def async_session():
         """)
         )
 
-    async_session_maker = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session_maker() as session:
         yield session
@@ -117,7 +116,7 @@ async def async_session():
 
 
 @pytest.mark.asyncio
-async def test_get_overall_metrics_empty(async_session):
+async def test_get_overall_metrics_empty(async_session: AsyncSession) -> None:
     """Test getting overall metrics with empty database."""
     repo = MonitoringRepositoryImpl(async_session)
 
@@ -131,7 +130,7 @@ async def test_get_overall_metrics_empty(async_session):
 
 
 @pytest.mark.asyncio
-async def test_get_recent_activities_empty(async_session):
+async def test_get_recent_activities_empty(async_session: AsyncSession) -> None:
     """Test getting recent activities with empty database."""
     repo = MonitoringRepositoryImpl(async_session)
 
@@ -143,7 +142,7 @@ async def test_get_recent_activities_empty(async_session):
 
 
 @pytest.mark.asyncio
-async def test_get_conference_coverage_empty(async_session):
+async def test_get_conference_coverage_empty(async_session: AsyncSession) -> None:
     """Test getting conference coverage with empty database."""
     repo = MonitoringRepositoryImpl(async_session)
 
@@ -155,7 +154,7 @@ async def test_get_conference_coverage_empty(async_session):
 
 
 @pytest.mark.asyncio
-async def test_get_party_coverage_empty(async_session):
+async def test_get_party_coverage_empty(async_session: AsyncSession) -> None:
     """Test getting party coverage with empty database."""
     repo = MonitoringRepositoryImpl(async_session)
 
@@ -167,7 +166,7 @@ async def test_get_party_coverage_empty(async_session):
 
 
 @pytest.mark.asyncio
-async def test_get_prefecture_coverage_empty(async_session):
+async def test_get_prefecture_coverage_empty(async_session: AsyncSession) -> None:
     """Test getting prefecture coverage with empty database."""
     repo = MonitoringRepositoryImpl(async_session)
 

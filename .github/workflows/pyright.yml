@@ -26,7 +26,6 @@ jobs:
           uv sync --frozen
 
       - name: Run Pyright
-        continue-on-error: true # TODO: Remove after fixing type issues in #399
         run: |
           uv run --frozen pyright
 
