@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     libappindicator3-1 \
     libnss3-dev \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-xlib-2.0-0 \
     libgtk-3-0 \
     libxshmfence1 \
     && rm -rf /var/lib/apt/lists/*
