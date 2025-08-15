@@ -38,11 +38,19 @@ class ConversationRepository(BaseRepository):
     ):
         super().__init__(use_session=True, session=session)
         self.speaker_matching_service = speaker_matching_service
-        # Initialize the new implementation
-        self._impl = ConversationRepositoryImpl(
-            session=self.session,
-            speaker_matching_service=speaker_matching_service,
-        )
+        # Initialize the new implementation - delay until session is set
+        self._impl_initialized = False
+        self._impl_session = session
+        self._impl_speaker_matching = speaker_matching_service
+
+    def _ensure_impl(self):
+        """Ensure implementation is initialized with correct session"""
+        if not self._impl_initialized:
+            self._impl = ConversationRepositoryImpl(
+                session=self.session,
+                speaker_matching_service=self._impl_speaker_matching,
+            )
+            self._impl_initialized = True
 
     def save_speaker_and_speech_content_list(
         self,
@@ -283,6 +291,8 @@ class ConversationRepository(BaseRepository):
         Returns:
             int: レコード数
         """
+        # Ensure implementation is initialized
+        self._ensure_impl()
         # Delegate to new implementation (sync)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -298,6 +308,8 @@ class ConversationRepository(BaseRepository):
         Returns:
             dict: 紐付け統計（総数、紐付けあり、紐付けなし、政治家紐付け数、紐付け率）
         """
+        # Ensure implementation is initialized
+        self._ensure_impl()
         # Delegate to new implementation for basic stats
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -382,6 +394,8 @@ class ConversationRepository(BaseRepository):
         page = (offset // limit) + 1 if limit > 0 else 1
         page_size = limit
 
+        # Ensure implementation is initialized
+        self._ensure_impl()
         # Delegate to new implementation (sync)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -456,6 +470,8 @@ class ConversationRepository(BaseRepository):
         Returns:
             int: 更新されたレコード数
         """
+        # Ensure implementation is initialized
+        self._ensure_impl()
         # Delegate to new implementation (sync)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
