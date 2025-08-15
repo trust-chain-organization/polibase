@@ -292,10 +292,10 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
 
         return {"created": created, "updated": updated, "errors": errors}
 
-    async def fetch_as_dict(
+    async def fetch_as_dict_async(
         self, query: str, params: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
-        """Execute raw SQL query and return results as dictionaries."""
+        """Execute raw SQL query and return results as dictionaries (async)."""
         if self.async_session:
             result = await self.async_session.execute(text(query), params or {})
             rows = result.fetchall()
@@ -440,3 +440,27 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         # Sessions are typically managed by the application, not the repository
         # This is here for backward compatibility
         pass
+
+    def fetch_as_dict_sync(
+        self, query: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Sync wrapper for fetch_as_dict (backward compatibility)."""
+        if self.sync_session:
+            result = self.sync_session.execute(text(query), params or {})
+            rows = result.fetchall()
+            return [dict(row) for row in rows]  # type: ignore
+        return []
+
+    # Alias for backward compatibility with streamlit code
+    fetch_as_dict = fetch_as_dict_sync
+
+    def fetch_all_as_models(
+        self,
+        model_class: type[Any],
+        query: str,
+        params: dict[str, Any] | None = None,
+    ) -> list[Any]:
+        """Fetch all rows as models - wrapper for TypedRepository.fetch_all."""
+        if self.legacy_repo and hasattr(self.legacy_repo, "fetch_all"):
+            return list(self.legacy_repo.fetch_all(query, params))  # type: ignore
+        return []

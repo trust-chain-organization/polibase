@@ -45,91 +45,91 @@ git worktreeを使用している場合、`docker/docker-compose.override.yml`�
 #### Using the Unified CLI (Recommended)
 ```bash
 # Show all available commands
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase --help
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase --help
 
 # Process meeting minutes
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase process-minutes
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase process-minutes
 
 # Process minutes from GCS (using meeting ID)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
 
 # Scrape politician information from party websites
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --all-parties
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties
 
 # Update speaker links with LLM
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase update-speakers --use-llm
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase update-speakers --use-llm
 
 # Launch meeting management web UI
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase streamlit
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit
 
 # Launch monitoring dashboard for data coverage visualization
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase monitoring
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring
 
 # Scrape meeting minutes from web
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-minutes "URL"
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-minutes "URL"
 
 # Scrape with Google Cloud Storage upload (automatically saves GCS URIs to meetings table)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
 
 # Batch scrape multiple minutes from kaigiroku.net
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase batch-scrape --tenant kyoto
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase batch-scrape --tenant osaka
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase batch-scrape --tenant kyoto
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase batch-scrape --tenant osaka
 
 # Batch scrape with GCS upload
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
 
 # Extract speakers from meeting minutes
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-speakers
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-speakers
 
 # Scrape politician information from party websites
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --all-parties
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --party-id 5
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --all-parties --dry-run
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --party-id 5
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties --dry-run
 
 # Conference member extraction (3-step process)
 # Step 1: Extract members from conference URLs
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-conference-members --conference-id 185
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-conference-members --force  # Re-extract all
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase extract-conference-members --force  # Re-extract all
 
 # Step 2: Match extracted members with existing politicians
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase match-conference-members --conference-id 185
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase match-conference-members  # Process all pending
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase match-conference-members --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase match-conference-members  # Process all pending
 
 # Step 3: Create politician affiliations from matched data
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-affiliations --conference-id 185
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-affiliations --start-date 2024-01-01
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase create-affiliations --start-date 2024-01-01
 
 # Check extraction and matching status
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase member-status --conference-id 185
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase member-status --conference-id 185
 
 # Show coverage statistics for governing bodies
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase coverage
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase coverage
 ```
 
 #### Direct Module Execution (Legacy)
 ```bash
 # Minutes Division Processing
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python -m src.process_minutes
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes
 
 # Minutes Division Processing from GCS
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
+docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
 
 
 # LLM-based Speaker Matching
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python update_speaker_links_llm.py
+docker compose -f docker/docker-compose.yml exec polibase uv run python update_speaker_links_llm.py
 ```
 
 ### Testing
 ```bash
 # Run tests
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run pytest
+docker compose -f docker/docker-compose.yml exec polibase uv run pytest
 
 # Test database connection
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python -c "from src.config.database import test_connection; test_connection()"
+docker compose -f docker/docker-compose.yml exec polibase uv run python -c "from src.config.database import test_connection; test_connection()"
 
 # Run LLM evaluation tests (local - uses mock by default)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase evaluate --all
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase evaluate --all
 # Note: Evaluation tests are excluded from CI to save API costs
 # Run manually via GitHub Actions workflow_dispatch for real LLM testing
 ```
@@ -148,13 +148,13 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 #### Ruff (Code Formatter and Linter)
 ```bash
 # Format code
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run --frozen ruff format .
+docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff format .
 
 # Check code style
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run --frozen ruff check .
+docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check .
 
 # Fix auto-fixable issues
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run --frozen ruff check . --fix
+docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check . --fix
 ```
 
 **Critical Ruff Rules:**
@@ -189,13 +189,13 @@ uv run --frozen pyright 2>&1 | grep -A5 -B5 "src/database/"
 #### Pre-commit Hooks
 ```bash
 # Install pre-commit hooks (first time only)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run pre-commit install
+docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit install
 
 # Run pre-commit manually on all files
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run pre-commit run --all-files
+docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit run --all-files
 
 # Update pre-commit hooks to latest versions
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run pre-commit autoupdate
+docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit autoupdate
 ```
 
 **Pre-commit Configuration:**
@@ -214,15 +214,15 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 ### Database Management
 ```bash
 # Access PostgreSQL
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
 
 # Backup/Restore (with GCS support)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database backup               # Backup to local and GCS
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database backup --no-gcs      # Backup to local only
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database restore backup.sql   # Restore from local
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database restore gs://bucket/backup.sql  # Restore from GCS
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database list                 # List all backups
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database list --no-gcs        # List local backups only
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database backup               # Backup to local and GCS
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database backup --no-gcs      # Backup to local only
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore backup.sql   # Restore from local
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore gs://bucket/backup.sql  # Restore from GCS
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database list                 # List all backups
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database list --no-gcs        # List local backups only
 
 # Legacy backup scripts (local only)
 ./backup-database.sh backup
@@ -232,7 +232,7 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 ./reset-database.sh
 
 # Apply new migrations manually (if needed)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase cat /app/database/migrations/013_create_llm_processing_history.sql | docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec -T postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec polibase cat /app/database/migrations/013_create_llm_processing_history.sql | docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db
 
 # Important: When adding new migration files
 # 1. Create migration file in database/migrations/ with sequential numbering (e.g., 016_*.sql)
@@ -406,7 +406,7 @@ Polibase follows these core design principles:
   - Streamlit for dashboard UI
 
 ### Development Patterns
-- Docker-first development (all commands run through `docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec`)
+- Docker-first development (all commands run through `docker compose -f docker/docker-compose.yml exec`)
 - Multi-phase processing: Extract conversations → Extract speakers → Match speakers → Scrape party members from websites
 - Environment variables for configuration (DATABASE_URL differs between Docker/local)
 - Modular architecture with shared utilities in `src/common/`

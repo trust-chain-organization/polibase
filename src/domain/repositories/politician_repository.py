@@ -47,8 +47,8 @@ class PoliticianRepository(BaseRepository[Politician]):
         pass
 
     @abstractmethod
-    async def fetch_as_dict(
+    async def fetch_as_dict_async(
         self, query: str, params: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
-        """Execute raw SQL query and return results as dictionaries."""
+        """Execute raw SQL query and return results as dictionaries (async)."""
         pass
