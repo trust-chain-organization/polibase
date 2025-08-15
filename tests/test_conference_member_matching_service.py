@@ -54,18 +54,22 @@ class TestConferenceMemberMatchingService:
             return_value=mock_extracted_repo,
         ):
             with patch(
-                "src.conference_member_extractor.matching_service.PoliticianRepository",
-                return_value=mock_politician_repo,
+                "src.config.database.get_db_session",
+                return_value=Mock(),
             ):
                 with patch(
-                    "src.conference_member_extractor.matching_service.LLMService",
-                    return_value=mock_llm_service,
+                    "src.conference_member_extractor.matching_service.PoliticianRepositoryImpl",
+                    return_value=mock_politician_repo,
                 ):
                     with patch(
-                        "src.conference_member_extractor.matching_service.PoliticianAffiliationRepository",
-                        return_value=mock_affiliation_repo,
+                        "src.conference_member_extractor.matching_service.LLMService",
+                        return_value=mock_llm_service,
                     ):
-                        return ConferenceMemberMatchingService()
+                        with patch(
+                            "src.conference_member_extractor.matching_service.PoliticianAffiliationRepository",
+                            return_value=mock_affiliation_repo,
+                        ):
+                            return ConferenceMemberMatchingService()
 
     def test_find_politician_candidates_exact_match_with_party(
         self, service, mock_politician_repo

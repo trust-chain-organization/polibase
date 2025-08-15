@@ -16,7 +16,9 @@ from src.database.parliamentary_group_repository import (
     ParliamentaryGroupMembershipRepository,
     ParliamentaryGroupRepository,
 )
-from src.database.politician_repository import PoliticianRepository
+from src.infrastructure.persistence.politician_repository_impl import (
+    PoliticianRepositoryImpl,
+)
 from src.parliamentary_group_member_extractor.models import (
     ExtractedMember,
     MatchingResult,
@@ -42,7 +44,7 @@ class ParliamentaryGroupMembershipService:
     def __init__(
         self,
         llm_service: LLMService | None = None,
-        politician_repo: PoliticianRepository | None = None,
+        politician_repo: PoliticianRepositoryImpl | None = None,
         group_repo: ParliamentaryGroupRepository | None = None,
         membership_repo: ParliamentaryGroupMembershipRepository | None = None,
     ):
@@ -55,7 +57,9 @@ class ParliamentaryGroupMembershipService:
             membership_repo: メンバーシップリポジトリ
         """
         self.llm_service = llm_service or LLMService()
-        self.politician_repo = politician_repo or PoliticianRepository()
+        self.politician_repo = politician_repo or PoliticianRepositoryImpl(
+            get_db_session()
+        )
         self.group_repo = group_repo or ParliamentaryGroupRepository(get_db_session())
         self.membership_repo = (
             membership_repo or ParliamentaryGroupMembershipRepository(get_db_session())

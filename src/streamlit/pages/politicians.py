@@ -4,7 +4,9 @@ import pandas as pd
 
 import streamlit as st
 from src.common.logging import get_logger
-from src.database.politician_repository import PoliticianRepository
+from src.infrastructure.persistence.politician_repository_impl import (
+    PoliticianRepositoryImpl,
+)
 from src.models.politician import Politician
 from src.seed_generator import SeedGenerator
 
@@ -28,7 +30,10 @@ def manage_politicians():
 
 def show_politicians_list():
     """政治家一覧の表示"""
-    pol_repo = PoliticianRepository()
+    from src.config.database import get_db_session
+
+    session = get_db_session()
+    pol_repo = PoliticianRepositoryImpl(session)
 
     try:
         # 政治家データを関連情報と共に取得
@@ -208,7 +213,10 @@ def show_politicians_list():
 
 def show_politician_details():
     """政治家詳細検索・表示"""
-    pol_repo = PoliticianRepository()
+    from src.config.database import get_db_session
+
+    session = get_db_session()
+    pol_repo = PoliticianRepositoryImpl(session)
 
     try:
         # 政治家リストを取得

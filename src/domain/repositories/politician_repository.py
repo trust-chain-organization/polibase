@@ -1,6 +1,7 @@
 """Politician repository interface."""
 
 from abc import abstractmethod
+from typing import Any
 
 from src.domain.entities.politician import Politician
 from src.domain.repositories.base import BaseRepository
@@ -27,11 +28,27 @@ class PoliticianRepository(BaseRepository[Politician]):
         pass
 
     @abstractmethod
-    async def search_by_name(self, name_pattern: str) -> list[Politician]:
+    async def search_by_name(
+        self, name_pattern: str
+    ) -> list[Politician] | list[dict[str, Any]]:
         """Search politicians by name pattern."""
         pass
 
     @abstractmethod
     async def upsert(self, politician: Politician) -> Politician:
         """Insert or update politician (upsert)."""
+        pass
+
+    @abstractmethod
+    async def bulk_create_politicians(
+        self, politicians_data: list[dict[str, Any]]
+    ) -> dict[str, list[Politician] | list[dict[str, Any]]]:
+        """Bulk create or update politicians."""
+        pass
+
+    @abstractmethod
+    async def fetch_as_dict(
+        self, query: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Execute raw SQL query and return results as dictionaries."""
         pass
