@@ -76,7 +76,8 @@ def test_no_any_types_in_core_modules():
     # Phase 2 target: reduce Any usage below 5%
     # Temporarily increased to 6% during migration (see issue #393)
     assert any_percentage <= 6, (
-        f"Any type usage too high: {any_percentage:.1f}%. Target is 6% or less during migration."
+        f"Any type usage too high: {any_percentage:.1f}%. "
+        "Target is 6% or less during migration."
     )
 
 
