@@ -207,6 +207,8 @@ class ConversationRepositoryImpl(
             return created
         else:
             # Sync implementation
+            if not self.legacy_repo:
+                return []
             created = []
             for conv in conversations:
                 conv_id = self.legacy_repo.insert(
@@ -225,7 +227,8 @@ class ConversationRepositoryImpl(
                 conv.id = conv_id
                 created.append(conv)
 
-            self.sync_session.commit()
+            if self.sync_session:
+                self.sync_session.commit()
             return created
 
     async def save_speaker_and_speech_content_list(
@@ -236,7 +239,7 @@ class ConversationRepositoryImpl(
             logger.warning("No conversations to save")
             if self.async_session:
                 await self.async_session.commit()
-            else:
+            elif self.sync_session:
                 self.sync_session.commit()
             return []
 
@@ -259,7 +262,7 @@ class ConversationRepositoryImpl(
 
             if self.async_session:
                 await self.async_session.commit()
-            else:
+            elif self.sync_session:
                 self.sync_session.commit()
 
             if saved_ids:
@@ -279,7 +282,7 @@ class ConversationRepositoryImpl(
         except SQLIntegrityError as e:
             if self.async_session:
                 await self.async_session.rollback()
-            else:
+            elif self.sync_session:
                 self.sync_session.rollback()
             logger.error(f"Integrity error while saving conversations: {e}")
             raise IntegrityError(
@@ -289,7 +292,7 @@ class ConversationRepositoryImpl(
         except SQLAlchemyError as e:
             if self.async_session:
                 await self.async_session.rollback()
-            else:
+            elif self.sync_session:
                 self.sync_session.rollback()
             logger.error(f"Database error while saving conversations: {e}")
             raise SaveError(
@@ -303,7 +306,7 @@ class ConversationRepositoryImpl(
         except Exception as e:
             if self.async_session:
                 await self.async_session.rollback()
-            else:
+            elif self.sync_session:
                 self.sync_session.rollback()
             logger.error(f"Unexpected error while saving conversations: {e}")
             raise SaveError(
@@ -313,7 +316,7 @@ class ConversationRepositoryImpl(
         finally:
             if self.async_session:
                 await self.async_session.close()
-            else:
+            elif self.sync_session:
                 self.sync_session.close()
 
     async def _save_conversation(
@@ -350,6 +353,8 @@ class ConversationRepositoryImpl(
             )
             conversation_id = result.scalar()
         else:
+            if not self.legacy_repo:
+                return None
             conversation_id = self.legacy_repo.insert(
                 table="conversations",
                 data={
@@ -424,6 +429,8 @@ class ConversationRepositoryImpl(
             result = await self.async_session.execute(query)
             return result.scalar() or 0
         else:
+            if not self.sync_session:
+                return 0
             query = text("SELECT COUNT(*) FROM conversations")
             result = self.sync_session.execute(query)
             return result.scalar() or 0
@@ -457,6 +464,13 @@ class ConversationRepositoryImpl(
             }
         else:
             # Sync implementation
+            if not self.sync_session:
+                return {
+                    "total_conversations": 0,
+                    "linked_conversations": 0,
+                    "unlinked_conversations": 0,
+                    "linking_rate": 0,
+                }
             total_query = text("SELECT COUNT(*) FROM conversations")
             total_result = self.sync_session.execute(total_query)
             total = total_result.scalar() or 0
@@ -487,8 +501,8 @@ class ConversationRepositoryImpl(
     ) -> dict[str, Any]:
         """Get conversations with pagination and filters."""
         # Build WHERE conditions
-        conditions = []
-        params = {"limit": page_size, "offset": (page - 1) * page_size}
+        conditions: list[str] = []
+        params: dict[str, Any] = {"limit": page_size, "offset": (page - 1) * page_size}
 
         if speaker_name:
             conditions.append("c.speaker_name ILIKE :speaker_name")
@@ -563,6 +577,14 @@ class ConversationRepositoryImpl(
             rows = data_result.fetchall()
         else:
             # Sync implementation
+            if not self.sync_session:
+                return {
+                    "conversations": [],
+                    "total_count": 0,
+                    "total_pages": 0,
+                    "current_page": page,
+                    "page_size": page_size,
+                }
             count_result = self.sync_session.execute(count_query, params)
             total_count = count_result.scalar() or 0
 
@@ -630,11 +652,13 @@ class ConversationRepositoryImpl(
         if self.async_session:
             result = await self.async_session.execute(update_query)
             await self.async_session.commit()
-            return result.rowcount
+            return result.rowcount  # type: ignore
         else:
+            if not self.sync_session:
+                return 0
             result = self.sync_session.execute(update_query)
             self.sync_session.commit()
-            return result.rowcount
+            return result.rowcount  # type: ignore
 
     def _row_to_entity(self, row: Any) -> Conversation:
         """Convert database row to domain entity."""
