@@ -526,13 +526,28 @@ class ConversationRepositoryImpl(
                 c.sub_chapter_number,
                 c.speaker_id,
                 c.minutes_id,
-                m.title as meeting_title,
+                m.name as meeting_title,
                 m.date as meeting_date,
-                s.name as linked_speaker_name
+                s.name as linked_speaker_name,
+                s.type as speaker_type,
+                s.political_party_name as speaker_party_name,
+                gb.name as governing_body_name,
+                gb.organization_type as governing_body_type,
+                conf.name as conference_name,
+                p.id as politician_id,
+                p.name as politician_name,
+                pp.name as politician_party_name,
+                p.position as politician_position,
+                CASE WHEN p.id IS NOT NULL THEN TRUE ELSE FALSE END
+                    as speaker_is_politician
             FROM conversations c
             LEFT JOIN minutes mi ON c.minutes_id = mi.id
             LEFT JOIN meetings m ON mi.meeting_id = m.id
             LEFT JOIN speakers s ON c.speaker_id = s.id
+            LEFT JOIN conferences conf ON m.conference_id = conf.id
+            LEFT JOIN governing_bodies gb ON conf.governing_body_id = gb.id
+            LEFT JOIN politicians p ON s.id = p.speaker_id
+            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
             WHERE {where_clause}
             ORDER BY c.id DESC
             LIMIT :limit OFFSET :offset
@@ -572,6 +587,16 @@ class ConversationRepositoryImpl(
                     "meeting_title": row.meeting_title,
                     "meeting_date": row.meeting_date,
                     "linked_speaker_name": row.linked_speaker_name,
+                    "speaker_type": row.speaker_type,
+                    "speaker_party_name": row.speaker_party_name,
+                    "governing_body_name": row.governing_body_name,
+                    "governing_body_type": row.governing_body_type,
+                    "conference_name": row.conference_name,
+                    "politician_id": row.politician_id,
+                    "politician_name": row.politician_name,
+                    "politician_party_name": row.politician_party_name,
+                    "politician_position": row.politician_position,
+                    "speaker_is_politician": row.speaker_is_politician,
                 }
             )
 

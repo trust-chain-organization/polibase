@@ -179,7 +179,7 @@ async def test_save_speaker_and_speech_content_list_async(
             speech_content="Content 1",
             speech_order=1,
             chapter_number=1,
-            sub_chapter_number=None,
+            sub_chapter_number=1,
         ),
     ]
 
