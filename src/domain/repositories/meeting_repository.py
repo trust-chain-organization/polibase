@@ -2,6 +2,7 @@
 
 from abc import abstractmethod
 from datetime import date
+from typing import Any
 
 from src.domain.entities.meeting import Meeting
 from src.domain.repositories.base import BaseRepository
@@ -37,4 +38,26 @@ class MeetingRepository(BaseRepository[Meeting]):
         text_uri: str | None = None,
     ) -> bool:
         """Update GCS URIs for a meeting."""
+        pass
+
+    @abstractmethod
+    async def get_meetings_with_filters(
+        self,
+        conference_id: int | None = None,
+        governing_body_id: int | None = None,
+        offset: int = 0,
+        limit: int = 10,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Get meetings with filters and pagination.
+
+        Returns:
+            Tuple of (meetings list, total count)
+        """
+        pass
+
+    @abstractmethod
+    async def get_meeting_by_id_with_info(
+        self, meeting_id: int
+    ) -> dict[str, Any] | None:
+        """Get meeting by ID with conference and governing body info."""
         pass
