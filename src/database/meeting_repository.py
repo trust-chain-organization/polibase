@@ -1,5 +1,9 @@
-"""Meeting repository for database operations"""
+"""Meeting repository for database operations
 
+This is a legacy wrapper that delegates to the new MeetingRepositoryImpl.
+"""
+
+import asyncio
 import logging
 from datetime import date
 from typing import Any
@@ -7,16 +11,69 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from src.database.typed_repository import TypedRepository
+from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
 from src.models.meeting_v2 import Meeting, MeetingCreate, MeetingUpdate
 
 logger = logging.getLogger(__name__)
 
 
 class MeetingRepository(TypedRepository[Meeting]):
-    """Repository class for Meeting-related database operations"""
+    """Repository class for Meeting-related database operations
+
+    This is a legacy wrapper that delegates to the new MeetingRepositoryImpl.
+    """
 
     def __init__(self, session: Session | None = None):
         super().__init__(Meeting, "meetings", use_session=True, session=session)
+        # Initialize the new implementation - delay until session is set
+        self._impl_initialized = False
+        self._impl_session = session
+
+    def _ensure_impl(self):
+        """Ensure implementation is initialized with correct session"""
+        if not self._impl_initialized:
+            self._impl = MeetingRepositoryImpl(session=self.session)
+            self._impl_initialized = True
+
+    def _run_async(self, coro: Any) -> Any:
+        """Run async method in sync context"""
+        loop = None
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop
+            pass
+
+        if loop and loop.is_running():
+            # We're in an async context already
+            import threading
+
+            result_container = {}
+            exception_container = {}
+
+            def run_in_thread():
+                new_loop = None
+                try:
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    result = new_loop.run_until_complete(coro)
+                    result_container["result"] = result
+                except Exception as e:
+                    exception_container["exception"] = e
+                finally:
+                    if new_loop:
+                        new_loop.close()
+
+            thread = threading.Thread(target=run_in_thread)
+            thread.start()
+            thread.join()
+
+            if "exception" in exception_container:
+                raise exception_container["exception"]
+            return result_container.get("result")
+        else:
+            # No running loop, create one
+            return asyncio.run(coro)
 
     def fetch_as_dict(
         self, query: str, params: dict[str, Any] | None = None
@@ -84,48 +141,23 @@ class MeetingRepository(TypedRepository[Meeting]):
         return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
 
     def get_meetings(
-        self, conference_id: int | None = None, limit: int = 100
+        self,
+        conference_id: int | None = None,
+        governing_body_id: int | None = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[dict[str, Any]]:
-        """Get meetings, optionally filtered by conference"""
-        if conference_id:
-            query = """
-            SELECT
-                m.id,
-                m.date,
-                m.url,
-                m.gcs_pdf_uri,
-                m.gcs_text_uri,
-                c.name as conference_name,
-                gb.name as governing_body_name
-            FROM meetings m
-            JOIN conferences c ON m.conference_id = c.id
-            JOIN governing_bodies gb ON c.governing_body_id = gb.id
-            WHERE m.conference_id = :conference_id
-            ORDER BY m.date DESC
-            LIMIT :limit
-            """
-            params = {"conference_id": conference_id, "limit": limit}
-        else:
-            query = """
-            SELECT
-                m.id,
-                m.date,
-                m.url,
-                m.gcs_pdf_uri,
-                m.gcs_text_uri,
-                c.name as conference_name,
-                gb.name as governing_body_name
-            FROM meetings m
-            JOIN conferences c ON m.conference_id = c.id
-            JOIN governing_bodies gb ON c.governing_body_id = gb.id
-            ORDER BY m.date DESC
-            LIMIT :limit
-            """
-            params = {"limit": limit}
-
-        result = self.execute_query(query, params)
-        columns = result.keys()
-        return [dict(zip(columns, row, strict=False)) for row in result.fetchall()]
+        """Get meetings, optionally filtered by conference or governing body"""
+        self._ensure_impl()
+        meetings, _ = self._run_async(
+            self._impl.get_meetings_with_filters(
+                conference_id=conference_id,
+                governing_body_id=governing_body_id,
+                limit=limit,
+                offset=offset,
+            )
+        )
+        return meetings
 
     def create_meeting(
         self,
@@ -188,28 +220,8 @@ class MeetingRepository(TypedRepository[Meeting]):
 
     def get_meeting_by_id_with_info(self, meeting_id: int) -> dict[str, Any] | None:
         """Get a specific meeting by ID with conference and governing body info"""
-        query = """
-        SELECT
-            m.id,
-            m.conference_id,
-            m.date,
-            m.url,
-            m.gcs_pdf_uri,
-            m.gcs_text_uri,
-            c.name as conference_name,
-            c.governing_body_id,
-            gb.name as governing_body_name
-        FROM meetings m
-        JOIN conferences c ON m.conference_id = c.id
-        JOIN governing_bodies gb ON c.governing_body_id = gb.id
-        WHERE m.id = :id
-        """
-        result = self.execute_query(query, {"id": meeting_id})
-        row = result.fetchone()
-        if row:
-            columns = result.keys()
-            return dict(zip(columns, row, strict=False))
-        return None
+        self._ensure_impl()
+        return self._run_async(self._impl.get_meeting_by_id_with_info(meeting_id))
 
     def get_meeting_by_id(self, meeting_id: int) -> Meeting | None:
         """Get a specific meeting by ID (without join info)"""
@@ -217,19 +229,33 @@ class MeetingRepository(TypedRepository[Meeting]):
 
     def update_meeting_gcs_uris(
         self, meeting_id: int, gcs_pdf_uri: str | None, gcs_text_uri: str | None
-    ) -> Meeting | None:
+    ) -> bool:
         """Update GCS URIs for a meeting"""
-        update_dict: dict[str, Any] = {}
-        if gcs_pdf_uri is not None:
-            update_dict["gcs_pdf_uri"] = gcs_pdf_uri
-        if gcs_text_uri is not None:
-            update_dict["gcs_text_uri"] = gcs_text_uri
+        self._ensure_impl()
+        return self._run_async(
+            self._impl.update_gcs_uris(meeting_id, gcs_pdf_uri, gcs_text_uri)
+        )
 
-        # Only update if there's data to update
-        if not update_dict:
-            return None
+    def get_unprocessed_meetings(self, limit: int | None = None) -> list[Meeting]:
+        """Get meetings that haven't been processed yet"""
+        from datetime import datetime
 
-        update_data = MeetingUpdate(**update_dict)
-        return self.update_from_model(meeting_id, update_data)
+        self._ensure_impl()
+        meetings = self._run_async(self._impl.get_unprocessed(limit))
+        # Convert domain entities to Pydantic models
+        return [
+            Meeting(
+                id=m.id,
+                conference_id=m.conference_id,
+                date=m.date,
+                url=m.url,
+                name=m.name,
+                gcs_pdf_uri=m.gcs_pdf_uri,
+                gcs_text_uri=m.gcs_text_uri,
+                created_at=datetime.now(),  # Use current time as default
+                updated_at=datetime.now(),  # Use current time as default
+            )
+            for m in meetings
+        ]
 
     # close() method is inherited from TypedRepository

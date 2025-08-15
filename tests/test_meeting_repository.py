@@ -1,6 +1,7 @@
 """Tests for MeetingRepository"""
 
 from datetime import date, datetime
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from src.database.meeting_repository import MeetingRepository
@@ -11,13 +12,13 @@ class TestMeetingRepository:
     """Test cases for MeetingRepository"""
 
     @patch("src.config.database.get_db_session")
-    def setup_method(self, method, mock_get_db_session):
+    def setup_method(self, method: Any, mock_get_db_session: MagicMock) -> None:
         """Set up test fixtures"""
         self.mock_session = MagicMock()
         mock_get_db_session.return_value = self.mock_session
         self.repo = MeetingRepository()
         # Ensure the repository is using our mock session
-        self.repo._session = self.mock_session
+        self.repo._session = self.mock_session  # type: ignore
 
     def test_get_governing_bodies(self):
         """Test getting all governing bodies"""
@@ -113,6 +114,9 @@ class TestMeetingRepository:
             conference_id=1,
             date=date(2024, 6, 1),
             url="https://example.com/meeting.pdf",
+            name=None,
+            gcs_pdf_uri=None,
+            gcs_text_uri=None,
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
@@ -139,6 +143,9 @@ class TestMeetingRepository:
             conference_id=1,
             date=date(2024, 6, 2),
             url="https://example.com/updated.pdf",
+            name=None,
+            gcs_pdf_uri=None,
+            gcs_text_uri=None,
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
@@ -192,6 +199,9 @@ class TestMeetingRepository:
             conference_id=2,
             date=date(2024, 6, 1),
             url="https://example.com/meeting.pdf",
+            name=None,
+            gcs_pdf_uri=None,
+            gcs_text_uri=None,
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
@@ -209,41 +219,54 @@ class TestMeetingRepository:
     def test_get_meetings_with_filter(self):
         """Test getting meetings with conference filter"""
         # Mock data
-        mock_result = MagicMock()
-        mock_result.keys.return_value = [
-            "id",
-            "date",
-            "url",
-            "gcs_pdf_uri",
-            "gcs_text_uri",
-            "conference_name",
-            "governing_body_name",
-        ]
-        mock_result.fetchall.return_value = [
-            (
-                1,
-                date(2024, 6, 1),
-                "https://example.com/1.pdf",
-                None,
-                None,
-                "本会議",
-                "日本国",
+        mock_rows = [
+            MagicMock(
+                _mapping={
+                    "id": 1,
+                    "conference_id": 1,
+                    "date": date(2024, 6, 1),
+                    "url": "https://example.com/1.pdf",
+                    "name": None,
+                    "gcs_pdf_uri": None,
+                    "gcs_text_uri": None,
+                    "created_at": None,
+                    "updated_at": None,
+                    "conference_name": "本会議",
+                    "governing_body_name": "日本国",
+                    "governing_body_type": "国",
+                }
             ),
-            (
-                2,
-                date(2024, 5, 15),
-                "https://example.com/2.pdf",
-                None,
-                None,
-                "本会議",
-                "日本国",
+            MagicMock(
+                _mapping={
+                    "id": 2,
+                    "conference_id": 1,
+                    "date": date(2024, 5, 15),
+                    "url": "https://example.com/2.pdf",
+                    "name": None,
+                    "gcs_pdf_uri": None,
+                    "gcs_text_uri": None,
+                    "created_at": None,
+                    "updated_at": None,
+                    "conference_name": "本会議",
+                    "governing_body_name": "日本国",
+                    "governing_body_type": "国",
+                }
             ),
         ]
 
-        # Mock execute_query to return the expected data
-        with patch.object(self.repo, "execute_query", return_value=mock_result):
-            # Execute
-            meetings = self.repo.get_meetings(conference_id=1)
+        # Mock count result
+        mock_count_result = MagicMock()
+        mock_count_result.scalar.return_value = 2
+
+        # Mock the session's execute method to return different results
+        # First call returns meeting rows, second call returns count
+        self.mock_session.execute.side_effect = [
+            mock_rows,  # For the main query
+            mock_count_result,  # For the count query
+        ]
+
+        # Execute
+        meetings = self.repo.get_meetings(conference_id=1)
 
         # Assert
         assert len(meetings) == 2
