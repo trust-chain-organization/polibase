@@ -1,76 +1,76 @@
-FROM python:3.13-slim
+# マルチステージビルドを使用して高速化
+# ステージ1: 依存関係のビルド
+FROM python:3.13-slim AS dependencies
 
-# PostgreSQLクライアントとPlaywrightの依存関係をインストール
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
-    curl \
-    # Playwright用の依存関係
-    libnss3 \
-    libnspr4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libdbus-1-3 \
-    libatspi2.0-0 \
-    libx11-6 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxext6 \
-    libxfixes3 \
-    libxrandr2 \
-    libgbm1 \
-    libxcb1 \
-    libxkbcommon0 \
-    libpango-1.0-0 \
-    libcairo2 \
-    libasound2 \
-    libglib2.0-0 \
-    libexpat1 \
-    libxtst6 \
-    libxss1 \
-    fonts-liberation \
-    libappindicator3-1 \
-    libnss3-dev \
-    libgdk-pixbuf-xlib-2.0-0 \
-    libgtk-3-0 \
-    libxshmfence1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# 作業ディレクトリを設定
 WORKDIR /app
 
-# uvを公式インストーラーでインストール
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+# curlをインストールしてからuvをインストール
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# uvをPATHに追加
+# uvをインストール（BuildKitキャッシュマウントを使用）
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cache/uv \
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
 ENV PATH="/root/.local/bin:$PATH"
-
-# 必要なファイルをコピー（順序が重要）
-COPY README.md ./
-COPY pyproject.toml uv.lock ./
-
-# uvのプロジェクト環境を設定（キャッシュ効率を向上）
 ENV UV_PROJECT_ENVIRONMENT=/app/.venv
 ENV UV_CACHE_DIR=/root/.cache/uv
 
-# 依存関係をインストール
-RUN uv sync --frozen
+# 依存関係ファイルのみをコピー（キャッシュ効率向上）
+COPY pyproject.toml uv.lock README.md ./
 
-# Playwrightのブラウザをインストール
-RUN uv run playwright install chromium
+# 依存関係をインストール（キャッシュマウントを使用）
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
+
+# ステージ2: システムパッケージのインストール
+FROM python:3.13-slim AS system-packages
+
+# システムパッケージを並列でインストール
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    curl \
+    # Playwright用の最小限の依存関係
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+    libcups2 libdrm2 libdbus-1-3 libatspi2.0-0 \
+    libx11-6 libxcomposite1 libxdamage1 libxext6 \
+    libxfixes3 libxrandr2 libgbm1 libxcb1 \
+    libxkbcommon0 libpango-1.0-0 libcairo2 libasound2 \
+    libglib2.0-0 libexpat1 libxtst6 libxss1 \
+    fonts-liberation libappindicator3-1 libnss3-dev \
+    libgdk-pixbuf-xlib-2.0-0 libgtk-3-0 libxshmfence1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# ステージ3: 最終イメージ
+FROM system-packages AS final
+
+WORKDIR /app
+
+# uvとPython環境をコピー
+COPY --from=dependencies /root/.local /root/.local
+COPY --from=dependencies /app/.venv /app/.venv
+COPY --from=dependencies /app/pyproject.toml /app/uv.lock /app/README.md ./
+
+ENV PATH="/root/.local/bin:$PATH"
+ENV UV_PROJECT_ENVIRONMENT=/app/.venv
+ENV UV_CACHE_DIR=/root/.cache/uv
+
+# Playwrightのブラウザをインストール（キャッシュマウントを使用）
+RUN --mount=type=cache,target=/root/.cache/ms-playwright \
+    uv run playwright install chromium
 
 # アプリケーションファイルをコピー
 COPY src/ src/
 COPY database/ database/
 COPY scripts/ scripts/
 
-# Docker内でのuv実行用ラッパーを設定
+# 実行権限を設定
 RUN chmod +x scripts/docker-uv-wrapper.sh scripts/docker-entrypoint.sh && \
     ln -sf /app/scripts/docker-uv-wrapper.sh /usr/local/bin/uv-wrapper
 
 # エントリーポイントを設定
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
-
-# コンテナ起動時に実行するコマンド
 CMD ["/bin/bash"]

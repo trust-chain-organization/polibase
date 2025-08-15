@@ -70,6 +70,10 @@ services:
       POSTGRES_DB: polibase_db
       POSTGRES_USER: polibase_user
       POSTGRES_PASSWORD: polibase_password
+      # PostgreSQLの起動を高速化
+      POSTGRES_FSYNC: "off"
+      POSTGRES_SYNCHRONOUS_COMMIT: "off"
+      POSTGRES_FULL_PAGE_WRITES: "off"
     ports:
       - "5432:5432"
     volumes:
@@ -82,10 +86,10 @@ services:
     healthcheck:
       test:
         ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 20s
+      interval: 2s # より頻繁にチェック
+      timeout: 2s
+      retries: 15
+      start_period: 10s # 起動時間を短縮
 
 volumes:
   postgres_data:
