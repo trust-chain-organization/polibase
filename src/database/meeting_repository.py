@@ -52,6 +52,7 @@ class MeetingRepository(TypedRepository[Meeting]):
             exception_container = {}
 
             def run_in_thread():
+                new_loop = None
                 try:
                     new_loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(new_loop)
@@ -60,7 +61,8 @@ class MeetingRepository(TypedRepository[Meeting]):
                 except Exception as e:
                     exception_container["exception"] = e
                 finally:
-                    new_loop.close()
+                    if new_loop:
+                        new_loop.close()
 
             thread = threading.Thread(target=run_in_thread)
             thread.start()
@@ -236,6 +238,8 @@ class MeetingRepository(TypedRepository[Meeting]):
 
     def get_unprocessed_meetings(self, limit: int | None = None) -> list[Meeting]:
         """Get meetings that haven't been processed yet"""
+        from datetime import datetime
+
         self._ensure_impl()
         meetings = self._run_async(self._impl.get_unprocessed(limit))
         # Convert domain entities to Pydantic models
@@ -248,8 +252,8 @@ class MeetingRepository(TypedRepository[Meeting]):
                 name=m.name,
                 gcs_pdf_uri=m.gcs_pdf_uri,
                 gcs_text_uri=m.gcs_text_uri,
-                created_at=None,  # Will be filled by database
-                updated_at=None,  # Will be filled by database
+                created_at=datetime.now(),  # Use current time as default
+                updated_at=datetime.now(),  # Use current time as default
             )
             for m in meetings
         ]

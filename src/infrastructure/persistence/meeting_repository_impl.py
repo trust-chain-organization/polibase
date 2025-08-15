@@ -8,20 +8,11 @@ from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from src.database.meeting_repository import MeetingRepository as LegacyMeetingRepository
 from src.domain.entities.meeting import Meeting
 from src.domain.repositories.meeting_repository import MeetingRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 logger = logging.getLogger(__name__)
-
-
-class MeetingModel:
-    """Meeting database model (dynamic)."""
-
-    def __init__(self, **kwargs: Any):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
 
 
 class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
@@ -40,6 +31,14 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         """
         # Use dynamic model if no model class provided
         if model_class is None:
+            # Define MeetingModel inline to avoid circular imports
+            class MeetingModel:
+                """Meeting database model (dynamic)."""
+
+                def __init__(self, **kwargs: Any):
+                    for key, value in kwargs.items():
+                        setattr(self, key, value)
+
             model_class = MeetingModel
 
         # Handle both async and sync sessions
@@ -59,7 +58,15 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
 
         # Initialize legacy repository if sync session is provided
         if self.sync_session:
-            self.legacy_repo = LegacyMeetingRepository(session=self.sync_session)
+            from src.database.typed_repository import TypedRepository
+
+            # Use the dynamic model class for legacy repo too
+            self.legacy_repo = TypedRepository(
+                self.model_class,
+                "meetings",
+                use_session=True,
+                session=self.sync_session,  # type: ignore
+            )
 
     async def get_by_conference_and_date(
         self, conference_id: int, meeting_date: date
@@ -101,12 +108,21 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             models = result.scalars().all()
             return [self._to_entity(model) for model in models]
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo:
-                meetings = self.legacy_repo.get_meetings(
-                    conference_id=conference_id, limit=limit or 100
-                )
-                return [self._dict_to_entity(m) for m in meetings]
+            # Use raw SQL for sync session
+            if self.sync_session:
+                from sqlalchemy import text
+
+                sql = "SELECT * FROM meetings WHERE conference_id = :conference_id"
+                params = {"conference_id": conference_id}
+                if limit:
+                    sql += " LIMIT :limit"
+                    params["limit"] = limit
+                result = self.sync_session.execute(text(sql), params)
+                meetings = []
+                for row in result:
+                    meeting_dict = dict(row._mapping)  # type: ignore
+                    meetings.append(self._dict_to_entity(meeting_dict))
+                return meetings
             return []
 
     async def get_unprocessed(self, limit: int | None = None) -> list[Meeting]:
@@ -133,7 +149,9 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             return [self._to_entity(model) for model in models]
         else:
             # Use raw SQL for sync session
-            if self.legacy_repo:
+            if self.sync_session:
+                from sqlalchemy import text
+
                 sql = """
                 SELECT m.* FROM meetings m
                 LEFT JOIN minutes min ON m.id = min.meeting_id
@@ -142,7 +160,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 """
                 if limit:
                     sql += f" LIMIT {limit}"
-                result = self.legacy_repo.execute_query(sql)
+                result = self.sync_session.execute(text(sql))
                 meetings = []
                 for row in result:
                     meeting_dict = dict(row._mapping)  # type: ignore
@@ -176,11 +194,27 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             await self.async_session.commit()
             return result.rowcount > 0
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo:
-                return self.legacy_repo.update_meeting_gcs_uris(
-                    meeting_id, pdf_uri, text_uri
+            # Use raw SQL for sync session
+            if self.sync_session:
+                from sqlalchemy import text
+
+                update_parts = []
+                params = {"meeting_id": meeting_id}
+                if pdf_uri is not None:
+                    update_parts.append("gcs_pdf_uri = :pdf_uri")
+                    params["pdf_uri"] = pdf_uri
+                if text_uri is not None:
+                    update_parts.append("gcs_text_uri = :text_uri")
+                    params["text_uri"] = text_uri
+                if not update_parts:
+                    return False
+                sql = (
+                    f"UPDATE meetings SET {', '.join(update_parts)} "
+                    "WHERE id = :meeting_id"
                 )
+                result = self.sync_session.execute(text(sql), params)
+                self.sync_session.commit()
+                return result.rowcount > 0
             return False
 
     async def get_meetings_with_filters(
@@ -249,11 +283,45 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
 
             return meetings, total_count
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo:
-                meetings = self.legacy_repo.get_meetings(
-                    conference_id=conference_id, offset=offset, limit=limit
-                )
+            # Use raw SQL for sync session
+            if self.sync_session:
+                from sqlalchemy import text
+
+                base_query = """
+                SELECT
+                    m.id,
+                    m.conference_id,
+                    m.date,
+                    m.url,
+                    m.name,
+                    m.gcs_pdf_uri,
+                    m.gcs_text_uri,
+                    m.created_at,
+                    m.updated_at,
+                    c.name AS conference_name,
+                    gb.name AS governing_body_name,
+                    gb.type AS governing_body_type
+                FROM meetings m
+                JOIN conferences c ON m.conference_id = c.id
+                JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                WHERE 1=1
+                """
+
+                params = {}
+                if conference_id:
+                    base_query += " AND m.conference_id = :conference_id"
+                    params["conference_id"] = conference_id
+                if governing_body_id:
+                    base_query += " AND gb.id = :governing_body_id"
+                    params["governing_body_id"] = governing_body_id
+
+                base_query += " ORDER BY m.date DESC, m.id DESC"
+                base_query += " LIMIT :limit OFFSET :offset"
+                params["limit"] = limit
+                params["offset"] = offset
+
+                result = self.sync_session.execute(text(base_query), params)
+                meetings = [dict(row._mapping) for row in result]  # type: ignore
                 # Count total
                 count_query = """
                 SELECT COUNT(*)
@@ -309,9 +377,34 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             row = result.first()
             return dict(row._mapping) if row else None  # type: ignore
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo:
-                return self.legacy_repo.get_meeting_by_id_with_info(meeting_id)
+            # Use raw SQL for sync session
+            if self.sync_session:
+                from sqlalchemy import text
+
+                query = """
+                SELECT
+                    m.id,
+                    m.conference_id,
+                    m.date,
+                    m.url,
+                    m.name,
+                    m.gcs_pdf_uri,
+                    m.gcs_text_uri,
+                    m.created_at,
+                    m.updated_at,
+                    c.name AS conference_name,
+                    gb.name AS governing_body_name,
+                    gb.type AS governing_body_type
+                FROM meetings m
+                JOIN conferences c ON m.conference_id = c.id
+                JOIN governing_bodies gb ON c.governing_body_id = gb.id
+                WHERE m.id = :meeting_id
+                """
+                result = self.sync_session.execute(
+                    text(query), {"meeting_id": meeting_id}
+                )
+                row = result.first()
+                return dict(row._mapping) if row else None  # type: ignore
             return None
 
     # Override base methods to handle both async and sync
@@ -320,16 +413,38 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         if self.async_session:
             return await super().create(entity)
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo:
-                created = self.legacy_repo.create_meeting(
-                    conference_id=entity.conference_id,
-                    meeting_date=entity.date or date.today(),
-                    url=entity.url or "",
-                    gcs_pdf_uri=entity.gcs_pdf_uri,
-                    gcs_text_uri=entity.gcs_text_uri,
+            # Use raw SQL for sync session
+            if self.sync_session:
+                from datetime import datetime
+
+                from sqlalchemy import text
+
+                sql = """
+                INSERT INTO meetings (
+                    conference_id, date, url, name,
+                    gcs_pdf_uri, gcs_text_uri, created_at, updated_at
                 )
-                return self._pydantic_to_entity(created)
+                VALUES (
+                    :conference_id, :date, :url, :name,
+                    :gcs_pdf_uri, :gcs_text_uri, :created_at, :updated_at
+                )
+                RETURNING *
+                """
+                params = {
+                    "conference_id": entity.conference_id,
+                    "date": entity.date or date.today(),
+                    "url": entity.url or "",
+                    "name": entity.name,
+                    "gcs_pdf_uri": entity.gcs_pdf_uri,
+                    "gcs_text_uri": entity.gcs_text_uri,
+                    "created_at": datetime.now(),
+                    "updated_at": datetime.now(),
+                }
+                result = self.sync_session.execute(text(sql), params)
+                self.sync_session.commit()
+                row = result.first()
+                if row:
+                    return self._dict_to_entity(dict(row._mapping))  # type: ignore
             raise RuntimeError("No session available")
 
     async def update(self, entity: Meeting) -> Meeting:
@@ -337,17 +452,39 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         if self.async_session:
             return await super().update(entity)
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo and entity.id:
-                updated = self.legacy_repo.update_meeting(
-                    entity.id,
-                    meeting_date=entity.date,
-                    url=entity.url,
-                    gcs_pdf_uri=entity.gcs_pdf_uri,
-                    gcs_text_uri=entity.gcs_text_uri,
-                )
-                if updated:
-                    return self._pydantic_to_entity(updated)
+            # Use raw SQL for sync session
+            if self.sync_session and entity.id:
+                from datetime import datetime
+
+                from sqlalchemy import text
+
+                sql = """
+                UPDATE meetings
+                SET conference_id = :conference_id,
+                    date = :date,
+                    url = :url,
+                    name = :name,
+                    gcs_pdf_uri = :gcs_pdf_uri,
+                    gcs_text_uri = :gcs_text_uri,
+                    updated_at = :updated_at
+                WHERE id = :id
+                RETURNING *
+                """
+                params = {
+                    "id": entity.id,
+                    "conference_id": entity.conference_id,
+                    "date": entity.date,
+                    "url": entity.url,
+                    "name": entity.name,
+                    "gcs_pdf_uri": entity.gcs_pdf_uri,
+                    "gcs_text_uri": entity.gcs_text_uri,
+                    "updated_at": datetime.now(),
+                }
+                result = self.sync_session.execute(text(sql), params)
+                self.sync_session.commit()
+                row = result.first()
+                if row:
+                    return self._dict_to_entity(dict(row._mapping))  # type: ignore
             raise RuntimeError("Failed to update meeting")
 
     async def delete(self, entity_id: int) -> bool:
@@ -355,9 +492,25 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         if self.async_session:
             return await super().delete(entity_id)
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo:
-                return self.legacy_repo.delete_meeting(entity_id)
+            # Use raw SQL for sync session
+            if self.sync_session:
+                from sqlalchemy import text
+
+                # First check if there are related minutes
+                check_sql = (
+                    "SELECT COUNT(*) FROM minutes WHERE meeting_id = :meeting_id"
+                )
+                result = self.sync_session.execute(
+                    text(check_sql), {"meeting_id": entity_id}
+                )
+                count = result.scalar()
+                if count and count > 0:
+                    return False
+
+                sql = "DELETE FROM meetings WHERE id = :id"
+                result = self.sync_session.execute(text(sql), {"id": entity_id})
+                self.sync_session.commit()
+                return getattr(result, "rowcount", 0) > 0  # type: ignore
             return False
 
     async def get_by_id(self, entity_id: int) -> Meeting | None:
@@ -365,10 +518,15 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         if self.async_session:
             return await super().get_by_id(entity_id)
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo:
-                meeting = self.legacy_repo.get_meeting_by_id(entity_id)
-                return self._pydantic_to_entity(meeting) if meeting else None
+            # Use raw SQL for sync session
+            if self.sync_session:
+                from sqlalchemy import text
+
+                sql = "SELECT * FROM meetings WHERE id = :id"
+                result = self.sync_session.execute(text(sql), {"id": entity_id})
+                row = result.first()
+                if row:
+                    return self._dict_to_entity(dict(row._mapping))  # type: ignore
             return None
 
     async def get_all(
@@ -378,12 +536,20 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         if self.async_session:
             return await super().get_all(limit, offset)
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo:
-                meetings = self.legacy_repo.get_meetings(
-                    limit=limit or 100, offset=offset or 0
-                )
-                return [self._dict_to_entity(m) for m in meetings]
+            # Use raw SQL for sync session
+            if self.sync_session:
+                from sqlalchemy import text
+
+                sql = "SELECT * FROM meetings ORDER BY date DESC"
+                params = {}
+                if limit:
+                    sql += " LIMIT :limit"
+                    params["limit"] = limit
+                if offset:
+                    sql += " OFFSET :offset"
+                    params["offset"] = offset
+                result = self.sync_session.execute(text(sql), params)
+                return [self._dict_to_entity(dict(row._mapping)) for row in result]  # type: ignore
             return []
 
     # Conversion methods
