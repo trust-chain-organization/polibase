@@ -85,7 +85,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         else:
             # Use legacy repository for sync session
             if self.legacy_repo:
-                meetings = self.legacy_repo.get_meetings(
+                meetings = self.legacy_repo.get_meetings(  # type: ignore
                     conference_id=conference_id, limit=100
                 )
                 for meeting_dict in meetings:
@@ -199,7 +199,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 from sqlalchemy import text
 
                 update_parts = []
-                params = {"meeting_id": meeting_id}
+                params: dict[str, Any] = {"meeting_id": meeting_id}
                 if pdf_uri is not None:
                     update_parts.append("gcs_pdf_uri = :pdf_uri")
                     params["pdf_uri"] = pdf_uri
@@ -214,7 +214,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 )
                 result = self.sync_session.execute(text(sql), params)
                 self.sync_session.commit()
-                return result.rowcount > 0
+                return getattr(result, "rowcount", 0) > 0  # type: ignore
             return False
 
     async def get_meetings_with_filters(
