@@ -448,7 +448,19 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         if self.sync_session:
             result = self.sync_session.execute(text(query), params or {})
             rows = result.fetchall()
-            return [dict(row) for row in rows]  # type: ignore
+            # SQLAlchemy Row objects need special handling
+            result_list = []
+            for row in rows:
+                if hasattr(row, "_mapping"):
+                    # SQLAlchemy 2.0+ Row object
+                    result_list.append(dict(row._mapping))
+                elif hasattr(row, "keys"):
+                    # SQLAlchemy 1.4 Row object
+                    result_list.append(dict(zip(row.keys(), row, strict=False)))
+                else:
+                    # Fallback for other row types
+                    result_list.append(dict(row))
+            return result_list
         return []
 
     # Alias for backward compatibility with streamlit code
