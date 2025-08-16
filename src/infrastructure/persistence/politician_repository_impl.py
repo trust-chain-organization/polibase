@@ -159,9 +159,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
 
-    async def search_by_name(
-        self, name_pattern: str
-    ) -> list[Politician] | list[dict[str, Any]]:
+    async def search_by_name(self, name_pattern: str) -> list[Politician]:
         """Search politicians by name pattern."""
         if self.async_session:
             query = text("""
@@ -175,25 +173,20 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
         else:
-            # Sync implementation for backward compatibility
+            # Sync implementation - still return Politician objects
             if not self.sync_session:
                 return []
 
-            # Return as dict for backward compatibility
             query = text("""
-                SELECT
-                    p.*,
-                    pp.name as party_name
-                FROM politicians p
-                LEFT JOIN political_parties pp ON p.political_party_id = pp.id
-                WHERE p.name ILIKE :pattern
-                ORDER BY p.name
+                SELECT * FROM politicians
+                WHERE name ILIKE :pattern
+                ORDER BY name
             """)
             result = self.sync_session.execute(query, {"pattern": f"%{name_pattern}%"})
             rows = result.fetchall()
 
-            # Return as list of dicts for backward compatibility with matching_service
-            return [dict(row) for row in rows]
+            # Return as Politician objects for consistency
+            return [self._row_to_entity(row) for row in rows]
 
     async def upsert(self, politician: Politician) -> Politician:
         """Insert or update politician (upsert)."""
@@ -315,7 +308,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
 
         # Handle both Row and dict objects
         if hasattr(row, "_mapping"):
-            data = dict(row)
+            data = dict(row._mapping)
         elif isinstance(row, dict):
             data = row
         else:
@@ -378,11 +371,17 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         """Create a new politician entity (async) without committing."""
         # Create without committing (for bulk operations)
         model = self._to_model(entity)
-        self.session.add(model)
-        # Don't commit here - let the caller decide when to commit
-        # await self.session.commit()
-        await self.session.flush()  # Flush to get the ID without committing
-        await self.session.refresh(model)
+
+        if self.async_session:
+            self.async_session.add(model)
+            # Don't commit here - let the caller decide when to commit
+            await self.async_session.flush()  # Flush to get the ID without committing
+            await self.async_session.refresh(model)
+        elif self.sync_session:
+            self.sync_session.add(model)
+            self.sync_session.flush()
+            self.sync_session.refresh(model)
+
         return self._to_entity(model)
 
     # Sync wrapper methods for backward compatibility
@@ -399,6 +398,23 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             query += " LIMIT 1"
             return self.legacy_repo.fetch_one(query, params)
         return None
+
+    def find_by_name(self, name: str) -> list[Any]:
+        """Find politicians by name (backward compatibility)."""
+        if self.sync_session:
+            from src.database.politician_repository import (
+                PoliticianRepository as LegacyPoliticianRepository,
+            )
+
+            legacy_repo = LegacyPoliticianRepository(db=self.sync_session)
+            return legacy_repo.search_by_name(name)
+        return []
+
+    def execute_query(
+        self, query: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
+        """Execute raw SQL query (backward compatibility)."""
+        return self.fetch_as_dict_sync(query, params)
 
     def create_sync(self, politician_create: PoliticianCreate) -> Any:
         """Sync wrapper for create (backward compatibility)."""

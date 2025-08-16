@@ -199,12 +199,11 @@ class SpeakerExtractorFromMinutes:
                                 SELECT name FROM political_parties
                                 WHERE id = :party_id
                             """
-                            result = self.politician_repo.execute_query(
+                            rows = self.politician_repo.execute_query(
                                 party_query, {"party_id": politician.political_party_id}
                             )
-                            rows = result.fetchall()
                             if rows:
-                                party_name = rows[0][0]
+                                party_name = rows[0].get("name", "")
 
                     self.speaker_repo.execute_query(
                         update_query,
@@ -244,13 +243,12 @@ class SpeakerExtractorFromMinutes:
                                         SELECT name FROM political_parties
                                         WHERE id = :party_id
                                     """
-                                    result = self.politician_repo.execute_query(
+                                    rows = self.politician_repo.execute_query(
                                         party_query, {"party_id": p.political_party_id}
                                     )
-                                    rows = result.fetchall()
                                     if (
                                         rows
-                                        and rows[0][0]
+                                        and rows[0].get("name", "")
                                         == speaker["political_party_name"]
                                     ):
                                         matched_politicians.append(p)

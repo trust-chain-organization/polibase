@@ -28,9 +28,7 @@ class PoliticianRepository(BaseRepository[Politician]):
         pass
 
     @abstractmethod
-    async def search_by_name(
-        self, name_pattern: str
-    ) -> list[Politician] | list[dict[str, Any]]:
+    async def search_by_name(self, name_pattern: str) -> list[Politician]:
         """Search politicians by name pattern."""
         pass
 
