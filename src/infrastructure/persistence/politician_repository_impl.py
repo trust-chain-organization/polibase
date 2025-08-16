@@ -308,7 +308,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
 
         # Handle both Row and dict objects
         if hasattr(row, "_mapping"):
-            data = dict(row._mapping)
+            data = dict(getattr(row, "_mapping"))  # noqa: B009
         elif isinstance(row, dict):
             data = row
         else:
@@ -468,7 +468,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                 try:
                     # Try _mapping with getattr to avoid direct access
                     if hasattr(row, "_mapping"):
-                        mapping = getattr(row, "_mapping")
+                        mapping = getattr(row, "_mapping")  # noqa: B009
                         result_list.append(dict(mapping))
                     elif hasattr(row, "keys"):
                         # SQLAlchemy 1.4 Row object
