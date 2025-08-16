@@ -400,15 +400,9 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         return None
 
     def find_by_name(self, name: str) -> list[Any]:
-        """Find politicians by name (backward compatibility)."""
-        if self.sync_session:
-            from src.database.politician_repository import (
-                PoliticianRepository as LegacyPoliticianRepository,
-            )
-
-            legacy_repo = LegacyPoliticianRepository(db=self.sync_session)
-            return legacy_repo.search_by_name(name)
-        return []
+        """Find politicians by name (backward compatibility for extract_speakers_from_minutes)."""
+        # Use the existing search_by_name_sync method
+        return self.search_by_name_sync(name)
 
     def execute_query(
         self, query: str, params: dict[str, Any] | None = None
