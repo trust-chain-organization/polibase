@@ -12,7 +12,9 @@ from src.database.extracted_conference_member_repository import (
 from src.database.politician_affiliation_repository import (
     PoliticianAffiliationRepository,
 )
-from src.database.politician_repository import PoliticianRepository
+from src.infrastructure.persistence.politician_repository_impl import (
+    PoliticianRepositoryImpl,
+)
 from src.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
@@ -23,7 +25,10 @@ class ConferenceMemberMatchingService:
 
     def __init__(self):
         self.extracted_repo = ExtractedConferenceMemberRepository()
-        self.politician_repo = PoliticianRepository()
+        from src.config.database import get_db_session
+
+        session = get_db_session()
+        self.politician_repo = PoliticianRepositoryImpl(session)
         self.affiliation_repo = PoliticianAffiliationRepository()
         self.llm_service = LLMService()
 
@@ -32,7 +37,7 @@ class ConferenceMemberMatchingService:
     ) -> list[dict[str, Any]]:
         """候補となる政治家を検索"""
         # 名前で検索（部分一致も含む）
-        candidates = self.politician_repo.search_by_name(extracted_name)
+        candidates = self.politician_repo.search_by_name_sync(extracted_name)
 
         # 完全一致を優先
         exact_matches = [c for c in candidates if c["name"] == extracted_name]

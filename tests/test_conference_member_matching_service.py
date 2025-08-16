@@ -32,6 +32,7 @@ class TestConferenceMemberMatchingService:
         """Create a mock politician repository"""
         repo = Mock()
         repo.search_by_name = Mock()
+        repo.search_by_name_sync = Mock()  # Add mock for sync method
         return repo
 
     @pytest.fixture
@@ -54,25 +55,29 @@ class TestConferenceMemberMatchingService:
             return_value=mock_extracted_repo,
         ):
             with patch(
-                "src.conference_member_extractor.matching_service.PoliticianRepository",
-                return_value=mock_politician_repo,
+                "src.config.database.get_db_session",
+                return_value=Mock(),
             ):
                 with patch(
-                    "src.conference_member_extractor.matching_service.LLMService",
-                    return_value=mock_llm_service,
+                    "src.conference_member_extractor.matching_service.PoliticianRepositoryImpl",
+                    return_value=mock_politician_repo,
                 ):
                     with patch(
-                        "src.conference_member_extractor.matching_service.PoliticianAffiliationRepository",
-                        return_value=mock_affiliation_repo,
+                        "src.conference_member_extractor.matching_service.LLMService",
+                        return_value=mock_llm_service,
                     ):
-                        return ConferenceMemberMatchingService()
+                        with patch(
+                            "src.conference_member_extractor.matching_service.PoliticianAffiliationRepository",
+                            return_value=mock_affiliation_repo,
+                        ):
+                            return ConferenceMemberMatchingService()
 
     def test_find_politician_candidates_exact_match_with_party(
         self, service, mock_politician_repo
     ):
         """Test finding candidates with exact name and party match"""
         # Setup
-        mock_politician_repo.search_by_name.return_value = [
+        mock_politician_repo.search_by_name_sync.return_value = [
             {"id": 100, "name": "山田太郎", "party_name": "自民党"},
             {"id": 101, "name": "山田太郎", "party_name": "立憲民主党"},
         ]
@@ -90,7 +95,7 @@ class TestConferenceMemberMatchingService:
     ):
         """Test finding candidates with exact name match but no party info"""
         # Setup
-        mock_politician_repo.search_by_name.return_value = [
+        mock_politician_repo.search_by_name_sync.return_value = [
             {"id": 100, "name": "山田太郎", "party_name": "自民党"},
             {
                 "id": 101,
@@ -111,7 +116,7 @@ class TestConferenceMemberMatchingService:
     ):
         """Test finding candidates with partial matches only"""
         # Setup
-        mock_politician_repo.search_by_name.return_value = [
+        mock_politician_repo.search_by_name_sync.return_value = [
             {"id": 100, "name": "山田太郎次", "party_name": "自民党"},
             {"id": 101, "name": "山田太郎三", "party_name": "立憲民主党"},
         ]
@@ -219,7 +224,7 @@ class TestConferenceMemberMatchingService:
             "extracted_party_name": "自民党",
         }
 
-        mock_politician_repo.search_by_name.return_value = [
+        mock_politician_repo.search_by_name_sync.return_value = [
             {"id": 100, "name": "山田太郎", "party_name": "自民党"}
         ]
 
@@ -248,7 +253,7 @@ class TestConferenceMemberMatchingService:
             "extracted_party_name": "自民党",
         }
 
-        mock_politician_repo.search_by_name.return_value = [
+        mock_politician_repo.search_by_name_sync.return_value = [
             {
                 "id": 100,
                 "name": "山田太郎",
@@ -289,7 +294,7 @@ class TestConferenceMemberMatchingService:
             "extracted_party_name": "自民党",
         }
 
-        mock_politician_repo.search_by_name.return_value = []  # No candidates
+        mock_politician_repo.search_by_name_sync.return_value = []  # No candidates
 
         # Execute
         result = service.process_extracted_member(member)
@@ -329,7 +334,9 @@ class TestConferenceMemberMatchingService:
             else:
                 return [{"id": 102, "name": "佐藤次郎", "party_name": "公明党"}]
 
-        mock_politician_repo.search_by_name.side_effect = search_by_name_side_effect
+        mock_politician_repo.search_by_name_sync.side_effect = (
+            search_by_name_side_effect
+        )
 
         # Execute
         result = service.process_pending_members(1)

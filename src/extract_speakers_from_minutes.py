@@ -14,9 +14,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from src.config.database import DATABASE_URL
 from src.database.conversation_repository import ConversationRepository
 from src.database.meeting_repository import MeetingRepository
-from src.database.politician_repository import PoliticianRepository
 from src.database.speaker_matching_service import SpeakerMatchingService
 from src.database.speaker_repository import SpeakerRepository
+from src.infrastructure.persistence.politician_repository_impl import (
+    PoliticianRepositoryImpl,
+)
 
 # ロギング設定
 logging.basicConfig(
@@ -38,7 +40,7 @@ class SpeakerExtractorFromMinutes:
     def __init__(self, session: Session):
         self.session = session
         self.speaker_repo = SpeakerRepository(session=session)
-        self.politician_repo = PoliticianRepository(db=session)
+        self.politician_repo = PoliticianRepositoryImpl(session)
         self.conversation_repo = ConversationRepository(session=session)
         self.meeting_repo = MeetingRepository(session=session)
         # Speaker matching service will be initialized when needed with LLM
@@ -197,12 +199,11 @@ class SpeakerExtractorFromMinutes:
                                 SELECT name FROM political_parties
                                 WHERE id = :party_id
                             """
-                            result = self.politician_repo.execute_query(
+                            rows = self.politician_repo.execute_query(
                                 party_query, {"party_id": politician.political_party_id}
                             )
-                            rows = result.fetchall()
                             if rows:
-                                party_name = rows[0][0]
+                                party_name = rows[0].get("name", "")
 
                     self.speaker_repo.execute_query(
                         update_query,
@@ -242,13 +243,12 @@ class SpeakerExtractorFromMinutes:
                                         SELECT name FROM political_parties
                                         WHERE id = :party_id
                                     """
-                                    result = self.politician_repo.execute_query(
+                                    rows = self.politician_repo.execute_query(
                                         party_query, {"party_id": p.political_party_id}
                                     )
-                                    rows = result.fetchall()
                                     if (
                                         rows
-                                        and rows[0][0]
+                                        and rows[0].get("name", "")
                                         == speaker["political_party_name"]
                                     ):
                                         matched_politicians.append(p)
