@@ -334,7 +334,9 @@ class TestConferenceMemberMatchingService:
             else:
                 return [{"id": 102, "name": "佐藤次郎", "party_name": "公明党"}]
 
-        mock_politician_repo.search_by_name_sync.side_effect = search_by_name_side_effect
+        mock_politician_repo.search_by_name_sync.side_effect = (
+            search_by_name_side_effect
+        )
 
         # Execute
         result = service.process_pending_members(1)
