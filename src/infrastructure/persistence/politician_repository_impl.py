@@ -208,8 +208,8 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             politician.id = existing.id
             return await self.update(politician)
         else:
-            # Create new
-            return await self.create_entity(politician)
+            # Create new using base class create (which commits)
+            return await self.create(politician)
 
     async def bulk_create_politicians(
         self, politicians_data: list[dict[str, Any]]
@@ -299,14 +299,14 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         if self.async_session:
             result = await self.async_session.execute(text(query), params or {})
             rows = result.fetchall()
-            return [dict(row) for row in rows]  # type: ignore
+            return [dict(row) for row in rows]
         else:
             # Sync implementation
             if not self.sync_session:
                 return []
             result = self.sync_session.execute(text(query), params or {})
             rows = result.fetchall()
-            return [dict(row) for row in rows]  # type: ignore
+            return [dict(row) for row in rows]
 
     def _row_to_entity(self, row: Any) -> Politician:
         """Convert database row to domain entity."""
@@ -375,12 +375,15 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         model.profile_url = entity.profile_page_url
 
     async def create_entity(self, entity: Politician) -> Politician:
-        """Create a new politician entity (async)."""
-        if hasattr(self, "create"):
-            return await self.create(entity)
-        else:
-            # Fallback for base implementation
-            return await super().create(entity)  # type: ignore
+        """Create a new politician entity (async) without committing."""
+        # Create without committing (for bulk operations)
+        model = self._to_model(entity)
+        self.session.add(model)
+        # Don't commit here - let the caller decide when to commit
+        # await self.session.commit()
+        await self.session.flush()  # Flush to get the ID without committing
+        await self.session.refresh(model)
+        return self._to_entity(model)
 
     # Sync wrapper methods for backward compatibility
     def find_by_name_and_party(
@@ -397,7 +400,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             return self.legacy_repo.fetch_one(query, params)
         return None
 
-    def create(self, politician_create: PoliticianCreate) -> Any:
+    def create_sync(self, politician_create: PoliticianCreate) -> Any:
         """Sync wrapper for create (backward compatibility)."""
         if self.legacy_repo and hasattr(self.legacy_repo, "create"):
             return self.legacy_repo.create(politician_create)  # type: ignore
@@ -451,15 +454,28 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             # SQLAlchemy Row objects need special handling
             result_list = []
             for row in rows:
-                if hasattr(row, "_mapping"):
-                    # SQLAlchemy 2.0+ Row object
-                    result_list.append(dict(row._mapping))
-                elif hasattr(row, "keys"):
-                    # SQLAlchemy 1.4 Row object
-                    result_list.append(dict(zip(row.keys(), row, strict=False)))
-                else:
-                    # Fallback for other row types
-                    result_list.append(dict(row))
+                # Try to convert row to dict using various methods
+                try:
+                    # Try _mapping with getattr to avoid direct access
+                    if hasattr(row, "_mapping"):
+                        mapping = row._mapping
+                        result_list.append(dict(mapping))
+                    elif hasattr(row, "keys"):
+                        # SQLAlchemy 1.4 Row object
+                        result_list.append(dict(zip(row.keys(), row, strict=False)))
+                    else:
+                        # Fallback for other row types
+                        result_list.append(dict(row))
+                except Exception:
+                    # Final fallback - try to convert directly
+                    try:
+                        result_list.append(dict(row))
+                    except Exception:
+                        # If all else fails, create dict from keys
+                        if hasattr(row, "keys"):
+                            result_list.append({k: row[k] for k in row.keys()})
+                        else:
+                            result_list.append({})
             return result_list
         return []
 

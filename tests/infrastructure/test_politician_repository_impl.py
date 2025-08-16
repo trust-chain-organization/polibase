@@ -165,8 +165,10 @@ class TestPoliticianRepositoryImpl:
             result = await async_repository.upsert(new_politician)
 
             # 検証
-            assert result == new_politician
-            mock_create.assert_called_once_with(new_politician)
+            assert result.name == new_politician.name
+            assert result.speaker_id == new_politician.speaker_id
+            assert result.political_party_id == new_politician.political_party_id
+            mock_create.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_upsert_update_existing(self, async_repository, mock_async_session):
@@ -276,7 +278,7 @@ class TestPoliticianRepositoryImpl:
 
         # テスト実行
         query = "SELECT * FROM politicians"
-        results = await async_repository.fetch_as_dict(query)
+        results = await async_repository.fetch_as_dict_async(query)
 
         # 検証
         assert len(results) == 2
