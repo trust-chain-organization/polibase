@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 
+# pyright: reportIncompatibleMethodOverride=false
 class AsyncSessionAdapter(AsyncSession):  # type: ignore[misc]
     """Adapter that wraps sync Session to act like AsyncSession."""
 
@@ -17,7 +18,7 @@ class AsyncSessionAdapter(AsyncSession):  # type: ignore[misc]
 
     async def execute(
         self, statement: Any, params: dict[str, Any] | None = None
-    ) -> Result[Any]:  # type: ignore[override]
+    ) -> Result[Any]:
         """Execute a statement synchronously but return as if async."""
         if params:
             return self.sync_session.execute(statement, params)
@@ -35,14 +36,14 @@ class AsyncSessionAdapter(AsyncSession):  # type: ignore[misc]
         """Close synchronously but return as if async."""
         self.sync_session.close()
 
-    def add(self, instance: Any) -> None:  # type: ignore[override]
+    def add(self, instance: Any) -> None:
         """Add instance to session."""
         self.sync_session.add(instance)
 
-    async def flush(self) -> None:  # type: ignore[override]
+    async def flush(self) -> None:
         """Flush synchronously but return as if async."""
         self.sync_session.flush()
 
-    async def refresh(self, instance: Any) -> None:  # type: ignore[override]
+    async def refresh(self, instance: Any) -> None:
         """Refresh instance synchronously but return as if async."""
         self.sync_session.refresh(instance)
