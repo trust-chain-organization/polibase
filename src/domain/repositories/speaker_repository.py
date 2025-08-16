@@ -1,6 +1,7 @@
 """Speaker repository interface."""
 
 from abc import abstractmethod
+from typing import Any
 
 from src.application.dtos.speaker_dto import SpeakerWithConversationCountDTO
 from src.domain.entities.speaker import Speaker
@@ -44,4 +45,24 @@ class SpeakerRepository(BaseRepository[Speaker]):
         is_politician: bool | None = None,
     ) -> list[SpeakerWithConversationCountDTO]:
         """Get speakers with their conversation count."""
+        pass
+
+    @abstractmethod
+    async def find_by_name(self, name: str) -> Speaker | None:
+        """Find speaker by name."""
+        pass
+
+    @abstractmethod
+    async def get_speakers_not_linked_to_politicians(self) -> list[Speaker]:
+        """Get speakers who are not linked to politicians (is_politician=False)."""
+        pass
+
+    @abstractmethod
+    async def get_speakers_with_politician_info(self) -> list[dict[str, Any]]:
+        """Get speakers with linked politician information."""
+        pass
+
+    @abstractmethod
+    async def get_speaker_politician_stats(self) -> dict[str, int | float]:
+        """Get statistics of speaker-politician linkage."""
         pass
