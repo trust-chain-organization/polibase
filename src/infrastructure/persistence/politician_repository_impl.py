@@ -400,7 +400,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         return None
 
     def find_by_name(self, name: str) -> list[Any]:
-        """Find politicians by name (backward compatibility for extract_speakers_from_minutes)."""
+        """Find politicians by name (for backward compatibility)."""
         # Use the existing search_by_name_sync method
         return self.search_by_name_sync(name)
 
@@ -468,7 +468,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                 try:
                     # Try _mapping with getattr to avoid direct access
                     if hasattr(row, "_mapping"):
-                        mapping = row._mapping
+                        mapping = getattr(row, "_mapping")
                         result_list.append(dict(mapping))
                     elif hasattr(row, "keys"):
                         # SQLAlchemy 1.4 Row object
