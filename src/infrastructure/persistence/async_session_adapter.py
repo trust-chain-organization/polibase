@@ -15,7 +15,9 @@ class AsyncSessionAdapter(AsyncSession):  # type: ignore[misc]
         self.sync_session = sync_session
         # Don't call super().__init__ as we're just wrapping
 
-    async def execute(self, statement: Any, params: dict[str, Any] | None = None) -> Result[Any]:  # type: ignore[override]
+    async def execute(
+        self, statement: Any, params: dict[str, Any] | None = None
+    ) -> Result[Any]:  # type: ignore[override]
         """Execute a statement synchronously but return as if async."""
         if params:
             return self.sync_session.execute(statement, params)
