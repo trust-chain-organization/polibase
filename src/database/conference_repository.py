@@ -6,7 +6,7 @@ This is a legacy wrapper that delegates to the new ConferenceRepositoryImpl.
 import logging
 from collections.abc import Coroutine
 from types import TracebackType
-from typing import Any, TypedDict, TypeVar
+from typing import Any, TypeVar
 
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -22,20 +22,6 @@ from src.exceptions import (
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
-
-
-class ConferenceDict(TypedDict, total=False):
-    """Type definition for conference dictionary."""
-
-    id: int
-    name: str
-    type: str | None
-    governing_body_id: int
-    members_introduction_url: str | None
-    created_at: Any  # datetime not imported to avoid circular dependency
-    updated_at: Any  # datetime not imported to avoid circular dependency
-    governing_body_name: str | None
-    governing_body_type: str | None
 
 
 class ConferenceRepository:
@@ -172,7 +158,7 @@ class ConferenceRepository:
         if self.connection and self.engine:
             self.connection.close()
 
-    def get_all_conferences(self) -> list[ConferenceDict]:
+    def get_all_conferences(self) -> list[dict[str, Any]]:
         """Get all conferences with governing body information."""
         if not self.connection:
             if self.engine is not None:
@@ -200,7 +186,7 @@ class ConferenceRepository:
             result = self.connection.execute(query)
             rows = result.fetchall()
 
-            return [dict(row) for row in rows]  # type: ignore[return-value]
+            return [dict(row) for row in rows]
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting all conferences: {e}")
@@ -208,7 +194,7 @@ class ConferenceRepository:
                 "Failed to get all conferences", {"error": str(e)}
             ) from e
 
-    def get_conference_by_id(self, conference_id: int) -> ConferenceDict | None:
+    def get_conference_by_id(self, conference_id: int) -> dict[str, Any] | None:
         """Get conference by ID with governing body information."""
         if not self.connection:
             if self.engine is not None:
@@ -237,7 +223,7 @@ class ConferenceRepository:
             row = result.fetchone()
 
             if row:
-                return dict(row)  # type: ignore[return-value]
+                return dict(row)
             return None
 
         except SQLAlchemyError as e:
@@ -249,24 +235,24 @@ class ConferenceRepository:
 
     def get_conferences_by_governing_body(
         self, governing_body_id: int
-    ) -> list[ConferenceDict]:
+    ) -> list[dict[str, Any]]:
         """Get all conferences for a governing body."""
         conferences = self._run_async(
             self._impl.get_by_governing_body(governing_body_id)
         )
 
         # Convert entities to dict format expected by legacy code
-        result: list[ConferenceDict] = []
+        result: list[dict[str, Any]] = []
         if conferences:
             for conf in conferences:
                 result.append(
-                    ConferenceDict(
-                        id=conf.id,
-                        name=conf.name,
-                        type=conf.type,
-                        governing_body_id=conf.governing_body_id,
-                        members_introduction_url=conf.members_introduction_url,
-                    )
+                    {
+                        "id": conf.id,
+                        "name": conf.name,
+                        "type": conf.type,
+                        "governing_body_id": conf.governing_body_id,
+                        "members_introduction_url": conf.members_introduction_url,
+                    }
                 )
         return result
 
