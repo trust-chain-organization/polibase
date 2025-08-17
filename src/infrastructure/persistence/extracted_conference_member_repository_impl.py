@@ -16,6 +16,19 @@ from src.infrastructure.persistence.base_repository_impl import BaseRepositoryIm
 class ExtractedConferenceMemberModel:
     """Extracted conference member database model (dynamic)."""
 
+    id: int | None
+    conference_id: int
+    extracted_name: str
+    source_url: str
+    extracted_role: str | None
+    extracted_party_name: str | None
+    extracted_at: datetime
+    matched_politician_id: int | None
+    matching_confidence: float | None
+    matching_status: str
+    matched_at: datetime | None
+    additional_data: str | None
+
     def __init__(self, **kwargs: Any):
         for key, value in kwargs.items():
             setattr(self, key, value)

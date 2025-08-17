@@ -15,6 +15,10 @@ from src.infrastructure.persistence.base_repository_impl import BaseRepositoryIm
 class PoliticalPartyModel:
     """Political party database model (dynamic)."""
 
+    id: int | None
+    name: str
+    members_list_url: str | None
+
     def __init__(self, **kwargs: Any):
         for key, value in kwargs.items():
             setattr(self, key, value)
