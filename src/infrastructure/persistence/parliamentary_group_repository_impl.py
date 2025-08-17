@@ -92,7 +92,7 @@ class ParliamentaryGroupRepositoryImpl(
             is_active=row.is_active,
         )
 
-    def _to_entity(self, model: Any) -> ParliamentaryGroup:
+    def _to_entity(self, model: ParliamentaryGroupModel) -> ParliamentaryGroup:
         """Convert database model to domain entity."""
         return ParliamentaryGroup(
             id=model.id,

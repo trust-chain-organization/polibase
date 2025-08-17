@@ -195,7 +195,9 @@ class ExtractedConferenceMemberRepositoryImpl(
             additional_data=getattr(row, "additional_data", None),
         )
 
-    def _to_entity(self, model: Any) -> ExtractedConferenceMember:
+    def _to_entity(
+        self, model: ExtractedConferenceMemberModel
+    ) -> ExtractedConferenceMember:
         """Convert database model to domain entity."""
         return ExtractedConferenceMember(
             id=model.id,

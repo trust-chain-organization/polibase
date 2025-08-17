@@ -92,7 +92,7 @@ class GoverningBodyRepositoryImpl(
             organization_type=getattr(row, "organization_type", None),
         )
 
-    def _to_entity(self, model: Any) -> GoverningBody:
+    def _to_entity(self, model: GoverningBodyModel) -> GoverningBody:
         """Convert database model to domain entity."""
         return GoverningBody(
             id=model.id,
@@ -118,7 +118,7 @@ class GoverningBodyRepositoryImpl(
 
         return GoverningBodyModel(**data)
 
-    def _update_model(self, model: Any, entity: GoverningBody) -> None:
+    def _update_model(self, model: GoverningBodyModel, entity: GoverningBody) -> None:
         """Update model fields from entity."""
         model.name = entity.name
         model.type = entity.type

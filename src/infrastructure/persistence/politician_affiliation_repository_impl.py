@@ -170,7 +170,7 @@ class PoliticianAffiliationRepositoryImpl(
             role=getattr(row, "role", None),
         )
 
-    def _to_entity(self, model: Any) -> PoliticianAffiliation:
+    def _to_entity(self, model: PoliticianAffiliationModel) -> PoliticianAffiliation:
         """Convert database model to domain entity."""
         return PoliticianAffiliation(
             id=model.id,

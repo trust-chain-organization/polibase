@@ -77,7 +77,7 @@ class PoliticalPartyRepositoryImpl(
             members_list_url=row.members_list_url,
         )
 
-    def _to_entity(self, model: Any) -> PoliticalParty:
+    def _to_entity(self, model: PoliticalPartyModel) -> PoliticalParty:
         """Convert database model to domain entity."""
         return PoliticalParty(
             id=model.id,
