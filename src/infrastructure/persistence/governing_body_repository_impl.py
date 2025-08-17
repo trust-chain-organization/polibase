@@ -15,6 +15,12 @@ from src.infrastructure.persistence.base_repository_impl import BaseRepositoryIm
 class GoverningBodyModel:
     """Governing body database model (dynamic)."""
 
+    id: int | None
+    name: str
+    type: str | None
+    organization_code: str | None
+    organization_type: str | None
+
     def __init__(self, **kwargs: Any):
         for key, value in kwargs.items():
             setattr(self, key, value)

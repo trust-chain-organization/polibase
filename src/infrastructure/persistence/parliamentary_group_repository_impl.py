@@ -15,6 +15,13 @@ from src.infrastructure.persistence.base_repository_impl import BaseRepositoryIm
 class ParliamentaryGroupModel:
     """Parliamentary group database model (dynamic)."""
 
+    id: int | None
+    name: str
+    conference_id: int
+    url: str | None
+    description: str | None
+    is_active: bool
+
     def __init__(self, **kwargs: Any):
         for key, value in kwargs.items():
             setattr(self, key, value)
