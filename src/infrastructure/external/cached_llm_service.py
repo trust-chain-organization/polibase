@@ -6,7 +6,11 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from src.domain.types import PoliticianDTO
-from src.domain.types.llm import LLMSpeakerMatchContext
+from src.domain.types.llm import (
+    LLMExtractResult,
+    LLMMatchResult,
+    LLMSpeakerMatchContext,
+)
 from src.infrastructure.external.llm_service import GeminiLLMService
 from src.infrastructure.interfaces.llm_service import ILLMService
 
@@ -40,7 +44,7 @@ class LLMCache:
         if not isinstance(content, str):
             content = str(content)
 
-        return hashlib.md5(content.encode()).hexdigest()
+        return hashlib.md5(content.encode(), usedforsecurity=False).hexdigest()
 
     def get(self, prompt: str, context: Any = None) -> Any | None:
         """Get cached result if available and not expired."""
@@ -65,7 +69,7 @@ class LLMCache:
         """Clear all cached entries."""
         self._cache.clear()
 
-    def stats(self) -> dict:
+    def stats(self) -> dict[str, int]:
         """Get cache statistics."""
         total = len(self._cache)
         expired = sum(
@@ -103,14 +107,14 @@ class CachedLLMService(ILLMService):
 
     async def match_speaker_to_politician(
         self, context: LLMSpeakerMatchContext
-    ) -> dict[str, Any]:
+    ) -> LLMMatchResult | None:
         """Match speaker to politician with caching.
 
         Args:
             context: Speaker matching context
 
         Returns:
-            Match result dictionary
+            Match result or None if no match
         """
         # Check cache first
         cached = self._cache.get("match_speaker", context)
@@ -127,7 +131,7 @@ class CachedLLMService(ILLMService):
 
     async def extract_party_members(
         self, html_content: str, party_id: int
-    ) -> list[dict[str, Any]]:
+    ) -> LLMExtractResult:
         """Extract party members with caching.
 
         Args:
@@ -135,11 +139,13 @@ class CachedLLMService(ILLMService):
             party_id: Political party ID
 
         Returns:
-            List of extracted members
+            Extraction result with member information
         """
         # Check cache
         cache_context = {
-            "html_hash": hashlib.md5(html_content.encode()).hexdigest(),
+            "html_hash": hashlib.md5(
+                html_content.encode(), usedforsecurity=False
+            ).hexdigest(),
             "party_id": party_id,
         }
         cached = self._cache.get("extract_members", cache_context)
@@ -157,26 +163,26 @@ class CachedLLMService(ILLMService):
     async def match_conference_member(
         self,
         member_name: str,
-        party_affiliation: str,
-        politicians: list[PoliticianDTO],
-    ) -> dict[str, Any]:
+        party_name: str | None,
+        candidates: list[PoliticianDTO],
+    ) -> LLMMatchResult | None:
         """Match conference member with caching.
 
         Args:
             member_name: Member name to match
-            party_affiliation: Party affiliation
-            politicians: List of candidate politicians
+            party_name: Party affiliation if known
+            candidates: List of candidate politicians
 
         Returns:
-            Match result dictionary
+            Match result or None if no match
         """
         # Create cache context
         cache_context = {
             "member_name": member_name,
-            "party_affiliation": party_affiliation,
-            "politician_count": len(politicians),
+            "party_name": party_name,
+            "politician_count": len(candidates),
             "politician_names": [
-                p.name for p in politicians[:10]
+                p["name"] for p in candidates[:10]
             ],  # Sample for cache key
         }
 
@@ -187,7 +193,7 @@ class CachedLLMService(ILLMService):
 
         # Call base service
         result = await self._base_service.match_conference_member(
-            member_name, party_affiliation, politicians
+            member_name, party_name, candidates
         )
 
         # Cache the result
@@ -195,22 +201,18 @@ class CachedLLMService(ILLMService):
 
         return result
 
-    async def extract_speeches_from_text(
-        self, text: str, meeting_info: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    async def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
         """Extract speeches with caching.
 
         Args:
             text: Text to extract speeches from
-            meeting_info: Meeting information
 
         Returns:
             List of extracted speeches
         """
         # Create cache context
         cache_context = {
-            "text_hash": hashlib.md5(text.encode()).hexdigest(),
-            "meeting_id": meeting_info.get("id"),
+            "text_hash": hashlib.md5(text.encode(), usedforsecurity=False).hexdigest(),
         }
 
         # Check cache
@@ -219,7 +221,7 @@ class CachedLLMService(ILLMService):
             return cached
 
         # Call base service
-        result = await self._base_service.extract_speeches_from_text(text, meeting_info)
+        result = await self._base_service.extract_speeches_from_text(text)
 
         # Cache the result
         self._cache.set("extract_speeches", cache_context, result)
@@ -228,7 +230,7 @@ class CachedLLMService(ILLMService):
 
     async def batch_match_speakers(
         self, contexts: list[LLMSpeakerMatchContext]
-    ) -> list[dict[str, Any]]:
+    ) -> list[LLMMatchResult | None]:
         """Batch process multiple speaker matching requests.
 
         Args:
@@ -280,6 +282,6 @@ class CachedLLMService(ILLMService):
         """Clear the cache."""
         self._cache.clear()
 
-    def get_cache_stats(self) -> dict:
+    def get_cache_stats(self) -> dict[str, int]:
         """Get cache statistics."""
         return self._cache.stats()

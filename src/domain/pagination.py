@@ -1,7 +1,7 @@
 """Pagination models and utilities for domain layer."""
 
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -69,7 +69,7 @@ class PaginatedResult[T]:
         """Get previous page number if available."""
         return self.page - 1 if self.has_previous else None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API responses."""
         return {
             "items": self.items,

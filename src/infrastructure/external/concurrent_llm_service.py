@@ -1,11 +1,15 @@
 """Concurrent LLM service with rate limiting and parallel processing."""
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
 from src.domain.types import PoliticianDTO
-from src.domain.types.llm import LLMSpeakerMatchContext
+from src.domain.types.llm import (
+    LLMExtractResult,
+    LLMMatchResult,
+    LLMSpeakerMatchContext,
+)
 from src.infrastructure.interfaces.llm_service import ILLMService
 
 T = TypeVar("T")
@@ -63,12 +67,13 @@ class ConcurrentLLMService(ILLMService):
             max_per_second: Maximum requests per second
         """
         self._base_service = base_service
+        self._max_concurrent = max_concurrent
         self._rate_limiter = RateLimiter(
             max_per_second=max_per_second, max_concurrent=max_concurrent
         )
 
     async def _execute_with_rate_limit(
-        self, func: Callable, *args: Any, **kwargs: Any
+        self, func: Callable[..., Awaitable[Any]], *args: Any, **kwargs: Any
     ) -> Any:
         """Execute function with rate limiting."""
         await self._rate_limiter.acquire()
@@ -76,7 +81,7 @@ class ConcurrentLLMService(ILLMService):
 
     async def match_speaker_to_politician(
         self, context: LLMSpeakerMatchContext
-    ) -> dict[str, Any]:
+    ) -> LLMMatchResult | None:
         """Match speaker to politician with rate limiting."""
         return await self._execute_with_rate_limit(
             self._base_service.match_speaker_to_politician, context
@@ -84,7 +89,7 @@ class ConcurrentLLMService(ILLMService):
 
     async def extract_party_members(
         self, html_content: str, party_id: int
-    ) -> list[dict[str, Any]]:
+    ) -> LLMExtractResult:
         """Extract party members with rate limiting."""
         return await self._execute_with_rate_limit(
             self._base_service.extract_party_members, html_content, party_id
@@ -93,29 +98,27 @@ class ConcurrentLLMService(ILLMService):
     async def match_conference_member(
         self,
         member_name: str,
-        party_affiliation: str,
-        politicians: list[PoliticianDTO],
-    ) -> dict[str, Any]:
+        party_name: str | None,
+        candidates: list[PoliticianDTO],
+    ) -> LLMMatchResult | None:
         """Match conference member with rate limiting."""
         return await self._execute_with_rate_limit(
             self._base_service.match_conference_member,
             member_name,
-            party_affiliation,
-            politicians,
+            party_name,
+            candidates,
         )
 
-    async def extract_speeches_from_text(
-        self, text: str, meeting_info: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    async def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
         """Extract speeches with rate limiting."""
         return await self._execute_with_rate_limit(
-            self._base_service.extract_speeches_from_text, text, meeting_info
+            self._base_service.extract_speeches_from_text, text
         )
 
     async def process_with_concurrency_limit(
         self,
         items: list[T],
-        process_func: Callable[[T], Any],
+        process_func: Callable[[T], Awaitable[Any]],
         max_concurrent: int | None = None,
     ) -> list[Any]:
         """Process items with concurrency limit.
@@ -129,7 +132,7 @@ class ConcurrentLLMService(ILLMService):
             List of results in the same order as input
         """
         if max_concurrent is None:
-            max_concurrent = self._rate_limiter._semaphore._value
+            max_concurrent = self._max_concurrent
 
         semaphore = asyncio.Semaphore(max_concurrent)
 
@@ -146,7 +149,7 @@ class ConcurrentLLMService(ILLMService):
         self,
         contexts: list[LLMSpeakerMatchContext],
         max_concurrent: int | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[LLMMatchResult | None]:
         """Match multiple speakers concurrently with rate limiting.
 
         Args:
@@ -157,7 +160,9 @@ class ConcurrentLLMService(ILLMService):
             List of match results
         """
 
-        async def match_single(context: LLMSpeakerMatchContext) -> dict[str, Any]:
+        async def match_single(
+            context: LLMSpeakerMatchContext,
+        ) -> LLMMatchResult | None:
             return await self._base_service.match_speaker_to_politician(context)
 
         return await self.process_with_concurrency_limit(
