@@ -1,6 +1,7 @@
 """Conference repository implementation using SQLAlchemy."""
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel as PydanticBaseModel
@@ -24,8 +25,8 @@ class ConferenceModel(PydanticBaseModel):
     type: str | None = None
     governing_body_id: int
     members_introduction_url: str | None = None
-    created_at: Any = None
-    updated_at: Any = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -257,7 +258,7 @@ class ConferenceRepositoryImpl(BaseRepositoryImpl[Conference], ConferenceReposit
                 ORDER BY gb.name, c.name
             """
 
-            params: dict[str, Any] = {}
+            params: dict[str, int | None] = {}
             if limit is not None:
                 query_text += " LIMIT :limit OFFSET :offset"
                 params = {"limit": limit, "offset": offset or 0}
