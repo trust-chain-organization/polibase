@@ -88,7 +88,7 @@ class ConferenceRepository:
             self._impl = ConferenceRepositoryImpl(session=self._async_session)
             self._impl_initialized = True
 
-    def _run_async(self, coro: Coroutine[Any, Any, T]) -> T:  # type: ignore[misc]
+    def _run_async(self, coro: Coroutine[Any, Any, T]) -> T:
         """Run async coroutine in sync context"""
         import asyncio
 
@@ -127,7 +127,9 @@ class ConferenceRepository:
 
             if "exception" in exception_container:
                 raise exception_container["exception"]
-            return result_container.get("result")
+            return result_container[
+                "result"
+            ]  # Will raise KeyError if not set, which shouldn't happen
         else:
             # No running loop, create one
             return asyncio.run(coro)
@@ -470,7 +472,7 @@ class ConferenceRepository:
             result = self.connection.execute(query)
             rows = result.fetchall()
 
-            return [dict(row) for row in rows]  # type: ignore[return-value]
+            return [dict(row) for row in rows]
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting governing bodies: {e}")
