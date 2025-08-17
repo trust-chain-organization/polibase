@@ -216,7 +216,7 @@ class PerformanceMonitor:
         if not self._metrics and not self._query_metrics:
             return {"message": "No metrics collected"}
 
-        summary = {
+        summary: dict[str, Any] = {
             "total_metrics": len(self._metrics),
             "total_queries": len(self._query_metrics),
         }

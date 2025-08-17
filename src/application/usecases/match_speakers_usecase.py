@@ -183,7 +183,7 @@ class MatchSpeakersUseCase:
         # Call LLM service with metadata
         match_result = await self.llm_service.match_speaker_to_politician(context)
 
-        if match_result and match_result.get("matched_id"):
+        if match_result and match_result.get("matched_id") is not None:
             matched_id = match_result["matched_id"]
             if matched_id is not None:
                 politician = await self.politician_repo.get_by_id(matched_id)

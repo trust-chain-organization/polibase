@@ -182,13 +182,25 @@ def install_sqlalchemy_listener(
 
     @event.listens_for(engine, "before_cursor_execute")
     def before_cursor_execute(
-        conn, cursor, statement, parameters, context, executemany
-    ):
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool,
+    ) -> None:
         """Track query start time."""
         query_start_times[cursor] = time.perf_counter()
 
     @event.listens_for(engine, "after_cursor_execute")
-    def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    def after_cursor_execute(
+        conn: Any,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: Any,
+        executemany: bool,
+    ) -> None:
         """Check query duration and detect slow queries."""
         if cursor in query_start_times:
             start_time = query_start_times.pop(cursor)
