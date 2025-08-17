@@ -44,9 +44,9 @@ def process_minutes_with_di(meeting_id: int, environment: str) -> None:
 
         # Execute the use case
         async def run_process():
-            from src.application.dto.process_minutes_dto import ProcessMinutesInput
+            from src.application.dtos.minutes_dto import ProcessMinutesDTO
 
-            input_dto = ProcessMinutesInput(
+            input_dto = ProcessMinutesDTO(
                 meeting_id=meeting_id,
                 force_reprocess=False,
             )
@@ -106,8 +106,8 @@ def scrape_politicians_with_di(
 
         # Execute the use case
         async def run_scrape():
-            from src.application.dto.scrape_politicians_dto import (
-                ScrapePoliticiansInput,
+            from src.application.dtos.politician_dto import (
+                ScrapePoliticiansInputDTO,
             )
 
             if all_parties:
@@ -119,23 +119,16 @@ def scrape_politicians_with_di(
                 party_ids = [party_id] if party_id else []
 
             for pid in party_ids:
-                input_dto = ScrapePoliticiansInput(
+                input_dto = ScrapePoliticiansInputDTO(
                     party_id=pid,
                     dry_run=dry_run,
                 )
 
                 result = await scrape_politicians_usecase.execute(input_dto)
 
-                if result.success:
-                    click.echo(f"✅ Party {pid}: {result.politician_count} politicians")
-                    if result.new_count > 0:
-                        click.echo(f"   New: {result.new_count}")
-                    if result.updated_count > 0:
-                        click.echo(f"   Updated: {result.updated_count}")
-                else:
-                    click.echo(f"❌ Party {pid}: Failed")
-                    if result.error_message:
-                        click.echo(f"   Error: {result.error_message}")
+                # Result is a list of PoliticianDTO
+                politician_count = len(result)
+                click.echo(f"✅ Party {pid}: {politician_count} politicians processed")
 
         asyncio.run(run_scrape())
 

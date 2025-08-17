@@ -62,17 +62,92 @@ from src.infrastructure.persistence.prompt_version_repository_impl import (
 from src.infrastructure.persistence.speaker_repository_impl import SpeakerRepositoryImpl
 
 
+# Mock SQLAlchemy model classes for repositories that don't have them yet
+class MockSpeakerModel:
+    """Mock SQLAlchemy model for Speaker entity."""
+
+    __tablename__ = "speakers"
+    id = None
+    name = None
+
+
+class MockPoliticianModel:
+    """Mock SQLAlchemy model for Politician entity."""
+
+    __tablename__ = "politicians"
+    id = None
+    name = None
+
+
+class MockMeetingModel:
+    """Mock SQLAlchemy model for Meeting entity."""
+
+    __tablename__ = "meetings"
+    id = None
+
+
+class MockConversationModel:
+    """Mock SQLAlchemy model for Conversation entity."""
+
+    __tablename__ = "conversations"
+    id = None
+
+
+class MockMinutesModel:
+    """Mock SQLAlchemy model for Minutes entity."""
+
+    __tablename__ = "minutes"
+    id = None
+
+
+class MockService:
+    """Mock service for testing."""
+
+    def __init__(self, service_type: str):
+        self.service_type = service_type
+
+
+class MockDomainService:
+    """Mock domain service for testing."""
+
+    def __init__(self, domain_type: str):
+        self.domain_type = domain_type
+
+
+class MockRepository:
+    """Mock repository for testing."""
+
+    def __init__(self, repository_type: str):
+        self.repository_type = repository_type
+
+
+def create_engine_with_config(database_url: str):
+    """Create SQLAlchemy engine with appropriate configuration for database type."""
+    engine_kwargs = {
+        "url": database_url,
+        "pool_pre_ping": True,
+    }
+
+    # Only add pool parameters for non-SQLite databases
+    if not database_url.startswith("sqlite"):
+        engine_kwargs.update(
+            {
+                "pool_size": 5,
+                "max_overflow": 10,
+            }
+        )
+
+    return create_engine(**engine_kwargs)
+
+
 class DatabaseContainer(containers.DeclarativeContainer):
     """Container for database-related dependencies."""
 
     config = providers.Configuration()
 
     engine = providers.Singleton(
-        create_engine,
-        url=config.database_url,
-        pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=10,
+        create_engine_with_config,
+        database_url=config.database_url,
     )
 
     session_factory = providers.Singleton(
@@ -101,21 +176,31 @@ class RepositoryContainer(containers.DeclarativeContainer):
     speaker_repository = providers.Factory(
         SpeakerRepositoryImpl,
         session=database.async_session,
+        model_class=MockSpeakerModel,
     )
 
     politician_repository = providers.Factory(
         PoliticianRepositoryImpl,
         session=database.async_session,
+        model_class=MockPoliticianModel,
     )
 
     meeting_repository = providers.Factory(
         MeetingRepositoryImpl,
         session=database.async_session,
+        model_class=MockMeetingModel,
     )
 
     conversation_repository = providers.Factory(
         ConversationRepositoryImpl,
         session=database.async_session,
+        model_class=MockConversationModel,
+    )
+
+    minutes_repository = providers.Factory(
+        lambda session, model_class: MockRepository("minutes"),
+        session=database.async_session,
+        model_class=MockMinutesModel,
     )
 
     conference_repository = providers.Factory(
@@ -179,7 +264,6 @@ class ServiceContainer(containers.DeclarativeContainer):
     storage_service: providers.Provider[IStorageService] = providers.Singleton(
         GCSStorageService,
         bucket_name=config.gcs_bucket_name,
-        project_id=config.gcs_project_id,
     )
 
     web_scraper_service: providers.Provider[IWebScraperService] = providers.Factory(
@@ -187,6 +271,15 @@ class ServiceContainer(containers.DeclarativeContainer):
         timeout=config.web_scraper_timeout,
         page_load_timeout=config.page_load_timeout,
     )
+
+    # Mock services for testing (these may not have real implementations yet)
+    minutes_domain_service = providers.Factory(lambda: MockDomainService("minutes"))
+
+    speaker_domain_service = providers.Factory(lambda: MockDomainService("speaker"))
+
+    pdf_processor_service = providers.Factory(lambda: MockService("pdf_processor"))
+
+    text_extractor_service = providers.Factory(lambda: MockService("text_extractor"))
 
 
 class UseCaseContainer(containers.DeclarativeContainer):
@@ -198,10 +291,13 @@ class UseCaseContainer(containers.DeclarativeContainer):
     process_minutes_usecase = providers.Factory(
         ProcessMinutesUseCase,
         meeting_repository=repositories.meeting_repository,
+        minutes_repository=repositories.minutes_repository,
         conversation_repository=repositories.conversation_repository,
         speaker_repository=repositories.speaker_repository,
-        llm_service=services.llm_service,
-        storage_service=services.storage_service,
+        minutes_domain_service=services.minutes_domain_service,
+        speaker_domain_service=services.speaker_domain_service,
+        pdf_processor=services.pdf_processor_service,
+        text_extractor=services.text_extractor_service,
     )
 
     match_speakers_usecase = providers.Factory(

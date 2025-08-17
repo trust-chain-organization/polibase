@@ -59,3 +59,12 @@ class ExtractedPoliticianDTO:
     profile_image_url: str | None = None
     profile_page_url: str | None = None
     source_url: str | None = None
+
+
+@dataclass
+class ScrapePoliticiansInputDTO:
+    """DTO for scraping politicians request."""
+
+    party_id: int | None = None
+    all_parties: bool = False
+    dry_run: bool = False
