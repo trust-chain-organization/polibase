@@ -169,6 +169,8 @@ class TestMatchSpeakersUseCase:
         speaker1 = Speaker(id=1, name="山田太郎", is_politician=True)
         speaker2 = Speaker(id=2, name="鈴木花子", is_politician=True)
 
+        # Configure mock to not have batch_get_by_ids method
+        del mock_speaker_repo.batch_get_by_ids
         mock_speaker_repo.get_by_id.side_effect = [speaker1, speaker2]
         mock_politician_repo.get_by_speaker_id.return_value = None
         mock_politician_repo.search_by_name.return_value = []
@@ -265,6 +267,8 @@ class TestMatchSpeakersUseCase:
         mock_speaker_repo.get_politicians.return_value = [speaker]
         mock_politician_repo.get_by_speaker_id.return_value = None
         mock_politician_repo.search_by_name.return_value = []
+        # Configure mock to not have get_all_cached method
+        del mock_politician_repo.get_all_cached
         mock_politician_repo.get_all.return_value = []  # No candidates
 
         # Execute
