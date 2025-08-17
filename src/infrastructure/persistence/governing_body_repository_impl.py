@@ -1,7 +1,8 @@
 """GoverningBody repository implementation using SQLAlchemy."""
 
-from sqlalchemy import and_
-from sqlalchemy.future import select
+from typing import Any
+
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.governing_body import GoverningBody
@@ -9,7 +10,14 @@ from src.domain.repositories.governing_body_repository import (
     GoverningBodyRepository as IGoverningBodyRepository,
 )
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
-from src.models.governing_body import GoverningBody as GoverningBodyModel
+
+
+class GoverningBodyModel:
+    """Governing body database model (dynamic)."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class GoverningBodyRepositoryImpl(
@@ -24,45 +32,67 @@ class GoverningBodyRepositoryImpl(
         self, name: str, type: str | None = None
     ) -> GoverningBody | None:
         """Get governing body by name and type."""
-        query = select(GoverningBodyModel).where(GoverningBodyModel.name == name)
+        conditions = ["name = :name"]
+        params: dict[str, Any] = {"name": name}
 
         if type is not None:
-            query = query.where(GoverningBodyModel.type == type)
+            conditions.append("type = :type")
+            params["type"] = type
 
-        result = await self.session.execute(query)
-        model = result.scalar_one_or_none()
+        query = text(f"""
+            SELECT * FROM governing_bodies
+            WHERE {" AND ".join(conditions)}
+            LIMIT 1
+        """)
 
-        if model:
-            return self._to_entity(model)
+        result = await self.session.execute(query, params)
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
         return None
 
     async def get_by_organization_code(
         self, organization_code: str
     ) -> GoverningBody | None:
         """Get governing body by organization code."""
-        query = select(GoverningBodyModel).where(
-            GoverningBodyModel.organization_code == organization_code
-        )
+        query = text("""
+            SELECT * FROM governing_bodies
+            WHERE organization_code = :org_code
+            LIMIT 1
+        """)
 
-        result = await self.session.execute(query)
-        model = result.scalar_one_or_none()
+        result = await self.session.execute(query, {"org_code": organization_code})
+        row = result.fetchone()
 
-        if model:
-            return self._to_entity(model)
+        if row:
+            return self._row_to_entity(row)
         return None
 
     async def search_by_name(self, name_pattern: str) -> list[GoverningBody]:
         """Search governing bodies by name pattern."""
-        query = select(GoverningBodyModel).where(
-            GoverningBodyModel.name.ilike(f"%{name_pattern}%")
+        query = text("""
+            SELECT * FROM governing_bodies
+            WHERE name ILIKE :pattern
+            ORDER BY name
+        """)
+
+        result = await self.session.execute(query, {"pattern": f"%{name_pattern}%"})
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
+    def _row_to_entity(self, row: Any) -> GoverningBody:
+        """Convert database row to domain entity."""
+        return GoverningBody(
+            id=row.id,
+            name=row.name,
+            type=row.type,
+            organization_code=getattr(row, "organization_code", None),
+            organization_type=getattr(row, "organization_type", None),
         )
 
-        result = await self.session.execute(query)
-        models = result.scalars().all()
-
-        return [self._to_entity(model) for model in models]
-
-    def _to_entity(self, model: GoverningBodyModel) -> GoverningBody:
+    def _to_entity(self, model: Any) -> GoverningBody:
         """Convert database model to domain entity."""
         return GoverningBody(
             id=model.id,
@@ -88,12 +118,12 @@ class GoverningBodyRepositoryImpl(
 
         return GoverningBodyModel(**data)
 
-    def _update_model(self, model: GoverningBodyModel, entity: GoverningBody) -> None:
+    def _update_model(self, model: Any, entity: GoverningBody) -> None:
         """Update model fields from entity."""
         model.name = entity.name
         model.type = entity.type
 
-        if hasattr(model, "organization_code"):
+        if entity.organization_code is not None:
             model.organization_code = entity.organization_code
-        if hasattr(model, "organization_type"):
+        if entity.organization_type is not None:
             model.organization_type = entity.organization_type

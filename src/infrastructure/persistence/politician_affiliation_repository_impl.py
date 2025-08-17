@@ -1,9 +1,9 @@
 """PoliticianAffiliation repository implementation using SQLAlchemy."""
 
 from datetime import date
+from typing import Any
 
-from sqlalchemy import and_, update
-from sqlalchemy.future import select
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.politician_affiliation import PoliticianAffiliation
@@ -11,9 +11,14 @@ from src.domain.repositories.politician_affiliation_repository import (
     PoliticianAffiliationRepository as IPoliticianAffiliationRepository,
 )
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
-from src.models.politician_affiliation import (
-    PoliticianAffiliation as PoliticianAffiliationModel,
-)
+
+
+class PoliticianAffiliationModel:
+    """Politician affiliation database model (dynamic)."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class PoliticianAffiliationRepositoryImpl(
@@ -28,52 +33,64 @@ class PoliticianAffiliationRepositoryImpl(
         self, politician_id: int, conference_id: int, active_only: bool = True
     ) -> list[PoliticianAffiliation]:
         """Get affiliations by politician and conference."""
-        query = select(PoliticianAffiliationModel).where(
-            and_(
-                PoliticianAffiliationModel.politician_id == politician_id,
-                PoliticianAffiliationModel.conference_id == conference_id,
-            )
-        )
+        conditions = ["politician_id = :pol_id", "conference_id = :conf_id"]
+        params: dict[str, Any] = {"pol_id": politician_id, "conf_id": conference_id}
 
         if active_only:
-            query = query.where(PoliticianAffiliationModel.end_date.is_(None))
+            conditions.append("end_date IS NULL")
 
-        result = await self.session.execute(query)
-        models = result.scalars().all()
+        query = text(f"""
+            SELECT * FROM politician_affiliations
+            WHERE {" AND ".join(conditions)}
+            ORDER BY start_date DESC
+        """)
 
-        return [self._to_entity(model) for model in models]
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
 
     async def get_by_conference(
         self, conference_id: int, active_only: bool = True
     ) -> list[PoliticianAffiliation]:
         """Get all affiliations for a conference."""
-        query = select(PoliticianAffiliationModel).where(
-            PoliticianAffiliationModel.conference_id == conference_id
-        )
+        conditions = ["conference_id = :conf_id"]
+        params: dict[str, Any] = {"conf_id": conference_id}
 
         if active_only:
-            query = query.where(PoliticianAffiliationModel.end_date.is_(None))
+            conditions.append("end_date IS NULL")
 
-        result = await self.session.execute(query)
-        models = result.scalars().all()
+        query = text(f"""
+            SELECT * FROM politician_affiliations
+            WHERE {" AND ".join(conditions)}
+            ORDER BY start_date DESC
+        """)
 
-        return [self._to_entity(model) for model in models]
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
 
     async def get_by_politician(
         self, politician_id: int, active_only: bool = True
     ) -> list[PoliticianAffiliation]:
         """Get all affiliations for a politician."""
-        query = select(PoliticianAffiliationModel).where(
-            PoliticianAffiliationModel.politician_id == politician_id
-        )
+        conditions = ["politician_id = :pol_id"]
+        params: dict[str, Any] = {"pol_id": politician_id}
 
         if active_only:
-            query = query.where(PoliticianAffiliationModel.end_date.is_(None))
+            conditions.append("end_date IS NULL")
 
-        result = await self.session.execute(query)
-        models = result.scalars().all()
+        query = text(f"""
+            SELECT * FROM politician_affiliations
+            WHERE {" AND ".join(conditions)}
+            ORDER BY start_date DESC
+        """)
 
-        return [self._to_entity(model) for model in models]
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
 
     async def upsert(
         self,
@@ -85,24 +102,36 @@ class PoliticianAffiliationRepositoryImpl(
     ) -> PoliticianAffiliation:
         """Create or update an affiliation."""
         # Check if affiliation already exists
-        query = select(PoliticianAffiliationModel).where(
-            and_(
-                PoliticianAffiliationModel.politician_id == politician_id,
-                PoliticianAffiliationModel.conference_id == conference_id,
-                PoliticianAffiliationModel.start_date == start_date,
-            )
+        query = text("""
+            SELECT * FROM politician_affiliations
+            WHERE politician_id = :pol_id
+              AND conference_id = :conf_id
+              AND start_date = :start_date
+            LIMIT 1
+        """)
+
+        result = await self.session.execute(
+            query,
+            {
+                "pol_id": politician_id,
+                "conf_id": conference_id,
+                "start_date": start_date,
+            },
         )
+        existing_row = result.fetchone()
 
-        result = await self.session.execute(query)
-        existing = result.scalar_one_or_none()
-
-        if existing:
+        if existing_row:
             # Update existing
-            existing.end_date = end_date
-            existing.role = role
+            update_stmt = text("""
+                UPDATE politician_affiliations
+                SET end_date = :end_date, role = :role
+                WHERE id = :id
+            """)
+            await self.session.execute(
+                update_stmt, {"id": existing_row.id, "end_date": end_date, "role": role}
+            )
             await self.session.commit()
-            await self.session.refresh(existing)
-            return self._to_entity(existing)
+            return self._row_to_entity(existing_row)
         else:
             # Create new
             entity = PoliticianAffiliation(
@@ -118,19 +147,30 @@ class PoliticianAffiliationRepositoryImpl(
         self, affiliation_id: int, end_date: date
     ) -> PoliticianAffiliation | None:
         """End an affiliation by setting the end date."""
-        stmt = (
-            update(PoliticianAffiliationModel)
-            .where(PoliticianAffiliationModel.id == affiliation_id)
-            .values(end_date=end_date)
-        )
+        query = text("""
+            UPDATE politician_affiliations
+            SET end_date = :end_date
+            WHERE id = :id
+        """)
 
-        await self.session.execute(stmt)
+        await self.session.execute(query, {"id": affiliation_id, "end_date": end_date})
         await self.session.commit()
 
         # Return updated entity
         return await self.get_by_id(affiliation_id)
 
-    def _to_entity(self, model: PoliticianAffiliationModel) -> PoliticianAffiliation:
+    def _row_to_entity(self, row: Any) -> PoliticianAffiliation:
+        """Convert database row to domain entity."""
+        return PoliticianAffiliation(
+            id=row.id,
+            politician_id=row.politician_id,
+            conference_id=row.conference_id,
+            start_date=row.start_date,
+            end_date=row.end_date,
+            role=getattr(row, "role", None),
+        )
+
+    def _to_entity(self, model: Any) -> PoliticianAffiliation:
         """Convert database model to domain entity."""
         return PoliticianAffiliation(
             id=model.id,

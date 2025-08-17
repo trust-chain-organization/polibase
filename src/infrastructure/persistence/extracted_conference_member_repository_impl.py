@@ -1,9 +1,9 @@
 """ExtractedConferenceMember repository implementation using SQLAlchemy."""
 
 from datetime import datetime
+from typing import Any
 
-from sqlalchemy import and_, func, update
-from sqlalchemy.future import select
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.extracted_conference_member import ExtractedConferenceMember
@@ -11,9 +11,14 @@ from src.domain.repositories.extracted_conference_member_repository import (
     ExtractedConferenceMemberRepository as IExtractedConferenceMemberRepository,
 )
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
-from src.models.extracted_conference_member import (
-    ExtractedConferenceMember as ExtractedConferenceMemberModel,
-)
+
+
+class ExtractedConferenceMemberModel:
+    """Extracted conference member database model (dynamic)."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class ExtractedConferenceMemberRepositoryImpl(
@@ -30,42 +35,49 @@ class ExtractedConferenceMemberRepositoryImpl(
         self, conference_id: int | None = None
     ) -> list[ExtractedConferenceMember]:
         """Get all pending members for matching."""
-        query = select(ExtractedConferenceMemberModel).where(
-            ExtractedConferenceMemberModel.matching_status == "pending"
-        )
+        conditions = ["matching_status = 'pending'"]
+        params: dict[str, Any] = {}
 
         if conference_id is not None:
-            query = query.where(
-                ExtractedConferenceMemberModel.conference_id == conference_id
-            )
+            conditions.append("conference_id = :conf_id")
+            params["conf_id"] = conference_id
 
-        result = await self.session.execute(query)
-        models = result.scalars().all()
+        query = text(f"""
+            SELECT * FROM extracted_conference_members
+            WHERE {" AND ".join(conditions)}
+            ORDER BY extracted_at DESC
+        """)
 
-        return [self._to_entity(model) for model in models]
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
 
     async def get_matched_members(
         self, conference_id: int | None = None, min_confidence: float | None = None
     ) -> list[ExtractedConferenceMember]:
         """Get matched members with optional filtering."""
-        query = select(ExtractedConferenceMemberModel).where(
-            ExtractedConferenceMemberModel.matching_status == "matched"
-        )
+        conditions = ["matching_status = 'matched'"]
+        params: dict[str, Any] = {}
 
         if conference_id is not None:
-            query = query.where(
-                ExtractedConferenceMemberModel.conference_id == conference_id
-            )
+            conditions.append("conference_id = :conf_id")
+            params["conf_id"] = conference_id
 
         if min_confidence is not None:
-            query = query.where(
-                ExtractedConferenceMemberModel.matching_confidence >= min_confidence
-            )
+            conditions.append("matching_confidence >= :min_conf")
+            params["min_conf"] = min_confidence
 
-        result = await self.session.execute(query)
-        models = result.scalars().all()
+        query = text(f"""
+            SELECT * FROM extracted_conference_members
+            WHERE {" AND ".join(conditions)}
+            ORDER BY matching_confidence DESC
+        """)
 
-        return [self._to_entity(model) for model in models]
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
 
     async def update_matching_result(
         self,
@@ -75,18 +87,25 @@ class ExtractedConferenceMemberRepositoryImpl(
         status: str,
     ) -> ExtractedConferenceMember | None:
         """Update the matching result for a member."""
-        stmt = (
-            update(ExtractedConferenceMemberModel)
-            .where(ExtractedConferenceMemberModel.id == member_id)
-            .values(
-                matched_politician_id=politician_id,
-                matching_confidence=confidence,
-                matching_status=status,
-                matched_at=datetime.now(),
-            )
-        )
+        query = text("""
+            UPDATE extracted_conference_members
+            SET matched_politician_id = :pol_id,
+                matching_confidence = :confidence,
+                matching_status = :status,
+                matched_at = :matched_at
+            WHERE id = :member_id
+        """)
 
-        await self.session.execute(stmt)
+        await self.session.execute(
+            query,
+            {
+                "member_id": member_id,
+                "pol_id": politician_id,
+                "confidence": confidence,
+                "status": status,
+                "matched_at": datetime.now(),
+            },
+        )
         await self.session.commit()
 
         # Return updated entity
@@ -96,33 +115,37 @@ class ExtractedConferenceMemberRepositoryImpl(
         self, conference_id: int
     ) -> list[ExtractedConferenceMember]:
         """Get all extracted members for a conference."""
-        query = select(ExtractedConferenceMemberModel).where(
-            ExtractedConferenceMemberModel.conference_id == conference_id
-        )
+        query = text("""
+            SELECT * FROM extracted_conference_members
+            WHERE conference_id = :conf_id
+            ORDER BY extracted_name
+        """)
 
-        result = await self.session.execute(query)
-        models = result.scalars().all()
+        result = await self.session.execute(query, {"conf_id": conference_id})
+        rows = result.fetchall()
 
-        return [self._to_entity(model) for model in models]
+        return [self._row_to_entity(row) for row in rows]
 
     async def get_extraction_summary(
         self, conference_id: int | None = None
     ) -> dict[str, int]:
         """Get summary statistics for extracted members."""
-        base_query = select(
-            ExtractedConferenceMemberModel.matching_status,
-            func.count(ExtractedConferenceMemberModel.id).label("count"),
-        )
+        where_clause = ""
+        params: dict[str, Any] = {}
 
         if conference_id is not None:
-            base_query = base_query.where(
-                ExtractedConferenceMemberModel.conference_id == conference_id
-            )
+            where_clause = "WHERE conference_id = :conf_id"
+            params["conf_id"] = conference_id
 
-        base_query = base_query.group_by(ExtractedConferenceMemberModel.matching_status)
+        query = text(f"""
+            SELECT matching_status, COUNT(*) as count
+            FROM extracted_conference_members
+            {where_clause}
+            GROUP BY matching_status
+        """)
 
-        result = await self.session.execute(base_query)
-        rows = result.all()
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
 
         summary = {
             "total": 0,
@@ -134,7 +157,7 @@ class ExtractedConferenceMemberRepositoryImpl(
 
         for row in rows:
             status = row.matching_status
-            count = row.count
+            count = getattr(row, "count", 0)  # Use getattr to access the count
             if status in summary:
                 summary[status] = count
             summary["total"] += count
@@ -155,9 +178,24 @@ class ExtractedConferenceMemberRepositoryImpl(
 
         return [self._to_entity(model) for model in models]
 
-    def _to_entity(
-        self, model: ExtractedConferenceMemberModel
-    ) -> ExtractedConferenceMember:
+    def _row_to_entity(self, row: Any) -> ExtractedConferenceMember:
+        """Convert database row to domain entity."""
+        return ExtractedConferenceMember(
+            id=row.id,
+            conference_id=row.conference_id,
+            extracted_name=row.extracted_name,
+            source_url=row.source_url,
+            extracted_role=getattr(row, "extracted_role", None),
+            extracted_party_name=getattr(row, "extracted_party_name", None),
+            extracted_at=row.extracted_at,
+            matched_politician_id=getattr(row, "matched_politician_id", None),
+            matching_confidence=getattr(row, "matching_confidence", None),
+            matching_status=row.matching_status,
+            matched_at=getattr(row, "matched_at", None),
+            additional_data=getattr(row, "additional_data", None),
+        )
+
+    def _to_entity(self, model: Any) -> ExtractedConferenceMember:
         """Convert database model to domain entity."""
         return ExtractedConferenceMember(
             id=model.id,
@@ -215,5 +253,5 @@ class ExtractedConferenceMemberRepositoryImpl(
         model.matching_status = entity.matching_status
         model.matched_at = entity.matched_at
 
-        if hasattr(model, "additional_data"):
+        if hasattr(entity, "additional_data") and entity.additional_data is not None:
             model.additional_data = entity.additional_data

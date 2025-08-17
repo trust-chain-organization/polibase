@@ -1,7 +1,8 @@
 """PoliticalParty repository implementation using SQLAlchemy."""
 
-from sqlalchemy import and_
-from sqlalchemy.future import select
+from typing import Any
+
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.political_party import PoliticalParty
@@ -9,7 +10,14 @@ from src.domain.repositories.political_party_repository import (
     PoliticalPartyRepository as IPoliticalPartyRepository,
 )
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
-from src.models.political_party import PoliticalParty as PoliticalPartyModel
+
+
+class PoliticalPartyModel:
+    """Political party database model (dynamic)."""
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
 class PoliticalPartyRepositoryImpl(
@@ -22,38 +30,54 @@ class PoliticalPartyRepositoryImpl(
 
     async def get_by_name(self, name: str) -> PoliticalParty | None:
         """Get political party by name."""
-        query = select(PoliticalPartyModel).where(PoliticalPartyModel.name == name)
+        query = text("""
+            SELECT * FROM political_parties
+            WHERE name = :name
+            LIMIT 1
+        """)
 
-        result = await self.session.execute(query)
-        model = result.scalar_one_or_none()
+        result = await self.session.execute(query, {"name": name})
+        row = result.fetchone()
 
-        if model:
-            return self._to_entity(model)
+        if row:
+            return self._row_to_entity(row)
         return None
 
     async def get_with_members_url(self) -> list[PoliticalParty]:
         """Get political parties that have members list URL."""
-        query = select(PoliticalPartyModel).where(
-            PoliticalPartyModel.members_list_url.isnot(None)
-        )
+        query = text("""
+            SELECT * FROM political_parties
+            WHERE members_list_url IS NOT NULL
+            ORDER BY name
+        """)
 
         result = await self.session.execute(query)
-        models = result.scalars().all()
+        rows = result.fetchall()
 
-        return [self._to_entity(model) for model in models]
+        return [self._row_to_entity(row) for row in rows]
 
     async def search_by_name(self, name_pattern: str) -> list[PoliticalParty]:
         """Search political parties by name pattern."""
-        query = select(PoliticalPartyModel).where(
-            PoliticalPartyModel.name.ilike(f"%{name_pattern}%")
+        query = text("""
+            SELECT * FROM political_parties
+            WHERE name ILIKE :pattern
+            ORDER BY name
+        """)
+
+        result = await self.session.execute(query, {"pattern": f"%{name_pattern}%"})
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
+    def _row_to_entity(self, row: Any) -> PoliticalParty:
+        """Convert database row to domain entity."""
+        return PoliticalParty(
+            id=row.id,
+            name=row.name,
+            members_list_url=row.members_list_url,
         )
 
-        result = await self.session.execute(query)
-        models = result.scalars().all()
-
-        return [self._to_entity(model) for model in models]
-
-    def _to_entity(self, model: PoliticalPartyModel) -> PoliticalParty:
+    def _to_entity(self, model: Any) -> PoliticalParty:
         """Convert database model to domain entity."""
         return PoliticalParty(
             id=model.id,
