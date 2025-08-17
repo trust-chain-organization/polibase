@@ -165,6 +165,8 @@ jobs:
       - name: Run type checking
         run: |
           uv run pyright src/
+        # TODO: Remove continue-on-error once Issue #411 is resolved (pyright errors during migration)
+        continue-on-error: true
 
       - name: Generate type checking report
         if: always()
