@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.application.dtos.politician_dto import ScrapePoliticiansInputDTO
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician import Politician
@@ -117,7 +118,8 @@ class TestScrapePoliticiansUseCase:
         ]
 
         # Execute
-        results = await use_case.execute(party_id=1)
+        request = ScrapePoliticiansInputDTO(party_id=1)
+        results = await use_case.execute(request)
 
         # Verify
         assert len(results) == 2
@@ -152,7 +154,8 @@ class TestScrapePoliticiansUseCase:
         mock_scraper.scrape_party_members.return_value = []
 
         # Execute
-        await use_case.execute(all_parties=True)
+        request = ScrapePoliticiansInputDTO(all_parties=True)
+        await use_case.execute(request)
 
         # Verify
         assert mock_scraper.scrape_party_members.call_count == 2
@@ -180,7 +183,8 @@ class TestScrapePoliticiansUseCase:
         ]
 
         # Execute
-        results = await use_case.execute(party_id=1, dry_run=True)
+        request = ScrapePoliticiansInputDTO(party_id=1, dry_run=True)
+        results = await use_case.execute(request)
 
         # Verify
         assert len(results) == 1
@@ -199,7 +203,8 @@ class TestScrapePoliticiansUseCase:
 
         # Execute and verify
         with pytest.raises(ValueError) as exc_info:
-            await use_case.execute(party_id=999)
+            request = ScrapePoliticiansInputDTO(party_id=999)
+            await use_case.execute(request)
 
         assert "Party 999 not found" in str(exc_info.value)
 
@@ -208,7 +213,8 @@ class TestScrapePoliticiansUseCase:
         """Test error when neither party_id nor all_parties specified."""
         # Execute and verify
         with pytest.raises(ValueError) as exc_info:
-            await use_case.execute()
+            request = ScrapePoliticiansInputDTO()
+            await use_case.execute(request)
 
         assert "Either party_id or all_parties must be specified" in str(exc_info.value)
 
@@ -263,7 +269,8 @@ class TestScrapePoliticiansUseCase:
         mock_politician_repo.update.return_value = merged_politician
 
         # Execute
-        results = await use_case.execute(party_id=1)
+        request = ScrapePoliticiansInputDTO(party_id=1)
+        results = await use_case.execute(request)
 
         # Verify
         assert len(results) == 1
@@ -311,7 +318,8 @@ class TestScrapePoliticiansUseCase:
         )
 
         # Execute
-        results = await use_case.execute(party_id=1)
+        request = ScrapePoliticiansInputDTO(party_id=1)
+        results = await use_case.execute(request)
 
         # Verify
         assert len(results) == 0  # Skipped
@@ -330,7 +338,8 @@ class TestScrapePoliticiansUseCase:
         mock_party_repo.get_by_id.return_value = party
 
         # Execute
-        results = await use_case.execute(party_id=1)
+        request = ScrapePoliticiansInputDTO(party_id=1)
+        results = await use_case.execute(request)
 
         # Verify
         assert len(results) == 0
