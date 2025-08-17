@@ -3,11 +3,14 @@
 import functools
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeVar
+
+F = TypeVar("F", bound=Callable[..., Any])
+AF = TypeVar("AF", bound=Callable[..., Awaitable[Any]])
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +159,9 @@ class PerformanceMonitor:
                 metadata={"duration_ms": duration * 1000},
             )
 
-    def measure_sync(self, name: str, tags: dict[str, str] | None = None):
+    def measure_sync(
+        self, name: str, tags: dict[str, str] | None = None
+    ) -> Callable[[F], F]:
         """Decorator for measuring sync function duration.
 
         Usage:
@@ -165,7 +170,7 @@ class PerformanceMonitor:
                 pass
         """
 
-        def decorator(func: Callable) -> Callable:
+        def decorator(func: F) -> F:
             @functools.wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> Any:
                 start = time.perf_counter()
@@ -181,11 +186,13 @@ class PerformanceMonitor:
                         metadata={"duration_ms": duration * 1000},
                     )
 
-            return wrapper
+            return wrapper  # type: ignore
 
         return decorator
 
-    def measure_async_func(self, name: str, tags: dict[str, str] | None = None):
+    def measure_async_func(
+        self, name: str, tags: dict[str, str] | None = None
+    ) -> Callable[[AF], AF]:
         """Decorator for measuring async function duration.
 
         Usage:
@@ -194,13 +201,13 @@ class PerformanceMonitor:
                 pass
         """
 
-        def decorator(func: Callable) -> Callable:
+        def decorator(func: AF) -> AF:
             @functools.wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
                 async with self.measure_async(name, tags):
                     return await func(*args, **kwargs)
 
-            return wrapper
+            return wrapper  # type: ignore
 
         return decorator
 
