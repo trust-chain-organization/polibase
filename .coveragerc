@@ -11,6 +11,8 @@ omit =
     */config/*
     */streamlit_app.py
     */cli.py
+    */dependency_injector/*
+    */site-packages/*
 
 [report]
 exclude_lines =

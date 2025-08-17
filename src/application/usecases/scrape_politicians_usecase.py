@@ -1,6 +1,10 @@
 """Use case for scraping politicians from party websites."""
 
-from src.application.dtos.politician_dto import ExtractedPoliticianDTO, PoliticianDTO
+from src.application.dtos.politician_dto import (
+    ExtractedPoliticianDTO,
+    PoliticianDTO,
+    ScrapePoliticiansInputDTO,
+)
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician import Politician
 from src.domain.entities.speaker import Speaker
@@ -30,18 +34,16 @@ class ScrapePoliticiansUseCase:
 
     async def execute(
         self,
-        party_id: int | None = None,
-        all_parties: bool = False,
-        dry_run: bool = False,
+        request: ScrapePoliticiansInputDTO,
     ) -> list[PoliticianDTO]:
         """Execute the politician scraping use case."""
         # Get parties to scrape
-        if party_id:
-            party = await self.party_repo.get_by_id(party_id)
+        if request.party_id:
+            party = await self.party_repo.get_by_id(request.party_id)
             if not party:
-                raise ValueError(f"Party {party_id} not found")
+                raise ValueError(f"Party {request.party_id} not found")
             parties = [party] if party.members_list_url else []
-        elif all_parties:
+        elif request.all_parties:
             parties = await self.party_repo.get_with_members_url()
         else:
             raise ValueError("Either party_id or all_parties must be specified")
@@ -52,7 +54,7 @@ class ScrapePoliticiansUseCase:
             # Scrape party website
             extracted = await self._scrape_party_website(party)
 
-            if dry_run:
+            if request.dry_run:
                 # Convert to DTOs without saving
                 for data in extracted:
                     all_results.append(

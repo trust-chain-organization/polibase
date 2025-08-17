@@ -17,6 +17,7 @@ from src.application.dtos.politician_dto import (
     CreatePoliticianDTO,
     ExtractedPoliticianDTO,
     PoliticianDTO,
+    ScrapePoliticiansInputDTO,
     UpdatePoliticianDTO,
 )
 from src.application.dtos.speaker_dto import (
@@ -42,6 +43,7 @@ __all__ = [
     "CreatePoliticianDTO",
     "ExtractedPoliticianDTO",
     "PoliticianDTO",
+    "ScrapePoliticiansInputDTO",
     "UpdatePoliticianDTO",
     # Speaker DTOs
     "CreateSpeakerDTO",
