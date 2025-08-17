@@ -6,7 +6,6 @@
 import asyncio
 import functools
 import logging
-import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -60,7 +59,9 @@ class CircuitBreakerStats:
     last_failure_time: datetime | None = None
     last_success_time: datetime | None = None
     state_changed_at: datetime = field(default_factory=datetime.now)
-    recent_requests: list = field(default_factory=list)  # (timestamp, is_success)
+    recent_requests: list[tuple[datetime, bool]] = field(
+        default_factory=list
+    )  # (timestamp, is_success)
 
 
 class CircuitBreakerError(Exception):
@@ -86,9 +87,11 @@ class CircuitBreaker:
         self.stats = CircuitBreakerStats()
         self._lock = Lock()
         self._half_open_lock = Lock()
-        self._state_change_callbacks: list = []
+        self._state_change_callbacks: list[
+            Callable[[CircuitState, CircuitState], None]
+        ] = []
 
-    def call(self, func: Callable, *args, **kwargs) -> Any:
+    def call(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """関数を実行（サーキットブレーカー経由）
 
         Args:
@@ -122,7 +125,9 @@ class CircuitBreaker:
         else:
             return self._execute(func, *args, **kwargs)
 
-    async def async_call(self, func: Callable, *args, **kwargs) -> Any:
+    async def async_call(
+        self, func: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Any:
         """非同期関数を実行（サーキットブレーカー経由）
 
         Args:
@@ -156,7 +161,7 @@ class CircuitBreaker:
         else:
             return await self._async_execute(func, *args, **kwargs)
 
-    def _execute(self, func: Callable, *args, **kwargs) -> Any:
+    def _execute(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         """関数を実行して結果を記録"""
         try:
             result = func(*args, **kwargs)
@@ -166,7 +171,9 @@ class CircuitBreaker:
             self._record_failure()
             raise e
 
-    async def _async_execute(self, func: Callable, *args, **kwargs) -> Any:
+    async def _async_execute(
+        self, func: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Any:
         """非同期関数を実行して結果を記録"""
         try:
             result = await func(*args, **kwargs)
@@ -222,11 +229,13 @@ class CircuitBreaker:
 
     def _record_recent_request(self, is_success: bool) -> None:
         """最近のリクエストを記録"""
-        now = time.time()
+        now = datetime.now()
         self.stats.recent_requests.append((now, is_success))
 
         # 古いエントリを削除
-        cutoff = now - self.config.window_size
+        from datetime import timedelta
+
+        cutoff = now - timedelta(seconds=self.config.window_size)
         self.stats.recent_requests = [
             (ts, success) for ts, success in self.stats.recent_requests if ts > cutoff
         ]
@@ -304,13 +313,16 @@ class CircuitBreaker:
 
     def _notify_state_change(self, new_state: CircuitState) -> None:
         """状態変更を通知"""
+        old_state = self.state
         for callback in self._state_change_callbacks:
             try:
-                callback(self.name, new_state)
+                callback(old_state, new_state)
             except Exception as e:
                 logger.error(f"Error in state change callback: {e}", exc_info=True)
 
-    def add_state_change_callback(self, callback: Callable) -> None:
+    def add_state_change_callback(
+        self, callback: Callable[[CircuitState, CircuitState], None]
+    ) -> None:
         """状態変更コールバックを追加"""
         self._state_change_callbacks.append(callback)
 
@@ -345,7 +357,7 @@ class CircuitBreaker:
 
 def circuit_breaker(
     name: str | None = None, config: CircuitBreakerConfig | None = None
-) -> Callable:
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """サーキットブレーカーデコレータ
 
     Args:
@@ -364,7 +376,7 @@ def circuit_breaker(
     """
     breakers: dict[str, CircuitBreaker] = {}
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         breaker_name = name or f"{func.__module__}.{func.__name__}"
 
         if breaker_name not in breakers:

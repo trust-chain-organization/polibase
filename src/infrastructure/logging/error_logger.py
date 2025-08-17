@@ -193,13 +193,13 @@ class ErrorLogger:
 
         return log_data
 
-    def _extract_stack_info(self) -> list:
+    def _extract_stack_info(self) -> list[dict[str, Any]]:
         """スタック情報を抽出
 
         Returns:
             スタックフレーム情報のリスト
         """
-        stack_info = []
+        stack_info: list[dict[str, Any]] = []
         for frame_info in traceback.extract_stack()[:-2]:  # 現在のフレームを除外
             stack_info.append(
                 {
@@ -211,7 +211,7 @@ class ErrorLogger:
             )
         return stack_info[-10:]  # 最後の10フレームのみ
 
-    def set_context(self, **kwargs) -> None:
+    def set_context(self, **kwargs: Any) -> None:
         """グローバルコンテキストを設定
 
         Args:
@@ -224,7 +224,7 @@ class ErrorLogger:
         self._context.clear()
 
     @contextmanager
-    def context(self, **kwargs):
+    def context(self, **kwargs: Any):
         """一時的なコンテキストを設定
 
         Args:
@@ -242,7 +242,7 @@ class ErrorLogger:
         finally:
             self._context = old_context
 
-    def create_child(self, name: str, **context) -> "ErrorLogger":
+    def create_child(self, name: str, **context: Any) -> "ErrorLogger":
         """子ロガーを作成
 
         Args:

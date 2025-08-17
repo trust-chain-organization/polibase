@@ -83,18 +83,20 @@ class RetryPolicy:
             ExternalServiceException,
         )
 
-        def should_retry(exception: Exception) -> bool:
+        def should_retry(exception: BaseException) -> bool:
             """リトライすべきか判定"""
-            # 特定の例外タイプ
-            if isinstance(exception, retryable_exceptions):
-                return True
-
             # 外部サービスエラーの場合、ステータスコードを確認
             if isinstance(exception, ExternalServiceException):
                 status_code = exception.details.get("status_code")
                 # 5xx エラーまたは 429 (Too Many Requests) はリトライ
                 if status_code and (500 <= status_code < 600 or status_code == 429):
                     return True
+                # 4xxエラーはリトライしない
+                return False
+
+            # その他の特定の例外タイプ
+            if isinstance(exception, retryable_exceptions):
+                return True
 
             return False
 
@@ -115,7 +117,7 @@ class RetryPolicy:
         - デッドロックやタイムアウトのみ
         """
 
-        def should_retry(exception: Exception) -> bool:
+        def should_retry(exception: BaseException) -> bool:
             """データベースエラーでリトライすべきか判定"""
             if isinstance(exception, DatabaseException):
                 # デッドロックやタイムアウトはリトライ
@@ -199,7 +201,7 @@ class RetryPolicy:
         レート制限エラーの場合、指定された時間待機
         """
 
-        def wait_for_rate_limit(retry_state):
+        def wait_for_rate_limit(retry_state: Any) -> float:
             """レート制限の待機時間を計算"""
             exception = retry_state.outcome.exception()
 
@@ -227,7 +229,7 @@ class RetryPolicy:
         max_attempts: int = 3,
         wait_strategy: Any = None,
         retryable_exceptions: tuple[type[Exception], ...] | None = None,
-        should_retry: Callable[[Exception], bool] | None = None,
+        should_retry: Callable[[BaseException], bool] | None = None,
     ):
         """カスタムリトライポリシー
 

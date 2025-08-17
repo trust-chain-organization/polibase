@@ -121,14 +121,14 @@ def with_log_context(**default_context: Any) -> Callable[[T], T]:
 
     def decorator(func: T) -> T:
         @functools.wraps(func)
-        def sync_wrapper(*args, **kwargs):
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
             with LogContext.context(**default_context):
                 # 関数名を自動的に追加
                 LogContext.set(function=func.__name__)
                 return func(*args, **kwargs)
 
         @functools.wraps(func)
-        async def async_wrapper(*args, **kwargs):
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             with LogContext.context(**default_context):
                 # 関数名を自動的に追加
                 LogContext.set(function=func.__name__)
@@ -146,10 +146,10 @@ def with_log_context(**default_context: Any) -> Callable[[T], T]:
     return decorator
 
 
-class ContextualLoggerAdapter(logging.LoggerAdapter):
+class ContextualLoggerAdapter(logging.LoggerAdapter[logging.Logger]):
     """コンテキスト情報を自動的に追加するログアダプター"""
 
-    def process(self, msg: str, kwargs: dict[str, Any]) -> tuple:
+    def process(self, msg: Any, kwargs: Any) -> tuple[Any, Any]:
         """ログメッセージにコンテキスト情報を追加
 
         Args:
