@@ -57,6 +57,7 @@ class AnalyzeMatchingHistoryCommand:
 
         from src.config.async_database import get_async_session
         from src.domain.entities.llm_processing_history import (
+            LLMProcessingHistory,
             ProcessingStatus,
             ProcessingType,
         )
@@ -80,7 +81,7 @@ class AnalyzeMatchingHistoryCommand:
             )
 
             # Filter by date and status
-            filtered_histories = []
+            filtered_histories: list[LLMProcessingHistory] = []
             for h in histories:
                 # Check date range
                 if h.created_at and h.created_at < start_date:
@@ -261,7 +262,7 @@ class AnalyzeMatchingHistoryCommand:
                     writer.writeheader()
 
                     for history in filtered_histories:
-                        row = {
+                        row: dict[str, str] = {
                             "id": str(history.id),
                             "created_at": history.created_at.isoformat()
                             if history.created_at
