@@ -48,7 +48,7 @@ class ErrorHandler:
 
     def __init__(self):
         """初期化"""
-        self._handlers: dict[type[Exception], Callable] = {
+        self._handlers: dict[type[Exception], Callable[[Any], ErrorResponse]] = {
             # Domain exceptions
             EntityNotFoundException: self._handle_entity_not_found,
             BusinessRuleViolationException: self._handle_business_rule_violation,
@@ -104,7 +104,9 @@ class ErrorHandler:
         # その他の例外
         return self._handle_unknown_exception(exception, request_id)
 
-    def _get_handler(self, exception: Exception) -> Callable | None:
+    def _get_handler(
+        self, exception: Exception
+    ) -> Callable[[Any], ErrorResponse] | None:
         """例外に対応するハンドラーを取得"""
         for exc_type, handler in self._handlers.items():
             if isinstance(exception, exc_type):

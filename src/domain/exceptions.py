@@ -4,6 +4,8 @@
 ドメイン層で発生する例外を定義
 """
 
+from typing import Any
+
 
 class PolibaseException(Exception):  # noqa: N818
     """Polibaseアプリケーションの基底例外クラス
@@ -16,7 +18,7 @@ class PolibaseException(Exception):  # noqa: N818
         self,
         message: str,
         error_code: str | None = None,
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ):
         """
         Args:
@@ -55,7 +57,7 @@ class EntityNotFoundException(DomainException):
         self,
         entity_type: str,
         entity_id: int | None = None,
-        search_criteria: dict | None = None,
+        search_criteria: dict[str, Any] | None = None,
     ):
         """
         Args:
@@ -138,7 +140,7 @@ class DuplicateEntityException(DomainException):
     def __init__(
         self,
         entity_type: str,
-        duplicate_criteria: dict,
+        duplicate_criteria: dict[str, Any],
         existing_id: int | None = None,
     ):
         """

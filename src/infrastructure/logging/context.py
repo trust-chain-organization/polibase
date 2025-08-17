@@ -8,7 +8,7 @@ import functools
 import logging
 from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, TypeVar
 from uuid import uuid4
 
 # コンテキスト変数（スレッドセーフ・非同期セーフ）
@@ -21,7 +21,7 @@ class LogContext:
     """ログコンテキストを管理するクラス"""
 
     @staticmethod
-    def set(**kwargs) -> None:
+    def set(**kwargs: Any) -> None:
         """コンテキストを設定
 
         Args:
@@ -80,7 +80,7 @@ class LogContext:
 
     @staticmethod
     @contextmanager
-    def context(**kwargs):
+    def context(**kwargs: Any):
         """一時的なコンテキストを設定
 
         Args:
@@ -102,7 +102,10 @@ class LogContext:
             _log_context.reset(token)
 
 
-def with_log_context(**default_context) -> Callable:
+T = TypeVar("T", bound=Callable[..., Any])
+
+
+def with_log_context(**default_context: Any) -> Callable[[T], T]:
     """関数にログコンテキストを追加するデコレータ
 
     Args:
@@ -116,7 +119,7 @@ def with_log_context(**default_context) -> Callable:
             return user
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: T) -> T:
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs):
             with LogContext.context(**default_context):
@@ -133,11 +136,12 @@ def with_log_context(**default_context) -> Callable:
 
         # 非同期関数か同期関数かで適切なラッパーを返す
         import asyncio
+        from typing import cast
 
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper
+            return cast(T, async_wrapper)
         else:
-            return sync_wrapper
+            return cast(T, sync_wrapper)
 
     return decorator
 
