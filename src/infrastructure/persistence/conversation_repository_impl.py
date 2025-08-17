@@ -1,7 +1,7 @@
 """Conversation repository implementation."""
 
 import logging
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
@@ -20,8 +20,34 @@ from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 logger = logging.getLogger(__name__)
 
 
+class ConversationModelDict(TypedDict, total=False):
+    """Type definition for conversation model attributes."""
+
+    id: int
+    minutes_id: int | None
+    speaker_id: int | None
+    speaker_name: str
+    comment: str
+    sequence_number: int
+    chapter_number: int | None
+    sub_chapter_number: int | None
+    created_at: Any
+    updated_at: Any
+
+
 class ConversationModel:
     """Conversation database model (dynamic)."""
+
+    id: int
+    minutes_id: int | None
+    speaker_id: int | None
+    speaker_name: str
+    comment: str
+    sequence_number: int
+    chapter_number: int | None
+    sub_chapter_number: int | None
+    created_at: Any
+    updated_at: Any
 
     def __init__(self, **kwargs: Any):
         for key, value in kwargs.items():
@@ -32,6 +58,11 @@ class ConversationRepositoryImpl(
     BaseRepositoryImpl[Conversation], ConversationRepository
 ):
     """Implementation of conversation repository using SQLAlchemy."""
+
+    sync_session: Session | None
+    async_session: AsyncSession | None
+    speaker_matching_service: SpeakerMatchingService | None
+    legacy_repo: LegacyBaseRepository | None
 
     def __init__(
         self,
@@ -59,7 +90,9 @@ class ConversationRepositoryImpl(
             # For sync session, create a wrapper
             self.sync_session = session
             self.async_session = None
-            self.session = session
+            # Set attributes for non-async case
+            # These are required when not calling super().__init__
+            self.session = session  # type: ignore[assignment]
             self.entity_class = Conversation
             self.model_class = model_class
 
@@ -67,14 +100,14 @@ class ConversationRepositoryImpl(
         self.legacy_repo = None
 
         # Initialize legacy repository if sync session is provided
-        if self.sync_session:
+        if self.sync_session is not None:
             self.legacy_repo = LegacyBaseRepository(
                 use_session=True, session=self.sync_session
             )
 
     async def get_by_minutes(self, minutes_id: int) -> list[Conversation]:
         """Get all conversations for a minutes record."""
-        if self.async_session:
+        if self.async_session is not None:
             query = text("""
                 SELECT * FROM conversations
                 WHERE minutes_id = :minutes_id
@@ -83,10 +116,8 @@ class ConversationRepositoryImpl(
             result = await self.async_session.execute(query, {"minutes_id": minutes_id})
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
-        else:
+        elif self.sync_session is not None:
             # Sync implementation
-            if not self.sync_session:
-                return []
             query = text("""
                 SELECT * FROM conversations
                 WHERE minutes_id = :minutes_id
@@ -95,12 +126,15 @@ class ConversationRepositoryImpl(
             result = self.sync_session.execute(query, {"minutes_id": minutes_id})
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
+        else:
+            # This should never happen as one session must exist
+            return []
 
     async def get_by_speaker(
         self, speaker_id: int, limit: int | None = None
     ) -> list[Conversation]:
         """Get all conversations by a speaker."""
-        if self.async_session:
+        if self.async_session is not None:
             query = text("""
                 SELECT * FROM conversations
                 WHERE speaker_id = :speaker_id
@@ -111,10 +145,8 @@ class ConversationRepositoryImpl(
             result = await self.async_session.execute(query, params)
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
-        else:
+        elif self.sync_session is not None:
             # Sync implementation
-            if not self.sync_session:
-                return []
             query = text("""
                 SELECT * FROM conversations
                 WHERE speaker_id = :speaker_id
@@ -125,10 +157,13 @@ class ConversationRepositoryImpl(
             result = self.sync_session.execute(query, params)
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
+        else:
+            # This should never happen as one session must exist
+            return []
 
     async def get_unlinked(self, limit: int | None = None) -> list[Conversation]:
         """Get conversations without speaker links."""
-        if self.async_session:
+        if self.async_session is not None:
             query = text("""
                 SELECT * FROM conversations
                 WHERE speaker_id IS NULL
@@ -139,10 +174,8 @@ class ConversationRepositoryImpl(
             result = await self.async_session.execute(query, params)
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
-        else:
+        elif self.sync_session is not None:
             # Sync implementation
-            if not self.sync_session:
-                return []
             query = text("""
                 SELECT * FROM conversations
                 WHERE speaker_id IS NULL
@@ -153,6 +186,9 @@ class ConversationRepositoryImpl(
             result = self.sync_session.execute(query, params)
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
+        else:
+            # This should never happen as one session must exist
+            return []
 
     async def bulk_create(
         self, conversations: list[Conversation]
@@ -161,9 +197,9 @@ class ConversationRepositoryImpl(
         if not conversations:
             return []
 
-        if self.async_session:
+        if self.async_session is not None:
             # Async bulk insert
-            values = [
+            values: list[dict[str, Any]] = [
                 {
                     "minutes_id": conv.minutes_id,
                     "speaker_id": conv.speaker_id,
@@ -186,7 +222,7 @@ class ConversationRepositoryImpl(
                 RETURNING id
             """)
 
-            created = []
+            created: list[Conversation] = []
             for value in values:
                 result = await self.async_session.execute(query, value)
                 conv_id = result.scalar()
@@ -205,11 +241,9 @@ class ConversationRepositoryImpl(
 
             await self.async_session.commit()
             return created
-        else:
-            # Sync implementation
-            if not self.legacy_repo:
-                return []
-            created = []
+        elif self.legacy_repo is not None:
+            # Sync implementation with legacy repo
+            created: list[Conversation] = []
             for conv in conversations:
                 conv_id = self.legacy_repo.insert(
                     table="conversations",
@@ -227,9 +261,12 @@ class ConversationRepositoryImpl(
                 conv.id = conv_id
                 created.append(conv)
 
-            if self.sync_session:
+            if self.sync_session is not None:
                 self.sync_session.commit()
             return created
+        else:
+            # This should never happen
+            return []
 
     async def save_speaker_and_speech_content_list(
         self, speaker_and_speech_content_list: list[Any], minutes_id: int | None = None
@@ -237,9 +274,9 @@ class ConversationRepositoryImpl(
         """Save speaker and speech content list."""
         if not speaker_and_speech_content_list:
             logger.warning("No conversations to save")
-            if self.async_session:
+            if self.async_session is not None:
                 await self.async_session.commit()
-            elif self.sync_session:
+            elif self.sync_session is not None:
                 self.sync_session.commit()
             return []
 
@@ -260,9 +297,9 @@ class ConversationRepositoryImpl(
                     logger.warning(f"Failed to save conversation {i + 1}: {e}")
                     failed_count += 1
 
-            if self.async_session:
+            if self.async_session is not None:
                 await self.async_session.commit()
-            elif self.sync_session:
+            elif self.sync_session is not None:
                 self.sync_session.commit()
 
             if saved_ids:
@@ -280,9 +317,9 @@ class ConversationRepositoryImpl(
             return saved_ids
 
         except SQLIntegrityError as e:
-            if self.async_session:
+            if self.async_session is not None:
                 await self.async_session.rollback()
-            elif self.sync_session:
+            elif self.sync_session is not None:
                 self.sync_session.rollback()
             logger.error(f"Integrity error while saving conversations: {e}")
             raise IntegrityError(
@@ -290,9 +327,9 @@ class ConversationRepositoryImpl(
                 {"saved_count": len(saved_ids), "error": str(e)},
             ) from e
         except SQLAlchemyError as e:
-            if self.async_session:
+            if self.async_session is not None:
                 await self.async_session.rollback()
-            elif self.sync_session:
+            elif self.sync_session is not None:
                 self.sync_session.rollback()
             logger.error(f"Database error while saving conversations: {e}")
             raise SaveError(
@@ -304,9 +341,9 @@ class ConversationRepositoryImpl(
                 },
             ) from e
         except Exception as e:
-            if self.async_session:
+            if self.async_session is not None:
                 await self.async_session.rollback()
-            elif self.sync_session:
+            elif self.sync_session is not None:
                 self.sync_session.rollback()
             logger.error(f"Unexpected error while saving conversations: {e}")
             raise SaveError(
@@ -314,9 +351,9 @@ class ConversationRepositoryImpl(
                 {"saved_count": len(saved_ids), "error": str(e)},
             ) from e
         finally:
-            if self.async_session:
+            if self.async_session is not None:
                 await self.async_session.close()
-            elif self.sync_session:
+            elif self.sync_session is not None:
                 self.sync_session.close()
 
     async def _save_conversation(
@@ -329,7 +366,8 @@ class ConversationRepositoryImpl(
         speaker_id = await self._find_speaker_id(speaker_and_speech_content.speaker)
 
         # Insert new record
-        if self.async_session:
+        conversation_id: int | None = None
+        if self.async_session is not None:
             query = text("""
                 INSERT INTO conversations
                 (minutes_id, speaker_id, speaker_name, comment, sequence_number,
@@ -352,9 +390,7 @@ class ConversationRepositoryImpl(
                 },
             )
             conversation_id = result.scalar()
-        else:
-            if not self.legacy_repo:
-                return None
+        elif self.legacy_repo is not None:
             conversation_id = self.legacy_repo.insert(
                 table="conversations",
                 data={
@@ -368,17 +404,21 @@ class ConversationRepositoryImpl(
                 },
                 returning="id",
             )
-
-        if speaker_id:
-            print(
-                f"➕ 新規追加: {speaker_and_speech_content.speaker} "
-                f"(ID: {conversation_id}, Speaker ID: {speaker_id})"
-            )
         else:
-            print(
-                f"➕ 新規追加: {speaker_and_speech_content.speaker} "
-                f"(ID: {conversation_id}, Speaker ID: NULL)"
-            )
+            # This should never happen
+            return None
+
+        if conversation_id is not None:
+            if speaker_id:
+                print(
+                    f"➕ 新規追加: {speaker_and_speech_content.speaker} "
+                    f"(ID: {conversation_id}, Speaker ID: {speaker_id})"
+                )
+            else:
+                print(
+                    f"➕ 新規追加: {speaker_and_speech_content.speaker} "
+                    f"(ID: {conversation_id}, Speaker ID: NULL)"
+                )
 
         return conversation_id
 
@@ -390,7 +430,7 @@ class ConversationRepositoryImpl(
             return self.speaker_matching_service.find_speaker_id(speaker_name)  # type: ignore
 
         # Fallback to legacy implementation
-        if self.async_session:
+        if self.async_session is not None:
             query = text("""
                 SELECT id FROM speakers
                 WHERE name = :name OR name LIKE :name_pattern
@@ -407,7 +447,7 @@ class ConversationRepositoryImpl(
 
     def _legacy_find_speaker_id(self, speaker_name: str) -> int | None:
         """Legacy synchronous find speaker ID."""
-        if not self.sync_session:
+        if self.sync_session is None:
             return None
 
         query = text("""
@@ -424,20 +464,21 @@ class ConversationRepositoryImpl(
 
     async def get_conversations_count(self) -> int:
         """Get total count of conversations."""
-        if self.async_session:
+        if self.async_session is not None:
             query = text("SELECT COUNT(*) FROM conversations")
             result = await self.async_session.execute(query)
             return result.scalar() or 0
-        else:
-            if not self.sync_session:
-                return 0
+        elif self.sync_session is not None:
             query = text("SELECT COUNT(*) FROM conversations")
             result = self.sync_session.execute(query)
             return result.scalar() or 0
+        else:
+            # This should never happen
+            return 0
 
     async def get_speaker_linking_stats(self) -> dict[str, Any]:
         """Get statistics about speaker linking."""
-        if self.async_session:
+        if self.async_session is not None:
             # Total conversations
             total_query = text("SELECT COUNT(*) FROM conversations")
             total_result = await self.async_session.execute(total_query)
@@ -462,15 +503,8 @@ class ConversationRepositoryImpl(
                 "unlinked_conversations": unlinked,
                 "linking_rate": linking_rate,
             }
-        else:
+        elif self.sync_session is not None:
             # Sync implementation
-            if not self.sync_session:
-                return {
-                    "total_conversations": 0,
-                    "linked_conversations": 0,
-                    "unlinked_conversations": 0,
-                    "linking_rate": 0,
-                }
             total_query = text("SELECT COUNT(*) FROM conversations")
             total_result = self.sync_session.execute(total_query)
             total = total_result.scalar() or 0
@@ -489,6 +523,14 @@ class ConversationRepositoryImpl(
                 "linked_conversations": linked,
                 "unlinked_conversations": unlinked,
                 "linking_rate": linking_rate,
+            }
+        else:
+            # This should never happen
+            return {
+                "total_conversations": 0,
+                "linked_conversations": 0,
+                "unlinked_conversations": 0,
+                "linking_rate": 0,
             }
 
     async def get_conversations_with_pagination(
@@ -567,7 +609,7 @@ class ConversationRepositoryImpl(
             LIMIT :limit OFFSET :offset
         """)
 
-        if self.async_session:
+        if self.async_session is not None:
             # Get total count
             count_result = await self.async_session.execute(count_query, params)
             total_count = count_result.scalar() or 0
@@ -575,21 +617,22 @@ class ConversationRepositoryImpl(
             # Get data
             data_result = await self.async_session.execute(data_query, params)
             rows = data_result.fetchall()
-        else:
+        elif self.sync_session is not None:
             # Sync implementation
-            if not self.sync_session:
-                return {
-                    "conversations": [],
-                    "total_count": 0,
-                    "total_pages": 0,
-                    "current_page": page,
-                    "page_size": page_size,
-                }
             count_result = self.sync_session.execute(count_query, params)
             total_count = count_result.scalar() or 0
 
             data_result = self.sync_session.execute(data_query, params)
             rows = data_result.fetchall()
+        else:
+            # This should never happen
+            return {
+                "conversations": [],
+                "total_count": 0,
+                "total_pages": 0,
+                "current_page": page,
+                "page_size": page_size,
+            }
 
         # Format results
         conversations = []
@@ -649,16 +692,17 @@ class ConversationRepositoryImpl(
             AND (c.speaker_name = s.name OR c.speaker_name ILIKE '%' || s.name || '%')
         """)
 
-        if self.async_session:
+        if self.async_session is not None:
             result = await self.async_session.execute(update_query)
             await self.async_session.commit()
             return result.rowcount  # type: ignore
-        else:
-            if not self.sync_session:
-                return 0
+        elif self.sync_session is not None:
             result = self.sync_session.execute(update_query)
             self.sync_session.commit()
             return result.rowcount  # type: ignore
+        else:
+            # This should never happen
+            return 0
 
     def _row_to_entity(self, row: Any) -> Conversation:
         """Convert database row to domain entity."""
