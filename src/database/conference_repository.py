@@ -4,6 +4,8 @@ This is a legacy wrapper that delegates to the new ConferenceRepositoryImpl.
 """
 
 import logging
+from collections.abc import Coroutine
+from types import TracebackType
 from typing import Any
 
 from sqlalchemy import text
@@ -84,7 +86,7 @@ class ConferenceRepository:
             self._impl = ConferenceRepositoryImpl(session=self._async_session)
             self._impl_initialized = True
 
-    def _run_async(self, coro):
+    def _run_async(self, coro: Coroutine[Any, Any, Any]) -> Any:
         """Run async coroutine in sync context"""
         import asyncio
 
@@ -132,7 +134,12 @@ class ConferenceRepository:
         """Context manager entry"""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Context manager exit"""
         if self.connection:
             try:
@@ -152,7 +159,10 @@ class ConferenceRepository:
     def get_all_conferences(self) -> list[dict[str, Any]]:
         """Get all conferences with governing body information."""
         if not self.connection:
-            self.connection = self.engine.connect()
+            if self.engine is not None:
+                self.connection = self.engine.connect()
+            else:
+                raise RuntimeError("No database connection or engine available")
 
         try:
             query = text("""
@@ -174,7 +184,7 @@ class ConferenceRepository:
             result = self.connection.execute(query)
             rows = result.fetchall()
 
-            return [dict(row._mapping) for row in rows]
+            return [dict(row) for row in rows]
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting all conferences: {e}")
@@ -185,7 +195,10 @@ class ConferenceRepository:
     def get_conference_by_id(self, conference_id: int) -> dict[str, Any] | None:
         """Get conference by ID with governing body information."""
         if not self.connection:
-            self.connection = self.engine.connect()
+            if self.engine is not None:
+                self.connection = self.engine.connect()
+            else:
+                raise RuntimeError("No database connection or engine available")
 
         try:
             query = text("""
@@ -208,7 +221,7 @@ class ConferenceRepository:
             row = result.fetchone()
 
             if row:
-                return dict(row._mapping)
+                return dict(row)
             return None
 
         except SQLAlchemyError as e:
@@ -222,22 +235,23 @@ class ConferenceRepository:
         self, governing_body_id: int
     ) -> list[dict[str, Any]]:
         """Get all conferences for a governing body."""
-        conferences = self._run_async(
+        conferences: list[Any] = self._run_async(
             self._impl.get_by_governing_body(governing_body_id)
         )
 
         # Convert entities to dict format expected by legacy code
-        result = []
-        for conf in conferences:
-            result.append(
-                {
-                    "id": conf.id,
-                    "name": conf.name,
-                    "type": conf.type,
-                    "governing_body_id": conf.governing_body_id,
-                    "members_introduction_url": conf.members_introduction_url,
-                }
-            )
+        result: list[dict[str, Any]] = []
+        if conferences:
+            for conf in conferences:
+                result.append(
+                    {
+                        "id": conf.id,
+                        "name": conf.name,
+                        "type": conf.type,
+                        "governing_body_id": conf.governing_body_id,
+                        "members_introduction_url": conf.members_introduction_url,
+                    }
+                )
         return result
 
     def create_conference(
@@ -248,7 +262,10 @@ class ConferenceRepository:
     ) -> int | None:
         """Create a new conference."""
         if not self.connection:
-            self.connection = self.engine.connect()
+            if self.engine is not None:
+                self.connection = self.engine.connect()
+            else:
+                raise RuntimeError("No database connection or engine available")
 
         try:
             # Check if conference already exists
@@ -307,12 +324,15 @@ class ConferenceRepository:
     ) -> bool:
         """Update conference information."""
         if not self.connection:
-            self.connection = self.engine.connect()
+            if self.engine is not None:
+                self.connection = self.engine.connect()
+            else:
+                raise RuntimeError("No database connection or engine available")
 
         try:
             # Build dynamic update query
-            update_parts = []
-            params = {"conference_id": conference_id}
+            update_parts: list[str] = []
+            params: dict[str, Any] = {"conference_id": conference_id}
 
             if name is not None:
                 update_parts.append("name = :name")
@@ -346,7 +366,10 @@ class ConferenceRepository:
             result = self.connection.execute(query, params)
             self.connection.commit()
 
-            if result.rowcount > 0:
+            # Check rowcount safely
+            from sqlalchemy.engine import CursorResult
+
+            if isinstance(result, CursorResult) and result.rowcount > 0:
                 logger.info(f"Updated conference ID: {conference_id}")
                 return True
             else:
@@ -365,14 +388,18 @@ class ConferenceRepository:
         self, conference_id: int, members_introduction_url: str | None
     ) -> bool:
         """Update conference members introduction URL."""
-        return self._run_async(
+        result: Any = self._run_async(
             self._impl.update_members_url(conference_id, members_introduction_url)
         )
+        return bool(result)
 
     def delete_conference(self, conference_id: int) -> bool:
         """Delete a conference."""
         if not self.connection:
-            self.connection = self.engine.connect()
+            if self.engine is not None:
+                self.connection = self.engine.connect()
+            else:
+                raise RuntimeError("No database connection or engine available")
 
         try:
             # Check for related meetings
@@ -386,7 +413,7 @@ class ConferenceRepository:
             )
             count = result.scalar()
 
-            if count > 0:
+            if count is not None and count > 0:
                 logger.warning(
                     f"Cannot delete conference {conference_id}: "
                     f"has {count} related meetings"
@@ -403,7 +430,10 @@ class ConferenceRepository:
             )
             self.connection.commit()
 
-            if result.rowcount > 0:
+            # Check rowcount safely
+            from sqlalchemy.engine import CursorResult
+
+            if isinstance(result, CursorResult) and result.rowcount > 0:
                 logger.info(f"Deleted conference ID: {conference_id}")
                 return True
             else:
@@ -421,7 +451,10 @@ class ConferenceRepository:
     def get_governing_bodies(self) -> list[dict[str, Any]]:
         """Get all governing bodies."""
         if not self.connection:
-            self.connection = self.engine.connect()
+            if self.engine is not None:
+                self.connection = self.engine.connect()
+            else:
+                raise RuntimeError("No database connection or engine available")
 
         try:
             query = text("""
@@ -433,7 +466,7 @@ class ConferenceRepository:
             result = self.connection.execute(query)
             rows = result.fetchall()
 
-            return [dict(row._mapping) for row in rows]
+            return [dict(row) for row in rows]
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting governing bodies: {e}")

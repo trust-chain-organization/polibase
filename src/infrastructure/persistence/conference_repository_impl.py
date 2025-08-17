@@ -79,7 +79,14 @@ class ConferenceRepositoryImpl(BaseRepositoryImpl[Conference], ConferenceReposit
             row = result.fetchone()
 
             if row:
-                return self._dict_to_entity(dict(row._mapping))
+                # Use row._asdict() or _mapping if available, else convert to dict
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                return self._dict_to_entity(row_dict)
             return None
 
         except SQLAlchemyError as e:
@@ -118,7 +125,16 @@ class ConferenceRepositoryImpl(BaseRepositoryImpl[Conference], ConferenceReposit
             )
             rows = result.fetchall()
 
-            return [self._dict_to_entity(dict(row._mapping)) for row in rows]
+            results = []
+            for row in rows:
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                results.append(self._dict_to_entity(row_dict))
+            return results
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting conferences by governing body: {e}")
@@ -151,7 +167,16 @@ class ConferenceRepositoryImpl(BaseRepositoryImpl[Conference], ConferenceReposit
             result = await self.session.execute(query)
             rows = result.fetchall()
 
-            return [self._dict_to_entity(dict(row._mapping)) for row in rows]
+            results = []
+            for row in rows:
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                results.append(self._dict_to_entity(row_dict))
+            return results
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting conferences with members URL: {e}")
@@ -187,7 +212,8 @@ class ConferenceRepositoryImpl(BaseRepositoryImpl[Conference], ConferenceReposit
                 },
             )
 
-            if result.rowcount == 0:
+            # Check if any rows were affected
+            if hasattr(result, "rowcount") and result.rowcount == 0:  # type: ignore[attr-defined]
                 raise RecordNotFoundError("Conference", conference_id)
 
             await self.session.commit()
@@ -231,16 +257,24 @@ class ConferenceRepositoryImpl(BaseRepositoryImpl[Conference], ConferenceReposit
                 ORDER BY gb.name, c.name
             """
 
+            params: dict[str, Any] = {}
             if limit is not None:
                 query_text += " LIMIT :limit OFFSET :offset"
-                params = {"limit": limit, "offset": offset}
-            else:
-                params = {}
+                params = {"limit": limit, "offset": offset or 0}
 
             result = await self.session.execute(text(query_text), params)
             rows = result.fetchall()
 
-            return [self._dict_to_entity(dict(row._mapping)) for row in rows]
+            results = []
+            for row in rows:
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                results.append(self._dict_to_entity(row_dict))
+            return results
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting all conferences: {e}")
