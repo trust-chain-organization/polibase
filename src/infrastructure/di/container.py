@@ -176,16 +176,18 @@ class ApplicationContainer(containers.DeclarativeContainer):
         """
         self.wire(modules=modules)
 
-    def get_session_context(self):
+    def get_session_context(self) -> Any:
         """Get a database session context manager.
 
         Returns:
             A context manager that provides a database session.
         """
+        from collections.abc import Generator
         from contextlib import contextmanager
+        from typing import Any
 
         @contextmanager
-        def session_context():
+        def session_context() -> Generator[Any]:
             session = self.database.session()
             try:
                 yield session

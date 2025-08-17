@@ -4,6 +4,6 @@ Configuration module for Polibase.
 This module provides centralized configuration management.
 """
 
-from .settings import Settings
+from src.config.settings import Settings
 
 __all__ = ["Settings"]
