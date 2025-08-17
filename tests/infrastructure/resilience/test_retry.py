@@ -1,7 +1,6 @@
 """リトライ機構のテスト"""
 
-from typing import Any
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -11,10 +10,7 @@ from src.infrastructure.exceptions import (
     ExternalServiceException,
     RateLimitException,
 )
-from src.infrastructure.resilience.retry import (
-    RetryPolicy,
-    with_retry,
-)
+from src.infrastructure.resilience.retry import RetryPolicy, with_retry
 
 
 class TestRetryPolicy:
