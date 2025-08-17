@@ -37,10 +37,15 @@ class MatchSpeakersUseCase:
         # Get speakers to process
         speakers: list[Speaker] = []
         if speaker_ids:
-            for speaker_id in speaker_ids:
-                speaker = await self.speaker_repo.get_by_id(speaker_id)
-                if speaker:
-                    speakers.append(speaker)
+            # Batch fetch speakers if repository supports it
+            if hasattr(self.speaker_repo, "batch_get_by_ids"):
+                speakers = await self.speaker_repo.batch_get_by_ids(speaker_ids)  # type: ignore[attr-defined]
+            else:
+                # Fallback to individual fetches
+                for speaker_id in speaker_ids:
+                    speaker = await self.speaker_repo.get_by_id(speaker_id)
+                    if speaker:
+                        speakers.append(speaker)
         else:
             # Get all politician speakers
             speakers = await self.speaker_repo.get_politicians()
@@ -136,8 +141,13 @@ class MatchSpeakersUseCase:
 
     async def _llm_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
         """Perform LLM-based speaker matching with history recording."""
-        # Get potential candidates
-        candidates = await self.politician_repo.get_all(limit=100)
+        # Get potential candidates - check if repository supports caching
+        if hasattr(self.politician_repo, "get_all_cached"):
+            # Use cached version if available (avoids repeated DB queries)
+            candidates = await self.politician_repo.get_all_cached()  # type: ignore[attr-defined]
+        else:
+            # Fallback to regular get_all with limit
+            candidates = await self.politician_repo.get_all(limit=100)
 
         if not candidates:
             return None
