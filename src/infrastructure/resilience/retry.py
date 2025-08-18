@@ -260,7 +260,7 @@ class RetryPolicy:
         )
 
 
-def with_retry(policy: Callable | None = None, async_func: bool = False) -> Callable:
+def with_retry(policy: Callable[..., Any] | None = None, async_func: bool = False) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """関数にリトライポリシーを適用するデコレータ
 
     Args:
@@ -280,11 +280,11 @@ def with_retry(policy: Callable | None = None, async_func: bool = False) -> Call
     if policy is None:
         policy = RetryPolicy.default()
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         if async_func or asyncio.iscoroutinefunction(func):
 
             @functools.wraps(func)
-            async def async_wrapper(*args, **kwargs):
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 # 非同期関数用のラッパー
                 @policy
                 async def retry_func():
@@ -294,13 +294,16 @@ def with_retry(policy: Callable | None = None, async_func: bool = False) -> Call
                     return await retry_func()
                 except RetryError as e:
                     # 最後の例外を再発生
-                    raise e.last_attempt.exception() from None
+                    last_exception = e.last_attempt.exception()
+                    if last_exception is not None:
+                        raise last_exception from None
+                    raise
 
             return async_wrapper
         else:
 
             @functools.wraps(func)
-            def sync_wrapper(*args, **kwargs):
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
                 # 同期関数用のラッパー
                 @policy
                 def retry_func():
@@ -310,7 +313,10 @@ def with_retry(policy: Callable | None = None, async_func: bool = False) -> Call
                     return retry_func()
                 except RetryError as e:
                     # 最後の例外を再発生
-                    raise e.last_attempt.exception() from None
+                    last_exception = e.last_attempt.exception()
+                    if last_exception is not None:
+                        raise last_exception from None
+                    raise
 
             return sync_wrapper
 

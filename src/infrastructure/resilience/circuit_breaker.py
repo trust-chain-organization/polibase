@@ -387,14 +387,14 @@ def circuit_breaker(
         if asyncio.iscoroutinefunction(func):
 
             @functools.wraps(func)
-            async def async_wrapper(*args, **kwargs):
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                 return await breaker.async_call(func, *args, **kwargs)
 
             return async_wrapper
         else:
 
             @functools.wraps(func)
-            def sync_wrapper(*args, **kwargs):
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
                 return breaker.call(func, *args, **kwargs)
 
             return sync_wrapper
