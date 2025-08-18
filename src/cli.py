@@ -28,6 +28,7 @@ from src.cli_package.commands import (
     get_seed_commands,
     get_ui_commands,
 )
+from src.cli_package.commands.di_example_commands import get_di_example_commands
 from src.common.logging import setup_logging
 from src.config.sentry import init_sentry
 from src.config.settings import get_settings
@@ -75,6 +76,7 @@ def register_commands(cli_group: click.Group) -> None:
         get_coverage_commands,
         get_evaluation_commands,
         get_prompt_commands,
+        get_di_example_commands,  # DI container example commands
     ]
 
     for getter in command_getters:
