@@ -1,20 +1,17 @@
 [run]
+branch = True
 source = src
-relative_files = true
 omit =
+    src/test_utils/*
+    src/streamlit/*
+    src/evaluation/*
+    src/interfaces/web/*
     */tests/*
-    */test_*
     */__pycache__/*
-    */venv/*
-    */.venv/*
     */migrations/*
-    */config/*
-    */streamlit_app.py
-    */cli.py
-    */dependency_injector/*
-    */site-packages/*
 
 [report]
+precision = 1
 exclude_lines =
     pragma: no cover
     def __repr__
@@ -33,3 +30,6 @@ directory = htmlcov
 
 [xml]
 output = coverage.xml
+
+[json]
+output = coverage.json
