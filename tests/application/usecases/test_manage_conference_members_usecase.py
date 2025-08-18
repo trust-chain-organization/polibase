@@ -1,6 +1,7 @@
 """Tests for ManageConferenceMembersUseCase."""
 
 from datetime import date
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -15,7 +16,7 @@ from src.domain.entities.conference import Conference
 from src.domain.entities.politician import Politician
 
 
-def create_mock_extracted_member(**kwargs):
+def create_mock_extracted_member(**kwargs: Any) -> Mock:
     """Helper to create a mock extracted member entity."""
     member = Mock()
     member.id = kwargs.get("id", 1)
@@ -33,7 +34,7 @@ class TestManageConferenceMembersUseCase:
     """Test cases for ManageConferenceMembersUseCase."""
 
     @pytest.fixture
-    def mock_conference_repo(self):
+    def mock_conference_repo(self) -> AsyncMock:
         """Create mock conference repository."""
         repo = AsyncMock()
         repo.get_by_id.return_value = Conference(
@@ -46,7 +47,7 @@ class TestManageConferenceMembersUseCase:
         return repo
 
     @pytest.fixture
-    def mock_politician_repo(self):
+    def mock_politician_repo(self) -> AsyncMock:
         """Create mock politician repository."""
         repo = AsyncMock()
         repo.get_all.return_value = []  # Default empty list
@@ -55,7 +56,7 @@ class TestManageConferenceMembersUseCase:
         return repo
 
     @pytest.fixture
-    def mock_conference_service(self):
+    def mock_conference_service(self) -> Mock:
         """Create mock conference domain service."""
         service = Mock()
         service.extract_member_role.return_value = "議員"
@@ -65,19 +66,19 @@ class TestManageConferenceMembersUseCase:
         return service
 
     @pytest.fixture
-    def mock_extracted_repo(self):
+    def mock_extracted_repo(self) -> AsyncMock:
         """Create mock extracted member repository."""
         repo = AsyncMock()
         return repo
 
     @pytest.fixture
-    def mock_affiliation_repo(self):
+    def mock_affiliation_repo(self) -> AsyncMock:
         """Create mock affiliation repository."""
         repo = AsyncMock()
         return repo
 
     @pytest.fixture
-    def mock_scraper(self):
+    def mock_scraper(self) -> AsyncMock:
         """Create mock web scraper service."""
         scraper = AsyncMock()
         scraper.scrape_conference_members.return_value = [
@@ -87,7 +88,7 @@ class TestManageConferenceMembersUseCase:
         return scraper
 
     @pytest.fixture
-    def mock_llm(self):
+    def mock_llm(self) -> AsyncMock:
         """Create mock LLM service."""
         llm = AsyncMock()
         llm.extract_conference_members.return_value = [
@@ -103,14 +104,14 @@ class TestManageConferenceMembersUseCase:
     @pytest.fixture
     def usecase(
         self,
-        mock_conference_repo,
-        mock_politician_repo,
-        mock_conference_service,
-        mock_extracted_repo,
-        mock_affiliation_repo,
-        mock_scraper,
-        mock_llm,
-    ):
+        mock_conference_repo: AsyncMock,
+        mock_politician_repo: AsyncMock,
+        mock_conference_service: Mock,
+        mock_extracted_repo: AsyncMock,
+        mock_affiliation_repo: AsyncMock,
+        mock_scraper: AsyncMock,
+        mock_llm: AsyncMock,
+    ) -> ManageConferenceMembersUseCase:
         """Create use case instance with mocks."""
         return ManageConferenceMembersUseCase(
             conference_repository=mock_conference_repo,
