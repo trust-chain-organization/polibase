@@ -1,0 +1,253 @@
+"""アプリケーション層の例外クラス定義
+
+ユースケース実行時に発生する例外を定義
+"""
+
+from typing import Any
+
+from src.domain.exceptions import PolibaseException
+
+
+class ApplicationException(PolibaseException):
+    """アプリケーション層の基底例外クラス
+
+    ユースケースやアプリケーションサービスで発生する例外の基底クラス
+    """
+
+    pass
+
+
+class UseCaseException(ApplicationException):
+    """ユースケース実行エラー
+
+    ユースケースの実行中に発生する一般的なエラー
+    """
+
+    def __init__(
+        self,
+        use_case: str,
+        operation: str,
+        reason: str,
+        details: dict[str, Any] | None = None,
+    ):
+        """
+        Args:
+            use_case: ユースケース名
+            operation: 実行中の操作
+            reason: エラーの理由
+            details: 追加の詳細情報
+        """
+        message = (
+            f"ユースケース '{use_case}' の操作 '{operation}' が失敗しました: {reason}"
+        )
+        super().__init__(
+            message=message,
+            error_code="APP-001",
+            details={
+                "use_case": use_case,
+                "operation": operation,
+                "reason": reason,
+                **(details or {}),
+            },
+        )
+
+
+class ValidationException(ApplicationException):
+    """バリデーションエラー
+
+    入力データのバリデーションに失敗した場合に発生
+    """
+
+    def __init__(
+        self, field: str, value: Any, constraint: str, message: str | None = None
+    ):
+        """
+        Args:
+            field: バリデーションエラーが発生したフィールド
+            value: 不正な値
+            constraint: 違反した制約
+            message: カスタムエラーメッセージ
+        """
+        error_message = message or f"フィールド '{field}' の値が不正です: {constraint}"
+        super().__init__(
+            message=error_message,
+            error_code="APP-002",
+            details={"field": field, "value": value, "constraint": constraint},
+        )
+
+
+class AuthorizationException(ApplicationException):
+    """認可エラー
+
+    権限不足により操作が実行できない場合に発生
+    """
+
+    def __init__(
+        self, resource: str, action: str, required_permission: str | None = None
+    ):
+        """
+        Args:
+            resource: アクセスしようとしたリソース
+            action: 実行しようとしたアクション
+            required_permission: 必要な権限
+        """
+        message = f"リソース '{resource}' に対する操作 '{action}' の権限がありません"
+        super().__init__(
+            message=message,
+            error_code="APP-003",
+            details={
+                "resource": resource,
+                "action": action,
+                "required_permission": required_permission,
+            },
+        )
+
+
+class ResourceNotFoundException(ApplicationException):
+    """リソースが見つからないエラー
+
+    アプリケーション層でリソースが見つからない場合に発生
+    """
+
+    def __init__(
+        self, resource_type: str, identifier: Any, search_context: str | None = None
+    ):
+        """
+        Args:
+            resource_type: リソースの種類
+            identifier: リソースの識別子
+            search_context: 検索コンテキスト
+        """
+        message = f"リソース '{resource_type}' (ID: {identifier}) が見つかりません"
+        if search_context:
+            message += f" (コンテキスト: {search_context})"
+
+        super().__init__(
+            message=message,
+            error_code="APP-004",
+            details={
+                "resource_type": resource_type,
+                "identifier": identifier,
+                "search_context": search_context,
+            },
+        )
+
+
+class WorkflowException(ApplicationException):
+    """ワークフローエラー
+
+    ワークフローの実行中に発生するエラー
+    """
+
+    def __init__(self, workflow: str, step: str, reason: str, can_retry: bool = False):
+        """
+        Args:
+            workflow: ワークフロー名
+            step: 失敗したステップ
+            reason: エラーの理由
+            can_retry: リトライ可能かどうか
+        """
+        message = f"ワークフロー '{workflow}' のステップ '{step}' で失敗: {reason}"
+        super().__init__(
+            message=message,
+            error_code="APP-005",
+            details={
+                "workflow": workflow,
+                "step": step,
+                "reason": reason,
+                "can_retry": can_retry,
+            },
+        )
+
+
+class ConcurrencyException(ApplicationException):
+    """並行実行エラー
+
+    並行処理における競合状態が発生した場合のエラー
+    """
+
+    def __init__(self, resource: str, operation: str, conflict_details: str):
+        """
+        Args:
+            resource: 競合が発生したリソース
+            operation: 実行しようとした操作
+            conflict_details: 競合の詳細
+        """
+        message = (
+            f"リソース '{resource}' への並行アクセスで競合が発生: {conflict_details}"
+        )
+        super().__init__(
+            message=message,
+            error_code="APP-006",
+            details={
+                "resource": resource,
+                "operation": operation,
+                "conflict": conflict_details,
+            },
+        )
+
+
+class ConfigurationException(ApplicationException):
+    """設定エラー
+
+    アプリケーションの設定に関するエラー
+    """
+
+    def __init__(
+        self,
+        config_key: str,
+        reason: str,
+        expected_value: Any | None = None,
+        actual_value: Any | None = None,
+    ):
+        """
+        Args:
+            config_key: 設定キー
+            reason: エラーの理由
+            expected_value: 期待される値
+            actual_value: 実際の値
+        """
+        message = f"設定 '{config_key}' のエラー: {reason}"
+        super().__init__(
+            message=message,
+            error_code="APP-007",
+            details={
+                "config_key": config_key,
+                "reason": reason,
+                "expected_value": expected_value,
+                "actual_value": actual_value,
+            },
+        )
+
+
+class DataProcessingException(ApplicationException):
+    """データ処理エラー
+
+    データの変換や処理中に発生するエラー
+    """
+
+    def __init__(
+        self,
+        process: str,
+        data_type: str,
+        reason: str,
+        input_data: Any | None = None,
+    ):
+        """
+        Args:
+            process: 処理名
+            data_type: データタイプ
+            reason: エラーの理由
+            input_data: 処理対象のデータ（デバッグ用）
+        """
+        message = f"データ処理 '{process}' でエラー ({data_type}): {reason}"
+        super().__init__(
+            message=message,
+            error_code="APP-008",
+            details={
+                "process": process,
+                "data_type": data_type,
+                "reason": reason,
+                "input_data": str(input_data)[:200] if input_data else None,
+            },
+        )
