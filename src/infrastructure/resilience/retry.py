@@ -260,7 +260,9 @@ class RetryPolicy:
         )
 
 
-def with_retry(policy: Callable[..., Any] | None = None, async_func: bool = False) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def with_retry(
+    policy: Callable[..., Any] | None = None, async_func: bool = False
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """関数にリトライポリシーを適用するデコレータ
 
     Args:

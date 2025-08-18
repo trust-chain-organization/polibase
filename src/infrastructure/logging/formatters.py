@@ -174,7 +174,9 @@ class JSONFormatter(logging.Formatter):
         # 例外情報を含める
         if record.exc_info:
             log_data["exception"] = {
-                "type": record.exc_info[0].__name__ if record.exc_info[0] else "Unknown",
+                "type": record.exc_info[0].__name__
+                if record.exc_info[0]
+                else "Unknown",
                 "message": str(record.exc_info[1]),
                 "traceback": self.formatException(record.exc_info),
             }
