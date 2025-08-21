@@ -23,7 +23,6 @@ class TestSpeakerExtractorFromMinutes:
         with (
             patch("src.extract_speakers_from_minutes.RepositoryAdapter"),
             patch("src.extract_speakers_from_minutes.PoliticianRepositoryImpl"),
-            patch("src.extract_speakers_from_minutes.ConversationRepository"),
         ):
             return SpeakerExtractorFromMinutes(mock_session)
 
