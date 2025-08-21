@@ -165,14 +165,14 @@ class TestMeetingRepository:
         mock_meeting1.date = date(2024, 1, 15)
         mock_meeting1.title = "第1回定例会"
         mock_meeting1.url = "https://example.com/meeting1"
-        
+
         mock_meeting2 = MagicMock()
         mock_meeting2.id = 2
         mock_meeting2.conference_id = 1
         mock_meeting2.date = date(2024, 2, 15)
         mock_meeting2.title = "第2回定例会"
         mock_meeting2.url = "https://example.com/meeting2"
-        
+
         mock_meetings = [mock_meeting1, mock_meeting2]
 
         self.repo.get_meetings.return_value = mock_meetings
