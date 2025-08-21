@@ -1,7 +1,6 @@
 """Base entity for domain model."""
 
 from datetime import datetime
-from typing import Any
 
 
 class BaseEntity:
@@ -12,7 +11,7 @@ class BaseEntity:
         self.created_at: datetime | None = None
         self.updated_at: datetime | None = None
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, BaseEntity):
             return False
         return self.id == other.id

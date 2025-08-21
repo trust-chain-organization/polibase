@@ -62,10 +62,11 @@ class TestConferenceMemberCommands:
 
                 # Set up RepositoryAdapter to return different repos based on the type
                 def adapter_side_effect(impl_class):
-                    if "Conference" in impl_class.__name__:
-                        return mock_conf_repo
-                    elif "ExtractedConferenceMember" in impl_class.__name__:
+                    # Check ExtractedConferenceMember first (contains "Conference")
+                    if "ExtractedConferenceMember" in impl_class.__name__:
                         return mock_member_repo
+                    elif "Conference" in impl_class.__name__:
+                        return mock_conf_repo
                     return MagicMock()
 
                 mock_adapter_class.side_effect = adapter_side_effect
@@ -107,7 +108,7 @@ class TestConferenceMemberCommands:
                 "src.cli_package.commands.conference_member_commands.ConferenceMemberExtractor"
             ) as mock_extractor_class:
                 # Setup mocks
-                mock_conf_repo = MagicMock()
+                mock_conf_repo = Mock()
                 mock_conf_repo.get_conference_by_id.return_value = {
                     "id": 1,
                     "name": "本会議",
@@ -115,8 +116,9 @@ class TestConferenceMemberCommands:
                 }
                 mock_conf_repo.close = Mock()
 
-                mock_member_repo = MagicMock()
-                mock_member_repo.delete_extracted_members.return_value = 2
+                mock_member_repo = Mock()
+                # Ensure delete_extracted_members returns an integer, not a Mock
+                mock_member_repo.delete_extracted_members = Mock(return_value=2)
                 mock_member_repo.get_extraction_summary.return_value = {
                     "total": 3,
                     "pending": 0,
@@ -128,11 +130,12 @@ class TestConferenceMemberCommands:
 
                 # Set up RepositoryAdapter to return different repos based on the type
                 def adapter_side_effect(impl_class):
-                    if "Conference" in impl_class.__name__:
-                        return mock_conf_repo
-                    elif "ExtractedConferenceMember" in impl_class.__name__:
+                    # Check ExtractedConferenceMember first (contains "Conference")
+                    if "ExtractedConferenceMember" in impl_class.__name__:
                         return mock_member_repo
-                    return MagicMock()
+                    elif "Conference" in impl_class.__name__:
+                        return mock_conf_repo
+                    return Mock()
 
                 mock_adapter_class.side_effect = adapter_side_effect
 
