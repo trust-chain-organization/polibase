@@ -16,8 +16,10 @@ class TestEvaluationRunner:
 
     @pytest.fixture
     def runner(self):
-        """Create a runner instance"""
-        return EvaluationRunner()
+        """Create a runner instance with mock LLM"""
+        # Use mock LLM to avoid needing real API keys in tests
+        with patch.dict("os.environ", {"GOOGLE_API_KEY": ""}, clear=False):
+            return EvaluationRunner(use_real_llm=False)
 
     @pytest.fixture
     def sample_dataset(self):
@@ -75,33 +77,43 @@ class TestEvaluationRunner:
         finally:
             Path(tmp_path).unlink()
 
-    def test_execute_test_case_minutes_division(self, runner):
+    def test_execute_test_case_minutes_division(self):
         """Test executing minutes division test case"""
-        test_case = {
-            "id": "test_001",
-            "expected_output": {
-                "speaker_and_speech_content_list": [
-                    {"speaker": "Speaker 1", "speech_content": "Content 1"}
-                ]
-            },
-        }
+        # Create runner directly without fixture to ensure use_real_llm=False
+        with patch.dict("os.environ", {"GOOGLE_API_KEY": ""}, clear=False):
+            runner = EvaluationRunner(use_real_llm=False)
 
-        result = runner.execute_test_case("minutes_division", test_case)
+            test_case = {
+                "id": "test_001",
+                "expected_output": {
+                    "speaker_and_speech_content_list": [
+                        {"speaker": "Speaker 1", "speech_content": "Content 1"}
+                    ]
+                },
+            }
 
-        assert "speaker_and_speech_content_list" in result
-        assert len(result["speaker_and_speech_content_list"]) == 1
+            result = runner.execute_test_case("minutes_division", test_case)
 
-    def test_execute_test_case_speaker_matching(self, runner):
+            assert "speaker_and_speech_content_list" in result
+            assert len(result["speaker_and_speech_content_list"]) == 1
+
+    def test_execute_test_case_speaker_matching(self):
         """Test executing speaker matching test case"""
-        test_case = {
-            "id": "test_001",
-            "expected_output": {"results": [{"speaker_id": 1, "politician_id": 101}]},
-        }
+        # Create runner directly without fixture to ensure use_real_llm=False
+        with patch.dict("os.environ", {"GOOGLE_API_KEY": ""}, clear=False):
+            runner = EvaluationRunner(use_real_llm=False)
 
-        result = runner.execute_test_case("speaker_matching", test_case)
+            test_case = {
+                "id": "test_001",
+                "expected_output": {
+                    "results": [{"speaker_id": 1, "politician_id": 101}]
+                },
+            }
 
-        assert "results" in result
-        assert len(result["results"]) == 1
+            result = runner.execute_test_case("speaker_matching", test_case)
+
+            assert "results" in result
+            assert len(result["results"]) == 1
 
     @patch("src.evaluation.runner.EvaluationRunner.load_dataset")
     @patch("src.evaluation.runner.EvaluationRunner.execute_test_case")
