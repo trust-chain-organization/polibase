@@ -2,6 +2,7 @@
 
 import click
 
+from src.interfaces.cli.base import with_error_handling
 from src.interfaces.cli.commands.database.backup import BackupCommand
 from src.interfaces.cli.commands.database.connection import TestConnectionCommand
 from src.interfaces.cli.commands.database.reset import ResetDatabaseCommand
@@ -16,6 +17,7 @@ def database():
 
 
 @database.command()
+@with_error_handling
 def test_connection():
     """Test database connection (データベース接続テスト)."""
     command = TestConnectionCommand()
@@ -24,6 +26,7 @@ def test_connection():
 
 @database.command()
 @click.option("--gcs/--no-gcs", default=True, help="GCSを使用する/しない")
+@with_error_handling
 def backup(gcs: bool):
     """Create database backup (データベースバックアップ)."""
     command = BackupCommand()
@@ -32,6 +35,7 @@ def backup(gcs: bool):
 
 @database.command()
 @click.argument("filename")
+@with_error_handling
 def restore(filename: str):
     """Restore database from backup (データベースリストア)."""
     command = RestoreCommand()
@@ -40,6 +44,7 @@ def restore(filename: str):
 
 @database.command()
 @click.option("--gcs/--no-gcs", default=True, help="GCSを使用する/しない")
+@with_error_handling
 def list_backups(gcs: bool):
     """List available backups (バックアップ一覧)."""
     from src.interfaces.cli.commands.database.list_backups import ListBackupsCommand
@@ -49,6 +54,7 @@ def list_backups(gcs: bool):
 
 
 @database.command()
+@with_error_handling
 def reset():
     """Reset database to initial state (データベースリセット)."""
     command = ResetDatabaseCommand()
@@ -73,6 +79,7 @@ def reset():
     is_flag=True,
     help="conversation紐付けをスキップ",
 )
+@with_error_handling
 def extract_speakers(
     minutes_id: int | None,
     use_llm: bool,

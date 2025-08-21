@@ -5,13 +5,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from src.interfaces.cli.base import BaseCommand, Command, with_error_handling
+from src.interfaces.cli.base import BaseCommand, Command
 
 
 class RestoreCommand(Command, BaseCommand):
     """Command to restore database from backup."""
 
-    @with_error_handling
     def execute(self, **kwargs: Any) -> None:
         """Restore database from backup."""
         filename = kwargs.get("filename")

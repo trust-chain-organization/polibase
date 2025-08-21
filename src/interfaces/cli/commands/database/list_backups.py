@@ -5,13 +5,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from src.interfaces.cli.base import BaseCommand, Command, with_error_handling
+from src.interfaces.cli.base import BaseCommand, Command
 
 
 class ListBackupsCommand(Command, BaseCommand):
     """Command to list available database backups."""
 
-    @with_error_handling
     def execute(self, **kwargs: Any) -> None:
         """List available database backups."""
         gcs = kwargs.get("gcs", True)

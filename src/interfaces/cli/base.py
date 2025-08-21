@@ -17,6 +17,7 @@ from src.exceptions import (
     ValidationError,
 )
 
+# Type variables for methods that still need them
 P = ParamSpec("P")
 T = TypeVar("T")
 
@@ -119,11 +120,11 @@ class BaseCommand:
         click.echo(f"⚠ {message}", err=True)
 
 
-def with_async_execution(f: Callable[P, T]) -> Callable[P, T]:
+def with_async_execution(f: Callable[..., T]) -> Callable[..., T]:  # noqa: UP047
     """Decorator to run async functions in CLI commands."""
     return BaseCommand.async_command(f)
 
 
-def with_error_handling(f: Callable[P, T]) -> Callable[P, T]:
+def with_error_handling(f: Callable[..., T]) -> Callable[..., T]:  # noqa: UP047
     """Decorator to handle common errors in CLI commands."""
     return BaseCommand.handle_errors(f)

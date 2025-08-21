@@ -7,13 +7,12 @@ from sqlalchemy.orm import sessionmaker
 
 from src.config.database import DATABASE_URL
 from src.extract_speakers_from_minutes import SpeakerExtractorFromMinutes
-from src.interfaces.cli.base import BaseCommand, Command, with_error_handling
+from src.interfaces.cli.base import BaseCommand, Command
 
 
 class ExtractSpeakersCommand(Command, BaseCommand):
     """Command to extract speakers from minutes and link to politicians."""
 
-    @with_error_handling
     def execute(self, **kwargs: Any) -> None:
         """Extract speakers from minutes and link to politicians.
 

@@ -3,13 +3,12 @@
 import subprocess
 from typing import Any
 
-from src.interfaces.cli.base import BaseCommand, Command, with_error_handling
+from src.interfaces.cli.base import BaseCommand, Command
 
 
 class ResetDatabaseCommand(Command, BaseCommand):
     """Command to reset database to initial state."""
 
-    @with_error_handling
     def execute(self, **kwargs: Any) -> None:
         """Reset database to initial state.
 
