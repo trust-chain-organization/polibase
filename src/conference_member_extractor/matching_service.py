@@ -6,15 +6,16 @@ from typing import Any, cast
 
 from langchain_core.prompts import PromptTemplate
 
-from src.database.extracted_conference_member_repository import (
-    ExtractedConferenceMemberRepository,
+from src.infrastructure.persistence.extracted_conference_member_repository_impl import (
+    ExtractedConferenceMemberRepositoryImpl,
 )
-from src.database.politician_affiliation_repository import (
-    PoliticianAffiliationRepository,
+from src.infrastructure.persistence.politician_affiliation_repository_impl import (
+    PoliticianAffiliationRepositoryImpl,
 )
 from src.infrastructure.persistence.politician_repository_impl import (
     PoliticianRepositoryImpl,
 )
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
@@ -24,12 +25,12 @@ class ConferenceMemberMatchingService:
     """抽出された会議体メンバーと政治家をマッチングするサービス"""
 
     def __init__(self):
-        self.extracted_repo = ExtractedConferenceMemberRepository()
+        self.extracted_repo = RepositoryAdapter(ExtractedConferenceMemberRepositoryImpl)
         from src.config.database import get_db_session
 
         session = get_db_session()
         self.politician_repo = PoliticianRepositoryImpl(session)
-        self.affiliation_repo = PoliticianAffiliationRepository()
+        self.affiliation_repo = RepositoryAdapter(PoliticianAffiliationRepositoryImpl)
         self.llm_service = LLMService()
 
     def find_politician_candidates(

@@ -5,9 +5,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.database.politician_affiliation_repository import (
-    PoliticianAffiliationRepository,
+from src.infrastructure.persistence.politician_affiliation_repository_impl import (
+    PoliticianAffiliationRepositoryImpl,
 )
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 
 class TestPoliticianAffiliationRepository:
@@ -23,12 +24,14 @@ class TestPoliticianAffiliationRepository:
         return connection
 
     @pytest.fixture
-    @patch("src.database.politician_affiliation_repository.get_db_engine")
+    @patch(
+        "src.infrastructure.persistence.politician_affiliation_repository_impl.get_db_engine"
+    )
     def repository(self, mock_get_engine, mock_connection):
         """Create a repository instance with mocked engine"""
         mock_engine = Mock()
         mock_get_engine.return_value = mock_engine
-        repo = PoliticianAffiliationRepository()
+        repo = RepositoryAdapter(PoliticianAffiliationRepositoryImpl)
         # Inject mock connection
         repo.connection = mock_connection
         return repo

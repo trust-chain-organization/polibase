@@ -3,7 +3,10 @@
 import pandas as pd
 
 import streamlit as st
-from src.database.governing_body_repository import GoverningBodyRepository
+from src.infrastructure.persistence.governing_body_repository_impl import (
+    GoverningBodyRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.seed_generator import SeedGenerator
 
 
@@ -15,7 +18,7 @@ def manage_governing_bodies():
     # サブタブの作成
     gb_tab1, gb_tab2, gb_tab3 = st.tabs(["開催主体一覧", "新規登録", "編集・削除"])
 
-    gb_repo = GoverningBodyRepository()
+    gb_repo = RepositoryAdapter(GoverningBodyRepositoryImpl)
 
     with gb_tab1:
         # 開催主体一覧

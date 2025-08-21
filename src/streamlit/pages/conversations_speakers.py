@@ -6,10 +6,15 @@ import pandas as pd
 
 import streamlit as st
 from src.common.logging import get_logger
-from src.database.conference_repository import ConferenceRepository
-from src.database.conversation_repository import ConversationRepository
-from src.database.meeting_repository import MeetingRepository
-from src.database.speaker_repository import SpeakerRepository
+from src.infrastructure.persistence.conference_repository_impl import (
+    ConferenceRepositoryImpl,
+)
+from src.infrastructure.persistence.conversation_repository_impl import (
+    ConversationRepositoryImpl,
+)
+from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+from src.infrastructure.persistence.speaker_repository_impl import SpeakerRepositoryImpl
 
 logger = get_logger(__name__)
 
@@ -33,7 +38,7 @@ def show_conversations_list():
     """発言一覧を表示"""
     st.subheader("発言一覧")
 
-    conversation_repo = ConversationRepository()
+    conversation_repo = RepositoryAdapter(ConversationRepositoryImpl)
 
     try:
         # 紐付け統計情報を取得
@@ -63,7 +68,7 @@ def show_conversations_list():
 
         with col1:
             # 会議体一覧を取得
-            conference_repo = ConferenceRepository()
+            conference_repo = RepositoryAdapter(ConferenceRepositoryImpl)
             with conference_repo:
                 conferences = conference_repo.get_all_conferences()
 
@@ -84,7 +89,7 @@ def show_conversations_list():
 
         with col2:
             # 選択された会議体に基づいて会議一覧を取得
-            meeting_repo = MeetingRepository()
+            meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
             meetings = meeting_repo.get_meetings(
                 conference_id=selected_conference_id,
                 limit=1000,  # 十分な数の会議を取得
@@ -297,7 +302,7 @@ def show_speakers_list():
     """発言者一覧を表示"""
     st.subheader("発言者一覧")
 
-    speaker_repo = SpeakerRepository()
+    speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl)
 
     try:
         # 政治家情報を含む発言者データを取得

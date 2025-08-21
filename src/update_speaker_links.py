@@ -12,7 +12,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import src.config.config as config
 from src.config.database import test_connection
-from src.database.conversation_repository import ConversationRepository
+from src.infrastructure.persistence.conversation_repository_impl import (
+    ConversationRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 
 def main():
@@ -26,18 +29,18 @@ def main():
         return
 
     print("📊 Speaker紐付け更新前の状態:")
-    repo = ConversationRepository()
+    repo = RepositoryAdapter(ConversationRepositoryImpl)
     stats = repo.get_speaker_linking_stats()
     print(f"   - 総会話数: {stats['total_conversations']}件")
     print(f"   - Speaker紐付けあり: {stats['linked_conversations']}件")
     print(f"   - Speaker紐付けなし: {stats['unlinked_conversations']}件")
 
     print("\n🔗 Speaker紐付けを更新中...")
-    repo = ConversationRepository()
+    repo = RepositoryAdapter(ConversationRepositoryImpl)
     updated_count = repo.update_speaker_links()
 
     print("\n📊 Speaker紐付け更新後の状態:")
-    repo = ConversationRepository()
+    repo = RepositoryAdapter(ConversationRepositoryImpl)
     stats = repo.get_speaker_linking_stats()
     print(f"   - 総会話数: {stats['total_conversations']}件")
     print(f"   - Speaker紐付けあり: {stats['linked_conversations']}件")

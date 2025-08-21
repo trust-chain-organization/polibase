@@ -3,7 +3,10 @@
 from typing import Any, cast
 
 import streamlit as st
-from src.database.conference_repository import ConferenceRepository
+from src.infrastructure.persistence.conference_repository_impl import (
+    ConferenceRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.seed_generator import SeedGenerator
 
 
@@ -12,7 +15,7 @@ def manage_conferences():
     st.header("会議体管理")
     st.markdown("会議体（議会・委員会など）を管理します")
 
-    conf_repo = ConferenceRepository()
+    conf_repo = RepositoryAdapter(ConferenceRepositoryImpl)
 
     # 会議体管理用のメッセージを表示
     if (

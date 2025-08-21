@@ -13,11 +13,14 @@ from src.conference_member_extractor.extractor import ConferenceMemberExtractor
 from src.conference_member_extractor.matching_service import (
     ConferenceMemberMatchingService,
 )
-from src.database.conference_repository import ConferenceRepository
-from src.database.extracted_conference_member_repository import (
-    ExtractedConferenceMemberRepository,
-)
 from src.exceptions import DatabaseError, ScrapingError
+from src.infrastructure.persistence.conference_repository_impl import (
+    ConferenceRepositoryImpl,
+)
+from src.infrastructure.persistence.extracted_conference_member_repository_impl import (
+    ExtractedConferenceMemberRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +77,7 @@ class ConferenceMemberCommands(BaseCommand):
         click.echo("📋 会議体メンバー情報の抽出を開始します（ステップ1/3）")
 
         # 対象の会議体を取得
-        conf_repo = ConferenceRepository()
+        conf_repo = RepositoryAdapter(ConferenceRepositoryImpl)
 
         if conference_id:
             # 特定の会議体のみ
@@ -104,7 +107,7 @@ class ConferenceMemberCommands(BaseCommand):
 
         # 抽出器を初期化
         extractor = ConferenceMemberExtractor()
-        extracted_repo = ExtractedConferenceMemberRepository()
+        extracted_repo = RepositoryAdapter(ExtractedConferenceMemberRepositoryImpl)
 
         # 各会議体を処理
         total_extracted = 0
@@ -292,7 +295,7 @@ class ConferenceMemberCommands(BaseCommand):
 
         ConferenceMemberCommands.echo_info("📊 会議体メンバー抽出・マッチング状況")
 
-        extracted_repo = ExtractedConferenceMemberRepository()
+        extracted_repo = RepositoryAdapter(ExtractedConferenceMemberRepositoryImpl)
 
         # 全体サマリー
         summary = extracted_repo.get_extraction_summary()

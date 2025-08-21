@@ -5,9 +5,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.database.extracted_conference_member_repository import (
-    ExtractedConferenceMemberRepository,
+from src.infrastructure.persistence.extracted_conference_member_repository_impl import (
+    ExtractedConferenceMemberRepositoryImpl,
 )
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 
 class TestExtractedConferenceMemberRepository:
@@ -28,7 +29,7 @@ class TestExtractedConferenceMemberRepository:
         """Create a repository instance with mocked engine"""
         mock_engine = Mock()
         mock_get_engine.return_value = mock_engine
-        repo = ExtractedConferenceMemberRepository()
+        repo = RepositoryAdapter(ExtractedConferenceMemberRepositoryImpl)
         # Inject mock connection
         repo.connection = mock_connection
         return repo

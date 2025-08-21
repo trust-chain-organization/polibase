@@ -17,7 +17,6 @@ from src.common.instrumentation import measure_time
 from src.common.logging import get_logger
 from src.common.metrics import CommonMetrics, setup_metrics
 from src.config import config
-from src.database.conversation_repository import ConversationRepository
 from src.exceptions import (
     APIKeyError,
     DatabaseError,
@@ -25,9 +24,13 @@ from src.exceptions import (
     ProcessingError,
 )
 from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
+from src.infrastructure.persistence.conversation_repository_impl import (
+    ConversationRepositoryImpl,
+)
 from src.infrastructure.persistence.llm_processing_history_repository_impl import (
     LLMProcessingHistoryRepositoryImpl,
 )
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 from src.services.llm_factory import LLMServiceFactory
@@ -58,7 +61,7 @@ def save_to_database(
 
     conversation_repo = None
     try:
-        conversation_repo = ConversationRepository()
+        conversation_repo = RepositoryAdapter(ConversationRepositoryImpl)
         saved_ids = conversation_repo.save_speaker_and_speech_content_list(
             speaker_and_speech_content_list, minutes_id=minutes_id
         )
@@ -93,7 +96,7 @@ def display_database_status() -> None:
     """
     conversation_repo = None
     try:
-        conversation_repo = ConversationRepository()
+        conversation_repo = RepositoryAdapter(ConversationRepositoryImpl)
         count = conversation_repo.get_conversations_count()
         stats = conversation_repo.get_speaker_linking_stats()
 

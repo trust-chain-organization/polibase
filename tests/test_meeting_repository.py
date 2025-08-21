@@ -4,7 +4,8 @@ from datetime import date, datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from src.database.meeting_repository import MeetingRepository
+from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.models.meeting_v2 import Meeting
 
 
@@ -16,7 +17,7 @@ class TestMeetingRepository:
         """Set up test fixtures"""
         self.mock_session = MagicMock()
         mock_get_db_session.return_value = self.mock_session
-        self.repo = MeetingRepository()
+        self.repo = RepositoryAdapter(MeetingRepositoryImpl)
         # Ensure the repository is using our mock session
         self.repo._session = self.mock_session  # type: ignore
 

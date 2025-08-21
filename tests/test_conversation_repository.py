@@ -6,8 +6,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import unittest
 from unittest.mock import MagicMock, patch
 
-from src.database.conversation_repository import ConversationRepository
 from src.exceptions import SaveError
+from src.infrastructure.persistence.conversation_repository_impl import (
+    ConversationRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 
 
@@ -22,7 +25,7 @@ class TestConversationRepository(unittest.TestCase):
         # ConversationRepositoryのインスタンスを作成し、セッションをモック化
         with patch("src.config.database.get_db_session") as mock_get_session:
             mock_get_session.return_value = self.mock_session
-            self.repository = ConversationRepository()
+            self.repository = RepositoryAdapter(ConversationRepositoryImpl)
             # Ensure the repository is using our mock session
             self.repository._session = self.mock_session
 
