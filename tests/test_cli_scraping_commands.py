@@ -101,7 +101,7 @@ async def test_async_scrape_minutes_with_url(mock_minutes_data):
 
         # Mock meeting repository
         with patch(
-            "src.database.meeting_repository.MeetingRepository"
+            "src.infrastructure.persistence.repository_adapter.RepositoryAdapter"
         ) as mock_repo_class:
             mock_repo = Mock()
             mock_repo_class.return_value = mock_repo
@@ -137,7 +137,7 @@ async def test_async_scrape_minutes_with_meeting_id(mock_minutes_data):
 
         # Mock meeting repository
         with patch(
-            "src.database.meeting_repository.MeetingRepository"
+            "src.infrastructure.persistence.repository_adapter.RepositoryAdapter"
         ) as mock_repo_class:
             mock_repo = Mock()
             mock_repo_class.return_value = mock_repo
@@ -171,7 +171,7 @@ async def test_async_scrape_minutes_failure(mock_minutes_data):
 
         # Mock meeting repository
         with patch(
-            "src.database.meeting_repository.MeetingRepository"
+            "src.infrastructure.persistence.repository_adapter.RepositoryAdapter"
         ) as mock_repo_class:
             mock_repo = Mock()
             mock_repo_class.return_value = mock_repo
@@ -205,12 +205,12 @@ async def test_async_scrape_minutes_with_gcs_uri_update_meeting_id(mock_minutes_
 
         # Mock meeting repository
         with patch(
-            "src.database.meeting_repository.MeetingRepository"
-        ) as mock_repo_class:
+            "src.infrastructure.persistence.repository_adapter.RepositoryAdapter"
+        ) as mock_adapter_class:
             mock_repo = Mock()
             mock_repo.update_meeting_gcs_uris = Mock(return_value=Mock())
             mock_repo.close = Mock()
-            mock_repo_class.return_value = mock_repo
+            mock_adapter_class.return_value = mock_repo
 
             # Execute
             result = await ScrapingCommands._async_scrape_minutes(
@@ -243,7 +243,7 @@ async def test_async_scrape_minutes_with_gcs_uri_update_url(mock_minutes_data):
 
         # Mock meeting repository
         with patch(
-            "src.database.meeting_repository.MeetingRepository"
+            "src.infrastructure.persistence.repository_adapter.RepositoryAdapter"
         ) as mock_repo_class:
             mock_repo = Mock()
             mock_repo.fetch_as_dict = Mock(return_value=[{"id": 456}])
@@ -284,7 +284,7 @@ async def test_async_scrape_minutes_with_gcs_uri_update_url_not_found(
 
         # Mock meeting repository
         with patch(
-            "src.database.meeting_repository.MeetingRepository"
+            "src.infrastructure.persistence.repository_adapter.RepositoryAdapter"
         ) as mock_repo_class:
             mock_repo = Mock()
             mock_repo.fetch_as_dict = Mock(return_value=[])
@@ -358,7 +358,7 @@ async def test_async_batch_scrape_with_gcs_uri_update():
 
         # Mock meeting repository
         with patch(
-            "src.database.meeting_repository.MeetingRepository"
+            "src.infrastructure.persistence.repository_adapter.RepositoryAdapter"
         ) as mock_repo_class:
             mock_repo = Mock()
             mock_repo.fetch_as_dict = Mock(

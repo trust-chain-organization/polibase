@@ -9,7 +9,7 @@ import pandas as pd
 class TestStreamlitAppComponents:
     """Test cases for Streamlit app components"""
 
-    @patch("src.streamlit.pages.meetings.MeetingRepository")
+    @patch("src.streamlit.pages.meetings.RepositoryAdapter")
     @patch("src.streamlit.pages.meetings.st")
     def test_show_meetings_list_no_meetings(self, mock_st, mock_repo_class):
         """Test showing meetings list when no meetings exist"""
@@ -32,7 +32,7 @@ class TestStreamlitAppComponents:
         mock_st.info.assert_called_with("会議が登録されていません")
         mock_repo.close.assert_called_once()
 
-    @patch("src.streamlit.pages.meetings.MeetingRepository")
+    @patch("src.streamlit.pages.meetings.RepositoryAdapter")
     @patch("src.streamlit.pages.meetings.st")
     @patch("src.streamlit.pages.meetings.pd")
     def test_show_meetings_list_with_meetings(self, mock_pd, mock_st, mock_repo_class):
@@ -113,7 +113,7 @@ class TestStreamlitAppComponents:
         # Check that markdown was called at least once (for the meeting display)
         assert mock_st.markdown.call_count >= 1
 
-    @patch("src.streamlit.pages.meetings.MeetingRepository")
+    @patch("src.streamlit.pages.meetings.RepositoryAdapter")
     @patch("src.streamlit.pages.meetings.st")
     def test_add_new_meeting_no_governing_bodies(self, mock_st, mock_repo_class):
         """Test adding new meeting when no governing bodies exist"""
@@ -232,7 +232,7 @@ class TestStreamlitAppComponents:
             "編集する会議を選択してください（会議一覧タブから編集ボタンをクリック）"
         )
 
-    @patch("src.streamlit.pages.meetings.MeetingRepository")
+    @patch("src.streamlit.pages.meetings.RepositoryAdapter")
     @patch("src.streamlit.pages.meetings.st")
     def test_get_all_conferences_display(self, mock_st, mock_repo_class):
         """Test displaying all conferences"""

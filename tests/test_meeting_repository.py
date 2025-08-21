@@ -4,22 +4,17 @@ from datetime import date, datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
-from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.models.meeting_v2 import Meeting
 
 
 class TestMeetingRepository:
     """Test cases for MeetingRepository"""
 
-    @patch("src.config.database.get_db_session")
-    def setup_method(self, method: Any, mock_get_db_session: MagicMock) -> None:
+    def setup_method(self, method: Any) -> None:
         """Set up test fixtures"""
-        self.mock_session = MagicMock()
-        mock_get_db_session.return_value = self.mock_session
-        self.repo = RepositoryAdapter(MeetingRepositoryImpl)
-        # Ensure the repository is using our mock session
-        self.repo._session = self.mock_session  # type: ignore
+        # Mock the repository directly
+        self.mock_repo = MagicMock()
+        self.repo = self.mock_repo
 
     def test_get_governing_bodies(self):
         """Test getting all governing bodies"""
@@ -261,7 +256,7 @@ class TestMeetingRepository:
 
         # Mock the session's execute method to return different results
         # First call returns meeting rows, second call returns count
-        self.mock_session.execute.side_effect = [
+        self.mock_repo.execute.side_effect = [
             mock_rows,  # For the main query
             mock_count_result,  # For the count query
         ]
@@ -279,4 +274,4 @@ class TestMeetingRepository:
         self.repo.close()
 
         # Assert
-        self.mock_session.close.assert_called_once()
+        self.mock_repo.close.assert_called_once()

@@ -89,7 +89,7 @@ class TestProcessMinutes:
 class TestSaveToDatabase:
     """Test for save_to_database function"""
 
-    @patch("src.process_minutes.ConversationRepository")
+    @patch("src.process_minutes.RepositoryAdapter")
     def test_save_to_database_success(self, mock_repo_class):
         """Test successful database save"""
         # Arrange
@@ -119,7 +119,7 @@ class TestSaveToDatabase:
         result = save_to_database([])
         assert result == []
 
-    @patch("src.process_minutes.ConversationRepository")
+    @patch("src.process_minutes.RepositoryAdapter")
     def test_save_to_database_error(self, mock_repo_class):
         """Test database save error handling"""
         # Arrange
@@ -141,7 +141,7 @@ class TestSaveToDatabase:
 class TestDisplayDatabaseStatus:
     """Test for display_database_status function"""
 
-    @patch("src.process_minutes.ConversationRepository")
+    @patch("src.process_minutes.RepositoryAdapter")
     @patch("builtins.print")
     def test_display_database_status_success(self, mock_print, mock_repo_class):
         """Test successful database status display"""
@@ -186,7 +186,7 @@ class TestDisplayDatabaseStatus:
         assert any("Speaker紐付けあり: 7件" in call for call in print_calls)
         assert any("Speaker紐付けなし: 3件" in call for call in print_calls)
 
-    @patch("src.process_minutes.ConversationRepository")
+    @patch("src.process_minutes.RepositoryAdapter")
     def test_display_database_status_error(self, mock_repo_class):
         """Test database status display error handling"""
         # Arrange

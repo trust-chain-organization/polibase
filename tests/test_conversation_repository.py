@@ -7,10 +7,6 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from src.exceptions import SaveError
-from src.infrastructure.persistence.conversation_repository_impl import (
-    ConversationRepositoryImpl,
-)
-from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 
 
@@ -19,15 +15,15 @@ class TestConversationRepository(unittest.TestCase):
 
     def setUp(self):
         """各テストケース実行前の初期化"""
-        # データベースセッションをモック化
-        self.mock_session = MagicMock()
+        # Mock the async repository directly
+        self.mock_async_repo = MagicMock()
 
-        # ConversationRepositoryのインスタンスを作成し、セッションをモック化
-        with patch("src.config.database.get_db_session") as mock_get_session:
-            mock_get_session.return_value = self.mock_session
-            self.repository = RepositoryAdapter(ConversationRepositoryImpl)
-            # Ensure the repository is using our mock session
-            self.repository._session = self.mock_session
+        # Patch the RepositoryAdapter to return our mock
+        with patch(
+            "src.infrastructure.persistence.repository_adapter.RepositoryAdapter"
+        ) as mock_adapter:
+            mock_adapter.return_value = self.mock_async_repo
+            self.repository = self.mock_async_repo
 
     def create_test_speech_data(self):
         """テスト用の発言データを生成"""
@@ -70,8 +66,8 @@ class TestConversationRepository(unittest.TestCase):
 
             # 検証
             self.assertEqual(result, mock_conversation_ids)
-            self.mock_session.commit.assert_called_once()
-            self.mock_session.close.assert_called_once()
+            self.mock_async_repo.commit.assert_called_once()
+            self.mock_async_repo.close.assert_called_once()
 
     def test_save_speaker_and_speech_content_list_database_error(self):
         """データベースエラー時のロールバックテスト"""
@@ -86,8 +82,8 @@ class TestConversationRepository(unittest.TestCase):
                 self.repository.save_speaker_and_speech_content_list(test_data)
 
             # ロールバックが呼ばれることを検証
-            self.mock_session.rollback.assert_called_once()
-            self.mock_session.close.assert_called_once()
+            self.mock_async_repo.rollback.assert_called_once()
+            self.mock_async_repo.close.assert_called_once()
 
     def test_save_conversation_with_speaker_id(self):
         """発言者IDが見つかる場合の個別保存テスト"""
@@ -98,17 +94,17 @@ class TestConversationRepository(unittest.TestCase):
             # SQLクエリ実行結果をモック
             mock_result = MagicMock()
             mock_result.fetchone.return_value = [456]  # 新しく作成されたconversation_id
-            self.mock_session.execute.return_value = mock_result
+            self.mock_async_repo.execute.return_value = mock_result
 
             # 実行
             result = self.repository._save_conversation(test_speech)
 
             # 検証
             self.assertEqual(result, 456)
-            self.mock_session.execute.assert_called_once()
+            self.mock_async_repo.execute.assert_called_once()
 
             # 実行されたクエリの引数を検証
-            args, kwargs = self.mock_session.execute.call_args
+            args, kwargs = self.mock_async_repo.execute.call_args
             query_params = kwargs if kwargs else args[1]
             self.assertEqual(query_params["speaker_id"], 123)
             self.assertEqual(query_params["speaker_name"], "委員長(田中太郎)")
@@ -125,7 +121,7 @@ class TestConversationRepository(unittest.TestCase):
             # SQLクエリ実行結果をモック
             mock_result = MagicMock()
             mock_result.fetchone.return_value = [789]
-            self.mock_session.execute.return_value = mock_result
+            self.mock_async_repo.execute.return_value = mock_result
 
             # 実行
             result = self.repository._save_conversation(test_speech)
@@ -134,7 +130,7 @@ class TestConversationRepository(unittest.TestCase):
             self.assertEqual(result, 789)
 
             # 実行されたクエリの引数を検証
-            args, kwargs = self.mock_session.execute.call_args
+            args, kwargs = self.mock_async_repo.execute.call_args
             query_params = kwargs if kwargs else args[1]
             self.assertIsNone(query_params["speaker_id"])
             self.assertEqual(query_params["speaker_name"], "◆委員(佐藤花子)")
@@ -144,14 +140,14 @@ class TestConversationRepository(unittest.TestCase):
         # 完全一致で見つかる場合のモック設定
         mock_result = MagicMock()
         mock_result.fetchone.return_value = [555]
-        self.mock_session.execute.return_value = mock_result
+        self.mock_async_repo.execute.return_value = mock_result
 
         # 実行
         result = self.repository._legacy_find_speaker_id("田中太郎")
 
         # 検証
         self.assertEqual(result, 555)
-        self.mock_session.execute.assert_called_once()
+        self.mock_async_repo.execute.assert_called_once()
 
     def test_legacy_find_speaker_id_bracket_extraction(self):
         """括弧内名前抽出テスト"""
@@ -163,21 +159,21 @@ class TestConversationRepository(unittest.TestCase):
         mock_results[0].fetchone.return_value = None
         mock_results[1].fetchone.return_value = [666]
 
-        self.mock_session.execute.side_effect = mock_results
+        self.mock_async_repo.execute.side_effect = mock_results
 
         # 実行
         result = self.repository._legacy_find_speaker_id("委員長(田中太郎)")
 
         # 検証
         self.assertEqual(result, 666)
-        self.assertEqual(self.mock_session.execute.call_count, 2)
+        self.assertEqual(self.mock_async_repo.execute.call_count, 2)
 
     def test_legacy_find_speaker_id_no_match(self):
         """発言者が見つからない場合のテスト"""
         # 全ての検索で見つからない場合
         mock_result = MagicMock()
         mock_result.fetchone.return_value = None
-        self.mock_session.execute.return_value = mock_result
+        self.mock_async_repo.execute.return_value = mock_result
 
         # 実行
         result = self.repository._legacy_find_speaker_id("存在しない発言者")
@@ -232,7 +228,7 @@ class TestConversationRepository(unittest.TestCase):
             "updated_at",
             "linked_speaker_name",
         ]
-        self.mock_session.execute.return_value = mock_result
+        self.mock_async_repo.execute.return_value = mock_result
 
         # 実行
         result = self.repository.get_all_conversations()
@@ -243,13 +239,13 @@ class TestConversationRepository(unittest.TestCase):
         self.assertEqual(result[0]["speaker_id"], 123)
         self.assertEqual(result[1]["speaker_id"], None)
         # close()は呼ばれないはず
-        self.mock_session.close.assert_not_called()
+        self.mock_async_repo.close.assert_not_called()
 
     def test_get_conversations_count(self):
         """発言データ件数取得テスト"""
         mock_result = MagicMock()
         mock_result.scalar.return_value = 25
-        self.mock_session.execute.return_value = mock_result
+        self.mock_async_repo.execute.return_value = mock_result
 
         # 実行
         result = self.repository.get_conversations_count()
@@ -257,7 +253,7 @@ class TestConversationRepository(unittest.TestCase):
         # 検証
         self.assertEqual(result, 25)
         # close()は呼ばれないはず
-        self.mock_session.close.assert_not_called()
+        self.mock_async_repo.close.assert_not_called()
 
     def test_get_speaker_linking_stats(self):
         """発言者紐付け統計取得テスト"""
@@ -272,7 +268,7 @@ class TestConversationRepository(unittest.TestCase):
         mock_politician_result.fetchone.return_value = [50]
 
         # Set up execute to return different results for different queries
-        self.mock_session.execute.side_effect = [
+        self.mock_async_repo.execute.side_effect = [
             mock_total_result,  # First call for total count
             mock_linked_result,  # Second call for linked count
             mock_politician_result,  # Third call - politician linked count
@@ -292,7 +288,7 @@ class TestConversationRepository(unittest.TestCase):
         }
         self.assertEqual(result, expected_stats)
         # close()は呼ばれないはず
-        self.mock_session.close.assert_not_called()
+        self.mock_async_repo.close.assert_not_called()
 
     def test_get_conversations_with_pagination(self):
         """ページネーション付き発言データ取得テスト"""
@@ -360,7 +356,7 @@ class TestConversationRepository(unittest.TestCase):
         mock_data_result.fetchall.return_value = mock_conversations
 
         # executeのモック設定
-        self.mock_session.execute.side_effect = [
+        self.mock_async_repo.execute.side_effect = [
             mock_count_result,  # 総件数クエリ
             mock_data_result,  # データ取得クエリ
         ]
@@ -382,9 +378,9 @@ class TestConversationRepository(unittest.TestCase):
         self.assertEqual(result["conversations"][1]["speaker_id"], None)
 
         # executeが2回呼ばれていることを確認
-        self.assertEqual(self.mock_session.execute.call_count, 2)
+        self.assertEqual(self.mock_async_repo.execute.call_count, 2)
         # close()は呼ばれないはず
-        self.mock_session.close.assert_not_called()
+        self.mock_async_repo.close.assert_not_called()
 
     def test_get_conversations_with_pagination_chapter_sorting(self):
         """章番号によるソート順のテスト"""
@@ -541,7 +537,7 @@ class TestConversationRepository(unittest.TestCase):
         ]
 
         # executeが2回呼ばれる（カウントクエリとデータクエリ）
-        self.mock_session.execute.side_effect = [mock_count_result, mock_data_result]
+        self.mock_async_repo.execute.side_effect = [mock_count_result, mock_data_result]
 
         # 実行
         result = self.repository.get_conversations_with_pagination(limit=10, offset=0)
@@ -560,27 +556,27 @@ class TestConversationRepository(unittest.TestCase):
         # Mock the UPDATE query result
         mock_result = MagicMock()
         mock_result.rowcount = 5  # 5 rows updated
-        self.mock_session.execute.return_value = mock_result
+        self.mock_async_repo.execute.return_value = mock_result
 
         # 実行
         result = self.repository.update_speaker_links()
 
         # 検証
         self.assertEqual(result, 5)  # 5件更新される
-        self.mock_session.execute.assert_called_once()
-        self.mock_session.commit.assert_called_once()
+        self.mock_async_repo.execute.assert_called_once()
+        self.mock_async_repo.commit.assert_called_once()
 
     def test_update_speaker_links_database_error(self):
         """発言者紐付け更新エラーテスト"""
         # Executeでエラーが発生
-        self.mock_session.execute.side_effect = RuntimeError("DB Error")
+        self.mock_async_repo.execute.side_effect = RuntimeError("DB Error")
 
         # エラーが発生することを検証
         with self.assertRaises(RuntimeError):
             self.repository.update_speaker_links()
 
         # At least execute should be called
-        self.mock_session.execute.assert_called()
+        self.mock_async_repo.execute.assert_called()
 
     def test_empty_speech_content_list(self):
         """空の発言データリスト保存テスト"""
@@ -589,8 +585,8 @@ class TestConversationRepository(unittest.TestCase):
 
         # 検証
         self.assertEqual(result, [])
-        self.mock_session.commit.assert_called_once()
-        self.mock_session.close.assert_called_once()
+        self.mock_async_repo.commit.assert_called_once()
+        self.mock_async_repo.close.assert_called_once()
 
 
 if __name__ == "__main__":

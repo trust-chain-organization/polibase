@@ -1,14 +1,9 @@
 """Tests for extracted conference member repository"""
 
 from decimal import Decimal
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
-
-from src.infrastructure.persistence.extracted_conference_member_repository_impl import (
-    ExtractedConferenceMemberRepositoryImpl,
-)
-from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 
 class TestExtractedConferenceMemberRepository:
@@ -24,13 +19,10 @@ class TestExtractedConferenceMemberRepository:
         return connection
 
     @pytest.fixture
-    @patch("src.database.extracted_conference_member_repository.get_db_engine")
-    def repository(self, mock_get_engine, mock_connection):
-        """Create a repository instance with mocked engine"""
-        mock_engine = Mock()
-        mock_get_engine.return_value = mock_engine
-        repo = RepositoryAdapter(ExtractedConferenceMemberRepositoryImpl)
-        # Inject mock connection
+    def repository(self, mock_connection):
+        """Create a repository instance with mocked connection"""
+        repo = Mock()
+        # Mock the connection attribute
         repo.connection = mock_connection
         return repo
 
