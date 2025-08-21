@@ -188,7 +188,16 @@ class ConferenceRepository:
             result = self.connection.execute(query)
             rows = result.fetchall()
 
-            return [dict(row) for row in rows]
+            # Convert SQLAlchemy Row objects to dictionaries
+            # Using dict() directly on Row objects
+            result_list = []
+            for row in rows:
+                # Create dict from Row object
+                row_dict = {}
+                for key in row._fields:
+                    row_dict[key] = getattr(row, key)
+                result_list.append(row_dict)
+            return result_list
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting all conferences: {e}")
@@ -472,7 +481,16 @@ class ConferenceRepository:
             result = self.connection.execute(query)
             rows = result.fetchall()
 
-            return [dict(row) for row in rows]
+            # Convert SQLAlchemy Row objects to dictionaries
+            # Using dict() directly on Row objects
+            result_list = []
+            for row in rows:
+                # Create dict from Row object
+                row_dict = {}
+                for key in row._fields:
+                    row_dict[key] = getattr(row, key)
+                result_list.append(row_dict)
+            return result_list
 
         except SQLAlchemyError as e:
             logger.error(f"Database error getting governing bodies: {e}")
