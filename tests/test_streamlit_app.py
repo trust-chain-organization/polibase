@@ -135,7 +135,7 @@ class TestStreamlitAppComponents:
 
     def test_add_new_meeting_form_display(self):
         """Test that add_new_meeting form displays correctly"""
-        with patch("src.streamlit.pages.meetings.MeetingRepository") as mock_repo_class:
+        with patch("src.streamlit.pages.meetings.RepositoryAdapter") as mock_repo_class:
             with patch("src.streamlit.pages.meetings.st") as mock_st:
                 with patch("src.streamlit.pages.meetings.pd") as mock_pd:
                     # Mock repository
@@ -194,7 +194,7 @@ class TestStreamlitAppComponents:
 
     def test_meeting_repository_integration(self):
         """Test that MeetingRepository is created and closed properly"""
-        with patch("src.streamlit.pages.meetings.MeetingRepository") as mock_repo_class:
+        with patch("src.streamlit.pages.meetings.RepositoryAdapter") as mock_repo_class:
             with patch("src.streamlit.pages.meetings.st") as mock_st:
                 with patch("src.streamlit.pages.meetings.pd"):
                     # Mock repository
