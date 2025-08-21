@@ -122,6 +122,8 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
+        # Continue even if this fails (fork PRs don't have access to secrets)
+        continue-on-error: true
         with:
           file: ./coverage.xml
           flags: unittests
@@ -132,6 +134,8 @@ jobs:
       - name: Comment PR with coverage
         if: github.event_name == 'pull_request'
         uses: py-cov-action/python-coverage-comment-action@v3
+        # Continue even if this fails (fork PRs have permission issues)
+        continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ github.token }}
           MINIMUM_GREEN: 85
