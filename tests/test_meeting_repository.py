@@ -4,8 +4,6 @@ from datetime import date
 from typing import Any
 from unittest.mock import MagicMock
 
-from src.models.meeting_v2 import Meeting
-
 
 class TestMeetingRepository:
     """Test cases for MeetingRepository"""
@@ -80,41 +78,39 @@ class TestMeetingRepository:
         # Mock data
         self.repo.create_meeting.return_value = 100
 
-        # Meeting to create
-        meeting = Meeting(
-            conference_id=1,
-            date=date(2024, 1, 15),
-            title="第1回定例会",
-            url="https://example.com/meeting",
-            pdf_url="https://example.com/meeting.pdf",
-        )
+        # Meeting data to create
+        meeting_data = MagicMock()
+        meeting_data.conference_id = 1
+        meeting_data.date = date(2024, 1, 15)
+        meeting_data.title = "第1回定例会"
+        meeting_data.url = "https://example.com/meeting"
+        meeting_data.pdf_url = "https://example.com/meeting.pdf"
 
         # Execute
-        result_id = self.repo.create_meeting(meeting)
+        result_id = self.repo.create_meeting(meeting_data)
 
         # Verify
         assert result_id == 100
-        self.repo.create_meeting.assert_called_once_with(meeting)
+        self.repo.create_meeting.assert_called_once_with(meeting_data)
 
     def test_update_meeting(self):
         """Test updating a meeting"""
         # Mock data - No exception should be raised
         self.repo.update_meeting.return_value = None
 
-        # Meeting to update
-        meeting = Meeting(
-            id=1,
-            conference_id=1,
-            date=date(2024, 1, 15),
-            title="更新後タイトル",
-            url="https://example.com/updated",
-        )
+        # Meeting data to update
+        meeting_data = MagicMock()
+        meeting_data.id = 1
+        meeting_data.conference_id = 1
+        meeting_data.date = date(2024, 1, 15)
+        meeting_data.title = "更新後タイトル"
+        meeting_data.url = "https://example.com/updated"
 
         # Execute
-        self.repo.update_meeting(meeting)
+        self.repo.update_meeting(meeting_data)
 
         # Verify
-        self.repo.update_meeting.assert_called_once_with(meeting)
+        self.repo.update_meeting.assert_called_once_with(meeting_data)
 
     def test_delete_meeting_success(self):
         """Test successful meeting deletion"""
@@ -143,13 +139,12 @@ class TestMeetingRepository:
     def test_get_meeting_by_id(self):
         """Test getting a meeting by ID"""
         # Mock data
-        mock_meeting = Meeting(
-            id=1,
-            conference_id=1,
-            date=date(2024, 1, 15),
-            title="第1回定例会",
-            url="https://example.com/meeting",
-        )
+        mock_meeting = MagicMock()
+        mock_meeting.id = 1
+        mock_meeting.conference_id = 1
+        mock_meeting.date = date(2024, 1, 15)
+        mock_meeting.title = "第1回定例会"
+        mock_meeting.url = "https://example.com/meeting"
 
         self.repo.get_by_id.return_value = mock_meeting
 
@@ -164,22 +159,21 @@ class TestMeetingRepository:
     def test_get_meetings_with_filter(self):
         """Test getting meetings with filters"""
         # Mock data
-        mock_meetings = [
-            Meeting(
-                id=1,
-                conference_id=1,
-                date=date(2024, 1, 15),
-                title="第1回定例会",
-                url="https://example.com/meeting1",
-            ),
-            Meeting(
-                id=2,
-                conference_id=1,
-                date=date(2024, 2, 15),
-                title="第2回定例会",
-                url="https://example.com/meeting2",
-            ),
-        ]
+        mock_meeting1 = MagicMock()
+        mock_meeting1.id = 1
+        mock_meeting1.conference_id = 1
+        mock_meeting1.date = date(2024, 1, 15)
+        mock_meeting1.title = "第1回定例会"
+        mock_meeting1.url = "https://example.com/meeting1"
+        
+        mock_meeting2 = MagicMock()
+        mock_meeting2.id = 2
+        mock_meeting2.conference_id = 1
+        mock_meeting2.date = date(2024, 2, 15)
+        mock_meeting2.title = "第2回定例会"
+        mock_meeting2.url = "https://example.com/meeting2"
+        
+        mock_meetings = [mock_meeting1, mock_meeting2]
 
         self.repo.get_meetings.return_value = mock_meetings
 
