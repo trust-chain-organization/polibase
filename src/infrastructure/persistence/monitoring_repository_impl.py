@@ -117,7 +117,8 @@ class MonitoringRepositoryImpl:
                     (SELECT COUNT(DISTINCT speaker_id) FROM conversations
                      WHERE speaker_id IS NOT NULL) as linked_conversations,
                     (SELECT COUNT(*) FROM speakers) as total_speakers,
-                    (SELECT COUNT(*) FROM speakers WHERE politician_id IS NOT NULL)
+                    (SELECT COUNT(*) FROM speakers
+                     WHERE type = 'politician' OR type = '政治家')
                         as linked_speakers
             )
             SELECT * FROM metrics
@@ -446,7 +447,7 @@ class MonitoringRepositoryImpl:
                 COUNT(DISTINCT c.id) as conversation_count
             FROM political_parties pp
             LEFT JOIN politicians p ON pp.id = p.political_party_id
-            LEFT JOIN speakers s ON p.id = s.politician_id
+            LEFT JOIN speakers s ON pp.name = s.political_party_name
             LEFT JOIN conversations c ON s.id = c.speaker_id
             GROUP BY pp.id, pp.name
             ORDER BY politician_count DESC

@@ -2,6 +2,7 @@
 
 [![Tests](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml/badge.svg)](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml)
 [![Type Check](https://github.com/trust-chain-organization/polibase/actions/workflows/pyright.yml/badge.svg)](https://github.com/trust-chain-organization/polibase/actions/workflows/pyright.yml)
+[![codecov](https://codecov.io/gh/trust-chain-organization/polibase/branch/main/graph/badge.svg)](https://codecov.io/gh/trust-chain-organization/polibase)
 
 政治家の発言、議事録、公約などを体系的に管理・分析するためのアプリケーションです。
 

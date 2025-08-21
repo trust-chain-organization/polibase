@@ -75,7 +75,8 @@ async def async_session() -> AsyncGenerator[AsyncSession]:
             CREATE TABLE speakers (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
-                politician_id INTEGER,
+                type TEXT,
+                political_party_name TEXT,
                 created_at TIMESTAMP
             )
         """)

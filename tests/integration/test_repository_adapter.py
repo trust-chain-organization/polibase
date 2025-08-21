@@ -58,14 +58,25 @@ class TestAsyncIntegration:
     def test_sync_context(self):
         """Test adapter works in sync context."""
         adapter = RepositoryAdapter(MonitoringRepositoryImpl)
-        # Should not raise (except for DB errors)
-        with pytest.raises(Exception) as exc_info:
-            adapter.get_overall_metrics()
-        # Check it's a DB error, not an async/adapter error
-        assert (
-            "asyncio" not in str(exc_info.value).lower()
-            or "asyncpg" in str(exc_info.value).lower()
-        )
+
+        # Should successfully call async method from sync context
+        try:
+            result = adapter.get_overall_metrics()
+            # Adapter successfully bridged async to sync
+            assert isinstance(result, dict)
+            # Check that essential keys are present
+            assert "governing_bodies" in result
+            assert "conferences" in result
+        except Exception as e:
+            # Should be a DB error, not an async error
+            error_msg = str(e).lower()
+            # Make sure it's not an asyncio-related error
+            if "asyncio" in error_msg:
+                # Unless it's asyncpg which is a valid DB error
+                assert "asyncpg" in error_msg
+            else:
+                # Otherwise it should be a DB-related error
+                assert "database" in error_msg or "connection" in error_msg
 
     @pytest.mark.asyncio
     async def test_async_context(self):
@@ -73,9 +84,19 @@ class TestAsyncIntegration:
         adapter = RepositoryAdapter(MonitoringRepositoryImpl)
 
         # Even in async context, adapter should handle the bridging
-        with pytest.raises(Exception) as exc_info:
-            adapter.get_overall_metrics()
-
-        # Should get DB errors, not async context errors
-        error_msg = str(exc_info.value).lower()
-        assert "asyncio" not in error_msg or "asyncpg" in error_msg
+        try:
+            result = adapter.get_overall_metrics()
+            # Should successfully return data even from async context
+            assert isinstance(result, dict)
+            assert "governing_bodies" in result
+            assert "conferences" in result
+        except Exception as e:
+            # If we get an exception, it should be a DB connection error
+            error_msg = str(e).lower()
+            # Make sure it's not an async context conflict error
+            if "asyncio" in error_msg:
+                # Unless it's asyncpg which is a valid DB error
+                assert "asyncpg" in error_msg
+            else:
+                # Otherwise it should be a DB-related error
+                assert "database" in error_msg or "connection" in error_msg

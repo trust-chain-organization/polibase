@@ -1,16 +1,27 @@
 """Mixin for optimized repository queries with eager loading and batching."""
 
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
+
+if TYPE_CHECKING:
+    from typing import Protocol
+
+    class HasSession(Protocol):
+        session: AsyncSession
+
 
 T = TypeVar("T")
 
 
 class OptimizedRepositoryMixin:
     """Mixin to add optimized query methods to repositories."""
+
+    session: (
+        AsyncSession  # This attribute must be provided by the class using this mixin
+    )
 
     async def get_with_relations(
         self,
@@ -38,7 +49,12 @@ class OptimizedRepositoryMixin:
         for relation in relations:
             if "." in relation:
                 # Handle nested relationships (e.g., "conference.governing_body")
-                query = query.options(selectinload(relation))
+                # For nested relationships, we need to build the chain programmatically
+                parts = relation.split(".")
+                option = selectinload(getattr(model_class, parts[0]))
+                for part in parts[1:]:
+                    option = option.selectinload(part)  # type: ignore
+                query = query.options(option)
             else:
                 # Use joinedload for single relationships to reduce queries
                 query = query.options(joinedload(getattr(model_class, relation)))
@@ -55,11 +71,8 @@ class OptimizedRepositoryMixin:
             query = query.offset(offset)
 
         # Execute query
-        if hasattr(self, "session") and isinstance(self.session, AsyncSession):
-            result = await self.session.execute(query)
-            return result.scalars().unique().all()
-        else:
-            raise ValueError("Async session required for optimized queries")
+        result = await self.session.execute(query)
+        return list(result.scalars().unique().all())
 
     async def batch_get_by_ids(
         self,
@@ -80,18 +93,15 @@ class OptimizedRepositoryMixin:
         if not ids:
             return []
 
-        query = select(model_class).where(model_class.id.in_(ids))
+        query = select(model_class).where(model_class.id.in_(ids))  # type: ignore
 
         # Add eager loading if specified
         if relations:
             for relation in relations:
                 query = query.options(selectinload(getattr(model_class, relation)))
 
-        if hasattr(self, "session") and isinstance(self.session, AsyncSession):
-            result = await self.session.execute(query)
-            return result.scalars().unique().all()
-        else:
-            raise ValueError("Async session required for batch queries")
+        result = await self.session.execute(query)
+        return list(result.scalars().unique().all())
 
     async def get_with_pagination(
         self,
@@ -142,19 +152,16 @@ class OptimizedRepositoryMixin:
         offset = (page - 1) * per_page
         query = query.limit(per_page).offset(offset)
 
-        if hasattr(self, "session") and isinstance(self.session, AsyncSession):
-            # Get items
-            result = await self.session.execute(query)
-            items = result.scalars().unique().all()
+        # Get items
+        result = await self.session.execute(query)
+        items = list(result.scalars().unique().all())
 
-            # Get total count
-            from sqlalchemy import func
+        # Get total count
+        from sqlalchemy import func
 
-            count_result = await self.session.execute(
-                select(func.count()).select_from(count_query.subquery())
-            )
-            total_count = count_result.scalar() or 0
+        count_result = await self.session.execute(
+            select(func.count()).select_from(count_query.subquery())
+        )
+        total_count = count_result.scalar() or 0
 
-            return items, total_count
-        else:
-            raise ValueError("Async session required for paginated queries")
+        return items, total_count

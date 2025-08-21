@@ -10,9 +10,9 @@ from src.infrastructure.persistence.optimized_repository_mixin import (
     OptimizedRepositoryMixin,
 )
 from src.infrastructure.persistence.politician_repository_impl import (
+    PoliticianModel,
     PoliticianRepositoryImpl,
 )
-from src.models import PoliticianModel
 
 
 class OptimizedPoliticianRepository(PoliticianRepositoryImpl, OptimizedRepositoryMixin):
@@ -34,8 +34,8 @@ class OptimizedPoliticianRepository(PoliticianRepositoryImpl, OptimizedRepositor
         if not self._cache_loaded and self.async_session:
             # Load all politicians with party relationships
             query = select(PoliticianModel).options(
-                selectinload(PoliticianModel.political_party),
-                selectinload(PoliticianModel.speaker),
+                selectinload(PoliticianModel.political_party),  # type: ignore
+                selectinload(PoliticianModel.speaker),  # type: ignore
             )
             result = await self.async_session.execute(query)
             models = result.scalars().unique().all()
@@ -78,14 +78,14 @@ class OptimizedPoliticianRepository(PoliticianRepositoryImpl, OptimizedRepositor
 
         conditions = []
         for name in normalized_names:
-            conditions.append(PoliticianModel.name.ilike(f"%{name}%"))
+            conditions.append(PoliticianModel.name.ilike(f"%{name}%"))  # type: ignore
 
         query = (
             select(PoliticianModel)
             .where(or_(*conditions))
             .options(
-                selectinload(PoliticianModel.political_party),
-                selectinload(PoliticianModel.speaker),
+                selectinload(PoliticianModel.political_party),  # type: ignore
+                selectinload(PoliticianModel.speaker),  # type: ignore
             )
         )
 
@@ -120,10 +120,10 @@ class OptimizedPoliticianRepository(PoliticianRepositoryImpl, OptimizedRepositor
 
         query = (
             select(PoliticianModel)
-            .where(PoliticianModel.political_party_id == party_id)
+            .where(PoliticianModel.political_party_id == party_id)  # type: ignore
             .options(
-                selectinload(PoliticianModel.political_party),
-                selectinload(PoliticianModel.speaker),
+                selectinload(PoliticianModel.political_party),  # type: ignore
+                selectinload(PoliticianModel.speaker),  # type: ignore
             )
         )
 

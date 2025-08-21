@@ -1,16 +1,18 @@
 """Factory functions for creating test entities."""
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from src.domain.entities.conference import Conference
 from src.domain.entities.conversation import Conversation
+from src.domain.entities.extracted_conference_member import ExtractedConferenceMember
 from src.domain.entities.governing_body import GoverningBody
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
 from src.domain.entities.parliamentary_group import ParliamentaryGroup
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician import Politician
+from src.domain.entities.politician_affiliation import PoliticianAffiliation
 from src.domain.entities.speaker import Speaker
 
 
@@ -138,3 +140,37 @@ def create_parliamentary_group(**kwargs: Any) -> ParliamentaryGroup:
     }
     defaults.update(kwargs)
     return ParliamentaryGroup(**defaults)
+
+
+def create_extracted_conference_member(**kwargs: Any) -> ExtractedConferenceMember:
+    """Create a test extracted conference member."""
+    defaults = {
+        "id": 1,
+        "conference_id": 1,
+        "extracted_name": "山田太郎",
+        "source_url": "https://example.com/members",
+        "extracted_role": "議員",
+        "extracted_party_name": "自由民主党",
+        "extracted_at": datetime.now(),
+        "matched_politician_id": None,
+        "matching_confidence": None,
+        "matching_status": "pending",
+        "matched_at": None,
+        "additional_data": None,
+    }
+    defaults.update(kwargs)
+    return ExtractedConferenceMember(**defaults)
+
+
+def create_politician_affiliation(**kwargs: Any) -> PoliticianAffiliation:
+    """Create a test politician affiliation."""
+    defaults = {
+        "id": 1,
+        "politician_id": 1,
+        "conference_id": 1,
+        "start_date": date(2023, 1, 1),
+        "end_date": None,
+        "role": "議員",
+    }
+    defaults.update(kwargs)
+    return PoliticianAffiliation(**defaults)

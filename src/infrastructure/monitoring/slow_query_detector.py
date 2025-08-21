@@ -72,12 +72,12 @@ class SlowQueryDetector:
         duration = (time.perf_counter() - start_time) * 1000  # Convert to ms
 
         if duration >= self.threshold_ms:
-            self._handle_slow_query(query_text, duration, parameters)
+            self.handle_slow_query(query_text, duration, parameters)
             return duration
 
         return None
 
-    def _handle_slow_query(
+    def handle_slow_query(
         self,
         query: str,
         duration_ms: float,
@@ -215,7 +215,7 @@ def install_sqlalchemy_listener(
                     elif isinstance(parameters, list | tuple):
                         param_dict = {f"param_{i}": v for i, v in enumerate(parameters)}
 
-                detector._handle_slow_query(statement, duration_ms, param_dict)
+                detector.handle_slow_query(statement, duration_ms, param_dict)
 
     logger.info(f"Slow query detector installed with threshold {threshold_ms}ms")
     return detector

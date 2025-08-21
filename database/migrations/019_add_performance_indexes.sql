@@ -7,11 +7,9 @@ CREATE INDEX IF NOT EXISTS idx_speakers_name ON speakers(name);
 -- 2. Add index on politicians.name for faster name searches
 CREATE INDEX IF NOT EXISTS idx_politicians_name ON politicians(name);
 
--- 3. Add index on conversations.meeting_id for efficient filtering
--- (Note: This index already exists as idx_conversations_minutes, but we'll add a direct meeting_id index for joins)
-CREATE INDEX IF NOT EXISTS idx_conversations_meeting_id ON conversations((
-    SELECT meeting_id FROM minutes WHERE minutes.id = conversations.minutes_id
-));
+-- 3. Add index on conversations.minutes_id for efficient joins with minutes table
+-- This allows efficient retrieval of meeting_id through the minutes table
+CREATE INDEX IF NOT EXISTS idx_conversations_minutes_id ON conversations(minutes_id);
 
 -- 4. Add index on meetings.date for ordering and range queries
 CREATE INDEX IF NOT EXISTS idx_meetings_date ON meetings(date DESC);
