@@ -6,12 +6,15 @@ from typing import Any, cast
 import pandas as pd
 
 import streamlit as st
-from src.database.conference_repository import ConferenceRepository
-from src.database.parliamentary_group_repository import (
-    ParliamentaryGroupMembershipRepository,
-    ParliamentaryGroupRepository,
-)
 from src.exceptions import DatabaseError, ProcessingError, ScrapingError
+from src.infrastructure.persistence.conference_repository_impl import (
+    ConferenceRepositoryImpl,
+)
+from src.infrastructure.persistence.parliamentary_group_repository_impl import (
+    ParliamentaryGroupMembershipRepositoryImpl,
+    ParliamentaryGroupRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.seed_generator import SeedGenerator
 
 
@@ -25,8 +28,8 @@ def manage_parliamentary_groups():
         ["議員団一覧", "新規登録", "編集・削除", "メンバー抽出"]
     )
 
-    pg_repo = ParliamentaryGroupRepository()
-    conf_repo = ConferenceRepository()
+    pg_repo = RepositoryAdapter(ParliamentaryGroupRepositoryImpl)
+    conf_repo = RepositoryAdapter(ConferenceRepositoryImpl)
 
     with group_tab1:
         # 議員団一覧
@@ -130,7 +133,7 @@ def manage_parliamentary_groups():
 
             # メンバー数の表示
             st.markdown("### メンバー数")
-            pgm_repo = ParliamentaryGroupMembershipRepository()
+            pgm_repo = RepositoryAdapter(ParliamentaryGroupMembershipRepositoryImpl)
             member_counts = []
             for group in groups:
                 current_members = pgm_repo.get_current_members(group["id"])
@@ -313,7 +316,7 @@ def manage_parliamentary_groups():
 
             with col2:
                 st.markdown("#### メンバー情報")
-                pgm_repo = ParliamentaryGroupMembershipRepository()
+                pgm_repo = RepositoryAdapter(ParliamentaryGroupMembershipRepositoryImpl)
                 current_members = pgm_repo.get_current_members(
                     cast(int, selected_group["id"])
                 )
@@ -382,7 +385,7 @@ def manage_parliamentary_groups():
             selected_group = group_map[selected_group_display]
 
             # 現在のメンバー数を表示
-            pgm_repo = ParliamentaryGroupMembershipRepository()
+            pgm_repo = RepositoryAdapter(ParliamentaryGroupMembershipRepositoryImpl)
             current_members = pgm_repo.get_current_members(
                 cast(int, selected_group["id"])
             )

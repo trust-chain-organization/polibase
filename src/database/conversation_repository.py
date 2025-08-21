@@ -424,7 +424,8 @@ class ConversationRepository(BaseRepository):
         # Enhance with additional fields for legacy compatibility
         enhanced_conversations = []
         for conv in conversations:
-            enhanced = dict(conv)
+            # conv is already a dict from the new implementation
+            enhanced = conv if isinstance(conv, dict) else dict(conv)
             # Add any missing fields that legacy code expects
             if "speaker_type" not in enhanced:
                 enhanced["speaker_type"] = None

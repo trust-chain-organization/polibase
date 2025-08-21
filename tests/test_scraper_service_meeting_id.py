@@ -50,7 +50,7 @@ async def test_fetch_from_meeting_id_success(
     scraper_service, mock_meeting, mock_minutes_data
 ):
     """Test successful fetch from meeting ID"""
-    with patch("src.web_scraper.scraper_service.MeetingRepository") as mock_repo_class:
+    with patch("src.web_scraper.scraper_service.RepositoryAdapter") as mock_repo_class:
         # Mock the repository
         mock_repo = Mock()
         mock_repo.get_by_id.return_value = mock_meeting
@@ -73,7 +73,7 @@ async def test_fetch_from_meeting_id_success(
 @pytest.mark.asyncio
 async def test_fetch_from_meeting_id_not_found(scraper_service):
     """Test fetch from non-existent meeting ID"""
-    with patch("src.web_scraper.scraper_service.MeetingRepository") as mock_repo_class:
+    with patch("src.web_scraper.scraper_service.RepositoryAdapter") as mock_repo_class:
         # Mock the repository to return None
         mock_repo = Mock()
         mock_repo.get_by_id.return_value = None
@@ -90,7 +90,7 @@ async def test_fetch_from_meeting_id_not_found(scraper_service):
 @pytest.mark.asyncio
 async def test_fetch_from_meeting_id_no_url(scraper_service):
     """Test fetch from meeting with no URL"""
-    with patch("src.web_scraper.scraper_service.MeetingRepository") as mock_repo_class:
+    with patch("src.web_scraper.scraper_service.RepositoryAdapter") as mock_repo_class:
         # Mock a meeting without URL
         mock_meeting = Meeting(
             id=123,
@@ -120,7 +120,7 @@ async def test_fetch_from_meeting_id_with_cache_disabled(
     scraper_service, mock_meeting, mock_minutes_data
 ):
     """Test fetch from meeting ID with cache disabled"""
-    with patch("src.web_scraper.scraper_service.MeetingRepository") as mock_repo_class:
+    with patch("src.web_scraper.scraper_service.RepositoryAdapter") as mock_repo_class:
         # Mock the repository
         mock_repo = Mock()
         mock_repo.get_by_id.return_value = mock_meeting
@@ -143,7 +143,7 @@ async def test_fetch_from_meeting_id_with_cache_disabled(
 @pytest.mark.asyncio
 async def test_fetch_from_meeting_id_scraping_failure(scraper_service, mock_meeting):
     """Test fetch from meeting ID when scraping fails"""
-    with patch("src.web_scraper.scraper_service.MeetingRepository") as mock_repo_class:
+    with patch("src.web_scraper.scraper_service.RepositoryAdapter") as mock_repo_class:
         # Mock the repository
         mock_repo = Mock()
         mock_repo.get_by_id.return_value = mock_meeting

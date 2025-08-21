@@ -103,7 +103,10 @@ class ScrapingCommands(BaseCommand):
         """Async implementation of scrape_minutes"""
         import os
 
-        from src.database.meeting_repository import MeetingRepository
+        from src.infrastructure.persistence.meeting_repository_impl import (
+            MeetingRepositoryImpl,
+        )
+        from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
         from src.web_scraper.scraper_service import ScraperService
 
         # GCS設定の上書き
@@ -190,7 +193,7 @@ class ScrapingCommands(BaseCommand):
         if gcs_text_uri or gcs_pdf_uri:
             try:
                 with spinner("Updating meeting record with GCS URIs"):
-                    repo = MeetingRepository()
+                    repo = RepositoryAdapter(MeetingRepositoryImpl)
                     meeting_id_to_update: int | None = None
 
                     # meeting IDベースの場合
@@ -368,7 +371,10 @@ class ScrapingCommands(BaseCommand):
         """Async implementation of batch_scrape"""
         import os
 
-        from src.database.meeting_repository import MeetingRepository
+        from src.infrastructure.persistence.meeting_repository_impl import (
+            MeetingRepositoryImpl,
+        )
+        from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
         from src.web_scraper.scraper_service import ScraperService
 
         # GCS設定の上書き
@@ -414,7 +420,7 @@ class ScrapingCommands(BaseCommand):
 
                             # meetingsテーブルのGCS URIを更新
                             try:
-                                repo = MeetingRepository()
+                                repo = RepositoryAdapter(MeetingRepositoryImpl)
 
                                 # kaigiroku.netのURLパターンから会議を検索
                                 if "council_id=" in url and "schedule_id=" in url:

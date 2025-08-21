@@ -8,9 +8,10 @@ from langchain_core.prompts import PromptTemplate
 from playwright.async_api import async_playwright
 
 from src.conference_member_extractor.models import ExtractedMember
-from src.database.extracted_conference_member_repository import (
-    ExtractedConferenceMemberRepository,
+from src.infrastructure.persistence.extracted_conference_member_repository_impl import (
+    ExtractedConferenceMemberRepositoryImpl,
 )
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.services.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class ConferenceMemberExtractor:
 
     def __init__(self):
         self.llm_service = LLMService()
-        self.repo = ExtractedConferenceMemberRepository()
+        self.repo = RepositoryAdapter(ExtractedConferenceMemberRepositoryImpl)
 
     async def fetch_html(self, url: str) -> str:
         """URLからHTMLを取得"""

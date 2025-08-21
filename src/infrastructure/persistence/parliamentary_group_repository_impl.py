@@ -11,6 +11,10 @@ from src.domain.repositories.parliamentary_group_repository import (
 )
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
+from .parliamentary_group_membership_repository_impl import (
+    ParliamentaryGroupMembershipRepositoryImpl,
+)
+
 
 class ParliamentaryGroupModel:
     """Parliamentary group database model (dynamic)."""
@@ -137,3 +141,9 @@ class ParliamentaryGroupRepositoryImpl(
 
         if entity.url is not None:
             model.url = entity.url
+
+
+__all__ = [
+    "ParliamentaryGroupRepositoryImpl",
+    "ParliamentaryGroupMembershipRepositoryImpl",
+]

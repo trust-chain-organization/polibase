@@ -217,6 +217,15 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 return getattr(result, "rowcount", 0) > 0  # type: ignore
             return False
 
+    async def update_meeting_gcs_uris(
+        self,
+        meeting_id: int,
+        pdf_uri: str | None = None,
+        text_uri: str | None = None,
+    ) -> bool:
+        """Update GCS URIs for a meeting (backward compatibility alias)."""
+        return await self.update_gcs_uris(meeting_id, pdf_uri, text_uri)
+
     async def get_meetings_with_filters(
         self,
         conference_id: int | None = None,

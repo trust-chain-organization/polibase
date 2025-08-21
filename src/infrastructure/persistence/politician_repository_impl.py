@@ -1,6 +1,7 @@
 """Politician repository implementation."""
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import text
@@ -14,6 +15,9 @@ from src.domain.entities.politician import Politician
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 from src.models.politician import PoliticianCreate, PoliticianUpdate
+
+# Type alias for SQL parameters
+SQLParam = str | int | float | bool | datetime | None
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +79,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         """Get politician by name and political party."""
         if self.async_session:
             conditions = ["name = :name"]
-            params: dict[str, Any] = {"name": name}
+            params: dict[str, SQLParam] = {"name": name}
 
             if political_party_id is not None:
                 conditions.append("political_party_id = :party_id")
@@ -94,7 +98,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             if not self.sync_session:
                 return None
             conditions = ["name = :name"]
-            params: dict[str, Any] = {"name": name}
+            params: dict[str, SQLParam] = {"name": name}
 
             if political_party_id is not None:
                 conditions.append("political_party_id = :party_id")

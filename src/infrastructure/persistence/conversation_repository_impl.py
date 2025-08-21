@@ -1,6 +1,7 @@
 """Conversation repository implementation."""
 
 import logging
+from datetime import datetime
 from typing import Any, TypedDict
 
 from sqlalchemy import text
@@ -31,8 +32,8 @@ class ConversationModelDict(TypedDict, total=False):
     sequence_number: int
     chapter_number: int | None
     sub_chapter_number: int | None
-    created_at: Any
-    updated_at: Any
+    created_at: datetime
+    updated_at: datetime
 
 
 class ConversationModel:
@@ -46,8 +47,8 @@ class ConversationModel:
     sequence_number: int
     chapter_number: int | None
     sub_chapter_number: int | None
-    created_at: Any
-    updated_at: Any
+    created_at: datetime
+    updated_at: datetime
 
     def __init__(self, **kwargs: Any):
         for key, value in kwargs.items():

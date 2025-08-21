@@ -1,7 +1,7 @@
 """Tests for conference member CLI commands"""
 
 from datetime import date
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -36,114 +36,131 @@ class TestConferenceMemberCommands:
     def test_extract_conference_members_success(self, runner, mock_progress):
         """Test successful extraction of conference members"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.ExtractedConferenceMemberRepository"
-        ) as mock_repo_class:
+            "src.cli_package.commands.conference_member_commands.RepositoryAdapter"
+        ) as mock_adapter_class:
             with patch(
-                "src.cli_package.commands.conference_member_commands.ConferenceRepository"
-            ) as mock_conf_repo_class:
-                with patch(
-                    "src.cli_package.commands.conference_member_commands.ConferenceMemberExtractor"
-                ) as mock_extractor_class:
-                    # Setup mocks
-                    mock_repo = Mock()
-                    mock_repo.get_extraction_summary.return_value = {
-                        "total": 0,
-                        "pending": 0,
-                        "matched": 0,
-                        "no_match": 0,
-                        "needs_review": 0,
+                "src.cli_package.commands.conference_member_commands.ConferenceMemberExtractor"
+            ) as mock_extractor_class:
+                # Setup mocks
+                mock_conf_repo = MagicMock()
+                mock_conf_repo.get_conference_by_id.return_value = {
+                    "id": 1,
+                    "name": "本会議",
+                    "members_introduction_url": "https://example.com/members",
+                }
+                mock_conf_repo.close = Mock()
+
+                mock_member_repo = MagicMock()
+                mock_member_repo.get_extraction_summary.return_value = {
+                    "total": 5,
+                    "pending": 0,
+                    "matched": 5,
+                    "no_match": 0,
+                    "needs_review": 0,
+                }
+                mock_member_repo.close = Mock()
+
+                # Set up RepositoryAdapter to return different repos based on the type
+                def adapter_side_effect(impl_class):
+                    # Check ExtractedConferenceMember first (contains "Conference")
+                    if "ExtractedConferenceMember" in impl_class.__name__:
+                        return mock_member_repo
+                    elif "Conference" in impl_class.__name__:
+                        return mock_conf_repo
+                    return MagicMock()
+
+                mock_adapter_class.side_effect = adapter_side_effect
+
+                mock_extractor = Mock()
+                mock_extractor.extract_and_save_members = AsyncMock(
+                    return_value={
+                        "extracted_count": 5,
+                        "saved_count": 5,
+                        "failed_count": 0,
                     }
-                    mock_repo.close = Mock()
-                    mock_repo_class.return_value = mock_repo
+                )
+                mock_extractor.close = Mock()
+                mock_extractor_class.return_value = mock_extractor
 
-                    mock_conf_repo = Mock()
-                    mock_conf_repo.get_conference_by_id.return_value = {
-                        "id": 1,
-                        "name": "本会議",
-                        "members_introduction_url": "https://example.com/members",
-                    }
-                    mock_conf_repo_class.return_value = mock_conf_repo
+                # Execute
+                result = runner.invoke(
+                    ConferenceMemberCommands.extract_conference_members,
+                    ["--conference-id", "1"],
+                )
 
-                    mock_extractor = Mock()
-                    mock_extractor.extract_and_save_members = AsyncMock(
-                        return_value={
-                            "extracted_count": 5,
-                            "saved_count": 5,
-                            "failed_count": 0,
-                        }
-                    )
-                    mock_extractor.close = Mock()
-                    mock_extractor_class.return_value = mock_extractor
-
-                    # Execute
-                    result = runner.invoke(
-                        ConferenceMemberCommands.extract_conference_members,
-                        ["--conference-id", "1"],
-                    )
-
-                    # Assert
-                    assert result.exit_code == 0
-                    assert (
-                        "📋 会議体メンバー情報の抽出を開始します（ステップ1/3）"
-                        in result.output
-                    )
-                    assert "=== 抽出完了 ===" in result.output
-                    assert "✅ 抽出総数: 5人" in result.output
-                    assert "✅ 保存総数: 5人" in result.output
-                    mock_extractor.extract_and_save_members.assert_called_once()
+                # Assert
+                assert result.exit_code == 0
+                assert (
+                    "📋 会議体メンバー情報の抽出を開始します（ステップ1/3）"
+                    in result.output
+                )
+                assert "=== 抽出完了 ===" in result.output
+                assert "✅ 抽出総数: 5人" in result.output
+                assert "✅ 保存総数: 5人" in result.output
+                mock_extractor.extract_and_save_members.assert_called_once()
 
     def test_extract_conference_members_with_force(self, runner, mock_progress):
         """Test extraction with force flag"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.ExtractedConferenceMemberRepository"
-        ) as mock_repo_class:
+            "src.cli_package.commands.conference_member_commands.RepositoryAdapter"
+        ) as mock_adapter_class:
             with patch(
-                "src.cli_package.commands.conference_member_commands.ConferenceRepository"
-            ) as mock_conf_repo_class:
-                with patch(
-                    "src.cli_package.commands.conference_member_commands.ConferenceMemberExtractor"
-                ) as mock_extractor_class:
-                    # Setup mocks
-                    mock_repo = Mock()
-                    mock_repo.delete_extracted_members.return_value = 2
-                    mock_repo.get_extraction_summary.return_value = {
-                        "total": 3,
-                        "pending": 0,
-                        "matched": 3,
-                        "no_match": 0,
-                        "needs_review": 0,
+                "src.cli_package.commands.conference_member_commands.ConferenceMemberExtractor"
+            ) as mock_extractor_class:
+                # Setup mocks
+                mock_conf_repo = Mock()
+                mock_conf_repo.get_conference_by_id.return_value = {
+                    "id": 1,
+                    "name": "本会議",
+                    "members_introduction_url": "https://example.com/members",
+                }
+                mock_conf_repo.close = Mock()
+
+                mock_member_repo = Mock()
+                # Ensure delete_extracted_members returns an integer, not a Mock
+                mock_member_repo.delete_extracted_members = Mock(return_value=2)
+                mock_member_repo.get_extraction_summary.return_value = {
+                    "total": 3,
+                    "pending": 0,
+                    "matched": 3,
+                    "no_match": 0,
+                    "needs_review": 0,
+                }
+                mock_member_repo.close = Mock()
+
+                # Set up RepositoryAdapter to return different repos based on the type
+                def adapter_side_effect(impl_class):
+                    # Check ExtractedConferenceMember first (contains "Conference")
+                    if "ExtractedConferenceMember" in impl_class.__name__:
+                        return mock_member_repo
+                    elif "Conference" in impl_class.__name__:
+                        return mock_conf_repo
+                    return Mock()
+
+                mock_adapter_class.side_effect = adapter_side_effect
+
+                mock_extractor = Mock()
+                mock_extractor.extract_and_save_members = AsyncMock(
+                    return_value={
+                        "extracted_count": 3,
+                        "saved_count": 3,
+                        "failed_count": 0,
                     }
-                    mock_repo_class.return_value = mock_repo
+                )
+                mock_extractor.close = Mock()
+                mock_extractor_class.return_value = mock_extractor
 
-                    mock_conf_repo = Mock()
-                    mock_conf_repo.get_conference_by_id.return_value = {
-                        "id": 1,
-                        "name": "本会議",
-                        "members_introduction_url": "https://example.com/members",
-                    }
-                    mock_conf_repo_class.return_value = mock_conf_repo
+                # Execute with --force
+                result = runner.invoke(
+                    ConferenceMemberCommands.extract_conference_members,
+                    ["--conference-id", "1", "--force"],
+                )
 
-                    mock_extractor = Mock()
-                    mock_extractor.extract_and_save_members = AsyncMock(
-                        return_value={
-                            "extracted_count": 3,
-                            "saved_count": 3,
-                            "failed_count": 0,
-                        }
-                    )
-                    mock_extractor.close = Mock()
-                    mock_extractor_class.return_value = mock_extractor
-
-                    # Execute with --force
-                    result = runner.invoke(
-                        ConferenceMemberCommands.extract_conference_members,
-                        ["--conference-id", "1", "--force"],
-                    )
-
-                    # Assert
-                    assert result.exit_code == 0
-                    # No specific assertion for force flag message
-                    mock_extractor.extract_and_save_members.assert_called_once()
+                # Assert
+                assert result.exit_code == 0
+                assert "既存の抽出データ2件を削除しました" in result.output
+                mock_member_repo.delete_extracted_members.assert_called_once_with(1)
+                mock_extractor.extract_and_save_members.assert_called_once()
 
     def test_match_conference_members_success(self, runner, mock_progress):
         """Test successful matching of conference members"""
@@ -268,10 +285,10 @@ class TestConferenceMemberCommands:
     def test_member_status_success(self, runner):
         """Test member status command"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.ExtractedConferenceMemberRepository"
-        ) as mock_repo_class:
+            "src.cli_package.commands.conference_member_commands.RepositoryAdapter"
+        ) as mock_adapter_class:
             # Setup mocks
-            mock_repo = Mock()
+            mock_repo = MagicMock()
             mock_repo.get_extraction_summary.return_value = {
                 "total": 10,
                 "matched": 6,
@@ -282,7 +299,7 @@ class TestConferenceMemberCommands:
             mock_repo.get_pending_members.return_value = []
             mock_repo.get_matched_members.return_value = []
             mock_repo.close = Mock()
-            mock_repo_class.return_value = mock_repo
+            mock_adapter_class.return_value = mock_repo
 
             # Execute
             result = runner.invoke(
@@ -300,12 +317,13 @@ class TestConferenceMemberCommands:
     def test_extract_conference_members_error(self, runner):
         """Test extraction error handling"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.ConferenceRepository"
-        ) as mock_conf_repo_class:
+            "src.cli_package.commands.conference_member_commands.RepositoryAdapter"
+        ) as mock_adapter_class:
             # Setup mock conference repo that returns None
-            mock_conf_repo = Mock()
+            mock_conf_repo = MagicMock()
             mock_conf_repo.get_conference_by_id.return_value = None
-            mock_conf_repo_class.return_value = mock_conf_repo
+            mock_conf_repo.close = Mock()
+            mock_adapter_class.return_value = mock_conf_repo
 
             # Execute
             result = runner.invoke(

@@ -6,8 +6,9 @@ from typing import Any, cast
 import pandas as pd
 
 import streamlit as st
-from src.database.meeting_repository import MeetingRepository
 from src.exceptions import DatabaseError, RecordNotFoundError, SaveError, UpdateError
+from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.seed_generator import SeedGenerator
 
 
@@ -35,7 +36,7 @@ def show_meetings_list():
     """会議一覧を表示"""
     st.subheader("会議一覧")
 
-    repo = MeetingRepository()
+    repo = RepositoryAdapter(MeetingRepositoryImpl)
 
     # フィルター
     col1, col2 = st.columns(2)
@@ -200,7 +201,7 @@ def add_new_meeting():
     """新規会議登録フォーム"""
     st.subheader("新規会議登録")
 
-    repo = MeetingRepository()
+    repo = RepositoryAdapter(MeetingRepositoryImpl)
 
     # 開催主体選択（フォームの外）
     governing_bodies = repo.get_governing_bodies()
@@ -309,7 +310,7 @@ def edit_meeting():
         )
         return
 
-    repo = MeetingRepository()
+    repo = RepositoryAdapter(MeetingRepositoryImpl)
 
     # 編集対象の会議情報を取得
     meeting = repo.get_meeting_by_id(st.session_state.edit_meeting_id)

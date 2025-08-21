@@ -9,14 +9,15 @@ import pandas as pd
 
 import streamlit as st
 from src.config.database import get_db_session_context
-from src.database.llm_processing_history_repository import (
-    LLMProcessingHistoryRepository,
-)
 from src.domain.entities.llm_processing_history import (
     LLMProcessingHistory,
     ProcessingStatus,
     ProcessingType,
 )
+from src.infrastructure.persistence.llm_processing_history_repository_impl import (
+    LLMProcessingHistoryRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 
 def render_llm_history_page():
@@ -117,7 +118,7 @@ def render_history_list():
 
     # データを取得
     with get_db_session_context():
-        repo = LLMProcessingHistoryRepository()
+        repo = RepositoryAdapter(LLMProcessingHistoryRepositoryImpl)
 
         # 履歴を検索
         histories = repo.search(
@@ -277,7 +278,7 @@ def render_statistics():
 
     # 統計データを取得
     with get_db_session_context():
-        repo = LLMProcessingHistoryRepository()
+        repo = RepositoryAdapter(LLMProcessingHistoryRepositoryImpl)
 
         # 各ステータスの件数を取得
         completed_count = repo.count_by_status(ProcessingStatus.COMPLETED)

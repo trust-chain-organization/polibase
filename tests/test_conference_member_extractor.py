@@ -34,7 +34,7 @@ class TestConferenceMemberExtractor:
             return_value=mock_llm_service,
         ):
             with patch(
-                "src.conference_member_extractor.extractor.ExtractedConferenceMemberRepository",
+                "src.conference_member_extractor.extractor.RepositoryAdapter",
                 return_value=mock_repo,
             ):
                 return ConferenceMemberExtractor()

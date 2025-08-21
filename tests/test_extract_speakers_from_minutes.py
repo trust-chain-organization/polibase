@@ -21,10 +21,8 @@ class TestSpeakerExtractorFromMinutes:
     def extractor(self, mock_session):
         """Create SpeakerExtractorFromMinutes instance with mocked repositories"""
         with (
-            patch("src.extract_speakers_from_minutes.SpeakerRepository"),
+            patch("src.extract_speakers_from_minutes.RepositoryAdapter"),
             patch("src.extract_speakers_from_minutes.PoliticianRepositoryImpl"),
-            patch("src.extract_speakers_from_minutes.ConversationRepository"),
-            patch("src.extract_speakers_from_minutes.MeetingRepository"),
         ):
             return SpeakerExtractorFromMinutes(mock_session)
 
@@ -211,9 +209,8 @@ class TestSpeakerExtractorFromMinutes:
         extractor.update_conversation_speaker_links(use_llm=False)
 
         # Assert
-        assert (
-            extractor.conversation_repo.execute_query.call_count == 1
-        )  # Only one linked
+        # 2 conversations (田中太郎, 佐藤花子) + 1 UPDATE query for 田中太郎 = 3 total
+        assert extractor.conversation_repo.execute_query.call_count == 3
         extractor.session.commit.assert_called_once()
 
     def test_update_conversation_speaker_links_with_llm(self, extractor):
@@ -247,7 +244,8 @@ class TestSpeakerExtractorFromMinutes:
 
             # Assert
             assert mock_matching_service.find_best_match.call_count == 2
-            assert extractor.conversation_repo.execute_query.call_count == 2
+            # 2 conversations + 2 UPDATE queries = 4 total
+            assert extractor.conversation_repo.execute_query.call_count == 4
             extractor.session.commit.assert_called_once()
 
 

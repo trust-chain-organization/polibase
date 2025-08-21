@@ -51,8 +51,11 @@ class TestConferenceMemberMatchingService:
     ):
         """Create a ConferenceMemberMatchingService instance"""
         with patch(
-            "src.conference_member_extractor.matching_service.ExtractedConferenceMemberRepository",
-            return_value=mock_extracted_repo,
+            "src.conference_member_extractor.matching_service.RepositoryAdapter",
+            side_effect=lambda impl_class: {
+                "ExtractedConferenceMemberRepositoryImpl": mock_extracted_repo,
+                "PoliticianAffiliationRepositoryImpl": mock_affiliation_repo,
+            }.get(impl_class.__name__, Mock()),
         ):
             with patch(
                 "src.config.database.get_db_session",
@@ -66,11 +69,7 @@ class TestConferenceMemberMatchingService:
                         "src.conference_member_extractor.matching_service.LLMService",
                         return_value=mock_llm_service,
                     ):
-                        with patch(
-                            "src.conference_member_extractor.matching_service.PoliticianAffiliationRepository",
-                            return_value=mock_affiliation_repo,
-                        ):
-                            return ConferenceMemberMatchingService()
+                        return ConferenceMemberMatchingService()
 
     def test_find_politician_candidates_exact_match_with_party(
         self, service, mock_politician_repo

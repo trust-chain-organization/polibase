@@ -3,8 +3,11 @@
 from typing import Any
 
 import streamlit as st
-from src.database.conversation_repository import ConversationRepository
-from src.database.meeting_repository import MeetingRepository
+from src.infrastructure.persistence.conversation_repository_impl import (
+    ConversationRepositoryImpl,
+)
+from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 
 def manage_conversations():
@@ -13,8 +16,8 @@ def manage_conversations():
     st.markdown("議事録分割処理で生成された発言レコードを一覧表示します")
 
     # リポジトリの初期化
-    meeting_repo = MeetingRepository()
-    conversation_repo = ConversationRepository()
+    meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
+    conversation_repo = RepositoryAdapter(ConversationRepositoryImpl)
 
     # フィルター設定
     col1, col2, col3 = st.columns(3)

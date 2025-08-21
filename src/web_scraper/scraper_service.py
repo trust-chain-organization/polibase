@@ -6,7 +6,8 @@ from pathlib import Path
 
 from ..common.logging import get_logger
 from ..config import config
-from ..database.meeting_repository import MeetingRepository
+from ..infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
+from ..infrastructure.persistence.repository_adapter import RepositoryAdapter
 from ..utils.gcs_storage import GCSStorage
 from .base_scraper import BaseScraper
 from .kaigiroku_net_scraper import KaigirokuNetScraper
@@ -84,7 +85,7 @@ class ScraperService:
             MinutesData or None
         """
         # 会議情報を取得
-        meeting_repo = MeetingRepository()
+        meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
         meeting = meeting_repo.get_by_id(meeting_id)
 
         if not meeting:

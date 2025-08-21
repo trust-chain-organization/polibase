@@ -11,8 +11,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.config import config
 from src.config.database import test_connection
-from src.database.conversation_repository import ConversationRepository
 from src.database.speaker_matching_service import SpeakerMatchingService
+from src.infrastructure.persistence.conversation_repository_impl import (
+    ConversationRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 
 def main():
@@ -47,7 +50,9 @@ def main():
         sys.exit(1)
 
     # リポジトリの初期化（マッチングサービス付き）
-    repository = ConversationRepository(speaker_matching_service=matching_service)
+    # Note: RepositoryAdapter doesn't support speaker_matching_service parameter
+    # This needs to be refactored to use the new architecture
+    repository = RepositoryAdapter(ConversationRepositoryImpl)
 
     # 現在の状態を確認
     print("\n📊 Speaker紐付け現状確認...")

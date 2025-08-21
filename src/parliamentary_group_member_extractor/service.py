@@ -6,19 +6,20 @@
 
 import json
 from datetime import date
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from langchain_core.prompts import PromptTemplate
 from sqlalchemy import text
 
 from src.config.database import get_db_session
-from src.database.parliamentary_group_repository import (
-    ParliamentaryGroupMembershipRepository,
-    ParliamentaryGroupRepository,
+from src.infrastructure.persistence.parliamentary_group_repository_impl import (
+    ParliamentaryGroupMembershipRepositoryImpl,
+    ParliamentaryGroupRepositoryImpl,
 )
 from src.infrastructure.persistence.politician_repository_impl import (
     PoliticianRepositoryImpl,
 )
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.parliamentary_group_member_extractor.models import (
     ExtractedMember,
     MatchingResult,
@@ -45,8 +46,8 @@ class ParliamentaryGroupMembershipService:
         self,
         llm_service: LLMService | None = None,
         politician_repo: PoliticianRepositoryImpl | None = None,
-        group_repo: ParliamentaryGroupRepository | None = None,
-        membership_repo: ParliamentaryGroupMembershipRepository | None = None,
+        group_repo: Any | None = None,
+        membership_repo: Any | None = None,
     ):
         """初期化
 
@@ -60,9 +61,11 @@ class ParliamentaryGroupMembershipService:
         self.politician_repo = politician_repo or PoliticianRepositoryImpl(
             get_db_session()
         )
-        self.group_repo = group_repo or ParliamentaryGroupRepository(get_db_session())
-        self.membership_repo = (
-            membership_repo or ParliamentaryGroupMembershipRepository(get_db_session())
+        self.group_repo = group_repo or RepositoryAdapter(
+            ParliamentaryGroupRepositoryImpl, get_db_session()
+        )
+        self.membership_repo = membership_repo or RepositoryAdapter(
+            ParliamentaryGroupMembershipRepositoryImpl, get_db_session()
         )
 
     async def match_politicians(
