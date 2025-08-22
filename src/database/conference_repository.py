@@ -192,11 +192,8 @@ class ConferenceRepository:
             # Using dict() directly on Row objects
             result_list = []
             for row in rows:
-                # Create dict from Row object
-                row_dict = {}
-                for key in row._fields:
-                    row_dict[key] = getattr(row, key)
-                result_list.append(row_dict)
+                # Create dict from Row object using _asdict() method
+                result_list.append(row._asdict())  # pyright: ignore[reportPrivateUsage]
             return result_list
 
         except SQLAlchemyError as e:
@@ -485,11 +482,8 @@ class ConferenceRepository:
             # Using dict() directly on Row objects
             result_list = []
             for row in rows:
-                # Create dict from Row object
-                row_dict = {}
-                for key in row._fields:
-                    row_dict[key] = getattr(row, key)
-                result_list.append(row_dict)
+                # Create dict from Row object using _asdict() method
+                result_list.append(row._asdict())  # pyright: ignore[reportPrivateUsage]
             return result_list
 
         except SQLAlchemyError as e:
