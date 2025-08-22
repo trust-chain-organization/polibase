@@ -10,7 +10,10 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Import and re-export the new CLI implementation
-from src.interfaces.cli.cli import main
+from src.interfaces.cli.cli import cli, main
+
+# Export these for backward compatibility
+__all__ = ["cli", "main"]
 
 if __name__ == "__main__":
     main()
