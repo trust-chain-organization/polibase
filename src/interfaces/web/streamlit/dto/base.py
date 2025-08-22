@@ -83,7 +83,7 @@ class FilterDTO(BaseWebDTO):
 
 
 @dataclass
-class WebResponseDTO(BaseWebDTO, Generic[T]):
+class WebResponseDTO(BaseWebDTO, Generic[T]):  # noqa: UP046
     """Generic response DTO for web operations."""
 
     success: bool

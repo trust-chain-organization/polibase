@@ -6,7 +6,7 @@ listing, updating URLs, and generating seed files.
 
 from dataclasses import dataclass
 
-from src.common.logger import get_logger
+from src.common.logging import get_logger
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.repositories.political_party_repository import PoliticalPartyRepository
 from src.seed_generator import SeedGenerator
@@ -103,7 +103,7 @@ class ManagePoliticalPartiesUseCase:
         """
         try:
             # Get all parties
-            all_parties = await self.repository.find_all()
+            all_parties = await self.repository.get_all()
 
             # Sort by name
             all_parties.sort(key=lambda p: p.name or "")
@@ -146,7 +146,7 @@ class ManagePoliticalPartiesUseCase:
         """
         try:
             # Get the party
-            party = await self.repository.find_by_id(input_dto.party_id)
+            party = await self.repository.get_by_id(input_dto.party_id)
             if not party:
                 return UpdatePoliticalPartyUrlOutputDto(
                     success=False,
@@ -174,12 +174,10 @@ class ManagePoliticalPartiesUseCase:
             Output DTO with seed file content
         """
         try:
-            # Get all parties
-            all_parties = await self.repository.find_all()
-
             # Generate seed content using existing SeedGenerator
+            # Note: SeedGenerator fetches data directly from database
             generator = SeedGenerator()
-            content = generator.generate_political_parties_seed(all_parties)
+            content = generator.generate_political_parties_seed()
 
             # Note: File saving should be handled by infrastructure layer
             # For now, we return the content and let the presenter handle display

@@ -8,13 +8,13 @@ common presenter functionality.
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
-from src.common.logger import get_logger
+from src.common.logging import get_logger
 from src.infrastructure.di.container import Container
 
 T = TypeVar("T")
 
 
-class BasePresenter(ABC, Generic[T]):
+class BasePresenter(ABC, Generic[T]):  # noqa: UP046
     """Base presenter class for Streamlit interface layer.
 
     This class provides common functionality for all presenters including:

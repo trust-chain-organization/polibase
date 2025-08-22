@@ -249,3 +249,7 @@ def reset_container() -> None:
     if _container is not None:
         _container.shutdown_resources()
         _container = None
+
+
+# Alias for backward compatibility
+Container = ApplicationContainer

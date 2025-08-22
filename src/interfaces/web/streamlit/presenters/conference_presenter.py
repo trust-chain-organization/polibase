@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.common.logger import get_logger
+from src.common.logging import get_logger
 from src.domain.entities.conference import Conference
 from src.infrastructure.di.container import Container
 from src.infrastructure.persistence.conference_repository_impl import (
@@ -63,7 +63,7 @@ class ConferencePresenter(CRUDPresenter[list[Conference]]):
         Returns:
             List of conferences
         """
-        return await self.conference_repo.find_all()
+        return await self.conference_repo.get_all()
 
     async def load_conferences_with_governing_bodies(self) -> list[dict[str, Any]]:
         """Load conferences with governing body information.
@@ -71,11 +71,11 @@ class ConferencePresenter(CRUDPresenter[list[Conference]]):
         Returns:
             List of conference dictionaries with additional info
         """
-        conferences = await self.conference_repo.find_all()
+        conferences = await self.conference_repo.get_all()
         result = []
 
         for conf in conferences:
-            governing_body = await self.governing_body_repo.find_by_id(
+            governing_body = await self.governing_body_repo.get_by_id(
                 conf.governing_body_id
             )
 
@@ -102,7 +102,7 @@ class ConferencePresenter(CRUDPresenter[list[Conference]]):
         Returns:
             List of governing body dictionaries
         """
-        bodies = await self.governing_body_repo.find_all()
+        bodies = await self.governing_body_repo.get_all()
         return [
             {
                 "id": body.id,
@@ -139,7 +139,7 @@ class ConferencePresenter(CRUDPresenter[list[Conference]]):
             )
 
             # Save to repository
-            created_conference = await self.conference_repo.save(conference)
+            created_conference = await self.conference_repo.create(conference)
 
             return WebResponseDTO.success_response(
                 created_conference, "会議体を登録しました"
@@ -164,7 +164,7 @@ class ConferencePresenter(CRUDPresenter[list[Conference]]):
         if not conference_id:
             raise ValueError("conference_id is required")
 
-        return await self.conference_repo.find_by_id(conference_id)
+        return await self.conference_repo.get_by_id(conference_id)
 
     async def update(self, **kwargs: Any) -> WebResponseDTO[Conference]:
         """Update a conference.
@@ -181,7 +181,7 @@ class ConferencePresenter(CRUDPresenter[list[Conference]]):
                 return WebResponseDTO.error_response("conference_id is required")
 
             # Get existing conference
-            conference = await self.conference_repo.find_by_id(conference_id)
+            conference = await self.conference_repo.get_by_id(conference_id)
             if not conference:
                 return WebResponseDTO.error_response(
                     f"会議体ID {conference_id} が見つかりません"
@@ -247,11 +247,9 @@ class ConferencePresenter(CRUDPresenter[list[Conference]]):
         governing_body_id = kwargs.get("governing_body_id")
 
         if governing_body_id:
-            return await self.conference_repo.find_by_governing_body_id(
-                governing_body_id
-            )
+            return await self.conference_repo.get_by_governing_body(governing_body_id)
         else:
-            return await self.conference_repo.find_all()
+            return await self.conference_repo.get_all()
 
     def to_dataframe(self, conferences: list[dict[str, Any]]) -> pd.DataFrame:
         """Convert conferences to DataFrame for display.

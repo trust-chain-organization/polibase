@@ -10,7 +10,7 @@ from collections.abc import Callable
 from typing import Any, TypeVar
 
 import streamlit as st
-from src.common.logger import get_logger
+from src.common.logging import get_logger
 
 T = TypeVar("T")
 

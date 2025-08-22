@@ -85,7 +85,7 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         if not party_id:
             raise ValueError("party_id is required")
 
-        party = await self.repository.find_by_id(party_id)
+        party = await self.repository.get_by_id(party_id)
         if not party:
             raise ValueError(f"政党ID {party_id} が見つかりません")
         return party

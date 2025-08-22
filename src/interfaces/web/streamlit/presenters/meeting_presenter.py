@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from src.common.logger import get_logger
+from src.common.logging import get_logger
 from src.domain.entities.meeting import Meeting
 from src.infrastructure.di.container import Container
 from src.infrastructure.persistence.conference_repository_impl import (
@@ -67,7 +67,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         Returns:
             List of meetings
         """
-        return await self.meeting_repo.find_all()
+        return await self.meeting_repo.get_all()
 
     async def load_meetings_with_filters(
         self, governing_body_id: int | None = None, conference_id: int | None = None
@@ -82,15 +82,15 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             List of meeting dictionaries with additional info
         """
         # Get all meetings
-        meetings = await self.meeting_repo.find_all()
+        meetings = await self.meeting_repo.get_all()
 
         # Convert to dictionaries with additional info
         result = []
         for meeting in meetings:
             # Get conference and governing body info
-            conference = await self.conference_repo.find_by_id(meeting.conference_id)
+            conference = await self.conference_repo.get_by_id(meeting.conference_id)
             if conference:
-                governing_body = await self.governing_body_repo.find_by_id(
+                governing_body = await self.governing_body_repo.get_by_id(
                     conference.governing_body_id
                 )
 
@@ -129,7 +129,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         Returns:
             List of governing body dictionaries
         """
-        bodies = await self.governing_body_repo.find_all()
+        bodies = await self.governing_body_repo.get_all()
         return [
             {
                 "id": body.id,
@@ -151,7 +151,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         Returns:
             List of conference dictionaries
         """
-        conferences = await self.conference_repo.find_by_governing_body_id(
+        conferences = await self.conference_repo.get_by_governing_body(
             governing_body_id
         )
         return [
@@ -188,7 +188,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             )
 
             # Save to repository
-            created_meeting = await self.meeting_repo.save(meeting)
+            created_meeting = await self.meeting_repo.create(meeting)
 
             return WebResponseDTO.success_response(
                 created_meeting, "会議を登録しました"
@@ -211,7 +211,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         if not meeting_id:
             raise ValueError("meeting_id is required")
 
-        return await self.meeting_repo.find_by_id(meeting_id)
+        return await self.meeting_repo.get_by_id(meeting_id)
 
     async def update(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
         """Update a meeting.
@@ -228,7 +228,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
                 return WebResponseDTO.error_response("meeting_id is required")
 
             # Get existing meeting
-            meeting = await self.meeting_repo.find_by_id(meeting_id)
+            meeting = await self.meeting_repo.get_by_id(meeting_id)
             if not meeting:
                 return WebResponseDTO.error_response(
                     f"会議ID {meeting_id} が見つかりません"
