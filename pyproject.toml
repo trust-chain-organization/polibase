@@ -54,7 +54,7 @@ dev = [
 ]
 
 [project.scripts]
-polibase = "src.cli:cli"
+polibase = "src.cli:main"
 
 [build-system]
 requires = ["hatchling"]
