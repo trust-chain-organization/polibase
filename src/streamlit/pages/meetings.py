@@ -283,7 +283,7 @@ def add_new_meeting():
 
     # 登録済み会議体の確認セクション
     with st.expander("登録済み会議体一覧", expanded=False):
-        all_conferences = repo.get_all_conferences()
+        all_conferences = repo.get_all()
         if all_conferences:
             # 開催主体ごとにグループ化して表示
             conf_df = pd.DataFrame(all_conferences)

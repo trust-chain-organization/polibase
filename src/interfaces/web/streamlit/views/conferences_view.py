@@ -7,7 +7,6 @@ from src.application.usecases.manage_conferences_usecase import (
     ManageConferencesUseCase,
 )
 from src.domain.repositories import ConferenceRepository, GoverningBodyRepository
-from src.infrastructure.di.container import Container
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
 )
@@ -24,8 +23,7 @@ def render_conferences_page():
     """Render conferences management page."""
     st.title("会議体管理")
 
-    # Initialize container and repositories
-    container = Container()
+    # Initialize repositories
     conference_repo = RepositoryAdapter(ConferenceRepositoryImpl)
     governing_body_repo = RepositoryAdapter(GoverningBodyRepositoryImpl)
 
@@ -63,7 +61,7 @@ def render_conferences_list(
 
     with col1:
         # Load governing bodies for filter
-        governing_bodies = asyncio.run(governing_body_repo.get_all())
+        governing_bodies = governing_body_repo.get_all()
         gb_options = {"すべて": None}
         gb_options.update({f"{gb.name} ({gb.type})": gb.id for gb in governing_bodies})
 
@@ -119,7 +117,7 @@ def render_new_conference_form(
     form_data = presenter.get_form_data("new")
 
     # Load governing bodies for dropdown
-    governing_bodies = asyncio.run(governing_body_repo.get_all())
+    governing_bodies = governing_body_repo.get_all()
     gb_options = {f"{gb.name} ({gb.type})": gb.id for gb in governing_bodies}
 
     with st.form("new_conference_form"):
@@ -192,7 +190,7 @@ def render_edit_delete_form(
     st.header("会議体の編集・削除")
 
     # Load all conferences for selection
-    conferences = asyncio.run(conference_repo.get_all())
+    conferences = conference_repo.get_all()
 
     if not conferences:
         st.info("編集可能な会議体がありません。")
@@ -215,7 +213,7 @@ def render_edit_delete_form(
         form_data = presenter.load_conference_for_edit(conference)
 
         # Load governing bodies for dropdown
-        governing_bodies = asyncio.run(governing_body_repo.get_all())
+        governing_bodies = governing_body_repo.get_all()
         gb_options = {f"{gb.name} ({gb.type})": gb.id for gb in governing_bodies}
 
         with st.form("edit_conference_form"):
@@ -306,7 +304,7 @@ def render_seed_generator(presenter: ConferencePresenter):
     st.info("現在データベースに登録されている会議体情報からSEEDファイルを生成します。")
 
     if st.button("SEEDファイル生成", type="primary"):
-        success, file_path, error_message = asyncio.run(presenter.generate_seed_file())
+        success, file_path, error_message = presenter.generate_seed_file()
 
         if success:
             st.success(f"SEEDファイルを生成しました: {file_path}")

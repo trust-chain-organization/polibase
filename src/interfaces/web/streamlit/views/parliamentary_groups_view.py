@@ -38,7 +38,7 @@ def render_parliamentary_groups_list_tab(presenter: ParliamentaryGroupPresenter)
     st.subheader("議員団一覧")
 
     # Get conferences for filter
-    conferences = asyncio.run(presenter.get_all_conferences())
+    conferences = presenter.get_all_conferences()
 
     # Conference filter
     conf_options = ["すべて"] + [
@@ -56,12 +56,10 @@ def render_parliamentary_groups_list_tab(presenter: ParliamentaryGroupPresenter)
 
     # Load parliamentary groups
     if selected_conf_filter == "すべて":
-        groups = asyncio.run(presenter.load_data())
+        groups = presenter.load_data()
     else:
         conf_id = conf_map[selected_conf_filter]
-        groups = asyncio.run(
-            presenter.load_parliamentary_groups_with_filters(conf_id, False)
-        )
+        groups = presenter.load_parliamentary_groups_with_filters(conf_id, False)
 
     if groups:
         # Seed file generation section
@@ -112,7 +110,7 @@ def render_new_parliamentary_group_tab(presenter: ParliamentaryGroupPresenter):
     st.subheader("議員団の新規登録")
 
     # Get conferences
-    conferences = asyncio.run(presenter.get_all_conferences())
+    conferences = presenter.get_all_conferences()
     if not conferences:
         st.error("会議体が登録されていません。先に会議体を登録してください。")
         return
@@ -195,13 +193,13 @@ def render_edit_delete_tab(presenter: ParliamentaryGroupPresenter):
     st.subheader("議員団の編集・削除")
 
     # Load all parliamentary groups
-    groups = asyncio.run(presenter.load_data())
+    groups = presenter.load_data()
     if not groups:
         st.info("編集する議員団がありません")
         return
 
     # Get conferences for display
-    conferences = asyncio.run(presenter.get_all_conferences())
+    conferences = presenter.get_all_conferences()
 
     # Select parliamentary group to edit
     group_options: list[str] = []
@@ -263,7 +261,7 @@ def render_edit_delete_tab(presenter: ParliamentaryGroupPresenter):
             st.info("活動中の議員団は削除できません。先に非活動にしてください。")
         else:
             if st.button("🗑️ この議員団を削除", type="secondary"):
-                success, error = asyncio.run(presenter.delete(selected_group.id))
+                success, error = presenter.delete(selected_group.id)
                 if success:
                     st.success(f"議員団「{selected_group.name}」を削除しました")
                     st.rerun()
@@ -277,7 +275,7 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
     st.markdown("議員団のURLから所属議員を自動的に抽出し、メンバーシップを作成します")
 
     # Get parliamentary groups with URLs
-    groups = asyncio.run(presenter.load_data())
+    groups = presenter.load_data()
     groups_with_url = [g for g in groups if g.url]
 
     if not groups_with_url:
@@ -287,7 +285,7 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
         return
 
     # Get conferences for display
-    conferences = asyncio.run(presenter.get_all_conferences())
+    conferences = presenter.get_all_conferences()
 
     # Select parliamentary group
     group_options = []

@@ -36,7 +36,7 @@ def render_politicians_list_tab(presenter: PoliticianPresenter):
     st.subheader("政治家一覧")
 
     # Get parties for filter
-    parties = asyncio.run(presenter.get_all_parties())
+    parties = presenter.get_all_parties()
 
     # Filters
     col1, col2 = st.columns(2)
@@ -91,7 +91,7 @@ def render_new_politician_tab(presenter: PoliticianPresenter):
     st.subheader("新規政治家登録")
 
     # Get parties
-    parties = asyncio.run(presenter.get_all_parties())
+    parties = presenter.get_all_parties()
 
     with st.form("new_politician_form"):
         name = st.text_input("名前", placeholder="山田太郎")
@@ -140,13 +140,13 @@ def render_edit_delete_tab(presenter: PoliticianPresenter):
     st.subheader("政治家の編集・削除")
 
     # Load all politicians
-    politicians = asyncio.run(presenter.load_data())
+    politicians = presenter.load_data()
     if not politicians:
         st.info("編集する政治家がありません")
         return
 
     # Get parties
-    parties = asyncio.run(presenter.get_all_parties())
+    parties = presenter.get_all_parties()
 
     # Select politician to edit
     politician_options = [f"{p.name} (ID: {p.id})" for p in politicians]
@@ -216,7 +216,7 @@ def render_edit_delete_tab(presenter: PoliticianPresenter):
         st.warning("⚠️ 政治家を削除すると、関連する発言記録も影響を受けます")
 
         if st.button("🗑️ この政治家を削除", type="secondary"):
-            success, error = asyncio.run(presenter.delete(selected_politician.id))
+            success, error = presenter.delete(selected_politician.id)
             if success:
                 st.success(f"政治家「{selected_politician.name}」を削除しました")
                 st.rerun()
@@ -230,7 +230,7 @@ def render_merge_tab(presenter: PoliticianPresenter):
     st.markdown("重複している政治家を統合します")
 
     # Load all politicians
-    politicians = asyncio.run(presenter.load_data())
+    politicians = presenter.load_data()
     if not politicians or len(politicians) < 2:
         st.info("統合する政治家が不足しています")
         return
@@ -253,7 +253,7 @@ def render_merge_tab(presenter: PoliticianPresenter):
         st.info("統合元のすべてのデータが統合先に移動され、統合元は削除されます")
 
         if st.button("統合を実行", type="primary"):
-            success, error = asyncio.run(presenter.merge(source_id, target_id))
+            success, error = presenter.merge(source_id, target_id)
             if success:
                 st.success("政治家を統合しました")
                 st.rerun()

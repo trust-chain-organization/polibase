@@ -62,15 +62,15 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         """Save form state to session."""
         self.session.set("form_state", self.form_state.__dict__)
 
-    async def load_data(self) -> list[Meeting]:
+    def load_data(self) -> list[Meeting]:
         """Load all meetings.
 
         Returns:
             List of meetings
         """
-        return await self.meeting_repo.get_all()
+        return self.meeting_repo.get_all()
 
-    async def load_meetings_with_filters(
+    def load_meetings_with_filters(
         self, governing_body_id: int | None = None, conference_id: int | None = None
     ) -> list[dict[str, Any]]:
         """Load meetings with optional filters.
@@ -83,15 +83,15 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             List of meeting dictionaries with additional info
         """
         # Get all meetings
-        meetings = await self.meeting_repo.get_all()
+        meetings = self.meeting_repo.get_all()
 
         # Convert to dictionaries with additional info
         result = []
         for meeting in meetings:
             # Get conference and governing body info
-            conference = await self.conference_repo.get_by_id(meeting.conference_id)
+            conference = self.conference_repo.get_by_id(meeting.conference_id)
             if conference:
-                governing_body = await self.governing_body_repo.get_by_id(
+                governing_body = self.governing_body_repo.get_by_id(
                     conference.governing_body_id
                 )
 
@@ -124,13 +124,13 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
 
         return result
 
-    async def get_governing_bodies(self) -> list[dict[str, Any]]:
+    def get_governing_bodies(self) -> list[dict[str, Any]]:
         """Get all governing bodies.
 
         Returns:
             List of governing body dictionaries
         """
-        bodies = await self.governing_body_repo.get_all()
+        bodies = self.governing_body_repo.get_all()
         return [
             {
                 "id": body.id,
@@ -141,7 +141,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             for body in bodies
         ]
 
-    async def get_conferences_by_governing_body(
+    def get_conferences_by_governing_body(
         self, governing_body_id: int
     ) -> list[dict[str, Any]]:
         """Get conferences for a specific governing body.
@@ -152,9 +152,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         Returns:
             List of conference dictionaries
         """
-        conferences = await self.conference_repo.get_by_governing_body(
-            governing_body_id
-        )
+        conferences = self.conference_repo.get_by_governing_body(governing_body_id)
         return [
             {
                 "id": conf.id,
@@ -164,7 +162,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             for conf in conferences
         ]
 
-    async def create(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
+    def create(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
         """Create a new meeting.
 
         Args:
@@ -189,7 +187,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             )
 
             # Save to repository
-            created_meeting = await self.meeting_repo.create(meeting)
+            created_meeting = self.meeting_repo.create(meeting)
 
             return WebResponseDTO.success_response(
                 created_meeting, "会議を登録しました"
@@ -199,7 +197,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             self.logger.error(f"Error creating meeting: {e}", exc_info=True)
             return WebResponseDTO.error_response(f"会議の登録に失敗しました: {str(e)}")
 
-    async def read(self, **kwargs: Any) -> Meeting | None:
+    def read(self, **kwargs: Any) -> Meeting | None:
         """Read a single meeting.
 
         Args:
@@ -212,9 +210,9 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         if not meeting_id:
             raise ValueError("meeting_id is required")
 
-        return await self.meeting_repo.get_by_id(meeting_id)
+        return self.meeting_repo.get_by_id(meeting_id)
 
-    async def update(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
+    def update(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
         """Update a meeting.
 
         Args:
@@ -229,7 +227,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
                 return WebResponseDTO.error_response("meeting_id is required")
 
             # Get existing meeting
-            meeting = await self.meeting_repo.get_by_id(meeting_id)
+            meeting = self.meeting_repo.get_by_id(meeting_id)
             if not meeting:
                 return WebResponseDTO.error_response(
                     f"会議ID {meeting_id} が見つかりません"
@@ -244,7 +242,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
                 meeting.url = kwargs["url"]
 
             # Save to repository
-            updated_meeting = await self.meeting_repo.update(meeting)
+            updated_meeting = self.meeting_repo.update(meeting)
 
             return WebResponseDTO.success_response(
                 updated_meeting, "会議を更新しました"
@@ -254,7 +252,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             self.logger.error(f"Error updating meeting: {e}", exc_info=True)
             return WebResponseDTO.error_response(f"会議の更新に失敗しました: {str(e)}")
 
-    async def delete(self, **kwargs: Any) -> WebResponseDTO[bool]:
+    def delete(self, **kwargs: Any) -> WebResponseDTO[bool]:
         """Delete a meeting.
 
         Args:
@@ -268,7 +266,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             if not meeting_id:
                 return WebResponseDTO.error_response("meeting_id is required")
 
-            success = await self.meeting_repo.delete(meeting_id)
+            success = self.meeting_repo.delete(meeting_id)
 
             if success:
                 return WebResponseDTO.success_response(True, "会議を削除しました")
@@ -279,7 +277,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             self.logger.error(f"Error deleting meeting: {e}", exc_info=True)
             return WebResponseDTO.error_response(f"会議の削除に失敗しました: {str(e)}")
 
-    async def list(self, **kwargs: Any) -> list[Meeting]:
+    def list(self, **kwargs: Any) -> list[Meeting]:
         """List meetings with optional filters.
 
         Args:
@@ -291,9 +289,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         governing_body_id = kwargs.get("governing_body_id")
         conference_id = kwargs.get("conference_id")
 
-        meetings = await self.load_meetings_with_filters(
-            governing_body_id, conference_id
-        )
+        meetings = self.load_meetings_with_filters(governing_body_id, conference_id)
 
         # Convert back to Meeting entities for consistency
         return [
@@ -348,7 +344,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             columns={"id": "ID", "url": "URL"}
         )
 
-    async def generate_seed_file(self) -> WebResponseDTO[str]:
+    def generate_seed_file(self) -> WebResponseDTO[str]:
         """Generate seed file for meetings.
 
         Returns:

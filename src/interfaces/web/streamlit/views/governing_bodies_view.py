@@ -36,7 +36,7 @@ def render_governing_bodies_list_tab(presenter: GoverningBodyPresenter):
     col1, col2 = st.columns(2)
 
     with col1:
-        type_options = ["すべて"] + asyncio.run(presenter.get_type_options())
+        type_options = ["すべて"] + presenter.get_type_options()
         selected_type = st.selectbox(
             "種別でフィルタ", type_options, key="gb_type_filter"
         )
@@ -116,7 +116,7 @@ def render_new_governing_body_tab(presenter: GoverningBodyPresenter):
 
     with st.form("new_governing_body_form"):
         name = st.text_input("開催主体名", key="new_gb_name")
-        type_options = asyncio.run(presenter.get_type_options())
+        type_options = presenter.get_type_options()
         gb_type = st.selectbox("種別", type_options, key="new_gb_type")
         organization_code = st.text_input(
             "組織コード（オプション）", key="new_gb_org_code"
@@ -151,7 +151,7 @@ def render_edit_delete_tab(presenter: GoverningBodyPresenter):
     st.subheader("開催主体の編集・削除")
 
     # Load all governing bodies
-    governing_bodies = asyncio.run(presenter.load_data())
+    governing_bodies = presenter.load_data()
 
     if governing_bodies:
         # Select governing body to edit
@@ -173,7 +173,7 @@ def render_edit_delete_tab(presenter: GoverningBodyPresenter):
                 edit_name = st.text_input(
                     "開催主体名", value=selected_gb.name, key="edit_gb_name"
                 )
-                type_options = asyncio.run(presenter.get_type_options())
+                type_options = presenter.get_type_options()
                 edit_type = st.selectbox(
                     "種別",
                     type_options,

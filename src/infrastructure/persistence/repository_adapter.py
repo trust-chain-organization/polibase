@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import types
-from collections.abc import Awaitable
+from collections.abc import Coroutine
 from typing import Any, TypeVar
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -57,12 +57,28 @@ class RepositoryAdapter:
             )
         return self._async_session_factory
 
-    def _run_async(self, coro: Awaitable[T]) -> T:
+    def _run_async(self, coro: Coroutine[Any, Any, T]) -> T:
         """Run an async coroutine from sync context."""
+        import nest_asyncio
+
+        nest_asyncio.apply()
+
         try:
-            # Always use asyncio.run() for Streamlit compatibility
-            # This ensures each call gets a fresh event loop
-            return asyncio.run(coro)
+            # Get or create event loop
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            # Run the coroutine in the current loop
+            if loop.is_running():
+                # If loop is already running, create a task and wait for it
+                task = loop.create_task(coro)
+                return loop.run_until_complete(task)
+            else:
+                # If loop is not running, run normally
+                return loop.run_until_complete(coro)
         except Exception as e:
             logger.error(f"Failed to run async operation: {e}")
             raise

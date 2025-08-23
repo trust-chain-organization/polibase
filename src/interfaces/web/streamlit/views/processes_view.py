@@ -1,7 +1,5 @@
 """View for process execution."""
 
-import asyncio
-
 import streamlit as st
 from src.interfaces.web.streamlit.presenters.process_presenter import (
     ProcessPresenter,
@@ -16,7 +14,7 @@ def render_processes_page():
     presenter = ProcessPresenter()
 
     # Load available processes
-    processes = asyncio.run(presenter.load_data())
+    processes = presenter.load_data()
 
     # Create tabs for each category
     if processes:
