@@ -420,7 +420,37 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
     async def create(self, entity: Meeting) -> Meeting:
         """Create a new meeting."""
         if self.async_session:
-            return await super().create(entity)
+            # Use raw SQL for async session to avoid model_class issues
+            from datetime import datetime
+            from sqlalchemy import text
+
+            sql = """
+            INSERT INTO meetings (
+                conference_id, date, url, name,
+                gcs_pdf_uri, gcs_text_uri, created_at, updated_at
+            )
+            VALUES (
+                :conference_id, :date, :url, :name,
+                :gcs_pdf_uri, :gcs_text_uri, :created_at, :updated_at
+            )
+            RETURNING *
+            """
+            params = {
+                "conference_id": entity.conference_id,
+                "date": entity.date or date.today(),
+                "url": entity.url or "",
+                "name": entity.name,
+                "gcs_pdf_uri": entity.gcs_pdf_uri,
+                "gcs_text_uri": entity.gcs_text_uri,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+            }
+            result = await self.async_session.execute(text(sql), params)
+            await self.async_session.commit()
+            row = result.first()
+            if row:
+                return self._dict_to_entity(dict(row._mapping))  # type: ignore
+            raise RuntimeError("Failed to create meeting")
         else:
             # Use raw SQL for sync session
             if self.sync_session:
@@ -459,7 +489,38 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
     async def update(self, entity: Meeting) -> Meeting:
         """Update a meeting."""
         if self.async_session:
-            return await super().update(entity)
+            # Use raw SQL for async session to avoid model_class issues
+            from datetime import datetime
+            from sqlalchemy import text
+
+            sql = """
+            UPDATE meetings
+            SET conference_id = :conference_id,
+                date = :date,
+                url = :url,
+                name = :name,
+                gcs_pdf_uri = :gcs_pdf_uri,
+                gcs_text_uri = :gcs_text_uri,
+                updated_at = :updated_at
+            WHERE id = :id
+            RETURNING *
+            """
+            params = {
+                "id": entity.id,
+                "conference_id": entity.conference_id,
+                "date": entity.date,
+                "url": entity.url,
+                "name": entity.name,
+                "gcs_pdf_uri": entity.gcs_pdf_uri,
+                "gcs_text_uri": entity.gcs_text_uri,
+                "updated_at": datetime.now(),
+            }
+            result = await self.async_session.execute(text(sql), params)
+            await self.async_session.commit()
+            row = result.first()
+            if row:
+                return self._dict_to_entity(dict(row._mapping))  # type: ignore
+            raise RuntimeError("Failed to update meeting")
         else:
             # Use raw SQL for sync session
             if self.sync_session and entity.id:
@@ -499,7 +560,24 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
     async def delete(self, entity_id: int) -> bool:
         """Delete a meeting."""
         if self.async_session:
-            return await super().delete(entity_id)
+            # Use raw SQL for async session to avoid model_class issues
+            from sqlalchemy import text
+
+            # First check if there are related minutes
+            check_sql = (
+                "SELECT COUNT(*) FROM minutes WHERE meeting_id = :meeting_id"
+            )
+            result = await self.async_session.execute(
+                text(check_sql), {"meeting_id": entity_id}
+            )
+            count = result.scalar()
+            if count and count > 0:
+                return False
+
+            sql = "DELETE FROM meetings WHERE id = :id"
+            result = await self.async_session.execute(text(sql), {"id": entity_id})
+            await self.async_session.commit()
+            return getattr(result, "rowcount", 0) > 0  # type: ignore
         else:
             # Use raw SQL for sync session
             if self.sync_session:
@@ -525,7 +603,15 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
     async def get_by_id(self, entity_id: int) -> Meeting | None:
         """Get meeting by ID."""
         if self.async_session:
-            return await super().get_by_id(entity_id)
+            # Use raw SQL for async session to avoid model_class issues
+            from sqlalchemy import text
+
+            sql = "SELECT * FROM meetings WHERE id = :id"
+            result = await self.async_session.execute(text(sql), {"id": entity_id})
+            row = result.first()
+            if row:
+                return self._dict_to_entity(dict(row._mapping))  # type: ignore
+            return None
         else:
             # Use raw SQL for sync session
             if self.sync_session:
@@ -543,7 +629,19 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
     ) -> list[Meeting]:
         """Get all meetings."""
         if self.async_session:
-            return await super().get_all(limit, offset)
+            # Use raw SQL for async session to avoid model_class issues
+            from sqlalchemy import text
+
+            sql = "SELECT * FROM meetings ORDER BY date DESC"
+            params = {}
+            if limit:
+                sql += " LIMIT :limit"
+                params["limit"] = limit
+            if offset:
+                sql += " OFFSET :offset"
+                params["offset"] = offset
+            result = await self.async_session.execute(text(sql), params)
+            return [self._dict_to_entity(dict(row._mapping)) for row in result]  # type: ignore
         else:
             # Use raw SQL for sync session
             if self.sync_session:

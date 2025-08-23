@@ -131,15 +131,15 @@ def manage_conferences():
                 )
 
             # フィルタリング適用
-            filtered_conferences = conferences
+            filtered_conferences = conf_dicts
             if url_filter == "設定済み":
                 filtered_conferences = [
-                    conf for conf in conferences if conf.get("members_introduction_url")
+                    conf for conf in conf_dicts if conf.get("members_introduction_url")
                 ]
             elif url_filter == "未設定":
                 filtered_conferences = [
                     conf
-                    for conf in conferences
+                    for conf in conf_dicts
                     if not conf.get("members_introduction_url")
                 ]
 
