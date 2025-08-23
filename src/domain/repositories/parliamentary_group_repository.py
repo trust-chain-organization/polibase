@@ -17,7 +17,7 @@ class ParliamentaryGroupRepository(BaseRepository[ParliamentaryGroup]):
         pass
 
     @abstractmethod
-    async def get_by_conference(
+    async def get_by_conference_id(
         self, conference_id: int, active_only: bool = True
     ) -> list[ParliamentaryGroup]:
         """Get all parliamentary groups for a conference."""

@@ -58,7 +58,7 @@ class ParliamentaryGroupRepositoryImpl(
             return self._row_to_entity(row)
         return None
 
-    async def get_by_conference(
+    async def get_by_conference_id(
         self, conference_id: int, active_only: bool = True
     ) -> list[ParliamentaryGroup]:
         """Get all parliamentary groups for a conference."""

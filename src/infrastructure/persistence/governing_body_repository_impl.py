@@ -34,6 +34,53 @@ class GoverningBodyRepositoryImpl(
     def __init__(self, session: AsyncSession):
         super().__init__(session, GoverningBody, GoverningBodyModel)
 
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = None
+    ) -> list[GoverningBody]:
+        """Get all governing bodies with conference count."""
+        query = text("""
+            SELECT gb.*,
+                   COUNT(c.id) as conference_count
+            FROM governing_bodies gb
+            LEFT JOIN conferences c ON gb.id = c.governing_body_id
+            GROUP BY gb.id, gb.name, gb.type, gb.organization_code, gb.organization_type
+            ORDER BY gb.name
+        """)
+
+        if limit:
+            query = text(str(query) + " LIMIT :limit")
+        if offset:
+            query = text(str(query) + " OFFSET :offset")
+
+        params = {}
+        if limit:
+            params["limit"] = limit
+        if offset:
+            params["offset"] = offset
+
+        result = await self.session.execute(query, params if params else None)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
+    async def get_by_id(self, id: int) -> GoverningBody | None:
+        """Get governing body by ID with conference count."""
+        query = text("""
+            SELECT gb.*,
+                   COUNT(c.id) as conference_count
+            FROM governing_bodies gb
+            LEFT JOIN conferences c ON gb.id = c.governing_body_id
+            WHERE gb.id = :id
+            GROUP BY gb.id, gb.name, gb.type, gb.organization_code, gb.organization_type
+        """)
+
+        result = await self.session.execute(query, {"id": id})
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        return None
+
     async def get_by_name_and_type(
         self, name: str, type: str | None = None
     ) -> GoverningBody | None:
@@ -96,6 +143,7 @@ class GoverningBodyRepositoryImpl(
             type=row.type,
             organization_code=getattr(row, "organization_code", None),
             organization_type=getattr(row, "organization_type", None),
+            conference_count=getattr(row, "conference_count", 0),
         )
 
     def _to_entity(self, model: GoverningBodyModel) -> GoverningBody:
@@ -106,6 +154,7 @@ class GoverningBodyRepositoryImpl(
             type=model.type,
             organization_code=getattr(model, "organization_code", None),
             organization_type=getattr(model, "organization_type", None),
+            conference_count=getattr(model, "conference_count", 0),
         )
 
     def _to_model(self, entity: GoverningBody) -> GoverningBodyModel:

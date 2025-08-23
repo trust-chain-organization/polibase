@@ -13,12 +13,14 @@ class GoverningBody(BaseEntity):
         organization_code: str | None = None,
         organization_type: str | None = None,
         id: int | None = None,
+        conference_count: int = 0,
     ) -> None:
         super().__init__(id)
         self.name = name
         self.type = type
         self.organization_code = organization_code
         self.organization_type = organization_type
+        self.conference_count = conference_count
 
     def __str__(self) -> str:
         return f"{self.name} ({self.type})" if self.type else self.name

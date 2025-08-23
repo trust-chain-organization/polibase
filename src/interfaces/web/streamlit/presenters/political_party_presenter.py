@@ -4,6 +4,7 @@ This module provides the presenter layer for political party management,
 handling UI state and coordinating with use cases.
 """
 
+import builtins
 from typing import Any
 
 import pandas as pd
@@ -135,7 +136,7 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         """
         return await self.use_case.generate_seed_file()
 
-    def to_dataframe(self, parties: list[PoliticalParty]) -> pd.DataFrame:
+    def to_dataframe(self, parties: builtins.list[PoliticalParty]) -> pd.DataFrame:
         """Convert political parties to DataFrame for display.
 
         Args:

@@ -4,6 +4,7 @@ This module provides the presenter layer for meeting management,
 handling UI state and coordinating with repositories.
 """
 
+import builtins
 from typing import Any
 
 import pandas as pd
@@ -307,7 +308,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             for m in meetings
         ]
 
-    def to_dataframe(self, meetings: list[dict[str, Any]]) -> pd.DataFrame:
+    def to_dataframe(self, meetings: builtins.list[dict[str, Any]]) -> pd.DataFrame:
         """Convert meetings to DataFrame for display.
 
         Args:
