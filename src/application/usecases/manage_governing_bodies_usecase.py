@@ -113,7 +113,7 @@ class ManageGoverningBodiesUseCase:
         """List governing bodies with optional filters."""
         try:
             # Get all governing bodies
-            all_bodies = self.governing_body_repository.get_all()
+            all_bodies = self.governing_body_repository.get_all()  # type: ignore[attr-defined]
 
             # Apply type filter
             if input_dto.type_filter and input_dto.type_filter != "すべて":
@@ -267,7 +267,7 @@ class ManageGoverningBodiesUseCase:
         """Generate seed file for governing bodies."""
         try:
             # Get all governing bodies
-            all_bodies = self.governing_body_repository.get_all()
+            all_bodies = self.governing_body_repository.get_all()  # type: ignore[attr-defined]
 
             # Generate SQL content
             seed_content = "-- Governing Bodies Seed Data\n"
