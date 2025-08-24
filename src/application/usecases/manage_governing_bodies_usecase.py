@@ -107,13 +107,13 @@ class ManageGoverningBodiesUseCase:
         """Initialize the use case."""
         self.governing_body_repository = governing_body_repository
 
-    async def list_governing_bodies(
+    def list_governing_bodies(
         self, input_dto: GoverningBodyListInputDto
     ) -> GoverningBodyListOutputDto:
         """List governing bodies with optional filters."""
         try:
             # Get all governing bodies
-            all_bodies = await self.governing_body_repository.get_all()
+            all_bodies = self.governing_body_repository.get_all()
 
             # Apply type filter
             if input_dto.type_filter and input_dto.type_filter != "すべて":
@@ -167,13 +167,13 @@ class ManageGoverningBodiesUseCase:
             logger.error(f"Failed to list governing bodies: {e}")
             raise
 
-    async def create_governing_body(
+    def create_governing_body(
         self, input_dto: CreateGoverningBodyInputDto
     ) -> CreateGoverningBodyOutputDto:
         """Create a new governing body."""
         try:
             # Check for duplicates
-            existing = await self.governing_body_repository.get_by_name_and_type(
+            existing = self.governing_body_repository.get_by_name_and_type(
                 input_dto.name, input_dto.type
             )
             if existing:
@@ -191,7 +191,7 @@ class ManageGoverningBodiesUseCase:
                 organization_type=input_dto.organization_type,
             )
 
-            created = await self.governing_body_repository.create(governing_body)
+            created = self.governing_body_repository.create(governing_body)
             return CreateGoverningBodyOutputDto(
                 success=True, governing_body_id=created.id
             )
@@ -199,20 +199,20 @@ class ManageGoverningBodiesUseCase:
             logger.error(f"Failed to create governing body: {e}")
             return CreateGoverningBodyOutputDto(success=False, error_message=str(e))
 
-    async def update_governing_body(
+    def update_governing_body(
         self, input_dto: UpdateGoverningBodyInputDto
     ) -> UpdateGoverningBodyOutputDto:
         """Update an existing governing body."""
         try:
             # Get existing governing body
-            existing = await self.governing_body_repository.get_by_id(input_dto.id)
+            existing = self.governing_body_repository.get_by_id(input_dto.id)
             if not existing:
                 return UpdateGoverningBodyOutputDto(
                     success=False, error_message="開催主体が見つかりません。"
                 )
 
             # Check for duplicates (excluding self)
-            duplicate = await self.governing_body_repository.get_by_name_and_type(
+            duplicate = self.governing_body_repository.get_by_name_and_type(
                 input_dto.name, input_dto.type
             )
             if duplicate and duplicate.id != input_dto.id:
@@ -229,19 +229,19 @@ class ManageGoverningBodiesUseCase:
             if input_dto.organization_type is not None:
                 existing.organization_type = input_dto.organization_type
 
-            await self.governing_body_repository.update(existing)
+            self.governing_body_repository.update(existing)
             return UpdateGoverningBodyOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to update governing body: {e}")
             return UpdateGoverningBodyOutputDto(success=False, error_message=str(e))
 
-    async def delete_governing_body(
+    def delete_governing_body(
         self, input_dto: DeleteGoverningBodyInputDto
     ) -> DeleteGoverningBodyOutputDto:
         """Delete a governing body."""
         try:
             # Check if governing body has associated conferences
-            existing = await self.governing_body_repository.get_by_id(input_dto.id)
+            existing = self.governing_body_repository.get_by_id(input_dto.id)
             if not existing:
                 return DeleteGoverningBodyOutputDto(
                     success=False, error_message="開催主体が見つかりません。"
@@ -253,26 +253,29 @@ class ManageGoverningBodiesUseCase:
                     error_message=f"この開催主体には{existing.conference_count}件の会議体が関連付けられています。削除するには、先に関連する会議体を削除する必要があります。",
                 )
 
-            await self.governing_body_repository.delete(input_dto.id)
+            self.governing_body_repository.delete(input_dto.id)
             return DeleteGoverningBodyOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to delete governing body: {e}")
             return DeleteGoverningBodyOutputDto(success=False, error_message=str(e))
 
-    async def get_type_options(self) -> list[str]:
+    def get_type_options(self) -> list[str]:
         """Get available type options for governing bodies."""
         return ["国", "都道府県", "市町村"]
 
-    async def generate_seed_file(self) -> GenerateSeedFileOutputDto:
+    def generate_seed_file(self) -> GenerateSeedFileOutputDto:
         """Generate seed file for governing bodies."""
         try:
             # Get all governing bodies
-            all_bodies = await self.governing_body_repository.get_all()
+            all_bodies = self.governing_body_repository.get_all()
 
             # Generate SQL content
             seed_content = "-- Governing Bodies Seed Data\n"
             seed_content += "-- Generated from current database\n\n"
-            seed_content += "INSERT INTO governing_bodies (id, name, type, organization_code, organization_type) VALUES\n"
+            seed_content += (
+                "INSERT INTO governing_bodies "
+                "(id, name, type, organization_code, organization_type) VALUES\n"
+            )
 
             values = []
             for gb in all_bodies:

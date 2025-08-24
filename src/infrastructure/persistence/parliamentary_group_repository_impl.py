@@ -92,6 +92,40 @@ class ParliamentaryGroupRepositoryImpl(
 
         return [self._row_to_entity(row) for row in rows]
 
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = 0
+    ) -> list[ParliamentaryGroup]:
+        """Get all parliamentary groups."""
+        query_text = """
+            SELECT pg.*, c.name as conference_name, gb.name as governing_body_name
+            FROM parliamentary_groups pg
+            JOIN conferences c ON pg.conference_id = c.id
+            JOIN governing_bodies gb ON c.governing_body_id = gb.id
+            ORDER BY gb.name, c.name, pg.name
+        """
+        params = {}
+
+        if limit is not None:
+            query_text += " LIMIT :limit OFFSET :offset"
+            params = {"limit": limit, "offset": offset or 0}
+
+        result = await self.session.execute(
+            text(query_text), params if params else None
+        )
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
+    async def get_by_id(self, entity_id: int) -> ParliamentaryGroup | None:
+        """Get parliamentary group by ID."""
+        query = text("SELECT * FROM parliamentary_groups WHERE id = :id")
+        result = await self.session.execute(query, {"id": entity_id})
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        return None
+
     def _row_to_entity(self, row: Any) -> ParliamentaryGroup:
         """Convert database row to domain entity."""
         return ParliamentaryGroup(
@@ -99,8 +133,8 @@ class ParliamentaryGroupRepositoryImpl(
             name=row.name,
             conference_id=row.conference_id,
             url=getattr(row, "url", None),
-            description=row.description,
-            is_active=row.is_active,
+            description=getattr(row, "description", None),
+            is_active=getattr(row, "is_active", True),
         )
 
     def _to_entity(self, model: ParliamentaryGroupModel) -> ParliamentaryGroup:

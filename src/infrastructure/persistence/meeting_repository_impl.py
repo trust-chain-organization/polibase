@@ -422,6 +422,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         if self.async_session:
             # Use raw SQL for async session to avoid model_class issues
             from datetime import datetime
+
             from sqlalchemy import text
 
             sql = """
@@ -491,6 +492,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         if self.async_session:
             # Use raw SQL for async session to avoid model_class issues
             from datetime import datetime
+
             from sqlalchemy import text
 
             sql = """
@@ -564,9 +566,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             from sqlalchemy import text
 
             # First check if there are related minutes
-            check_sql = (
-                "SELECT COUNT(*) FROM minutes WHERE meeting_id = :meeting_id"
-            )
+            check_sql = "SELECT COUNT(*) FROM minutes WHERE meeting_id = :meeting_id"
             result = await self.async_session.execute(
                 text(check_sql), {"meeting_id": entity_id}
             )

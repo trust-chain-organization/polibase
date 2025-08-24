@@ -57,7 +57,7 @@ def render_search_filter_tab():
     st.subheader("検索・フィルタ")
 
     # Search box
-    search_query = st.text_input(
+    st.text_input(
         "キーワード検索",
         placeholder="発言内容を検索...",
     )

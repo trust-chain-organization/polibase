@@ -37,36 +37,33 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
 
     def _get_or_create_form_state(self) -> dict[str, Any]:
         """Get or create form state in session."""
-        if "governing_body_form_state" not in self.session.state:
-            self.session.state.governing_body_form_state = {
-                "editing_mode": None,
-                "editing_id": None,
-                "type_filter": "すべて",
-                "conference_filter": "すべて",
-            }
-        return self.session.state.governing_body_form_state
+        default_state = {
+            "editing_mode": None,
+            "editing_id": None,
+            "type_filter": "すべて",
+            "conference_filter": "すべて",
+        }
+        return self.session.get_or_create("governing_body_form_state", default_state)
 
     def _save_form_state(self) -> None:
         """Save form state to session."""
-        self.session.state.governing_body_form_state = self.form_state
+        self.session.set("governing_body_form_state", self.form_state)
 
-    async def load_data(self) -> list[GoverningBody]:
+    def load_data(self) -> list[GoverningBody]:
         """Load all governing bodies."""
         try:
-            result = await self.use_case.list_governing_bodies(
-                GoverningBodyListInputDto()
-            )
+            result = self.use_case.list_governing_bodies(GoverningBodyListInputDto())
             return result.governing_bodies
         except Exception as e:
             self.logger.error(f"Failed to load governing bodies: {e}")
             return []
 
-    async def load_governing_bodies_with_filters(
+    def load_governing_bodies_with_filters(
         self, type_filter: str | None = None, conference_filter: str | None = None
     ) -> tuple[list[GoverningBody], Any]:
         """Load governing bodies with filters and statistics."""
         try:
-            result = await self.use_case.list_governing_bodies(
+            result = self.use_case.list_governing_bodies(
                 GoverningBodyListInputDto(
                     type_filter=type_filter, conference_filter=conference_filter
                 )
@@ -76,15 +73,15 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
             self.logger.error(f"Failed to load governing bodies with filters: {e}")
             return [], None
 
-    async def get_type_options(self) -> list[str]:
+    def get_type_options(self) -> list[str]:
         """Get available type options."""
         try:
-            return await self.use_case.get_type_options()
+            return self.use_case.get_type_options()
         except Exception as e:
             self.logger.error(f"Failed to get type options: {e}")
             return []
 
-    async def create(
+    def create(
         self,
         name: str,
         type: str,
@@ -93,7 +90,7 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
     ) -> tuple[bool, str | None]:
         """Create a new governing body."""
         try:
-            result = await self.use_case.create_governing_body(
+            result = self.use_case.create_governing_body(
                 CreateGoverningBodyInputDto(
                     name=name,
                     type=type,
@@ -110,7 +107,7 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
             self.logger.error(error_msg)
             return False, error_msg
 
-    async def update(
+    def update(
         self,
         id: int,
         name: str,
@@ -120,7 +117,7 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
     ) -> tuple[bool, str | None]:
         """Update an existing governing body."""
         try:
-            result = await self.use_case.update_governing_body(
+            result = self.use_case.update_governing_body(
                 UpdateGoverningBodyInputDto(
                     id=id,
                     name=name,
@@ -138,10 +135,10 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
             self.logger.error(error_msg)
             return False, error_msg
 
-    async def delete(self, id: int) -> tuple[bool, str | None]:
+    def delete(self, id: int) -> tuple[bool, str | None]:
         """Delete a governing body."""
         try:
-            result = await self.use_case.delete_governing_body(
+            result = self.use_case.delete_governing_body(
                 DeleteGoverningBodyInputDto(id=id)
             )
             if result.success:
@@ -153,10 +150,10 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
             self.logger.error(error_msg)
             return False, error_msg
 
-    async def generate_seed_file(self) -> tuple[bool, str | None, str | None]:
+    def generate_seed_file(self) -> tuple[bool, str | None, str | None]:
         """Generate seed file for governing bodies."""
         try:
-            result = await self.use_case.generate_seed_file()
+            result = self.use_case.generate_seed_file()
             if result.success:
                 return True, result.seed_content, result.file_path
             else:
@@ -187,21 +184,21 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
             )
         return pd.DataFrame(df_data)
 
-    async def handle_action(self, action: str, **kwargs: Any) -> Any:
+    def handle_action(self, action: str, **kwargs: Any) -> Any:
         """Handle user actions."""
         if action == "list":
-            return await self.load_governing_bodies_with_filters(
+            return self.load_governing_bodies_with_filters(
                 kwargs.get("type_filter"), kwargs.get("conference_filter")
             )
         elif action == "create":
-            return await self.create(
+            return self.create(
                 kwargs.get("name", ""),
                 kwargs.get("type", ""),
                 kwargs.get("organization_code"),
                 kwargs.get("organization_type"),
             )
         elif action == "update":
-            return await self.update(
+            return self.update(
                 kwargs.get("id", 0),
                 kwargs.get("name", ""),
                 kwargs.get("type", ""),
@@ -209,9 +206,9 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
                 kwargs.get("organization_type"),
             )
         elif action == "delete":
-            return await self.delete(kwargs.get("id", 0))
+            return self.delete(kwargs.get("id", 0))
         elif action == "generate_seed":
-            return await self.generate_seed_file()
+            return self.generate_seed_file()
         else:
             raise ValueError(f"Unknown action: {action}")
 

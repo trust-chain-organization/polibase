@@ -142,17 +142,17 @@ class ManageParliamentaryGroupsUseCase:
         """Initialize the use case."""
         self.parliamentary_group_repository = parliamentary_group_repository
 
-    async def list_parliamentary_groups(
+    def list_parliamentary_groups(
         self, input_dto: ParliamentaryGroupListInputDto
     ) -> ParliamentaryGroupListOutputDto:
         """List parliamentary groups with optional filters."""
         try:
             if input_dto.conference_id:
-                groups = await self.parliamentary_group_repository.get_by_conference_id(
+                groups = self.parliamentary_group_repository.get_by_conference_id(
                     input_dto.conference_id, input_dto.active_only
                 )
             else:
-                groups = await self.parliamentary_group_repository.get_all()
+                groups = self.parliamentary_group_repository.get_all()
                 if input_dto.active_only:
                     groups = [g for g in groups if g.is_active]
 
@@ -161,16 +161,14 @@ class ManageParliamentaryGroupsUseCase:
             logger.error(f"Failed to list parliamentary groups: {e}")
             raise
 
-    async def create_parliamentary_group(
+    def create_parliamentary_group(
         self, input_dto: CreateParliamentaryGroupInputDto
     ) -> CreateParliamentaryGroupOutputDto:
         """Create a new parliamentary group."""
         try:
             # Check for duplicates
-            existing = (
-                await self.parliamentary_group_repository.get_by_name_and_conference(
-                    input_dto.name, input_dto.conference_id
-                )
+            existing = self.parliamentary_group_repository.get_by_name_and_conference(
+                input_dto.name, input_dto.conference_id
             )
             if existing:
                 return CreateParliamentaryGroupOutputDto(
@@ -188,9 +186,7 @@ class ManageParliamentaryGroupsUseCase:
                 is_active=input_dto.is_active,
             )
 
-            created = await self.parliamentary_group_repository.create(
-                parliamentary_group
-            )
+            created = self.parliamentary_group_repository.create(parliamentary_group)
             return CreateParliamentaryGroupOutputDto(
                 success=True, parliamentary_group=created
             )
@@ -200,13 +196,13 @@ class ManageParliamentaryGroupsUseCase:
                 success=False, error_message=str(e)
             )
 
-    async def update_parliamentary_group(
+    def update_parliamentary_group(
         self, input_dto: UpdateParliamentaryGroupInputDto
     ) -> UpdateParliamentaryGroupOutputDto:
         """Update an existing parliamentary group."""
         try:
             # Get existing parliamentary group
-            existing = await self.parliamentary_group_repository.get_by_id(input_dto.id)
+            existing = self.parliamentary_group_repository.get_by_id(input_dto.id)
             if not existing:
                 return UpdateParliamentaryGroupOutputDto(
                     success=False, error_message="議員団が見つかりません。"
@@ -218,7 +214,7 @@ class ManageParliamentaryGroupsUseCase:
             existing.description = input_dto.description
             existing.is_active = input_dto.is_active
 
-            await self.parliamentary_group_repository.update(existing)
+            self.parliamentary_group_repository.update(existing)
             return UpdateParliamentaryGroupOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to update parliamentary group: {e}")
@@ -226,13 +222,13 @@ class ManageParliamentaryGroupsUseCase:
                 success=False, error_message=str(e)
             )
 
-    async def delete_parliamentary_group(
+    def delete_parliamentary_group(
         self, input_dto: DeleteParliamentaryGroupInputDto
     ) -> DeleteParliamentaryGroupOutputDto:
         """Delete a parliamentary group."""
         try:
             # Check if parliamentary group exists
-            existing = await self.parliamentary_group_repository.get_by_id(input_dto.id)
+            existing = self.parliamentary_group_repository.get_by_id(input_dto.id)
             if not existing:
                 return DeleteParliamentaryGroupOutputDto(
                     success=False, error_message="議員団が見つかりません。"
@@ -248,7 +244,7 @@ class ManageParliamentaryGroupsUseCase:
             # TODO: Check if it has members
             # This would require a membership repository
 
-            await self.parliamentary_group_repository.delete(input_dto.id)
+            self.parliamentary_group_repository.delete(input_dto.id)
             return DeleteParliamentaryGroupOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to delete parliamentary group: {e}")
@@ -256,7 +252,7 @@ class ManageParliamentaryGroupsUseCase:
                 success=False, error_message=str(e)
             )
 
-    async def extract_members(
+    def extract_members(
         self, input_dto: ExtractMembersInputDto
     ) -> ExtractMembersOutputDto:
         """Extract members from parliamentary group URL."""
@@ -271,16 +267,19 @@ class ManageParliamentaryGroupsUseCase:
             logger.error(f"Failed to extract members: {e}")
             return ExtractMembersOutputDto(success=False, error_message=str(e))
 
-    async def generate_seed_file(self) -> GenerateSeedFileOutputDto:
+    def generate_seed_file(self) -> GenerateSeedFileOutputDto:
         """Generate seed file for parliamentary groups."""
         try:
             # Get all parliamentary groups
-            all_groups = await self.parliamentary_group_repository.get_all()
+            all_groups = self.parliamentary_group_repository.get_all()
 
             # Generate SQL content
             seed_content = "-- Parliamentary Groups Seed Data\n"
             seed_content += "-- Generated from current database\n\n"
-            seed_content += "INSERT INTO parliamentary_groups (id, name, conference_id, url, description, is_active) VALUES\n"
+            seed_content += (
+                "INSERT INTO parliamentary_groups "
+                "(id, name, conference_id, url, description, is_active) VALUES\n"
+            )
 
             values = []
             for group in all_groups:
@@ -288,7 +287,8 @@ class ManageParliamentaryGroupsUseCase:
                 description = f"'{group.description}'" if group.description else "NULL"
                 is_active = "true" if group.is_active else "false"
                 values.append(
-                    f"    ({group.id}, '{group.name}', {group.conference_id}, {url}, {description}, {is_active})"
+                    f"    ({group.id}, '{group.name}', {group.conference_id}, "
+                    f"{url}, {description}, {is_active})"
                 )
 
             seed_content += ",\n".join(values) + "\n"

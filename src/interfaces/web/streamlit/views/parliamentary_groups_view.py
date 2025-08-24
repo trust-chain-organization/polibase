@@ -1,6 +1,5 @@
 """View for parliamentary group management."""
 
-import asyncio
 from datetime import date
 from typing import Any, cast
 
@@ -41,14 +40,16 @@ def render_parliamentary_groups_list_tab(presenter: ParliamentaryGroupPresenter)
     conferences = presenter.get_all_conferences()
 
     # Conference filter
-    conf_options = ["すべて"] + [
-        f"{c.governing_body.name if hasattr(c, 'governing_body') and c.governing_body else ''} - {c.name}"
-        for c in conferences
-    ]
-    conf_map = {
-        f"{c.governing_body.name if hasattr(c, 'governing_body') and c.governing_body else ''} - {c.name}": c.id
-        for c in conferences
-    }
+    def get_conf_display_name(c):
+        gb_name = (
+            c.governing_body.name
+            if hasattr(c, "governing_body") and c.governing_body
+            else ""
+        )
+        return f"{gb_name} - {c.name}"
+
+    conf_options = ["すべて"] + [get_conf_display_name(c) for c in conferences]
+    conf_map = {get_conf_display_name(c): c.id for c in conferences}
 
     selected_conf_filter = st.selectbox(
         "会議体でフィルタ", conf_options, key="conf_filter"
@@ -75,7 +76,7 @@ def render_parliamentary_groups_list_tab(presenter: ParliamentaryGroupPresenter)
                     "SEEDファイル生成", key="generate_pg_seed", type="primary"
                 ):
                     with st.spinner("SEEDファイルを生成中..."):
-                        success, seed_content, file_path_or_error = asyncio.run(
+                        success, seed_content, file_path_or_error = (
                             presenter.generate_seed_file()
                         )
                         if success:
@@ -86,7 +87,8 @@ def render_parliamentary_groups_list_tab(presenter: ParliamentaryGroupPresenter)
                                 st.code(seed_content, language="sql")
                         else:
                             st.error(
-                                f"❌ SEEDファイル生成中にエラーが発生しました: {file_path_or_error}"
+                                f"❌ SEEDファイル生成中にエラーが発生しました: "
+                                f"{file_path_or_error}"
                             )
 
         st.markdown("---")
@@ -115,14 +117,16 @@ def render_new_parliamentary_group_tab(presenter: ParliamentaryGroupPresenter):
         st.error("会議体が登録されていません。先に会議体を登録してください。")
         return
 
-    conf_options = [
-        f"{c.governing_body.name if hasattr(c, 'governing_body') and c.governing_body else ''} - {c.name}"
-        for c in conferences
-    ]
-    conf_map = {
-        f"{c.governing_body.name if hasattr(c, 'governing_body') and c.governing_body else ''} - {c.name}": c.id
-        for c in conferences
-    }
+    def get_conf_display_name(c):
+        gb_name = (
+            c.governing_body.name
+            if hasattr(c, "governing_body") and c.governing_body
+            else ""
+        )
+        return f"{gb_name} - {c.name}"
+
+    conf_options = [get_conf_display_name(c) for c in conferences]
+    conf_map = {get_conf_display_name(c): c.id for c in conferences}
 
     with st.form("new_parliamentary_group_form", clear_on_submit=False):
         selected_conf = st.selectbox("所属会議体", conf_options)
@@ -146,14 +150,12 @@ def render_new_parliamentary_group_tab(presenter: ParliamentaryGroupPresenter):
         if not group_name:
             st.error("議員団名を入力してください")
         else:
-            success, group, error = asyncio.run(
-                presenter.create(
-                    group_name,
-                    conf_id,
-                    group_url if group_url else None,
-                    group_description if group_description else None,
-                    is_active,
-                )
+            success, group, error = presenter.create(
+                group_name,
+                conf_id,
+                group_url if group_url else None,
+                group_description if group_description else None,
+                is_active,
             )
             if success and group:
                 presenter.add_created_group(group, selected_conf)
@@ -233,14 +235,12 @@ def render_edit_delete_tab(presenter: ParliamentaryGroupPresenter):
                 if not new_name:
                     st.error("議員団名を入力してください")
                 else:
-                    success, error = asyncio.run(
-                        presenter.update(
-                            selected_group.id,
-                            new_name,
-                            new_url if new_url else None,
-                            new_description if new_description else None,
-                            new_is_active,
-                        )
+                    success, error = presenter.update(
+                        selected_group.id,
+                        new_name,
+                        new_url if new_url else None,
+                        new_description if new_description else None,
+                        new_is_active,
                     )
                     if success:
                         st.success("議員団を更新しました")
@@ -292,11 +292,15 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
     group_map = {}
     for group in groups_with_url:
         conf = next((c for c in conferences if c.id == group.conference_id), None)
-        conf_name = (
-            f"{conf.governing_body.name if hasattr(conf, 'governing_body') and conf.governing_body else ''} - {conf.name}"
-            if conf
-            else "不明"
-        )
+        if conf:
+            gb_name = (
+                conf.governing_body.name
+                if hasattr(conf, "governing_body") and conf.governing_body
+                else ""
+            )
+            conf_name = f"{gb_name} - {conf.name}"
+        else:
+            conf_name = "不明"
         display_name = f"{group.name} ({conf_name})"
         group_options.append(display_name)
         group_map[display_name] = group
@@ -343,14 +347,12 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
     # Execute extraction
     if st.button("🔍 メンバー抽出を実行", type="primary"):
         with st.spinner("メンバー情報を抽出中..."):
-            success, result, error = asyncio.run(
-                presenter.extract_members(
-                    selected_group.id,
-                    cast(str, selected_group.url),
-                    confidence_threshold,
-                    start_date,
-                    dry_run,
-                )
+            success, result, error = presenter.extract_members(
+                selected_group.id,
+                cast(str, selected_group.url),
+                confidence_threshold,
+                start_date,
+                dry_run,
             )
 
             if success and result:

@@ -1,7 +1,5 @@
 """View for governing body management."""
 
-import asyncio
-
 import streamlit as st
 from src.interfaces.web.streamlit.presenters.governing_body_presenter import (
     GoverningBodyPresenter,
@@ -49,8 +47,8 @@ def render_governing_bodies_list_tab(presenter: GoverningBodyPresenter):
         )
 
     # Load data with filters
-    governing_bodies, statistics = asyncio.run(
-        presenter.load_governing_bodies_with_filters(selected_type, conference_filter)
+    governing_bodies, statistics = presenter.load_governing_bodies_with_filters(
+        selected_type, conference_filter
     )
 
     if governing_bodies:
@@ -67,7 +65,7 @@ def render_governing_bodies_list_tab(presenter: GoverningBodyPresenter):
                     "SEEDファイル生成", key="generate_gb_seed", type="primary"
                 ):
                     with st.spinner("SEEDファイルを生成中..."):
-                        success, seed_content, file_path_or_error = asyncio.run(
+                        success, seed_content, file_path_or_error = (
                             presenter.generate_seed_file()
                         )
                         if success:
@@ -78,7 +76,8 @@ def render_governing_bodies_list_tab(presenter: GoverningBodyPresenter):
                                 st.code(seed_content, language="sql")
                         else:
                             st.error(
-                                f"❌ SEEDファイル生成中にエラーが発生しました: {file_path_or_error}"
+                                f"❌ SEEDファイル生成中にエラーが発生しました: "
+                                f"{file_path_or_error}"
                             )
 
         st.markdown("---")
@@ -131,13 +130,11 @@ def render_new_governing_body_tab(presenter: GoverningBodyPresenter):
             if not name:
                 st.error("開催主体名を入力してください")
             else:
-                success, id_or_error = asyncio.run(
-                    presenter.create(
-                        name,
-                        gb_type,
-                        organization_code or None,
-                        organization_type or None,
-                    )
+                success, id_or_error = presenter.create(
+                    name,
+                    gb_type,
+                    organization_code or None,
+                    organization_type or None,
                 )
                 if success:
                     st.success(f"開催主体「{name}」を登録しました（ID: {id_or_error}）")
@@ -197,14 +194,12 @@ def render_edit_delete_tab(presenter: GoverningBodyPresenter):
                     if not edit_name:
                         st.error("開催主体名を入力してください")
                     else:
-                        success, error = asyncio.run(
-                            presenter.update(
-                                selected_gb_id,
-                                edit_name,
-                                edit_type,
-                                edit_org_code or None,
-                                edit_org_type or None,
-                            )
+                        success, error = presenter.update(
+                            selected_gb_id,
+                            edit_name,
+                            edit_type,
+                            edit_org_code or None,
+                            edit_org_type or None,
                         )
                         if success:
                             st.success(f"開催主体「{edit_name}」を更新しました")
@@ -239,9 +234,7 @@ def render_edit_delete_tab(presenter: GoverningBodyPresenter):
                         if st.button(
                             "削除を実行", key="execute_delete_gb", type="primary"
                         ):
-                            success, error = asyncio.run(
-                                presenter.delete(selected_gb_id)
-                            )
+                            success, error = presenter.delete(selected_gb_id)
                             if success:
                                 st.success(
                                     f"開催主体「{selected_gb.name}」を削除しました"

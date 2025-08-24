@@ -1,7 +1,5 @@
 """View for politician management."""
 
-import asyncio
-
 import streamlit as st
 from src.interfaces.web.streamlit.presenters.politician_presenter import (
     PoliticianPresenter,
@@ -51,10 +49,8 @@ def render_politicians_list_tab(presenter: PoliticianPresenter):
 
     # Load politicians
     party_id = party_map.get(selected_party) if selected_party != "すべて" else None
-    politicians = asyncio.run(
-        presenter.load_politicians_with_filters(
-            party_id, search_name if search_name else None
-        )
+    politicians = presenter.load_politicians_with_filters(
+        party_id, search_name if search_name else None
     )
 
     if politicians:
@@ -72,7 +68,11 @@ def render_politicians_list_tab(presenter: PoliticianPresenter):
             party_counts = {}
             for p in politicians:
                 party_name = next(
-                    (party.name for party in parties if party.id == p.party_id),
+                    (
+                        party.name
+                        for party in parties
+                        if party.id == p.political_party_id
+                    ),
                     "無所属",
                 )
                 party_counts[party_name] = party_counts.get(party_name, 0) + 1
@@ -80,7 +80,7 @@ def render_politicians_list_tab(presenter: PoliticianPresenter):
                 max_party = max(party_counts, key=party_counts.get)
                 st.metric("最多政党", f"{max_party} ({party_counts[max_party]}名)")
         with col3:
-            with_url = len([p for p in politicians if p.profile_url])
+            with_url = len([p for p in politicians if p.profile_page_url])
             st.metric("プロフィールURL登録", f"{with_url}名")
     else:
         st.info("政治家が登録されていません")
@@ -119,14 +119,12 @@ def render_new_politician_tab(presenter: PoliticianPresenter):
                     if selected_party != "無所属"
                     else None
                 )
-                success, politician_id, error = asyncio.run(
-                    presenter.create(
-                        name,
-                        party_id,
-                        district if district else None,
-                        profile_url if profile_url else None,
-                        image_url if image_url else None,
-                    )
+                success, politician_id, error = presenter.create(
+                    name,
+                    party_id,
+                    district if district else None,
+                    profile_url if profile_url else None,
+                    image_url if image_url else None,
                 )
                 if success:
                     st.success(f"政治家「{name}」を登録しました（ID: {politician_id}）")
@@ -167,7 +165,11 @@ def render_edit_delete_tab(presenter: PoliticianPresenter):
             party_options = ["無所属"] + [p.name for p in parties]
             party_map = {p.name: p.id for p in parties}
             current_party = next(
-                (p.name for p in parties if p.id == selected_politician.party_id),
+                (
+                    p.name
+                    for p in parties
+                    if p.id == selected_politician.political_party_id
+                ),
                 "無所属",
             )
             new_party = st.selectbox(
@@ -180,10 +182,10 @@ def render_edit_delete_tab(presenter: PoliticianPresenter):
                 "選挙区", value=selected_politician.district or ""
             )
             new_profile_url = st.text_input(
-                "プロフィールURL", value=selected_politician.profile_url or ""
+                "プロフィールURL", value=selected_politician.profile_page_url or ""
             )
             new_image_url = st.text_input(
-                "画像URL", value=selected_politician.image_url or ""
+                "画像URL", value=selected_politician.profile_image_url or ""
             )
 
             submitted = st.form_submit_button("更新")
@@ -195,15 +197,13 @@ def render_edit_delete_tab(presenter: PoliticianPresenter):
                     party_id = (
                         party_map.get(new_party) if new_party != "無所属" else None
                     )
-                    success, error = asyncio.run(
-                        presenter.update(
-                            selected_politician.id,
-                            new_name,
-                            party_id,
-                            new_district if new_district else None,
-                            new_profile_url if new_profile_url else None,
-                            new_image_url if new_image_url else None,
-                        )
+                    success, error = presenter.update(
+                        selected_politician.id,
+                        new_name,
+                        party_id,
+                        new_district if new_district else None,
+                        new_profile_url if new_profile_url else None,
+                        new_image_url if new_image_url else None,
                     )
                     if success:
                         st.success("政治家を更新しました")

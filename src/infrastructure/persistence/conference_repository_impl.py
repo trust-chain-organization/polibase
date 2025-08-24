@@ -283,6 +283,190 @@ class ConferenceRepositoryImpl(BaseRepositoryImpl[Conference], ConferenceReposit
                 "Failed to get all conferences", {"error": str(e)}
             ) from e
 
+    async def get_by_id(self, entity_id: int) -> Conference | None:
+        """Get conference by ID.
+
+        Args:
+            entity_id: Conference ID
+
+        Returns:
+            Conference entity or None if not found
+        """
+        try:
+            query = text("""
+                SELECT
+                    id,
+                    name,
+                    type,
+                    governing_body_id,
+                    members_introduction_url,
+                    created_at,
+                    updated_at
+                FROM conferences
+                WHERE id = :id
+            """)
+
+            result = await self.session.execute(query, {"id": entity_id})
+            row = result.first()
+
+            if row:
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                return self._dict_to_entity(row_dict)
+            return None
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting conference by ID: {e}")
+            raise DatabaseError(
+                "Failed to get conference by ID", {"id": entity_id, "error": str(e)}
+            ) from e
+
+    async def create(self, entity: Conference) -> Conference:
+        """Create a new conference.
+
+        Args:
+            entity: Conference entity to create
+
+        Returns:
+            Created Conference entity with ID
+        """
+        try:
+            from datetime import datetime
+
+            query = text("""
+                INSERT INTO conferences (
+                    name, type, governing_body_id,
+                    members_introduction_url, created_at, updated_at
+                )
+                VALUES (
+                    :name, :type, :governing_body_id,
+                    :members_introduction_url, :created_at, :updated_at
+                )
+                RETURNING *
+            """)
+
+            params = {
+                "name": entity.name,
+                "type": entity.type,
+                "governing_body_id": entity.governing_body_id,
+                "members_introduction_url": entity.members_introduction_url,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+            }
+
+            result = await self.session.execute(query, params)
+            await self.session.commit()
+
+            row = result.first()
+            if row:
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                return self._dict_to_entity(row_dict)
+            raise RuntimeError("Failed to create conference")
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error creating conference: {e}")
+            await self.session.rollback()
+            raise DatabaseError(
+                "Failed to create conference", {"entity": entity, "error": str(e)}
+            ) from e
+
+    async def update(self, entity: Conference) -> Conference:
+        """Update an existing conference.
+
+        Args:
+            entity: Conference entity to update
+
+        Returns:
+            Updated Conference entity
+        """
+        try:
+            from datetime import datetime
+
+            query = text("""
+                UPDATE conferences
+                SET name = :name,
+                    type = :type,
+                    governing_body_id = :governing_body_id,
+                    members_introduction_url = :members_introduction_url,
+                    updated_at = :updated_at
+                WHERE id = :id
+                RETURNING *
+            """)
+
+            params = {
+                "id": entity.id,
+                "name": entity.name,
+                "type": entity.type,
+                "governing_body_id": entity.governing_body_id,
+                "members_introduction_url": entity.members_introduction_url,
+                "updated_at": datetime.now(),
+            }
+
+            result = await self.session.execute(query, params)
+            await self.session.commit()
+
+            row = result.first()
+            if row:
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                return self._dict_to_entity(row_dict)
+            raise UpdateError(f"Conference with ID {entity.id} not found")
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error updating conference: {e}")
+            await self.session.rollback()
+            raise DatabaseError(
+                "Failed to update conference", {"entity": entity, "error": str(e)}
+            ) from e
+
+    async def delete(self, entity_id: int) -> bool:
+        """Delete a conference by ID.
+
+        Args:
+            entity_id: Conference ID to delete
+
+        Returns:
+            True if deleted, False otherwise
+        """
+        try:
+            # Check if there are related records
+            check_query = text("""
+                SELECT COUNT(*) FROM meetings WHERE conference_id = :conference_id
+            """)
+            result = await self.session.execute(
+                check_query, {"conference_id": entity_id}
+            )
+            count = result.scalar()
+
+            if count and count > 0:
+                return False  # Cannot delete if there are related meetings
+
+            query = text("DELETE FROM conferences WHERE id = :id")
+            result = await self.session.execute(query, {"id": entity_id})
+            await self.session.commit()
+
+            return result.rowcount > 0  # type: ignore[attr-defined]
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error deleting conference: {e}")
+            await self.session.rollback()
+            raise DatabaseError(
+                "Failed to delete conference", {"id": entity_id, "error": str(e)}
+            ) from e
+
     def _to_entity(self, model: ConferenceModel) -> Conference:
         """Convert database model to domain entity.
 

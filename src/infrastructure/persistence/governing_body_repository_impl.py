@@ -182,3 +182,102 @@ class GoverningBodyRepositoryImpl(
             model.organization_code = entity.organization_code
         if entity.organization_type is not None:
             model.organization_type = entity.organization_type
+
+    async def create(self, entity: GoverningBody) -> GoverningBody:
+        """Create a new governing body.
+
+        Args:
+            entity: GoverningBody entity to create
+
+        Returns:
+            Created GoverningBody entity with ID
+        """
+        query = text("""
+            INSERT INTO governing_bodies (
+                name, type, organization_code, organization_type
+            )
+            VALUES (
+                :name, :type, :organization_code, :organization_type
+            )
+            RETURNING *
+        """)
+
+        params = {
+            "name": entity.name,
+            "type": entity.type,
+            "organization_code": entity.organization_code,
+            "organization_type": entity.organization_type,
+        }
+
+        result = await self.session.execute(query, params)
+        await self.session.commit()
+
+        row = result.first()
+        if row:
+            return self._row_to_entity(row)
+        raise RuntimeError("Failed to create governing body")
+
+    async def update(self, entity: GoverningBody) -> GoverningBody:
+        """Update an existing governing body.
+
+        Args:
+            entity: GoverningBody entity to update
+
+        Returns:
+            Updated GoverningBody entity
+        """
+        from src.exceptions import UpdateError
+
+        query = text("""
+            UPDATE governing_bodies
+            SET name = :name,
+                type = :type,
+                organization_code = :organization_code,
+                organization_type = :organization_type
+            WHERE id = :id
+            RETURNING *
+        """)
+
+        params = {
+            "id": entity.id,
+            "name": entity.name,
+            "type": entity.type,
+            "organization_code": entity.organization_code,
+            "organization_type": entity.organization_type,
+        }
+
+        result = await self.session.execute(query, params)
+        await self.session.commit()
+
+        row = result.first()
+        if row:
+            return self._row_to_entity(row)
+        raise UpdateError(f"GoverningBody with ID {entity.id} not found")
+
+    async def delete(self, entity_id: int) -> bool:
+        """Delete a governing body by ID.
+
+        Args:
+            entity_id: GoverningBody ID to delete
+
+        Returns:
+            True if deleted, False otherwise
+        """
+        # Check if there are related conferences
+        check_query = text("""
+            SELECT COUNT(*) FROM conferences
+            WHERE governing_body_id = :governing_body_id
+        """)
+        result = await self.session.execute(
+            check_query, {"governing_body_id": entity_id}
+        )
+        count = result.scalar()
+
+        if count and count > 0:
+            return False  # Cannot delete if there are related conferences
+
+        query = text("DELETE FROM governing_bodies WHERE id = :id")
+        result = await self.session.execute(query, {"id": entity_id})
+        await self.session.commit()
+
+        return result.rowcount > 0  # type: ignore[attr-defined]

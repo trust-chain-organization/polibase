@@ -39,21 +39,21 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
         self.session = SessionManager()
         self.logger = get_logger(__name__)
 
-    async def load_data(self) -> list[Politician]:
+    def load_data(self) -> list[Politician]:
         """Load all politicians."""
         try:
-            result = await self.use_case.list_politicians(PoliticianListInputDto())
+            result = self.use_case.list_politicians(PoliticianListInputDto())
             return result.politicians
         except Exception as e:
             self.logger.error(f"Failed to load politicians: {e}")
             return []
 
-    async def load_politicians_with_filters(
+    def load_politicians_with_filters(
         self, party_id: int | None = None, search_name: str | None = None
     ) -> list[Politician]:
         """Load politicians with filters."""
         try:
-            result = await self.use_case.list_politicians(
+            result = self.use_case.list_politicians(
                 PoliticianListInputDto(party_id=party_id, search_name=search_name)
             )
             return result.politicians
@@ -61,15 +61,15 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
             self.logger.error(f"Failed to load politicians with filters: {e}")
             return []
 
-    async def get_all_parties(self) -> list[PoliticalParty]:
+    def get_all_parties(self) -> list[PoliticalParty]:
         """Get all political parties."""
         try:
-            return await self.party_repo.get_all()
+            return self.party_repo.get_all()
         except Exception as e:
             self.logger.error(f"Failed to get parties: {e}")
             return []
 
-    async def create(
+    def create(
         self,
         name: str,
         party_id: int | None = None,
@@ -79,7 +79,7 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
     ) -> tuple[bool, int | None, str | None]:
         """Create a new politician."""
         try:
-            result = await self.use_case.create_politician(
+            result = self.use_case.create_politician(
                 CreatePoliticianInputDto(
                     name=name,
                     party_id=party_id,
@@ -97,7 +97,7 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
             self.logger.error(error_msg)
             return False, None, error_msg
 
-    async def update(
+    def update(
         self,
         id: int,
         name: str,
@@ -108,7 +108,7 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
     ) -> tuple[bool, str | None]:
         """Update an existing politician."""
         try:
-            result = await self.use_case.update_politician(
+            result = self.use_case.update_politician(
                 UpdatePoliticianInputDto(
                     id=id,
                     name=name,
@@ -127,12 +127,10 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
             self.logger.error(error_msg)
             return False, error_msg
 
-    async def delete(self, id: int) -> tuple[bool, str | None]:
+    def delete(self, id: int) -> tuple[bool, str | None]:
         """Delete a politician."""
         try:
-            result = await self.use_case.delete_politician(
-                DeletePoliticianInputDto(id=id)
-            )
+            result = self.use_case.delete_politician(DeletePoliticianInputDto(id=id))
             if result.success:
                 return True, None
             else:
@@ -142,10 +140,10 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
             self.logger.error(error_msg)
             return False, error_msg
 
-    async def merge(self, source_id: int, target_id: int) -> tuple[bool, str | None]:
+    def merge(self, source_id: int, target_id: int) -> tuple[bool, str | None]:
         """Merge two politicians."""
         try:
-            result = await self.use_case.merge_politicians(
+            result = self.use_case.merge_politicians(
                 MergePoliticiansInputDto(source_id=source_id, target_id=target_id)
             )
             if result.success:
@@ -172,23 +170,23 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
                 {
                     "ID": politician.id,
                     "名前": politician.name,
-                    "政党": party_map.get(politician.party_id, "無所属")
-                    if politician.party_id
+                    "政党": party_map.get(politician.political_party_id, "無所属")
+                    if politician.political_party_id
                     else "無所属",
                     "選挙区": politician.district or "",
-                    "プロフィールURL": politician.profile_url or "",
+                    "プロフィールURL": politician.profile_page_url or "",
                 }
             )
         return pd.DataFrame(df_data)
 
-    async def handle_action(self, action: str, **kwargs: Any) -> Any:
+    def handle_action(self, action: str, **kwargs: Any) -> Any:
         """Handle user actions."""
         if action == "list":
-            return await self.load_politicians_with_filters(
+            return self.load_politicians_with_filters(
                 kwargs.get("party_id"), kwargs.get("search_name")
             )
         elif action == "create":
-            return await self.create(
+            return self.create(
                 kwargs.get("name", ""),
                 kwargs.get("party_id"),
                 kwargs.get("district"),
@@ -196,7 +194,7 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
                 kwargs.get("image_url"),
             )
         elif action == "update":
-            return await self.update(
+            return self.update(
                 kwargs.get("id", 0),
                 kwargs.get("name", ""),
                 kwargs.get("party_id"),
@@ -205,10 +203,8 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
                 kwargs.get("image_url"),
             )
         elif action == "delete":
-            return await self.delete(kwargs.get("id", 0))
+            return self.delete(kwargs.get("id", 0))
         elif action == "merge":
-            return await self.merge(
-                kwargs.get("source_id", 0), kwargs.get("target_id", 0)
-            )
+            return self.merge(kwargs.get("source_id", 0), kwargs.get("target_id", 0))
         else:
             raise ValueError(f"Unknown action: {action}")

@@ -4,8 +4,6 @@ This module provides the UI layer for political party management,
 using the presenter pattern for business logic.
 """
 
-import asyncio
-
 import streamlit as st
 from src.interfaces.web.streamlit.presenters.political_party_presenter import (
     PoliticalPartyPresenter,

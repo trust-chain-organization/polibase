@@ -7,8 +7,12 @@ import pandas as pd
 
 import streamlit as st
 from src.exceptions import DatabaseError, RecordNotFoundError, SaveError, UpdateError
-from src.infrastructure.persistence.conference_repository_impl import ConferenceRepositoryImpl
-from src.infrastructure.persistence.governing_body_repository_impl import GoverningBodyRepositoryImpl
+from src.infrastructure.persistence.conference_repository_impl import (
+    ConferenceRepositoryImpl,
+)
+from src.infrastructure.persistence.governing_body_repository_impl import (
+    GoverningBodyRepositoryImpl,
+)
 from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.seed_generator import SeedGenerator
@@ -94,17 +98,30 @@ def show_meetings_list():
 
     # 会議一覧取得
     all_meetings = meeting_repo.get_all()
+    all_conferences = conf_repo.get_all()
+    all_governing_bodies = gb_repo.get_all()
+
+    # Create lookups for conference and governing body names
+    conf_lookup = {c.id: c for c in all_conferences}
+    gb_lookup = {gb.id: gb for gb in all_governing_bodies}
+
     meetings: list[dict[str, Any]] = []
     for m in all_meetings:
         if selected_conf_id is None or m.conference_id == selected_conf_id:
-            meetings.append({
-                "id": m.id,
-                "conference_id": m.conference_id,
-                "date": m.date,
-                "url": m.url,
-                "gcs_pdf_uri": m.gcs_pdf_uri,
-                "gcs_text_uri": m.gcs_text_uri
-            })
+            conf = conf_lookup.get(m.conference_id)
+            gb = gb_lookup.get(conf.governing_body_id) if conf else None
+            meetings.append(
+                {
+                    "id": m.id,
+                    "conference_id": m.conference_id,
+                    "date": m.date,
+                    "url": m.url,
+                    "gcs_pdf_uri": m.gcs_pdf_uri,
+                    "gcs_text_uri": m.gcs_text_uri,
+                    "conference_name": conf.name if conf else "不明",
+                    "governing_body_name": gb.name if gb else "不明",
+                }
+            )
 
     if meetings:
         # SEEDファイル生成セクション（一番上に配置）
@@ -308,10 +325,11 @@ def add_new_meeting():
             else:
                 try:
                     from src.domain.entities.meeting import Meeting
+
                     new_meeting = Meeting(
                         conference_id=selected_conf["id"],
                         date=meeting_date,
-                        url=url if url else None
+                        url=url if url else None,
                     )
                     created_meeting = meeting_repo.create(new_meeting)
                     meeting_id = created_meeting.id if created_meeting else None
@@ -365,7 +383,7 @@ def edit_meeting():
         st.error("会議が見つかりません")
         st.session_state.edit_mode = False
         return
-    
+
     # Convert to dictionary
     meeting = {
         "id": meeting_entity.id,
@@ -373,7 +391,7 @@ def edit_meeting():
         "date": meeting_entity.date,
         "url": meeting_entity.url,
         "gcs_pdf_uri": meeting_entity.gcs_pdf_uri,
-        "gcs_text_uri": meeting_entity.gcs_text_uri
+        "gcs_text_uri": meeting_entity.gcs_text_uri,
     }
     if not meeting:
         st.error("会議が見つかりません")
@@ -384,14 +402,15 @@ def edit_meeting():
     # Get conference info for display
     conference = conf_repo.get_by_id(meeting["conference_id"])
     if conference:
-        gb = gb_repo.get_by_id(conference.governing_body_id) if conference.governing_body_id else None
-        edit_info = (
-            f"編集中: {gb.name if gb else '不明'} - "
-            f"{conference.name}"
+        gb = (
+            gb_repo.get_by_id(conference.governing_body_id)
+            if conference.governing_body_id
+            else None
         )
+        edit_info = f"編集中: {gb.name if gb else '不明'} - {conference.name}"
     else:
         edit_info = "編集中"
-    
+
     # Cast meeting to dict for proper type handling
     meeting_dict = cast(dict[str, Any], meeting)
     st.info(edit_info)
@@ -423,13 +442,14 @@ def edit_meeting():
             else:
                 try:
                     from src.domain.entities.meeting import Meeting
+
                     updated_meeting = Meeting(
                         id=st.session_state.edit_meeting_id,
                         conference_id=meeting["conference_id"],
                         date=meeting_date,
                         url=url,
                         gcs_pdf_uri=meeting.get("gcs_pdf_uri"),
-                        gcs_text_uri=meeting.get("gcs_text_uri")
+                        gcs_text_uri=meeting.get("gcs_text_uri"),
                     )
                     if meeting_repo.update(updated_meeting):
                         st.success("会議を更新しました")

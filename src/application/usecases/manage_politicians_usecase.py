@@ -102,34 +102,34 @@ class ManagePoliticiansUseCase:
         """Initialize the use case."""
         self.politician_repository = politician_repository
 
-    async def list_politicians(
+    def list_politicians(
         self, input_dto: PoliticianListInputDto
     ) -> PoliticianListOutputDto:
         """List politicians with optional filters."""
         try:
             if input_dto.search_name:
-                politicians = await self.politician_repository.search_by_name(
+                politicians = self.politician_repository.search_by_name(
                     input_dto.search_name
                 )
             elif input_dto.party_id:
-                politicians = await self.politician_repository.get_by_party(
+                politicians = self.politician_repository.get_by_party(
                     input_dto.party_id
                 )
             else:
-                politicians = await self.politician_repository.get_all()
+                politicians = self.politician_repository.get_all()
 
             return PoliticianListOutputDto(politicians=politicians)
         except Exception as e:
             logger.error(f"Failed to list politicians: {e}")
             raise
 
-    async def create_politician(
+    def create_politician(
         self, input_dto: CreatePoliticianInputDto
     ) -> CreatePoliticianOutputDto:
         """Create a new politician."""
         try:
             # Check for duplicates
-            existing = await self.politician_repository.get_by_name_and_party(
+            existing = self.politician_repository.get_by_name_and_party(
                 input_dto.name, input_dto.party_id
             )
             if existing:
@@ -139,28 +139,31 @@ class ManagePoliticiansUseCase:
                 )
 
             # Create new politician
+            # Note: speaker_id is required but we'll use 0 as placeholder
+            # In production, this should be properly linked to a speaker
             politician = Politician(
                 id=0,  # Will be assigned by database
                 name=input_dto.name,
-                party_id=input_dto.party_id,
+                speaker_id=0,  # Placeholder - should be properly managed
+                political_party_id=input_dto.party_id,
                 district=input_dto.district,
-                profile_url=input_dto.profile_url,
-                image_url=input_dto.image_url,
+                profile_page_url=input_dto.profile_url,
+                profile_image_url=input_dto.image_url,
             )
 
-            created = await self.politician_repository.create(politician)
+            created = self.politician_repository.create(politician)
             return CreatePoliticianOutputDto(success=True, politician_id=created.id)
         except Exception as e:
             logger.error(f"Failed to create politician: {e}")
             return CreatePoliticianOutputDto(success=False, error_message=str(e))
 
-    async def update_politician(
+    def update_politician(
         self, input_dto: UpdatePoliticianInputDto
     ) -> UpdatePoliticianOutputDto:
         """Update an existing politician."""
         try:
             # Get existing politician
-            existing = await self.politician_repository.get_by_id(input_dto.id)
+            existing = self.politician_repository.get_by_id(input_dto.id)
             if not existing:
                 return UpdatePoliticianOutputDto(
                     success=False, error_message="政治家が見つかりません。"
@@ -168,43 +171,43 @@ class ManagePoliticiansUseCase:
 
             # Update fields
             existing.name = input_dto.name
-            existing.party_id = input_dto.party_id
+            existing.political_party_id = input_dto.party_id
             existing.district = input_dto.district
-            existing.profile_url = input_dto.profile_url
-            existing.image_url = input_dto.image_url
+            existing.profile_page_url = input_dto.profile_url
+            existing.profile_image_url = input_dto.image_url
 
-            await self.politician_repository.update(existing)
+            self.politician_repository.update(existing)
             return UpdatePoliticianOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to update politician: {e}")
             return UpdatePoliticianOutputDto(success=False, error_message=str(e))
 
-    async def delete_politician(
+    def delete_politician(
         self, input_dto: DeletePoliticianInputDto
     ) -> DeletePoliticianOutputDto:
         """Delete a politician."""
         try:
             # Check if politician exists
-            existing = await self.politician_repository.get_by_id(input_dto.id)
+            existing = self.politician_repository.get_by_id(input_dto.id)
             if not existing:
                 return DeletePoliticianOutputDto(
                     success=False, error_message="政治家が見つかりません。"
                 )
 
-            await self.politician_repository.delete(input_dto.id)
+            self.politician_repository.delete(input_dto.id)
             return DeletePoliticianOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to delete politician: {e}")
             return DeletePoliticianOutputDto(success=False, error_message=str(e))
 
-    async def merge_politicians(
+    def merge_politicians(
         self, input_dto: MergePoliticiansInputDto
     ) -> MergePoliticiansOutputDto:
         """Merge two politicians."""
         try:
             # Check if both politicians exist
-            source = await self.politician_repository.get_by_id(input_dto.source_id)
-            target = await self.politician_repository.get_by_id(input_dto.target_id)
+            source = self.politician_repository.get_by_id(input_dto.source_id)
+            target = self.politician_repository.get_by_id(input_dto.target_id)
 
             if not source:
                 return MergePoliticiansOutputDto(

@@ -218,7 +218,10 @@ class ManageConferencesUseCase:
             # Generate SQL content
             seed_content = "-- Conferences Seed Data\n"
             seed_content += "-- Generated from current database\n\n"
-            seed_content += "INSERT INTO conferences (id, name, governing_body_id, type, members_introduction_url) VALUES\n"
+            seed_content += (
+                "INSERT INTO conferences "
+                "(id, name, governing_body_id, type, members_introduction_url) VALUES\n"
+            )
 
             values = []
             for conf in all_conferences:
@@ -230,7 +233,8 @@ class ManageConferencesUseCase:
                     else "NULL"
                 )
                 values.append(
-                    f"    ({conf.id}, '{conf.name}', {gb_id}, {conf_type}, {members_url})"
+                    f"    ({conf.id}, '{conf.name}', {gb_id}, "
+                    f"{conf_type}, {members_url})"
                 )
 
             seed_content += ",\n".join(values) + "\n"

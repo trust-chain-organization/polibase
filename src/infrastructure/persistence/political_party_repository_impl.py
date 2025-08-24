@@ -73,12 +73,40 @@ class PoliticalPartyRepositoryImpl(
 
         return [self._row_to_entity(row) for row in rows]
 
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = 0
+    ) -> list[PoliticalParty]:
+        """Get all political parties."""
+        query_text = "SELECT * FROM political_parties ORDER BY name"
+        params = {}
+
+        if limit is not None:
+            query_text += " LIMIT :limit OFFSET :offset"
+            params = {"limit": limit, "offset": offset or 0}
+
+        result = await self.session.execute(
+            text(query_text), params if params else None
+        )
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
+    async def get_by_id(self, entity_id: int) -> PoliticalParty | None:
+        """Get political party by ID."""
+        query = text("SELECT * FROM political_parties WHERE id = :id")
+        result = await self.session.execute(query, {"id": entity_id})
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        return None
+
     def _row_to_entity(self, row: Any) -> PoliticalParty:
         """Convert database row to domain entity."""
         return PoliticalParty(
             id=row.id,
             name=row.name,
-            members_list_url=row.members_list_url,
+            members_list_url=getattr(row, "members_list_url", None),
         )
 
     def _to_entity(self, model: PoliticalPartyModel) -> PoliticalParty:

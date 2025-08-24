@@ -23,7 +23,7 @@ class ProcessPresenter(BasePresenter[dict[str, Any]]):
         self.session = SessionManager()
         self.logger = get_logger(__name__)
 
-    async def load_data(self) -> dict[str, Any]:
+    def load_data(self) -> dict[str, Any]:
         """Load available processes."""
         try:
             return self.use_case.get_available_processes()
@@ -31,12 +31,12 @@ class ProcessPresenter(BasePresenter[dict[str, Any]]):
             self.logger.error(f"Failed to load processes: {e}")
             return {}
 
-    async def execute_process(
+    def execute_process(
         self, process_type: str, command: str, parameters: dict[str, Any] | None = None
     ) -> tuple[bool, str | None]:
         """Execute a process."""
         try:
-            result = await self.use_case.execute_process(
+            result = self.use_case.execute_process(
                 ProcessExecutionInputDto(
                     process_type=process_type,
                     command=command,
@@ -64,15 +64,15 @@ class ProcessPresenter(BasePresenter[dict[str, Any]]):
         except Exception as e:
             return False, "", str(e)
 
-    async def handle_action(self, action: str, **kwargs: Any) -> Any:
+    def handle_action(self, action: str, **kwargs: Any) -> Any:
         """Handle user actions."""
         if action == "execute":
-            return await self.execute_process(
+            return self.execute_process(
                 kwargs.get("process_type", ""),
                 kwargs.get("command", ""),
                 kwargs.get("parameters"),
             )
         elif action == "list":
-            return await self.load_data()
+            return self.load_data()
         else:
             raise ValueError(f"Unknown action: {action}")

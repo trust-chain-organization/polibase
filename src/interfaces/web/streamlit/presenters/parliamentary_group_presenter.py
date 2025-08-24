@@ -45,23 +45,24 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
 
     def _get_or_create_form_state(self) -> dict[str, Any]:
         """Get or create form state in session."""
-        if "parliamentary_group_form_state" not in self.session.state:
-            self.session.state.parliamentary_group_form_state = {
-                "editing_mode": None,
-                "editing_id": None,
-                "conference_filter": "すべて",
-                "created_parliamentary_groups": [],
-            }
-        return self.session.state.parliamentary_group_form_state
+        default_state = {
+            "editing_mode": None,
+            "editing_id": None,
+            "conference_filter": "すべて",
+            "created_parliamentary_groups": [],
+        }
+        return self.session.get_or_create(
+            "parliamentary_group_form_state", default_state
+        )
 
     def _save_form_state(self) -> None:
         """Save form state to session."""
-        self.session.state.parliamentary_group_form_state = self.form_state
+        self.session.set("parliamentary_group_form_state", self.form_state)
 
-    async def load_data(self) -> list[ParliamentaryGroup]:
+    def load_data(self) -> list[ParliamentaryGroup]:
         """Load all parliamentary groups."""
         try:
-            result = await self.use_case.list_parliamentary_groups(
+            result = self.use_case.list_parliamentary_groups(
                 ParliamentaryGroupListInputDto()
             )
             return result.parliamentary_groups
@@ -69,12 +70,12 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
             self.logger.error(f"Failed to load parliamentary groups: {e}")
             return []
 
-    async def load_parliamentary_groups_with_filters(
+    def load_parliamentary_groups_with_filters(
         self, conference_id: int | None = None, active_only: bool = False
     ) -> list[ParliamentaryGroup]:
         """Load parliamentary groups with filters."""
         try:
-            result = await self.use_case.list_parliamentary_groups(
+            result = self.use_case.list_parliamentary_groups(
                 ParliamentaryGroupListInputDto(
                     conference_id=conference_id, active_only=active_only
                 )
@@ -84,15 +85,15 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
             self.logger.error(f"Failed to load parliamentary groups with filters: {e}")
             return []
 
-    async def get_all_conferences(self) -> list[Conference]:
+    def get_all_conferences(self) -> list[Conference]:
         """Get all conferences."""
         try:
-            return await self.conference_repo.get_all()
+            return self.conference_repo.get_all()
         except Exception as e:
             self.logger.error(f"Failed to get conferences: {e}")
             return []
 
-    async def create(
+    def create(
         self,
         name: str,
         conference_id: int,
@@ -102,7 +103,7 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
     ) -> tuple[bool, ParliamentaryGroup | None, str | None]:
         """Create a new parliamentary group."""
         try:
-            result = await self.use_case.create_parliamentary_group(
+            result = self.use_case.create_parliamentary_group(
                 CreateParliamentaryGroupInputDto(
                     name=name,
                     conference_id=conference_id,
@@ -120,7 +121,7 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
             self.logger.error(error_msg)
             return False, None, error_msg
 
-    async def update(
+    def update(
         self,
         id: int,
         name: str,
@@ -130,7 +131,7 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
     ) -> tuple[bool, str | None]:
         """Update an existing parliamentary group."""
         try:
-            result = await self.use_case.update_parliamentary_group(
+            result = self.use_case.update_parliamentary_group(
                 UpdateParliamentaryGroupInputDto(
                     id=id,
                     name=name,
@@ -148,10 +149,10 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
             self.logger.error(error_msg)
             return False, error_msg
 
-    async def delete(self, id: int) -> tuple[bool, str | None]:
+    def delete(self, id: int) -> tuple[bool, str | None]:
         """Delete a parliamentary group."""
         try:
-            result = await self.use_case.delete_parliamentary_group(
+            result = self.use_case.delete_parliamentary_group(
                 DeleteParliamentaryGroupInputDto(id=id)
             )
             if result.success:
@@ -163,7 +164,7 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
             self.logger.error(error_msg)
             return False, error_msg
 
-    async def extract_members(
+    def extract_members(
         self,
         parliamentary_group_id: int,
         url: str,
@@ -173,7 +174,7 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
     ) -> tuple[bool, Any, str | None]:
         """Extract members from parliamentary group URL."""
         try:
-            result = await self.use_case.extract_members(
+            result = self.use_case.extract_members(
                 ExtractMembersInputDto(
                     parliamentary_group_id=parliamentary_group_id,
                     url=url,
@@ -191,10 +192,10 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
             self.logger.error(error_msg)
             return False, None, error_msg
 
-    async def generate_seed_file(self) -> tuple[bool, str | None, str | None]:
+    def generate_seed_file(self) -> tuple[bool, str | None, str | None]:
         """Generate seed file for parliamentary groups."""
         try:
-            result = await self.use_case.generate_seed_file()
+            result = self.use_case.generate_seed_file()
             if result.success:
                 return True, result.seed_content, result.file_path
             else:
@@ -250,14 +251,14 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
             )
         return pd.DataFrame(member_counts)
 
-    async def handle_action(self, action: str, **kwargs: Any) -> Any:
+    def handle_action(self, action: str, **kwargs: Any) -> Any:
         """Handle user actions."""
         if action == "list":
-            return await self.load_parliamentary_groups_with_filters(
+            return self.load_parliamentary_groups_with_filters(
                 kwargs.get("conference_id"), kwargs.get("active_only", False)
             )
         elif action == "create":
-            return await self.create(
+            return self.create(
                 kwargs.get("name", ""),
                 kwargs.get("conference_id", 0),
                 kwargs.get("url"),
@@ -265,7 +266,7 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
                 kwargs.get("is_active", True),
             )
         elif action == "update":
-            return await self.update(
+            return self.update(
                 kwargs.get("id", 0),
                 kwargs.get("name", ""),
                 kwargs.get("url"),
@@ -273,9 +274,9 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
                 kwargs.get("is_active", True),
             )
         elif action == "delete":
-            return await self.delete(kwargs.get("id", 0))
+            return self.delete(kwargs.get("id", 0))
         elif action == "extract_members":
-            return await self.extract_members(
+            return self.extract_members(
                 kwargs.get("parliamentary_group_id", 0),
                 kwargs.get("url", ""),
                 kwargs.get("confidence_threshold", 0.7),
@@ -283,7 +284,7 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
                 kwargs.get("dry_run", True),
             )
         elif action == "generate_seed":
-            return await self.generate_seed_file()
+            return self.generate_seed_file()
         else:
             raise ValueError(f"Unknown action: {action}")
 

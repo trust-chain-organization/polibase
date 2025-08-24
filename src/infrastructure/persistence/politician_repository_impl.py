@@ -506,3 +506,134 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         if self.legacy_repo and hasattr(self.legacy_repo, "fetch_all"):
             return list(self.legacy_repo.fetch_all(query, params))  # type: ignore
         return []
+
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = 0
+    ) -> list[Politician]:
+        """Get all politicians."""
+        query_text = """
+            SELECT p.*, pp.name as party_name
+            FROM politicians p
+            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
+            ORDER BY p.name
+        """
+        params = {}
+
+        if limit is not None:
+            query_text += " LIMIT :limit OFFSET :offset"
+            params = {"limit": limit, "offset": offset or 0}
+
+        result = await self.session.execute(
+            text(query_text), params if params else None
+        )
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
+    async def get_by_id(self, entity_id: int) -> Politician | None:
+        """Get politician by ID."""
+        query = text("""
+            SELECT p.*, pp.name as party_name
+            FROM politicians p
+            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
+            WHERE p.id = :id
+        """)
+        result = await self.session.execute(query, {"id": entity_id})
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        return None
+
+    async def create(self, entity: Politician) -> Politician:
+        """Create a new politician."""
+        query = text("""
+            INSERT INTO politicians (
+                name, speaker_id, political_party_id,
+                position, electoral_district, profile_url
+            )
+            VALUES (
+                :name, :speaker_id, :political_party_id,
+                :position, :electoral_district, :profile_url
+            )
+            RETURNING *
+        """)
+
+        params = {
+            "name": entity.name,
+            "speaker_id": entity.speaker_id,
+            "political_party_id": entity.political_party_id,
+            "position": entity.position,
+            # Map district to electoral_district
+            "electoral_district": entity.district,
+            # Map profile_page_url to profile_url
+            "profile_url": entity.profile_page_url,
+        }
+
+        result = await self.session.execute(query, params)
+        await self.session.commit()
+
+        row = result.first()
+        if row:
+            return self._row_to_entity(row)
+        raise RuntimeError("Failed to create politician")
+
+    async def update(self, entity: Politician) -> Politician:
+        """Update an existing politician."""
+        from src.exceptions import UpdateError
+
+        query = text("""
+            UPDATE politicians
+            SET name = :name,
+                speaker_id = :speaker_id,
+                political_party_id = :political_party_id,
+                position = :position,
+                electoral_district = :electoral_district,
+                profile_url = :profile_url
+            WHERE id = :id
+            RETURNING *
+        """)
+
+        params = {
+            "id": entity.id,
+            "name": entity.name,
+            "speaker_id": entity.speaker_id,
+            "political_party_id": entity.political_party_id,
+            "position": entity.position,
+            # Map district to electoral_district
+            "electoral_district": entity.district,
+            # Map profile_page_url to profile_url
+            "profile_url": entity.profile_page_url,
+        }
+
+        result = await self.session.execute(query, params)
+        await self.session.commit()
+
+        row = result.first()
+        if row:
+            return self._row_to_entity(row)
+        raise UpdateError(f"Politician with ID {entity.id} not found")
+
+    async def delete(self, entity_id: int) -> bool:
+        """Delete a politician by ID."""
+        query = text("DELETE FROM politicians WHERE id = :id")
+        result = await self.session.execute(query, {"id": entity_id})
+        await self.session.commit()
+
+        return result.rowcount > 0  # type: ignore[attr-defined]
+
+    def _row_to_entity(self, row: Any) -> Politician:
+        """Convert database row to domain entity."""
+        return Politician(
+            id=row.id,
+            name=row.name,
+            speaker_id=row.speaker_id,
+            political_party_id=getattr(row, "political_party_id", None),
+            furigana=None,  # Not in database
+            position=getattr(row, "position", None),
+            district=getattr(
+                row, "electoral_district", None
+            ),  # Map from electoral_district
+            profile_image_url=None,  # Not in database
+            profile_page_url=getattr(row, "profile_url", None),  # Map from profile_url
+        )
