@@ -279,6 +279,9 @@ class TestMatchSpeakersUseCaseWithHistory:
         mock_politician_repo.get_by_speaker_id.return_value = None
         mock_politician_repo.search_by_name.return_value = []
         mock_politician_repo.get_all.return_value = []  # No candidates
+        # Ensure get_all_cached doesn't exist so it uses get_all
+        if hasattr(mock_politician_repo, "get_all_cached"):
+            del mock_politician_repo.get_all_cached
 
         # Act
         results = use_case.execute(use_llm=True)

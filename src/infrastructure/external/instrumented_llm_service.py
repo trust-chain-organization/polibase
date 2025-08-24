@@ -1,7 +1,7 @@
 """Instrumented LLM Service with automatic history recording."""
 
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from datetime import UTC
 from typing import Any
 
@@ -71,13 +71,13 @@ class InstrumentedLLMService(ILLMService):
         self._input_reference_type = reference_type
         self._input_reference_id = reference_id
 
-    async def set_history_repository(
+    def set_history_repository(
         self, repository: LLMProcessingHistoryRepository | None
     ) -> None:
         """Set the history repository for recording LLM operations."""
         self._history_repository = repository
 
-    async def get_processing_history(
+    def get_processing_history(
         self, reference_type: str | None = None, reference_id: int | None = None
     ) -> list[LLMProcessingHistory]:
         """Get processing history for this service."""
@@ -85,19 +85,19 @@ class InstrumentedLLMService(ILLMService):
             return []
 
         if reference_type and reference_id:
-            return await self._history_repository.get_by_input_reference(
+            return self._history_repository.get_by_input_reference(  # type: ignore[attr-defined]
                 reference_type, reference_id
             )
         return []
 
-    async def _record_processing(
+    def _record_processing(
         self,
         processing_type: ProcessingType,
         input_reference_type: str,
         input_reference_id: int,
         prompt_template: str,
         prompt_variables: dict[str, Any],
-        processing_func: Callable[..., Awaitable[Any]],
+        processing_func: Callable[..., Any],
         *args: Any,
         **kwargs: Any,
     ) -> Any:
@@ -137,21 +137,21 @@ class InstrumentedLLMService(ILLMService):
 
             try:
                 # Save initial entry
-                history_entry = await self._history_repository.create(history_entry)
+                history_entry = self._history_repository.create(history_entry)  # type: ignore[attr-defined]
             except Exception as e:
                 logger.error(f"Failed to create history entry: {e}")
                 history_entry = None
 
         try:
             # Execute the actual processing
-            result = await processing_func(*args, **kwargs)
+            result = processing_func(*args, **kwargs)
 
             # Update history with success
             if history_entry and self._history_repository:
                 # Extract result metadata
                 result_metadata = self._extract_result_metadata(result)
                 history_entry.complete_processing(result_metadata)
-                await self._history_repository.update(history_entry)
+                self._history_repository.update(history_entry)  # type: ignore[attr-defined]
 
             return result
 
@@ -159,7 +159,7 @@ class InstrumentedLLMService(ILLMService):
             # Update history with failure
             if history_entry and self._history_repository:
                 history_entry.fail_processing(str(e))
-                await self._history_repository.update(history_entry)
+                self._history_repository.update(history_entry)  # type: ignore[attr-defined]
 
             # Re-raise the exception
             raise
@@ -191,7 +191,7 @@ class InstrumentedLLMService(ILLMService):
 
         return metadata
 
-    async def match_speaker_to_politician(
+    def match_speaker_to_politician(
         self, context: LLMSpeakerMatchContext
     ) -> LLMMatchResult | None:
         """Match a speaker to a politician using LLM with history recording."""
@@ -209,7 +209,7 @@ class InstrumentedLLMService(ILLMService):
             # TypedDict doesn't have speaker_id, use speaker_name as reference
             reference_id = hash(context.get("speaker_name", "")) % 1000000
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.SPEAKER_MATCHING,
             reference_type,
             reference_id,
@@ -219,7 +219,7 @@ class InstrumentedLLMService(ILLMService):
             context,
         )
 
-    async def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
+    def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
         """Extract speeches from meeting minutes text with history recording."""
         prompt_template = "speech_extraction"
         prompt_variables = {"text_length": len(text)}
@@ -232,7 +232,7 @@ class InstrumentedLLMService(ILLMService):
             else hash(text[:100]) % 1000000  # Simple hash for tracking
         )
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.SPEECH_EXTRACTION,
             reference_type,
             reference_id,
@@ -242,9 +242,9 @@ class InstrumentedLLMService(ILLMService):
             text,
         )
 
-    async def process_minutes_division(
+    def process_minutes_division(
         self,
-        processing_func: Callable[..., Awaitable[Any]],
+        processing_func: Callable[..., Any],
         prompt_name: str,
         prompt_variables: dict[str, Any],
         *args: Any,
@@ -255,7 +255,7 @@ class InstrumentedLLMService(ILLMService):
         reference_type = self._input_reference_type or "meeting"
         reference_id = self._input_reference_id or 0
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.MINUTES_DIVISION,
             reference_type,
             reference_id,
@@ -266,7 +266,7 @@ class InstrumentedLLMService(ILLMService):
             **kwargs,
         )
 
-    async def extract_party_members(
+    def extract_party_members(
         self, html_content: str, party_id: int
     ) -> LLMExtractResult:
         """Extract party member information from HTML with history recording."""
@@ -276,7 +276,7 @@ class InstrumentedLLMService(ILLMService):
         reference_type = "party"
         reference_id = party_id
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.POLITICIAN_EXTRACTION,
             reference_type,
             reference_id,
@@ -287,7 +287,7 @@ class InstrumentedLLMService(ILLMService):
             party_id,
         )
 
-    async def match_conference_member(
+    def match_conference_member(
         self, member_name: str, party_name: str | None, candidates: list[PoliticianDTO]
     ) -> LLMMatchResult | None:
         """Match a conference member to a politician with history recording."""
@@ -302,7 +302,7 @@ class InstrumentedLLMService(ILLMService):
         reference_type = "conference_member"
         reference_id = hash(member_name) % 1000000
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.CONFERENCE_MEMBER_MATCHING,
             reference_type,
             reference_id,
@@ -327,7 +327,6 @@ class InstrumentedLLMService(ILLMService):
         """Invoke chain with retry and history recording for minutes processing."""
         # If we have a history repository and this looks like minutes processing
         if self._history_repository and self._input_reference_type == "meeting":
-            import asyncio
             import uuid
             from datetime import datetime
 
@@ -364,13 +363,8 @@ class InstrumentedLLMService(ILLMService):
                 },
             )
 
-            # Run async create in sync context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(self._history_repository.create(history))
-            finally:
-                loop.close()
+            # Create history record
+            self._history_repository.create(history)  # type: ignore[attr-defined]
 
             try:
                 # Execute the actual processing
@@ -381,13 +375,8 @@ class InstrumentedLLMService(ILLMService):
                 history.completed_at = datetime.now(UTC)
                 history.result = self._extract_result_metadata(result)
 
-                # Run async update in sync context
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    loop.run_until_complete(self._history_repository.update(history))
-                finally:
-                    loop.close()
+                # Update history
+                self._history_repository.update(history)  # type: ignore[attr-defined]
 
                 return result
 
@@ -397,13 +386,8 @@ class InstrumentedLLMService(ILLMService):
                 history.completed_at = datetime.now(UTC)
                 history.error_message = str(e)
 
-                # Run async update in sync context
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    loop.run_until_complete(self._history_repository.update(history))
-                finally:
-                    loop.close()
+                # Update history
+                self._history_repository.update(history)  # type: ignore[attr-defined]
 
                 raise
 

@@ -176,31 +176,26 @@ class RepositoryContainer(containers.DeclarativeContainer):
     speaker_repository = providers.Factory(
         SpeakerRepositoryImpl,
         session=database.async_session,
-        model_class=MockSpeakerModel,
     )
 
     politician_repository = providers.Factory(
         PoliticianRepositoryImpl,
         session=database.async_session,
-        model_class=MockPoliticianModel,
     )
 
     meeting_repository = providers.Factory(
         MeetingRepositoryImpl,
         session=database.async_session,
-        model_class=MockMeetingModel,
     )
 
     conversation_repository = providers.Factory(
         ConversationRepositoryImpl,
         session=database.async_session,
-        model_class=MockConversationModel,
     )
 
     minutes_repository = providers.Factory(
-        lambda session, model_class: MockRepository("minutes"),
+        lambda session: MockRepository("minutes"),
         session=database.async_session,
-        model_class=MockMinutesModel,
     )
 
     conference_repository = providers.Factory(

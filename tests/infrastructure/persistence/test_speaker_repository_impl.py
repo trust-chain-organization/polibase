@@ -66,7 +66,7 @@ class TestSpeakerRepositoryImpl:
     @pytest.fixture
     def repository(self, mock_session):
         """Create speaker repository."""
-        return SpeakerRepositoryImpl(mock_session, MockSpeakerModel)
+        return SpeakerRepositoryImpl(mock_session)
 
     @pytest.mark.asyncio
     @patch("src.infrastructure.persistence.speaker_repository_impl.select")
