@@ -145,7 +145,7 @@ class ManageConferencesUseCase:
                 )
             else:
                 existing = None
-                
+
             if existing:
                 return CreateConferenceOutputDto(
                     success=False,
@@ -156,7 +156,11 @@ class ManageConferencesUseCase:
             conference = Conference(
                 id=0,  # Will be assigned by database
                 name=input_dto.name,
-                governing_body_id=input_dto.governing_body_id if input_dto.governing_body_id else 0,
+                governing_body_id=(
+                    input_dto.governing_body_id 
+                    if input_dto.governing_body_id 
+                    else 0
+                ),
                 type=input_dto.type,
                 members_introduction_url=input_dto.members_introduction_url,
             )
