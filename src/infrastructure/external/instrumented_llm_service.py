@@ -92,7 +92,7 @@ class InstrumentedLLMService(ILLMService):
             )
         return []
 
-    def _record_processing(
+    async def _record_processing(
         self,
         processing_type: ProcessingType,
         input_reference_type: str,
