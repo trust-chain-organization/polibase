@@ -13,8 +13,6 @@ from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
 from src.domain.services.minutes_domain_service import MinutesDomainService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
-from src.infrastructure.interfaces.pdf_processor_service import IPDFProcessorService
-from src.infrastructure.interfaces.text_extractor_service import ITextExtractorService
 
 
 class ProcessMinutesUseCase:
@@ -28,8 +26,8 @@ class ProcessMinutesUseCase:
         speaker_repository: Any,
         minutes_domain_service: MinutesDomainService,
         speaker_domain_service: SpeakerDomainService,
-        pdf_processor: IPDFProcessorService,
-        text_extractor: ITextExtractorService,
+        pdf_processor: Any,  # Mock service for now
+        text_extractor: Any,  # Mock service for now
     ):
         self.meeting_repo = meeting_repository
         self.minutes_repo = minutes_repository

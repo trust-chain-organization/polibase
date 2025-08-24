@@ -63,7 +63,7 @@ class GoverningBodyRepositoryImpl(
 
         return [self._row_to_entity(row) for row in rows]
 
-    async def get_by_id(self, id: int) -> GoverningBody | None:
+    async def get_by_id(self, entity_id: int) -> GoverningBody | None:
         """Get governing body by ID with conference count."""
         query = text("""
             SELECT gb.*,
@@ -74,7 +74,7 @@ class GoverningBodyRepositoryImpl(
             GROUP BY gb.id, gb.name, gb.type, gb.organization_code, gb.organization_type
         """)
 
-        result = await self.session.execute(query, {"id": id})
+        result = await self.session.execute(query, {"id": entity_id})
         row = result.fetchone()
 
         if row:

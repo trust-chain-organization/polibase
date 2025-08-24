@@ -264,7 +264,8 @@ class TestStreamlitAppComponents:
                     add_new_meeting()
 
                     # Verify repository lifecycle
-                    # The function creates 3 repository adapters (meeting, governing_body, conference)
+                    # The function creates 3 repository adapters:
+                    # meeting, governing_body, and conference
                     assert mock_repo_class.call_count == 3
                     # Each repository should be closed
                     assert mock_repo.close.call_count == 3

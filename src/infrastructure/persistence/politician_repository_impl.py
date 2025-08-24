@@ -621,19 +621,3 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         await self.session.commit()
 
         return result.rowcount > 0  # type: ignore[attr-defined]
-
-    def _row_to_entity(self, row: Any) -> Politician:
-        """Convert database row to domain entity."""
-        return Politician(
-            id=row.id,
-            name=row.name,
-            speaker_id=row.speaker_id,
-            political_party_id=getattr(row, "political_party_id", None),
-            furigana=None,  # Not in database
-            position=getattr(row, "position", None),
-            district=getattr(
-                row, "electoral_district", None
-            ),  # Map from electoral_district
-            profile_image_url=None,  # Not in database
-            profile_page_url=getattr(row, "profile_url", None),  # Map from profile_url
-        )

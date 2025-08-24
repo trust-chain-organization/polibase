@@ -6,7 +6,6 @@ from src.application.dtos.speaker_dto import SpeakerMatchingDTO
 from src.domain.entities.speaker import Speaker
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.domain.types.llm import LLMSpeakerMatchContext
-from src.infrastructure.interfaces.llm_service import ILLMService
 
 
 class MatchSpeakersUseCase:
@@ -18,7 +17,7 @@ class MatchSpeakersUseCase:
         politician_repository: Any,
         conversation_repository: Any,
         speaker_domain_service: SpeakerDomainService,
-        llm_service: ILLMService,
+        llm_service: Any,  # LLMServiceAdapter for sync usage
     ):
         self.speaker_repo = speaker_repository
         self.politician_repo = politician_repository
