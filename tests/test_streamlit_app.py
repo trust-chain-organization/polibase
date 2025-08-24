@@ -16,7 +16,7 @@ class TestStreamlitAppComponents:
         # Mock repository
         mock_repo = MagicMock()
         mock_repo_class.return_value = mock_repo
-        mock_repo.get_governing_bodies.return_value = []
+        mock_repo.get_all.return_value = []  # For governing bodies
         mock_repo.get_meetings.return_value = []
 
         # Mock streamlit
@@ -30,23 +30,43 @@ class TestStreamlitAppComponents:
 
         # Verify
         mock_st.info.assert_called_with("会議が登録されていません")
-        mock_repo.close.assert_called_once()
+        # The function creates 3 repository adapters and closes all of them
+        assert mock_repo.close.call_count == 3
 
     @patch("src.streamlit.pages.meetings.RepositoryAdapter")
     @patch("src.streamlit.pages.meetings.st")
     @patch("src.streamlit.pages.meetings.pd")
     def test_show_meetings_list_with_meetings(self, mock_pd, mock_st, mock_repo_class):
         """Test showing meetings list with meetings"""
-        # Mock repository
-        mock_repo = MagicMock()
-        mock_repo_class.return_value = mock_repo
-        mock_repo.get_governing_bodies.return_value = [
-            {"id": 1, "name": "日本国", "type": "国"}
-        ]
-        mock_repo.get_conferences_by_governing_body.return_value = [
-            {"id": 1, "name": "本会議", "type": "議院"}
-        ]
-        mock_repo.get_meetings.return_value = [
+        # Create separate mocks for each repository type
+        mock_meeting_repo = MagicMock()
+        mock_gb_repo = MagicMock()
+        mock_conf_repo = MagicMock()
+
+        # Set up RepositoryAdapter to return different mocks
+        mock_repo_class.side_effect = [mock_meeting_repo, mock_gb_repo, mock_conf_repo]
+
+        # Mock governing bodies (returns entity objects)
+        mock_gb = MagicMock()
+        mock_gb.id = 1
+        mock_gb.name = "日本国"
+        mock_gb.type = "国"
+        mock_gb_repo.get_all.return_value = [mock_gb]
+
+        # Mock conferences
+        mock_conf = MagicMock()
+        mock_conf.id = 1
+        mock_conf.name = "本会議"
+        mock_conf.governing_body_id = 1
+        mock_conf_repo.get_all.return_value = [mock_conf]
+
+        # Mock meetings
+        mock_meeting = MagicMock()
+        mock_meeting.id = 1
+        mock_meeting.date = date(2024, 6, 1)
+        mock_meeting.url = "https://example.com/meeting.pdf"
+        mock_meeting_repo.get_all.return_value = [mock_meeting]
+        mock_meeting_repo.get_meetings.return_value = [
             {
                 "id": 1,
                 "date": date(2024, 6, 1),
@@ -109,9 +129,13 @@ class TestStreamlitAppComponents:
         show_meetings_list()
 
         # Verify
-        mock_repo.get_meetings.assert_called()
+        mock_meeting_repo.get_all.assert_called()
         # Check that markdown was called at least once (for the meeting display)
         assert mock_st.markdown.call_count >= 1
+        # The function creates 3 repository adapters and closes all of them
+        mock_meeting_repo.close.assert_called_once()
+        mock_gb_repo.close.assert_called_once()
+        mock_conf_repo.close.assert_called_once()
 
     @patch("src.streamlit.pages.meetings.RepositoryAdapter")
     @patch("src.streamlit.pages.meetings.st")
@@ -120,7 +144,7 @@ class TestStreamlitAppComponents:
         # Mock repository
         mock_repo = MagicMock()
         mock_repo_class.return_value = mock_repo
-        mock_repo.get_governing_bodies.return_value = []
+        mock_repo.get_all.return_value = []  # For governing bodies
 
         # Import and call function
         from src.streamlit.pages.meetings import add_new_meeting
@@ -131,7 +155,8 @@ class TestStreamlitAppComponents:
         mock_st.error.assert_called_with(
             "開催主体が登録されていません。先にマスターデータを登録してください。"
         )
-        mock_repo.close.assert_called_once()
+        # The function creates 3 repository adapters and closes all of them
+        assert mock_repo.close.call_count == 3
 
     def test_add_new_meeting_form_display(self):
         """Test that add_new_meeting form displays correctly"""

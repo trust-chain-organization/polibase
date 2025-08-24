@@ -1,5 +1,7 @@
 """Instrumented LLM Service with automatic history recording."""
 
+import asyncio
+import inspect
 import logging
 from collections.abc import Callable
 from datetime import UTC
@@ -136,8 +138,18 @@ class InstrumentedLLMService(ILLMService):
             history_entry.start_processing()
 
             try:
-                # Save initial entry
-                history_entry = self._history_repository.create(history_entry)  # type: ignore[attr-defined]
+                # Save initial entry - handle async repository
+                create_result = self._history_repository.create(history_entry)  # type: ignore[attr-defined]
+                if inspect.iscoroutine(create_result):
+                    # If it's async, run it in the event loop
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        history_entry = loop.run_until_complete(create_result)
+                    finally:
+                        loop.close()
+                else:
+                    history_entry = create_result
             except Exception as e:
                 logger.error(f"Failed to create history entry: {e}")
                 history_entry = None
@@ -151,7 +163,16 @@ class InstrumentedLLMService(ILLMService):
                 # Extract result metadata
                 result_metadata = self._extract_result_metadata(result)
                 history_entry.complete_processing(result_metadata)
-                self._history_repository.update(history_entry)  # type: ignore[attr-defined]
+
+                # Handle async repository update
+                update_result = self._history_repository.update(history_entry)  # type: ignore[attr-defined]
+                if inspect.iscoroutine(update_result):
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(update_result)
+                    finally:
+                        loop.close()
 
             return result
 
@@ -159,7 +180,16 @@ class InstrumentedLLMService(ILLMService):
             # Update history with failure
             if history_entry and self._history_repository:
                 history_entry.fail_processing(str(e))
-                self._history_repository.update(history_entry)  # type: ignore[attr-defined]
+
+                # Handle async repository update
+                update_result = self._history_repository.update(history_entry)  # type: ignore[attr-defined]
+                if inspect.iscoroutine(update_result):
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(update_result)
+                    finally:
+                        loop.close()
 
             # Re-raise the exception
             raise
@@ -363,8 +393,17 @@ class InstrumentedLLMService(ILLMService):
                 },
             )
 
-            # Create history record
-            self._history_repository.create(history)  # type: ignore[attr-defined]
+            # Create history record - handle async repository
+            create_result = self._history_repository.create(history)  # type: ignore[attr-defined]
+            if inspect.iscoroutine(create_result):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    history = loop.run_until_complete(create_result)
+                finally:
+                    loop.close()
+            else:
+                history = create_result
 
             try:
                 # Execute the actual processing
@@ -375,8 +414,15 @@ class InstrumentedLLMService(ILLMService):
                 history.completed_at = datetime.now(UTC)
                 history.result = self._extract_result_metadata(result)
 
-                # Update history
-                self._history_repository.update(history)  # type: ignore[attr-defined]
+                # Update history - handle async repository
+                update_result = self._history_repository.update(history)  # type: ignore[attr-defined]
+                if inspect.iscoroutine(update_result):
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(update_result)
+                    finally:
+                        loop.close()
 
                 return result
 
@@ -386,8 +432,15 @@ class InstrumentedLLMService(ILLMService):
                 history.completed_at = datetime.now(UTC)
                 history.error_message = str(e)
 
-                # Update history
-                self._history_repository.update(history)  # type: ignore[attr-defined]
+                # Update history - handle async repository
+                update_result = self._history_repository.update(history)  # type: ignore[attr-defined]
+                if inspect.iscoroutine(update_result):
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(update_result)
+                    finally:
+                        loop.close()
 
                 raise
 

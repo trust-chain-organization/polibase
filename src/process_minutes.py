@@ -178,7 +178,7 @@ def process_minutes(
             async def setup_history():
                 async with get_async_session() as session:
                     history_repo = LLMProcessingHistoryRepositoryImpl(session)
-                    await llm_service.set_history_repository(history_repo)
+                    llm_service.set_history_repository(history_repo)
 
             # Run async setup in sync context
             loop = asyncio.new_event_loop()

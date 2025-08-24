@@ -91,16 +91,15 @@ class TestMinutesProcessingWithHistory:
         # Verify it was initialized correctly
         assert agent.minutes_divider.llm_service == instrumented_llm_service
 
-    @pytest.mark.asyncio
-    async def test_history_recording_on_extract_speeches(
+    def test_history_recording_on_extract_speeches(
         self, instrumented_llm_service, mock_history_repository
     ):
         """Test that history is recorded when extracting speeches."""
         # Test text
         test_text = "これはテスト議事録です。"
 
-        # Call extract_speeches_from_text
-        await instrumented_llm_service.extract_speeches_from_text(test_text)
+        # Call extract_speeches_from_text (synchronous method)
+        instrumented_llm_service.extract_speeches_from_text(test_text)
 
         # Verify history repository was called
         assert mock_history_repository.create.called
@@ -198,13 +197,12 @@ class TestMinutesProcessingWithHistory:
         instrumented_llm_service.invoke_with_retry(chain, inputs)
         mock_llm_service.invoke_with_retry.assert_called_once_with(chain, inputs)
 
-    @pytest.mark.asyncio
-    async def test_history_recording_handles_errors(
+    def test_history_recording_handles_errors(
         self, mock_llm_service, mock_history_repository
     ):
         """Test that history recording handles errors gracefully."""
         # Configure LLM service to raise an error
-        mock_llm_service.extract_speeches_from_text = AsyncMock(
+        mock_llm_service.extract_speeches_from_text = Mock(
             side_effect=Exception("Test error")
         )
 
@@ -218,7 +216,7 @@ class TestMinutesProcessingWithHistory:
 
         # Call should raise the error
         with pytest.raises(Exception, match="Test error"):
-            await service.extract_speeches_from_text("test")
+            service.extract_speeches_from_text("test")
 
         # But history should still be recorded with failed status
         assert mock_history_repository.create.called
