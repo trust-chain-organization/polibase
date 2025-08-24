@@ -1,6 +1,6 @@
 """Tests for PoliticianRepositoryImpl"""
 
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,31 +16,17 @@ class TestPoliticianRepositoryImpl:
     """PoliticianRepositoryImpl のテスト"""
 
     @pytest.fixture
-    def mock_async_session(self):
-        """モック非同期セッション"""
-        session = AsyncMock(spec=AsyncSession)
-        return session
-
-    @pytest.fixture
     def mock_sync_session(self):
         """モック同期セッション"""
         session = Mock(spec=Session)
         return session
 
     @pytest.fixture
-    def async_repository(self, mock_async_session):
-        """非同期リポジトリフィクスチャ"""
-        return PoliticianRepositoryImpl(mock_async_session)
-
-    @pytest.fixture
     def sync_repository(self, mock_sync_session):
         """同期リポジトリフィクスチャ"""
         return PoliticianRepositoryImpl(mock_sync_session)
 
-    @pytest.mark.asyncio
-    async def test_get_by_name_and_party_async(
-        self, async_repository, mock_async_session
-    ):
+    def test_get_by_name_and_party_async(self, sync_repository, mock_sync_session):
         """非同期版のget_by_name_and_partyのテスト"""
         # モックデータの準備
         # Create a mock row that implements both dict access and attributes
@@ -61,10 +47,10 @@ class TestPoliticianRepositoryImpl:
 
         mock_result = MagicMock()
         mock_result.fetchone.return_value = mock_row
-        mock_async_session.execute.return_value = mock_result
+        mock_sync_session.execute.return_value = mock_result
 
         # テスト実行
-        result = await async_repository.get_by_name_and_party("テスト太郎", 2)
+        result = sync_repository.get_by_name_and_party("テスト太郎", 2)
 
         # 検証
         assert result is not None
@@ -72,7 +58,7 @@ class TestPoliticianRepositoryImpl:
         assert result.political_party_id == 2
         assert result.speaker_id == 10
         assert result.district == "東京1区"
-        mock_async_session.execute.assert_called_once()
+        mock_sync_session.execute.assert_called_once()
 
     def test_find_by_name_and_party_sync(self, sync_repository, mock_sync_session):
         """同期版のfind_by_name_and_partyのテスト（後方互換）"""
@@ -92,8 +78,7 @@ class TestPoliticianRepositoryImpl:
             assert result.political_party_id == 2
             mock_legacy_repo.fetch_one.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_search_by_name_async(self, async_repository, mock_async_session):
+    def test_search_by_name_async(self, sync_repository, mock_sync_session):
         """非同期版のsearch_by_nameのテスト"""
 
         # モックデータの準備
@@ -133,28 +118,27 @@ class TestPoliticianRepositoryImpl:
 
         mock_result = MagicMock()
         mock_result.fetchall.return_value = mock_rows
-        mock_async_session.execute.return_value = mock_result
+        mock_sync_session.execute.return_value = mock_result
 
         # テスト実行
-        results = await async_repository.search_by_name("テスト")
+        results = sync_repository.search_by_name("テスト")
 
         # 検証
         assert len(results) == 2
         assert results[0].name == "テスト太郎"
         assert results[1].name == "テスト次郎"
-        mock_async_session.execute.assert_called_once()
+        mock_sync_session.execute.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_upsert_create_new(self, async_repository, mock_async_session):
+    def test_upsert_create_new(self, sync_repository, mock_sync_session):
         """新規作成時のupsertのテスト"""
         # get_by_name_and_partyが何も返さない設定
         mock_result = MagicMock()
         mock_result.fetchone.return_value = None
-        mock_async_session.execute.return_value = mock_result
+        mock_sync_session.execute.return_value = mock_result
 
         # createのモック
         with patch.object(
-            async_repository, "create", new_callable=AsyncMock
+            sync_repository, "create", new_callable=MagicMock
         ) as mock_create:
             new_politician = Politician(
                 name="新規太郎", speaker_id=12, political_party_id=3, id=5
@@ -162,7 +146,7 @@ class TestPoliticianRepositoryImpl:
             mock_create.return_value = new_politician
 
             # テスト実行
-            result = await async_repository.upsert(new_politician)
+            result = sync_repository.upsert(new_politician)
 
             # 検証
             assert result.name == new_politician.name
@@ -170,8 +154,7 @@ class TestPoliticianRepositoryImpl:
             assert result.political_party_id == new_politician.political_party_id
             mock_create.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_upsert_update_existing(self, async_repository, mock_async_session):
+    def test_upsert_update_existing(self, sync_repository, mock_sync_session):
         """既存更新時のupsertのテスト"""
         # get_by_name_and_partyが既存を返す設定
         mock_row = MagicMock()
@@ -186,11 +169,11 @@ class TestPoliticianRepositoryImpl:
         }
         mock_result = MagicMock()
         mock_result.fetchone.return_value = mock_row
-        mock_async_session.execute.return_value = mock_result
+        mock_sync_session.execute.return_value = mock_result
 
         # updateのモック
         with patch.object(
-            async_repository, "update", new_callable=AsyncMock
+            sync_repository, "update", new_callable=MagicMock
         ) as mock_update:
             updated_politician = Politician(
                 name="既存太郎",
@@ -208,23 +191,22 @@ class TestPoliticianRepositoryImpl:
                 political_party_id=4,
                 position="衆議院議員",
             )
-            result = await async_repository.upsert(new_data)
+            result = sync_repository.upsert(new_data)
 
             # 検証
             assert result == updated_politician
             mock_update.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_bulk_create_politicians(self, async_repository, mock_async_session):
+    def test_bulk_create_politicians(self, sync_repository, mock_sync_session):
         """bulk_create_politiciansのテスト"""
         # モックの設定
         mock_result = MagicMock()
         mock_result.fetchone.return_value = None  # 新規作成のケース
-        mock_async_session.execute.return_value = mock_result
-        mock_async_session.commit = AsyncMock()
+        mock_sync_session.execute.return_value = mock_result
+        mock_sync_session.commit = MagicMock()
 
         with patch.object(
-            async_repository, "create", new_callable=AsyncMock
+            sync_repository, "create", new_callable=MagicMock
         ) as mock_create:
             # createの戻り値設定
             mock_create.return_value = Politician(
@@ -242,7 +224,7 @@ class TestPoliticianRepositoryImpl:
             ]
 
             # テスト実行
-            result = await async_repository.bulk_create_politicians(politicians_data)
+            result = sync_repository.bulk_create_politicians(politicians_data)
 
             # 検証
             assert "created" in result
@@ -251,10 +233,9 @@ class TestPoliticianRepositoryImpl:
             assert len(result["created"]) == 1
             assert len(result["updated"]) == 0
             assert len(result["errors"]) == 0
-            mock_async_session.commit.assert_called_once()
+            mock_sync_session.commit.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_fetch_as_dict(self, async_repository, mock_async_session):
+    def test_fetch_as_dict(self, sync_repository, mock_sync_session):
         """fetch_as_dictのテスト"""
 
         # モックデータの準備
@@ -274,19 +255,19 @@ class TestPoliticianRepositoryImpl:
 
         mock_result = MagicMock()
         mock_result.fetchall.return_value = mock_rows
-        mock_async_session.execute.return_value = mock_result
+        mock_sync_session.execute.return_value = mock_result
 
         # テスト実行
         query = "SELECT * FROM politicians"
-        results = await async_repository.fetch_as_dict_async(query)
+        results = sync_repository.fetch_as_dict_async(query)
 
         # 検証
         assert len(results) == 2
         assert results[0]["name"] == "テスト太郎"
         assert results[1]["name"] == "テスト次郎"
-        mock_async_session.execute.assert_called_once()
+        mock_sync_session.execute.assert_called_once()
 
-    def test_row_to_entity(self, async_repository):
+    def test_row_to_entity(self, sync_repository):
         """_row_to_entityのテスト"""
         # モックデータの準備
         row_data = {
@@ -307,7 +288,7 @@ class TestPoliticianRepositoryImpl:
         mock_row.__getitem__ = lambda self, key: row_data[key]
 
         # テスト実行
-        result = async_repository._row_to_entity(mock_row)
+        result = sync_repository._row_to_entity(mock_row)
 
         # 検証
         assert isinstance(result, Politician)
@@ -321,7 +302,7 @@ class TestPoliticianRepositoryImpl:
             result.profile_page_url == "https://example.com/convert"
         )  # profile_url -> profile_page_url
 
-    def test_to_model(self, async_repository):
+    def test_to_model(self, sync_repository):
         """_to_modelのテスト"""
         # エンティティの準備
         entity = Politician(
@@ -335,7 +316,7 @@ class TestPoliticianRepositoryImpl:
         )
 
         # テスト実行
-        result = async_repository._to_model(entity)
+        result = sync_repository._to_model(entity)
 
         # 検証
         assert result.name == "モデル太郎"
