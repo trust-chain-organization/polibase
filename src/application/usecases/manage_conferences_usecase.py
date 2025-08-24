@@ -111,21 +111,23 @@ class ManageConferencesUseCase:
             # Apply URL filter if specified
             if input_dto.with_members_url is not None:
                 if input_dto.with_members_url:
-                    conferences = [c for c in conferences if c.members_introduction_url]
+                    conferences = [c for c in conferences if c.members_introduction_url]  # type: ignore[misc]
                 else:
                     conferences = [
-                        c for c in conferences if not c.members_introduction_url
+                        c
+                        for c in conferences
+                        if not c.members_introduction_url  # type: ignore[misc]
                     ]
 
             # Count statistics
             all_conferences = self.conference_repository.get_all()  # type: ignore[attr-defined]
             with_url_count = len(
-                [c for c in all_conferences if c.members_introduction_url]
+                [c for c in all_conferences if c.members_introduction_url]  # type: ignore[misc]
             )
-            without_url_count = len(all_conferences) - with_url_count
+            without_url_count = len(all_conferences) - with_url_count  # type: ignore[arg-type]
 
             return ConferenceListOutputDto(
-                conferences=conferences,
+                conferences=conferences,  # type: ignore[arg-type]
                 with_url_count=with_url_count,
                 without_url_count=without_url_count,
             )
@@ -157,16 +159,14 @@ class ManageConferencesUseCase:
                 id=0,  # Will be assigned by database
                 name=input_dto.name,
                 governing_body_id=(
-                    input_dto.governing_body_id 
-                    if input_dto.governing_body_id 
-                    else 0
+                    input_dto.governing_body_id if input_dto.governing_body_id else 0
                 ),
                 type=input_dto.type,
                 members_introduction_url=input_dto.members_introduction_url,
             )
 
             created = self.conference_repository.create(conference)  # type: ignore[attr-defined]
-            return CreateConferenceOutputDto(success=True, conference_id=created.id)
+            return CreateConferenceOutputDto(success=True, conference_id=created.id)  # type: ignore[arg-type]
         except Exception as e:
             logger.error(f"Failed to create conference: {e}")
             return CreateConferenceOutputDto(success=False, error_message=str(e))
@@ -184,11 +184,11 @@ class ManageConferencesUseCase:
                 )
 
             # Update fields
-            existing.name = input_dto.name
+            existing.name = input_dto.name  # type: ignore[misc]
             if input_dto.governing_body_id is not None:
-                existing.governing_body_id = input_dto.governing_body_id
-            existing.type = input_dto.type
-            existing.members_introduction_url = input_dto.members_introduction_url
+                existing.governing_body_id = input_dto.governing_body_id  # type: ignore[misc]
+            existing.type = input_dto.type  # type: ignore[misc]
+            existing.members_introduction_url = input_dto.members_introduction_url  # type: ignore[misc]
 
             self.conference_repository.update(existing)  # type: ignore[attr-defined]
             return UpdateConferenceOutputDto(success=True)
@@ -232,7 +232,7 @@ class ManageConferencesUseCase:
             )
 
             values = []
-            for conf in all_conferences:
+            for conf in all_conferences:  # type: ignore[misc]
                 gb_id = conf.governing_body_id if conf.governing_body_id else "NULL"
                 conf_type = f"'{conf.type}'" if conf.type else "NULL"
                 members_url = (

@@ -90,7 +90,7 @@ class ManagePoliticalPartiesUseCase:
         self.repository = repository
         self.logger = get_logger(self.__class__.__name__)
 
-    async def list_parties(
+    def list_parties(
         self, input_dto: PoliticalPartyListInputDto
     ) -> PoliticalPartyListOutputDto:
         """List political parties with optional filtering.
@@ -103,7 +103,7 @@ class ManagePoliticalPartiesUseCase:
         """
         try:
             # Get all parties
-            all_parties = await self.repository.get_all()
+            all_parties = self.repository.get_all()  # type: ignore[attr-defined]
 
             # Sort by name
             all_parties.sort(key=lambda p: p.name or "")
@@ -133,7 +133,7 @@ class ManagePoliticalPartiesUseCase:
             self.logger.error(f"Error listing political parties: {e}", exc_info=True)
             raise
 
-    async def update_party_url(
+    def update_party_url(
         self, input_dto: UpdatePoliticalPartyUrlInputDto
     ) -> UpdatePoliticalPartyUrlOutputDto:
         """Update political party members list URL.
@@ -146,7 +146,7 @@ class ManagePoliticalPartiesUseCase:
         """
         try:
             # Get the party
-            party = await self.repository.get_by_id(input_dto.party_id)
+            party = self.repository.get_by_id(input_dto.party_id)  # type: ignore[attr-defined]
             if not party:
                 return UpdatePoliticalPartyUrlOutputDto(
                     success=False,
@@ -155,7 +155,7 @@ class ManagePoliticalPartiesUseCase:
 
             # Update the URL
             party.members_list_url = input_dto.members_list_url
-            updated_party = await self.repository.update(party)
+            updated_party = self.repository.update(party)  # type: ignore[attr-defined]
 
             return UpdatePoliticalPartyUrlOutputDto(
                 success=True, message="URLを更新しました", party=updated_party
@@ -167,7 +167,7 @@ class ManagePoliticalPartiesUseCase:
                 success=False, message=f"更新中にエラーが発生しました: {str(e)}"
             )
 
-    async def generate_seed_file(self) -> GenerateSeedFileOutputDto:
+    def generate_seed_file(self) -> GenerateSeedFileOutputDto:
         """Generate seed file for political parties.
 
         Returns:

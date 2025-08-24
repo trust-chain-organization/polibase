@@ -1,6 +1,6 @@
 """Tests for MatchSpeakersUseCase."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -15,19 +15,19 @@ class TestMatchSpeakersUseCase:
     @pytest.fixture
     def mock_speaker_repo(self):
         """Create mock speaker repository."""
-        repo = AsyncMock()
+        repo = MagicMock()
         return repo
 
     @pytest.fixture
     def mock_politician_repo(self):
         """Create mock politician repository."""
-        repo = AsyncMock()
+        repo = MagicMock()
         return repo
 
     @pytest.fixture
     def mock_conversation_repo(self):
         """Create mock conversation repository."""
-        repo = AsyncMock()
+        repo = MagicMock()
         return repo
 
     @pytest.fixture
@@ -41,7 +41,7 @@ class TestMatchSpeakersUseCase:
     @pytest.fixture
     def mock_llm_service(self):
         """Create mock LLM service."""
-        service = AsyncMock()
+        service = MagicMock()
         return service
 
     @pytest.fixture
@@ -62,8 +62,7 @@ class TestMatchSpeakersUseCase:
             llm_service=mock_llm_service,
         )
 
-    @pytest.mark.asyncio
-    async def test_execute_with_existing_politician_link(
+    def test_execute_with_existing_politician_link(
         self, use_case, mock_speaker_repo, mock_politician_repo
     ):
         """Test matching when speaker already has a linked politician."""
@@ -75,7 +74,7 @@ class TestMatchSpeakersUseCase:
         mock_politician_repo.get_by_speaker_id.return_value = politician
 
         # Execute
-        results = await use_case.execute(use_llm=False)
+        results = use_case.execute(use_llm=False)
 
         # Verify
         assert len(results) == 1
@@ -84,8 +83,7 @@ class TestMatchSpeakersUseCase:
         assert results[0].confidence_score == 1.0
         assert results[0].matching_method == "existing"
 
-    @pytest.mark.asyncio
-    async def test_execute_with_rule_based_matching(
+    def test_execute_with_rule_based_matching(
         self, use_case, mock_speaker_repo, mock_politician_repo, mock_speaker_service
     ):
         """Test rule-based matching."""
@@ -99,7 +97,7 @@ class TestMatchSpeakersUseCase:
         mock_speaker_service.calculate_name_similarity.return_value = 0.9
 
         # Execute
-        results = await use_case.execute(use_llm=False)
+        results = use_case.execute(use_llm=False)
 
         # Verify
         assert len(results) == 1
@@ -108,8 +106,7 @@ class TestMatchSpeakersUseCase:
         assert results[0].confidence_score == 0.9
         assert results[0].matching_method == "rule-based"
 
-    @pytest.mark.asyncio
-    async def test_execute_with_llm_matching(
+    def test_execute_with_llm_matching(
         self, use_case, mock_speaker_repo, mock_politician_repo, mock_llm_service
     ):
         """Test LLM-based matching."""
@@ -129,7 +126,7 @@ class TestMatchSpeakersUseCase:
         }
 
         # Execute
-        results = await use_case.execute(use_llm=True)
+        results = use_case.execute(use_llm=True)
 
         # Verify
         assert len(results) == 1
@@ -138,8 +135,7 @@ class TestMatchSpeakersUseCase:
         assert results[0].confidence_score == 0.85
         assert results[0].matching_method == "llm"
 
-    @pytest.mark.asyncio
-    async def test_execute_no_match_found(
+    def test_execute_no_match_found(
         self, use_case, mock_speaker_repo, mock_politician_repo
     ):
         """Test when no match is found."""
@@ -151,7 +147,7 @@ class TestMatchSpeakersUseCase:
         mock_politician_repo.search_by_name.return_value = []
 
         # Execute
-        results = await use_case.execute(use_llm=False)
+        results = use_case.execute(use_llm=False)
 
         # Verify
         assert len(results) == 1
@@ -160,8 +156,7 @@ class TestMatchSpeakersUseCase:
         assert results[0].confidence_score == 0.0
         assert results[0].matching_method == "none"
 
-    @pytest.mark.asyncio
-    async def test_execute_with_specific_speaker_ids(
+    def test_execute_with_specific_speaker_ids(
         self, use_case, mock_speaker_repo, mock_politician_repo
     ):
         """Test matching specific speakers by ID."""
@@ -176,14 +171,13 @@ class TestMatchSpeakersUseCase:
         mock_politician_repo.search_by_name.return_value = []
 
         # Execute
-        results = await use_case.execute(use_llm=False, speaker_ids=[1, 2])
+        results = use_case.execute(use_llm=False, speaker_ids=[1, 2])
 
         # Verify
         assert len(results) == 2
         assert mock_speaker_repo.get_by_id.call_count == 2
 
-    @pytest.mark.asyncio
-    async def test_execute_with_limit(
+    def test_execute_with_limit(
         self, use_case, mock_speaker_repo, mock_politician_repo
     ):
         """Test matching with limit."""
@@ -197,13 +191,12 @@ class TestMatchSpeakersUseCase:
         mock_politician_repo.search_by_name.return_value = []
 
         # Execute
-        results = await use_case.execute(use_llm=False, limit=3)
+        results = use_case.execute(use_llm=False, limit=3)
 
         # Verify
         assert len(results) == 3
 
-    @pytest.mark.asyncio
-    async def test_execute_skip_speaker_without_id(self, use_case, mock_speaker_repo):
+    def test_execute_skip_speaker_without_id(self, use_case, mock_speaker_repo):
         """Test that speakers without ID are skipped."""
         # Setup
         speakers = [
@@ -217,14 +210,13 @@ class TestMatchSpeakersUseCase:
         mock_politician_repo.search_by_name.return_value = []
 
         # Execute
-        results = await use_case.execute(use_llm=False)
+        results = use_case.execute(use_llm=False)
 
         # Verify
         assert len(results) == 1
         assert results[0].speaker_id == 1
 
-    @pytest.mark.asyncio
-    async def test_rule_based_matching_with_party_boost(
+    def test_rule_based_matching_with_party_boost(
         self, use_case, mock_speaker_repo, mock_politician_repo, mock_speaker_service
     ):
         """Test rule-based matching with party information boost."""
@@ -248,7 +240,7 @@ class TestMatchSpeakersUseCase:
         mock_speaker_service.calculate_name_similarity.return_value = 0.75
 
         # Execute
-        results = await use_case.execute(use_llm=False)
+        results = use_case.execute(use_llm=False)
 
         # Verify
         assert len(results) == 1
@@ -256,8 +248,7 @@ class TestMatchSpeakersUseCase:
         # Score should be boosted by 0.1 for party match
         assert results[0].confidence_score == 0.85
 
-    @pytest.mark.asyncio
-    async def test_llm_matching_no_candidates(
+    def test_llm_matching_no_candidates(
         self, use_case, mock_speaker_repo, mock_politician_repo
     ):
         """Test LLM matching when no candidates exist."""
@@ -272,7 +263,7 @@ class TestMatchSpeakersUseCase:
         mock_politician_repo.get_all.return_value = []  # No candidates
 
         # Execute
-        results = await use_case.execute(use_llm=True)
+        results = use_case.execute(use_llm=True)
 
         # Verify
         assert len(results) == 1

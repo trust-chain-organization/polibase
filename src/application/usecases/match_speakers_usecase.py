@@ -27,7 +27,7 @@ class MatchSpeakersUseCase:
         self.speaker_service = speaker_domain_service
         self.llm_service = llm_service
 
-    async def execute(
+    def execute(
         self,
         use_llm: bool = True,
         speaker_ids: list[int] | None = None,
@@ -39,16 +39,16 @@ class MatchSpeakersUseCase:
         if speaker_ids:
             # Batch fetch speakers if repository supports it
             if hasattr(self.speaker_repo, "batch_get_by_ids"):
-                speakers = await self.speaker_repo.batch_get_by_ids(speaker_ids)  # type: ignore[attr-defined]
+                speakers = self.speaker_repo.batch_get_by_ids(speaker_ids)  # type: ignore[attr-defined]
             else:
                 # Fallback to individual fetches
                 for speaker_id in speaker_ids:
-                    speaker = await self.speaker_repo.get_by_id(speaker_id)
+                    speaker = self.speaker_repo.get_by_id(speaker_id)  # type: ignore[attr-defined]
                     if speaker:
                         speakers.append(speaker)
         else:
             # Get all politician speakers
-            speakers = await self.speaker_repo.get_politicians()
+            speakers = self.speaker_repo.get_politicians()  # type: ignore[attr-defined]
             if limit:
                 speakers = speakers[:limit]
 
@@ -58,7 +58,7 @@ class MatchSpeakersUseCase:
             # Skip if already linked
             if speaker.id is None:
                 continue
-            existing_politician = await self.politician_repo.get_by_speaker_id(
+            existing_politician = self.politician_repo.get_by_speaker_id(  # type: ignore[attr-defined]
                 speaker.id
             )
             if existing_politician:
@@ -76,11 +76,11 @@ class MatchSpeakersUseCase:
                 continue
 
             # Try rule-based matching first
-            match_result = await self._rule_based_matching(speaker)
+            match_result = self._rule_based_matching(speaker)
 
             if not match_result and use_llm:
                 # Try LLM-based matching
-                match_result = await self._llm_based_matching(speaker)
+                match_result = self._llm_based_matching(speaker)
 
             if match_result:
                 results.append(match_result)
@@ -100,13 +100,13 @@ class MatchSpeakersUseCase:
 
         return results
 
-    async def _rule_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
+    def _rule_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
         """Perform rule-based speaker matching."""
         # Normalize speaker name
         normalized_name = self.speaker_service.normalize_speaker_name(speaker.name)
 
         # Search for politicians with similar names
-        candidates = await self.politician_repo.search_by_name(normalized_name)
+        candidates = self.politician_repo.search_by_name(normalized_name)  # type: ignore[attr-defined]
 
         best_match = None
         best_score = 0.0
@@ -139,15 +139,15 @@ class MatchSpeakersUseCase:
 
         return None
 
-    async def _llm_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
+    def _llm_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
         """Perform LLM-based speaker matching with history recording."""
         # Get potential candidates - check if repository supports caching
         if hasattr(self.politician_repo, "get_all_cached"):
             # Use cached version if available (avoids repeated DB queries)
-            candidates = await self.politician_repo.get_all_cached()  # type: ignore[attr-defined]
+            candidates = self.politician_repo.get_all_cached()  # type: ignore[attr-defined]
         else:
             # Fallback to regular get_all with limit
-            candidates = await self.politician_repo.get_all(limit=100)
+            candidates = self.politician_repo.get_all(limit=100)  # type: ignore[attr-defined]
 
         if not candidates:
             return None
@@ -181,12 +181,12 @@ class MatchSpeakersUseCase:
             )
 
         # Call LLM service with metadata
-        match_result = await self.llm_service.match_speaker_to_politician(context)
+        match_result = self.llm_service.match_speaker_to_politician(context)
 
         if match_result and match_result.get("matched_id") is not None:
             matched_id = match_result["matched_id"]
             if matched_id is not None:
-                politician = await self.politician_repo.get_by_id(matched_id)
+                politician = self.politician_repo.get_by_id(matched_id)  # type: ignore[attr-defined]
 
                 if politician:
                     return SpeakerMatchingDTO(

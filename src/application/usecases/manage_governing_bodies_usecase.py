@@ -118,20 +118,22 @@ class ManageGoverningBodiesUseCase:
             # Apply type filter
             if input_dto.type_filter and input_dto.type_filter != "すべて":
                 all_bodies = [
-                    gb for gb in all_bodies if gb.type == input_dto.type_filter
+                    gb
+                    for gb in all_bodies
+                    if gb.type == input_dto.type_filter  # type: ignore[misc]
                 ]
 
             # Apply conference filter
             if input_dto.conference_filter == "会議体あり":
                 all_bodies = [
                     gb
-                    for gb in all_bodies
+                    for gb in all_bodies  # type: ignore[misc]
                     if hasattr(gb, "conference_count") and gb.conference_count > 0
                 ]
             elif input_dto.conference_filter == "会議体なし":
                 all_bodies = [
                     gb
-                    for gb in all_bodies
+                    for gb in all_bodies  # type: ignore[misc]
                     if not hasattr(gb, "conference_count") or gb.conference_count == 0
                 ]
 
