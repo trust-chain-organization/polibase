@@ -2,10 +2,10 @@
 
 from dataclasses import dataclass
 from datetime import date
+from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import ParliamentaryGroup
-from src.domain.repositories import ParliamentaryGroupRepository
 
 logger = get_logger(__name__)
 
@@ -138,8 +138,12 @@ class GenerateSeedFileOutputDto:
 class ManageParliamentaryGroupsUseCase:
     """Use case for managing parliamentary groups."""
 
-    def __init__(self, parliamentary_group_repository: ParliamentaryGroupRepository):
-        """Initialize the use case."""
+    def __init__(self, parliamentary_group_repository: Any):
+        """Initialize the use case.
+
+        Args:
+            parliamentary_group_repository: Repository instance (can be sync or async)
+        """
         self.parliamentary_group_repository = parliamentary_group_repository
 
     def list_parliamentary_groups(

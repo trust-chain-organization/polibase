@@ -1,10 +1,10 @@
 """Use case for managing politicians."""
 
 from dataclasses import dataclass
+from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import Politician
-from src.domain.repositories import PoliticianRepository
 
 logger = get_logger(__name__)
 
@@ -98,8 +98,12 @@ class MergePoliticiansOutputDto:
 class ManagePoliticiansUseCase:
     """Use case for managing politicians."""
 
-    def __init__(self, politician_repository: PoliticianRepository):
-        """Initialize the use case."""
+    def __init__(self, politician_repository: Any):
+        """Initialize the use case.
+
+        Args:
+            politician_repository: Repository instance (can be sync or async)
+        """
         self.politician_repository = politician_repository
 
     def list_politicians(

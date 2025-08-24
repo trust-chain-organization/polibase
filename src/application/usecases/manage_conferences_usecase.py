@@ -1,10 +1,10 @@
 """Use case for managing conferences."""
 
 from dataclasses import dataclass
+from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import Conference
-from src.domain.repositories import ConferenceRepository
 
 logger = get_logger(__name__)
 
@@ -92,8 +92,12 @@ class GenerateSeedFileOutputDto:
 class ManageConferencesUseCase:
     """Use case for managing conferences."""
 
-    def __init__(self, conference_repository: ConferenceRepository):
-        """Initialize the use case."""
+    def __init__(self, conference_repository: Any):
+        """Initialize the use case.
+
+        Args:
+            conference_repository: Repository instance (can be sync or async)
+        """
         self.conference_repository = conference_repository
 
     def list_conferences(
@@ -102,32 +106,28 @@ class ManageConferencesUseCase:
         """List conferences with optional filters."""
         try:
             if input_dto.governing_body_id:
-                conferences = self.conference_repository.get_by_governing_body(  # type: ignore[attr-defined]
+                conferences = self.conference_repository.get_by_governing_body(
                     input_dto.governing_body_id
                 )
             else:
-                conferences = self.conference_repository.get_all()  # type: ignore[attr-defined]
-
+                conferences = self.conference_repository.get_all()
             # Apply URL filter if specified
             if input_dto.with_members_url is not None:
                 if input_dto.with_members_url:
-                    conferences = [c for c in conferences if c.members_introduction_url]  # type: ignore[misc]
+                    conferences = [c for c in conferences if c.members_introduction_url]
                 else:
                     conferences = [
-                        c
-                        for c in conferences
-                        if not c.members_introduction_url  # type: ignore[misc]
+                        c for c in conferences if not c.members_introduction_url
                     ]
 
             # Count statistics
-            all_conferences = self.conference_repository.get_all()  # type: ignore[attr-defined]
+            all_conferences = self.conference_repository.get_all()
             with_url_count = len(
-                [c for c in all_conferences if c.members_introduction_url]  # type: ignore[misc]
+                [c for c in all_conferences if c.members_introduction_url]
             )
-            without_url_count = len(all_conferences) - with_url_count  # type: ignore[arg-type]
-
+            without_url_count = len(all_conferences) - with_url_count
             return ConferenceListOutputDto(
-                conferences=conferences,  # type: ignore[arg-type]
+                conferences=conferences,
                 with_url_count=with_url_count,
                 without_url_count=without_url_count,
             )
@@ -142,7 +142,7 @@ class ManageConferencesUseCase:
         try:
             # Check for duplicates
             if input_dto.governing_body_id is not None:
-                existing = self.conference_repository.get_by_name_and_governing_body(  # type: ignore[attr-defined]
+                existing = self.conference_repository.get_by_name_and_governing_body(
                     input_dto.name, input_dto.governing_body_id
                 )
             else:
@@ -165,8 +165,8 @@ class ManageConferencesUseCase:
                 members_introduction_url=input_dto.members_introduction_url,
             )
 
-            created = self.conference_repository.create(conference)  # type: ignore[attr-defined]
-            return CreateConferenceOutputDto(success=True, conference_id=created.id)  # type: ignore[arg-type]
+            created = self.conference_repository.create(conference)
+            return CreateConferenceOutputDto(success=True, conference_id=created.id)
         except Exception as e:
             logger.error(f"Failed to create conference: {e}")
             return CreateConferenceOutputDto(success=False, error_message=str(e))
@@ -177,20 +177,19 @@ class ManageConferencesUseCase:
         """Update an existing conference."""
         try:
             # Get existing conference
-            existing = self.conference_repository.get_by_id(input_dto.id)  # type: ignore[attr-defined]
+            existing = self.conference_repository.get_by_id(input_dto.id)
             if not existing:
                 return UpdateConferenceOutputDto(
                     success=False, error_message="会議体が見つかりません。"
                 )
 
             # Update fields
-            existing.name = input_dto.name  # type: ignore[misc]
+            existing.name = input_dto.name
             if input_dto.governing_body_id is not None:
-                existing.governing_body_id = input_dto.governing_body_id  # type: ignore[misc]
-            existing.type = input_dto.type  # type: ignore[misc]
-            existing.members_introduction_url = input_dto.members_introduction_url  # type: ignore[misc]
-
-            self.conference_repository.update(existing)  # type: ignore[attr-defined]
+                existing.governing_body_id = input_dto.governing_body_id
+            existing.type = input_dto.type
+            existing.members_introduction_url = input_dto.members_introduction_url
+            self.conference_repository.update(existing)
             return UpdateConferenceOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to update conference: {e}")
@@ -202,7 +201,7 @@ class ManageConferencesUseCase:
         """Delete a conference."""
         try:
             # Check if conference exists
-            existing = self.conference_repository.get_by_id(input_dto.id)  # type: ignore[attr-defined]
+            existing = self.conference_repository.get_by_id(input_dto.id)
             if not existing:
                 return DeleteConferenceOutputDto(
                     success=False, error_message="会議体が見つかりません。"
@@ -211,7 +210,7 @@ class ManageConferencesUseCase:
             # TODO: Check if conference has related meetings
             # This would require a meeting repository
 
-            self.conference_repository.delete(input_dto.id)  # type: ignore[attr-defined]
+            self.conference_repository.delete(input_dto.id)
             return DeleteConferenceOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to delete conference: {e}")
@@ -221,8 +220,7 @@ class ManageConferencesUseCase:
         """Generate seed file for conferences."""
         try:
             # Get all conferences
-            all_conferences = self.conference_repository.get_all()  # type: ignore[attr-defined]
-
+            all_conferences = self.conference_repository.get_all()
             # Generate SQL content
             seed_content = "-- Conferences Seed Data\n"
             seed_content += "-- Generated from current database\n\n"
@@ -232,7 +230,7 @@ class ManageConferencesUseCase:
             )
 
             values = []
-            for conf in all_conferences:  # type: ignore[misc]
+            for conf in all_conferences:
                 gb_id = conf.governing_body_id if conf.governing_body_id else "NULL"
                 conf_type = f"'{conf.type}'" if conf.type else "NULL"
                 members_url = (

@@ -1,10 +1,10 @@
 """Use case for managing governing bodies."""
 
 from dataclasses import dataclass
+from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import GoverningBody
-from src.domain.repositories import GoverningBodyRepository
 
 logger = get_logger(__name__)
 
@@ -103,8 +103,12 @@ class GenerateSeedFileOutputDto:
 class ManageGoverningBodiesUseCase:
     """Use case for managing governing bodies."""
 
-    def __init__(self, governing_body_repository: GoverningBodyRepository):
-        """Initialize the use case."""
+    def __init__(self, governing_body_repository: Any):
+        """Initialize the use case.
+
+        Args:
+            governing_body_repository: Repository instance (can be sync or async)
+        """
         self.governing_body_repository = governing_body_repository
 
     def list_governing_bodies(
@@ -113,27 +117,24 @@ class ManageGoverningBodiesUseCase:
         """List governing bodies with optional filters."""
         try:
             # Get all governing bodies
-            all_bodies = self.governing_body_repository.get_all()  # type: ignore[attr-defined]
-
+            all_bodies = self.governing_body_repository.get_all()
             # Apply type filter
             if input_dto.type_filter and input_dto.type_filter != "すべて":
                 all_bodies = [
-                    gb
-                    for gb in all_bodies
-                    if gb.type == input_dto.type_filter  # type: ignore[misc]
+                    gb for gb in all_bodies if gb.type == input_dto.type_filter
                 ]
 
             # Apply conference filter
             if input_dto.conference_filter == "会議体あり":
                 all_bodies = [
                     gb
-                    for gb in all_bodies  # type: ignore[misc]
+                    for gb in all_bodies
                     if hasattr(gb, "conference_count") and gb.conference_count > 0
                 ]
             elif input_dto.conference_filter == "会議体なし":
                 all_bodies = [
                     gb
-                    for gb in all_bodies  # type: ignore[misc]
+                    for gb in all_bodies
                     if not hasattr(gb, "conference_count") or gb.conference_count == 0
                 ]
 
@@ -269,8 +270,7 @@ class ManageGoverningBodiesUseCase:
         """Generate seed file for governing bodies."""
         try:
             # Get all governing bodies
-            all_bodies = self.governing_body_repository.get_all()  # type: ignore[attr-defined]
-
+            all_bodies = self.governing_body_repository.get_all()
             # Generate SQL content
             seed_content = "-- Governing Bodies Seed Data\n"
             seed_content += "-- Generated from current database\n\n"

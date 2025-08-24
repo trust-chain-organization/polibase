@@ -5,10 +5,10 @@ listing, updating URLs, and generating seed files.
 """
 
 from dataclasses import dataclass
+from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities.political_party import PoliticalParty
-from src.domain.repositories.political_party_repository import PoliticalPartyRepository
 from src.seed_generator import SeedGenerator
 
 
@@ -81,11 +81,11 @@ class GenerateSeedFileOutputDto:
 class ManagePoliticalPartiesUseCase:
     """Use case for managing political parties."""
 
-    def __init__(self, repository: PoliticalPartyRepository):
+    def __init__(self, repository: Any):
         """Initialize the use case.
 
         Args:
-            repository: Political party repository
+            repository: Political party repository (can be sync or async)
         """
         self.repository = repository
         self.logger = get_logger(self.__class__.__name__)
@@ -103,8 +103,7 @@ class ManagePoliticalPartiesUseCase:
         """
         try:
             # Get all parties
-            all_parties = self.repository.get_all()  # type: ignore[attr-defined]
-
+            all_parties = self.repository.get_all()
             # Sort by name
             all_parties.sort(key=lambda p: p.name or "")
 
@@ -146,7 +145,7 @@ class ManagePoliticalPartiesUseCase:
         """
         try:
             # Get the party
-            party = self.repository.get_by_id(input_dto.party_id)  # type: ignore[attr-defined]
+            party = self.repository.get_by_id(input_dto.party_id)
             if not party:
                 return UpdatePoliticalPartyUrlOutputDto(
                     success=False,
@@ -155,8 +154,7 @@ class ManagePoliticalPartiesUseCase:
 
             # Update the URL
             party.members_list_url = input_dto.members_list_url
-            updated_party = self.repository.update(party)  # type: ignore[attr-defined]
-
+            updated_party = self.repository.update(party)
             return UpdatePoliticalPartyUrlOutputDto(
                 success=True, message="URLを更新しました", party=updated_party
             )

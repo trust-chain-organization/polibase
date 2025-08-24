@@ -1,10 +1,9 @@
 """Use case for matching speakers to politicians."""
 
+from typing import Any
+
 from src.application.dtos.speaker_dto import SpeakerMatchingDTO
 from src.domain.entities.speaker import Speaker
-from src.domain.repositories.conversation_repository import ConversationRepository
-from src.domain.repositories.politician_repository import PoliticianRepository
-from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.domain.types.llm import LLMSpeakerMatchContext
 from src.infrastructure.interfaces.llm_service import ILLMService
@@ -15,9 +14,9 @@ class MatchSpeakersUseCase:
 
     def __init__(
         self,
-        speaker_repository: SpeakerRepository,
-        politician_repository: PoliticianRepository,
-        conversation_repository: ConversationRepository,
+        speaker_repository: Any,
+        politician_repository: Any,
+        conversation_repository: Any,
         speaker_domain_service: SpeakerDomainService,
         llm_service: ILLMService,
     ):
@@ -39,16 +38,16 @@ class MatchSpeakersUseCase:
         if speaker_ids:
             # Batch fetch speakers if repository supports it
             if hasattr(self.speaker_repo, "batch_get_by_ids"):
-                speakers = self.speaker_repo.batch_get_by_ids(speaker_ids)  # type: ignore[attr-defined]
+                speakers = self.speaker_repo.batch_get_by_ids(speaker_ids)
             else:
                 # Fallback to individual fetches
                 for speaker_id in speaker_ids:
-                    speaker = self.speaker_repo.get_by_id(speaker_id)  # type: ignore[attr-defined]
+                    speaker = self.speaker_repo.get_by_id(speaker_id)
                     if speaker:
                         speakers.append(speaker)
         else:
             # Get all politician speakers
-            speakers = self.speaker_repo.get_politicians()  # type: ignore[attr-defined]
+            speakers = self.speaker_repo.get_politicians()
             if limit:
                 speakers = speakers[:limit]
 
@@ -58,9 +57,7 @@ class MatchSpeakersUseCase:
             # Skip if already linked
             if speaker.id is None:
                 continue
-            existing_politician = self.politician_repo.get_by_speaker_id(  # type: ignore[attr-defined]
-                speaker.id
-            )
+            existing_politician = self.politician_repo.get_by_speaker_id(speaker.id)
             if existing_politician:
                 results.append(
                     SpeakerMatchingDTO(
@@ -106,8 +103,7 @@ class MatchSpeakersUseCase:
         normalized_name = self.speaker_service.normalize_speaker_name(speaker.name)
 
         # Search for politicians with similar names
-        candidates = self.politician_repo.search_by_name(normalized_name)  # type: ignore[attr-defined]
-
+        candidates = self.politician_repo.search_by_name(normalized_name)
         best_match = None
         best_score = 0.0
 
@@ -144,11 +140,10 @@ class MatchSpeakersUseCase:
         # Get potential candidates - check if repository supports caching
         if hasattr(self.politician_repo, "get_all_cached"):
             # Use cached version if available (avoids repeated DB queries)
-            candidates = self.politician_repo.get_all_cached()  # type: ignore[attr-defined]
+            candidates = self.politician_repo.get_all_cached()
         else:
             # Fallback to regular get_all with limit
-            candidates = self.politician_repo.get_all(limit=100)  # type: ignore[attr-defined]
-
+            candidates = self.politician_repo.get_all(limit=100)
         if not candidates:
             return None
 
@@ -175,7 +170,7 @@ class MatchSpeakersUseCase:
         # Check if llm_service is an InstrumentedLLMService
         if hasattr(self.llm_service, "set_input_reference"):
             # Use type: ignore since ILLMService doesn't have this method
-            self.llm_service.set_input_reference(  # type: ignore[attr-defined]
+            self.llm_service.set_input_reference(
                 reference_type="speaker",
                 reference_id=speaker.id if speaker.id else 0,
             )
@@ -186,8 +181,7 @@ class MatchSpeakersUseCase:
         if match_result and match_result.get("matched_id") is not None:
             matched_id = match_result["matched_id"]
             if matched_id is not None:
-                politician = self.politician_repo.get_by_id(matched_id)  # type: ignore[attr-defined]
-
+                politician = self.politician_repo.get_by_id(matched_id)
                 if politician:
                     return SpeakerMatchingDTO(
                         speaker_id=speaker.id if speaker.id is not None else 0,
