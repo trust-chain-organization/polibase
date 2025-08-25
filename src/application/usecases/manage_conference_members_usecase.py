@@ -475,7 +475,7 @@ class ManageConferenceMembersUseCase:
             created = await self.affiliation_repo.create(affiliation)
             created_affiliations.append(
                 PoliticianAffiliationDTO(
-                    id=created.id,
+                    id=created.id or 0,
                     politician_id=created.politician_id,
                     politician_name=politician.name,
                     conference_id=created.conference_id,
@@ -536,17 +536,27 @@ class ManageConferenceMembersUseCase:
             )
 
         # Use LLM for fuzzy matching
-        from src.application.dtos.politician_dto import PoliticianDTO
+        from typing import cast
 
-        candidate_dtos = [
-            PoliticianDTO(
-                id=c.id,
-                name=c.name,
-                political_party_id=c.political_party_id,
-                political_party_name="",  # Would need to fetch party name
-            )
-            for c in candidates
-        ]
+        from src.domain.types.dto import PoliticianDTO
+
+        candidate_dtos = cast(
+            list[PoliticianDTO],
+            [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "party_id": c.political_party_id,
+                    "prefecture": None,
+                    "electoral_district": None,
+                    "profile_url": None,
+                    "image_url": None,
+                    "created_at": datetime.now(),
+                    "updated_at": datetime.now(),
+                }
+                for c in candidates
+            ],
+        )
 
         match_result = await self.llm.match_conference_member(
             member.extracted_name,
