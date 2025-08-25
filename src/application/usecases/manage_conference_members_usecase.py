@@ -592,7 +592,7 @@ class ManageConferenceMembersUseCase:
                 )
 
                 return MemberMatchResultDTO(
-                    member_id=member.id,
+                    member_id=member.id or 0,
                     member_name=member.extracted_name,
                     matched_politician_id=politician.id,
                     matched_politician_name=politician.name,
@@ -605,14 +605,14 @@ class ManageConferenceMembersUseCase:
         member.matching_status = "no_match"
         member.matching_confidence = 0.0
         await self.extracted_repo.update_matching_result(
-            member.id,
+            member.id or 0,
             None,
             0.0,
             "no_match",
         )
 
         return MemberMatchResultDTO(
-            member_id=member.id,
+            member_id=member.id or 0,
             member_name=member.extracted_name,
             matched_politician_id=None,
             matched_politician_name=None,
