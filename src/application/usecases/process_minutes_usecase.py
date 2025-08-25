@@ -16,7 +16,30 @@ from src.domain.services.speaker_domain_service import SpeakerDomainService
 
 
 class ProcessMinutesUseCase:
-    """Use case for processing meeting minutes."""
+    """議事録処理ユースケース
+
+    議事録PDFまたはテキストを処理し、発言を抽出して
+    データベースに保存します。
+
+    Attributes:
+        meeting_repo: 会議リポジトリ
+        minutes_repo: 議事録リポジトリ
+        conversation_repo: 発言リポジトリ
+        speaker_repo: 発言者リポジトリ
+        minutes_service: 議事録ドメインサービス
+        speaker_service: 発言者ドメインサービス
+        pdf_processor: PDF処理サービス
+        text_extractor: テキスト抽出サービス
+
+    Example:
+        >>> use_case = ProcessMinutesUseCase(
+        ...     meeting_repo, minutes_repo, conversation_repo,
+        ...     speaker_repo, minutes_service, speaker_service,
+        ...     pdf_processor, text_extractor
+        ... )
+        >>> result = use_case.execute(ProcessMinutesDTO(meeting_id=123))
+        >>> print(f"処理された発言数: {result.total_conversations}")
+    """
 
     def __init__(
         self,
@@ -29,6 +52,18 @@ class ProcessMinutesUseCase:
         pdf_processor: Any,  # Mock service for now
         text_extractor: Any,  # Mock service for now
     ):
+        """議事録処理ユースケースを初期化する
+
+        Args:
+            meeting_repository: 会議リポジトリの実装
+            minutes_repository: 議事録リポジトリの実装
+            conversation_repository: 発言リポジトリの実装
+            speaker_repository: 発言者リポジトリの実装
+            minutes_domain_service: 議事録ドメインサービス
+            speaker_domain_service: 発言者ドメインサービス
+            pdf_processor: PDF処理サービス
+            text_extractor: テキスト抽出サービス
+        """
         self.meeting_repo = meeting_repository
         self.minutes_repo = minutes_repository
         self.conversation_repo = conversation_repository
@@ -39,7 +74,36 @@ class ProcessMinutesUseCase:
         self.text_extractor = text_extractor
 
     def execute(self, request: ProcessMinutesDTO) -> MinutesProcessingResultDTO:
-        """Execute the minutes processing use case."""
+        """議事録を処理する
+
+        以下の手順で議事録を処理します：
+        1. 会議情報の取得
+        2. 既存処理のチェック
+        3. PDFまたはテキストからの発言抽出
+        4. 発言データの保存
+        5. 発言者情報の抽出と作成
+
+        Args:
+            request: 処理リクエストDTO
+                - meeting_id: 処理対象の会議ID
+                - force_reprocess: 既存データを強制的に再処理するか
+                - pdf_url: PDFのURL（オプション）
+                - gcs_text_uri: GCSテキストURI（オプション）
+
+        Returns:
+            MinutesProcessingResultDTO: 処理結果
+                - minutes_id: 議事録ID
+                - meeting_id: 会議ID
+                - total_conversations: 抽出された発言数
+                - unique_speakers: 作成された発言者数
+                - processing_time_seconds: 処理時間（秒）
+                - processed_at: 処理完了日時
+                - errors: エラーメッセージリスト（エラー時のみ）
+
+        Raises:
+            ValueError: 会議が見つからない、処理可能なソースがない場合
+            Exception: 処理中にエラーが発生した場合
+        """
         start_time = datetime.now()
         errors: list[str] = []
 
@@ -117,7 +181,24 @@ class ProcessMinutesUseCase:
         pdf_url: str | None,
         gcs_text_uri: str | None,
     ) -> list[ExtractedSpeechDTO]:
-        """Extract speeches from minutes source."""
+        """議事録ソースから発言を抽出する
+
+        優先順位：
+        1. GCSテキストURI
+        2. PDFのURL
+        3. 会議のGCS PDF URI
+
+        Args:
+            meeting: 会議エンティティ
+            pdf_url: PDFのURL（オプション）
+            gcs_text_uri: GCSテキストURI（オプション）
+
+        Returns:
+            ExtractedSpeechDTO のリスト
+
+        Raises:
+            ValueError: 処理可能なソースが見つからない場合
+        """
         if gcs_text_uri:
             # Extract from GCS text
             text_content = self.text_extractor.extract_from_gcs(gcs_text_uri)
@@ -142,7 +223,14 @@ class ProcessMinutesUseCase:
         ]
 
     def _extract_and_create_speakers(self, conversations: list[Conversation]) -> int:
-        """Extract unique speakers and create speaker records."""
+        """発言から一意な発言者を抽出し、発言者レコードを作成する
+
+        Args:
+            conversations: 発言エンティティのリスト
+
+        Returns:
+            作成された発言者数
+        """
         speaker_names: set[tuple[str, str | None]] = set()
 
         for conv in conversations:

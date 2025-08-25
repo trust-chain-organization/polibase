@@ -9,7 +9,28 @@ from src.domain.types.llm import LLMSpeakerMatchContext
 
 
 class MatchSpeakersUseCase:
-    """Use case for matching speakers to politicians."""
+    """発言者と政治家のマッチングユースケース
+
+    発言者（Speaker）と政治家（Politician）を名前や所属政党情報を基に
+    マッチングします。ルールベースとLLMベースの2段階マッチングを実装。
+
+    Attributes:
+        speaker_repo: 発言者リポジトリ
+        politician_repo: 政治家リポジトリ
+        conversation_repo: 発言リポジトリ
+        speaker_service: 発言者ドメインサービス
+        llm_service: LLMサービス（同期版アダプタ）
+
+    Example:
+        >>> use_case = MatchSpeakersUseCase(
+        ...     speaker_repo, politician_repo, conversation_repo,
+        ...     speaker_service, llm_service
+        ... )
+        >>> results = use_case.execute(use_llm=True, limit=100)
+        >>> for result in results:
+        ...     if result.matched_politician_id:
+        ...         print(f"{result.speaker_name} → {result.matched_politician_name}")
+    """
 
     def __init__(
         self,
@@ -19,6 +40,15 @@ class MatchSpeakersUseCase:
         speaker_domain_service: SpeakerDomainService,
         llm_service: Any,  # LLMServiceAdapter for sync usage
     ):
+        """発言者マッチングユースケースを初期化する
+
+        Args:
+            speaker_repository: 発言者リポジトリの実装
+            politician_repository: 政治家リポジトリの実装
+            conversation_repository: 発言リポジトリの実装
+            speaker_domain_service: 発言者ドメインサービス
+            llm_service: LLMサービスアダプタ（同期版）
+        """
         self.speaker_repo = speaker_repository
         self.politician_repo = politician_repository
         self.conversation_repo = conversation_repository
@@ -31,7 +61,28 @@ class MatchSpeakersUseCase:
         speaker_ids: list[int] | None = None,
         limit: int | None = None,
     ) -> list[SpeakerMatchingDTO]:
-        """Execute the speaker matching use case."""
+        """発言者と政治家のマッチングを実行する
+
+        マッチング処理の流れ：
+        1. 既にリンクされている発言者をスキップ
+        2. ルールベースマッチング（名前の類似度）
+        3. LLMベースマッチング（コンテキストを考慮）
+
+        Args:
+            use_llm: LLMマッチングを使用するか（デフォルト: True）
+            speaker_ids: 処理対象の発言者IDリスト（Noneの場合は全件）
+            limit: 処理する発言者数の上限
+
+        Returns:
+            SpeakerMatchingDTOのリスト。各DTOには以下が含まれる：
+            - speaker_id: 発言者ID
+            - speaker_name: 発言者名
+            - matched_politician_id: マッチした政治家ID（マッチなしの場合None）
+            - matched_politician_name: マッチした政治家名
+            - confidence_score: マッチング信頼度（0.0〜1.0）
+            - matching_method: マッチング手法（existing/rule-based/llm/none）
+            - matching_reason: マッチング理由の説明
+        """
         # Get speakers to process
         speakers: list[Speaker] = []
         if speaker_ids:
@@ -97,7 +148,17 @@ class MatchSpeakersUseCase:
         return results
 
     def _rule_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
-        """Perform rule-based speaker matching."""
+        """ルールベースの発言者マッチングを実行する
+
+        名前の類似度と政党情報を使用してマッチングします。
+        類似度が0.8以上の場合にマッチとみなします。
+
+        Args:
+            speaker: マッチング対象の発言者
+
+        Returns:
+            マッチング結果DTO（マッチなしの場合None）
+        """
         # Normalize speaker name
         normalized_name = self.speaker_service.normalize_speaker_name(speaker.name)
 
@@ -135,7 +196,17 @@ class MatchSpeakersUseCase:
         return None
 
     def _llm_based_matching(self, speaker: Speaker) -> SpeakerMatchingDTO | None:
-        """Perform LLM-based speaker matching with history recording."""
+        """LLMベースの発言者マッチングを実行する
+
+        LLMを使用して、コンテキスト情報を考慮した高度なマッチングを行います。
+        処理履歴はLLMProcessingHistoryに記録されます。
+
+        Args:
+            speaker: マッチング対象の発言者
+
+        Returns:
+            マッチング結果DTO（マッチなしの場合None）
+        """
         # Get potential candidates - check if repository supports caching
         if hasattr(self.politician_repo, "get_all_cached"):
             # Use cached version if available (avoids repeated DB queries)
