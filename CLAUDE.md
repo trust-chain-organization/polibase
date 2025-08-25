@@ -36,7 +36,7 @@ git worktreeを使用している場合、`docker/docker-compose.override.yml`�
 - 例: Streamlitが9291番、APIが8790番、Monitoringが9292番など（worktreeによって異なります）
 - コンテナ内部のポート番号（8501など）は変わりませんが、ホストからアクセスする際のポート番号が変更されます
 
-**重要**: 
+**重要**:
 1. **必ずdocker-compose.override.ymlも指定**: git worktreeを使用している場合は、すべてのdocker composeコマンドで`-f docker/docker-compose.override.yml`を追加してください
 2. **ポート番号の確認**: 実際のポート番号は`docker ps`または`docker/docker-compose.override.yml`で確認してください
 
@@ -430,6 +430,90 @@ Polibase follows these core design principles:
 4. Implement infrastructure (repositories, external services)
 5. Add interface layer last (CLI/Web)
 6. Write tests at each layer
+
+## Documentation
+
+### Key Documentation Files and Their Locations
+
+When working on this project, refer to these documentation files for detailed information:
+
+#### Architecture Documentation
+- **Clean Architecture Migration**: `docs/CLEAN_ARCHITECTURE_MIGRATION.md`
+  - Migration progress tracking
+  - Module-by-module migration status
+  - Implementation guidelines
+
+- **Database Schema**: `docs/DATABASE_SCHEMA.md`
+  - Complete database structure
+  - Table relationships
+  - Column descriptions
+
+- **API Documentation**: `docs/API_DOCUMENTATION.md`
+  - API endpoints specification
+  - Request/response formats
+  - Authentication details
+
+#### Development Guides
+- **Development Guide**: `docs/DEVELOPMENT_GUIDE.md`
+  - Setup instructions
+  - Development workflow
+  - Coding standards
+
+- **Testing Guide**: `docs/TESTING_GUIDE.md`
+  - Test structure
+  - Testing strategies
+  - Running tests
+
+#### Domain Documentation
+- **Domain Model**: `docs/DOMAIN_MODEL.md`
+  - Business entities
+  - Domain services
+  - Business rules
+
+- **Use Cases**: `docs/USE_CASES.md`
+  - Application use cases
+  - Business workflows
+  - User scenarios
+
+#### Infrastructure Documentation
+- **Deployment**: `docs/DEPLOYMENT.md`
+  - Deployment procedures
+  - Environment configuration
+  - Production setup
+
+- **Monitoring**: `docs/MONITORING.md`
+  - Monitoring setup
+  - Metrics collection
+  - Alert configuration
+
+#### Quick Reference Files
+- **Environment Variables**: `.env.example`
+  - Required environment variables
+  - Configuration options
+
+- **Project Dependencies**: `pyproject.toml`
+  - Python dependencies
+  - Development tools configuration
+
+- **Docker Configuration**: `docker/docker-compose.yml`
+  - Container setup
+  - Service definitions
+
+- **Database Migrations**: `database/migrations/`
+  - Schema migration files
+  - Sequential update scripts
+
+#### Code Organization
+- **Source Code**: `src/`
+  - `domain/` - Domain entities and business logic
+  - `application/` - Use cases and DTOs
+  - `infrastructure/` - External service implementations
+  - `interfaces/` - User interfaces (CLI, Web)
+
+- **Tests**: `tests/`
+  - Unit tests organized by module
+  - Integration tests
+  - Evaluation tests
 
 ## Important Notes
 - **API Key Required**: GOOGLE_API_KEY must be set in .env for Gemini API access
