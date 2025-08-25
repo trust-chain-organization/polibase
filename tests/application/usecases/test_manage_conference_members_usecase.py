@@ -118,7 +118,7 @@ class TestManageConferenceMembersUseCase:
             politician_repository=mock_politician_repo,
             conference_domain_service=mock_conference_service,
             extracted_member_repository=mock_extracted_repo,
-            affiliation_repository=mock_affiliation_repo,
+            politician_affiliation_repository=mock_affiliation_repo,
             web_scraper_service=mock_scraper,
             llm_service=mock_llm,
         )
