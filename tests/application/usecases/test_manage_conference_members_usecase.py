@@ -6,11 +6,13 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from src.application.dtos.conference_dto import (
-    ExtractedConferenceMemberDTO,
-)
+# ExtractedConferenceMemberDTO import removed - using ExtractedMemberDTO from usecase module
 from src.application.usecases.manage_conference_members_usecase import (
+    CreateAffiliationsInputDTO,
+    ExtractedMemberDTO,
+    ExtractMembersInputDTO,
     ManageConferenceMembersUseCase,
+    MatchMembersInputDTO,
 )
 from src.domain.entities.conference import Conference
 from src.domain.entities.politician import Politician
@@ -20,13 +22,18 @@ def create_mock_extracted_member(**kwargs: Any) -> Mock:
     """Helper to create a mock extracted member entity."""
     member = Mock()
     member.id = kwargs.get("id", 1)
-    member.name = kwargs.get("name", "Test Member")
+    # Entity attributes match the actual ExtractedConferenceMember entity
+    member.extracted_name = kwargs.get("name", "Test Member")
     member.conference_id = kwargs.get("conference_id", 1)
-    member.party_affiliation = kwargs.get("party_affiliation", None)
-    member.role = kwargs.get("role", None)
+    member.extracted_party_name = kwargs.get("party_affiliation", None)
+    member.extracted_role = kwargs.get("role", None)
     member.matching_status = kwargs.get("matching_status", "pending")
     member.matched_politician_id = kwargs.get("matched_politician_id", None)
-    member.confidence_score = kwargs.get("confidence_score", None)
+    member.matching_confidence = kwargs.get("confidence_score", None)
+    # For backward compatibility with some tests
+    member.name = member.extracted_name
+    member.party_affiliation = member.extracted_party_name
+    member.role = member.extracted_role
     return member
 
 
@@ -153,12 +160,14 @@ class TestManageConferenceMembersUseCase:
         ]
 
         # Execute
-        result = await usecase.extract_members(conference_id=1, force=False)
+        request = ExtractMembersInputDTO(conference_id=1, force=False)
+        result = await usecase.extract_members(request)
 
         # Verify
-        assert len(result) == 2
-        assert result[0].name == "山田太郎"
-        assert result[1].name == "佐藤花子"
+        assert result.extracted_count == 2
+        assert len(result.members) == 2
+        assert result.members[0].name == "山田太郎"
+        assert result.members[1].name == "佐藤花子"
 
         # Verify repository calls
         mock_conference_repo.get_by_id.assert_called_once_with(1)
@@ -177,8 +186,9 @@ class TestManageConferenceMembersUseCase:
         )
 
         # Execute & Verify - should raise ValueError
-        with pytest.raises(ValueError, match="no members introduction URL"):
-            await usecase.extract_members(conference_id=1, force=False)
+        with pytest.raises(ValueError, match="no members URL"):
+            request = ExtractMembersInputDTO(conference_id=1, force=False)
+            await usecase.extract_members(request)
 
     @pytest.mark.asyncio
     async def test_extract_members_already_extracted(
@@ -198,11 +208,13 @@ class TestManageConferenceMembersUseCase:
         mock_extracted_repo.get_by_conference.return_value = existing_members
 
         # Execute
-        result = await usecase.extract_members(conference_id=1, force=False)
+        request = ExtractMembersInputDTO(conference_id=1, force=False)
+        result = await usecase.extract_members(request)
 
         # Verify - should return existing members as DTOs
-        assert len(result) == 1
-        assert result[0].name == "Existing Member"
+        assert result.extracted_count == 1
+        assert len(result.members) == 1
+        assert result.members[0].name == "Existing Member"
 
     @pytest.mark.asyncio
     async def test_extract_members_force_re_extraction(
@@ -241,12 +253,14 @@ class TestManageConferenceMembersUseCase:
         ]
 
         # Execute
-        result = await usecase.extract_members(conference_id=1, force=True)
+        request = ExtractMembersInputDTO(conference_id=1, force=True)
+        result = await usecase.extract_members(request)
 
         # Verify
-        assert len(result) == 2
-        assert result[0].name == "山田太郎"
-        assert result[1].name == "佐藤花子"
+        assert result.extracted_count == 2
+        assert len(result.members) == 2
+        assert result.members[0].name == "山田太郎"
+        assert result.members[1].name == "佐藤花子"
 
     @pytest.mark.asyncio
     async def test_match_members_with_conference_id(
@@ -277,15 +291,17 @@ class TestManageConferenceMembersUseCase:
         }
 
         # Execute
-        result = await usecase.match_members(conference_id=1)
+        request = MatchMembersInputDTO(conference_id=1)
+        result = await usecase.match_members(request)
 
         # Verify
-        assert len(result) == 1
-        assert result[0].extracted_member_id == 1
-        assert result[0].member_name == "山田太郎"
-        assert result[0].matched_politician_id == 10  # The actual politician ID
-        assert result[0].confidence_score == 0.95
-        assert result[0].status == "matched"
+        assert result.matched_count == 1
+        assert len(result.results) == 1
+        assert result.results[0].member_id == 1
+        assert result.results[0].member_name == "山田太郎"
+        assert result.results[0].matched_politician_id == 10  # The actual politician ID
+        assert result.results[0].confidence_score == 0.95
+        assert result.results[0].matching_status == "matched"
 
         # Verify repository calls
         mock_extracted_repo.get_pending_by_conference.assert_called_once_with(1)
@@ -320,12 +336,13 @@ class TestManageConferenceMembersUseCase:
         ]
 
         # Execute
-        result = await usecase.match_members(conference_id=None)
+        request = MatchMembersInputDTO(conference_id=None)
+        result = await usecase.match_members(request)
 
         # Verify
-        assert len(result) == 2
-        assert all(r.status == "matched" for r in result)
-        assert all(r.confidence_score == 0.95 for r in result)
+        assert len(result.results) == 2
+        assert all(r.matching_status == "matched" for r in result.results)
+        assert all(r.confidence_score == 0.95 for r in result.results)
 
         # Verify repository calls
         mock_extracted_repo.get_all_pending.assert_called_once()
@@ -351,7 +368,7 @@ class TestManageConferenceMembersUseCase:
         }
 
         # Execute
-        result = await usecase._match_member_to_politician(member, threshold=0.7)
+        result = await usecase._match_member_to_politician(member)
 
         # Verify
         assert result.status == "matched"
@@ -384,7 +401,7 @@ class TestManageConferenceMembersUseCase:
         }
 
         # Execute
-        result = await usecase._match_member_to_politician(member, threshold=0.5)
+        result = await usecase._match_member_to_politician(member)
 
         # Verify
         # Status is still "matched" since candidates were found via search_by_name
@@ -417,7 +434,7 @@ class TestManageConferenceMembersUseCase:
         }
 
         # Execute
-        result = await usecase._match_member_to_politician(member, threshold=0.7)
+        result = await usecase._match_member_to_politician(member)
 
         # Verify
         assert result.status == "no_match"
@@ -455,18 +472,20 @@ class TestManageConferenceMembersUseCase:
         mock_affiliation_repo.get_by_politician_and_conference.return_value = []
 
         # Execute
-        result = await usecase.create_affiliations(
+        request = CreateAffiliationsInputDTO(
             conference_id=1, start_date=date(2023, 1, 1)
         )
+        result = await usecase.create_affiliations(request)
 
         # Verify
-        assert len(result) == 2
-        assert result[0].politician_id == 10
-        assert result[0].conference_id == 1
-        assert result[0].role == "議員"
-        assert result[1].politician_id == 20
-        assert result[1].conference_id == 1
-        assert result[1].role == "委員長"
+        assert result.created_count == 2
+        assert len(result.affiliations) == 2
+        assert result.affiliations[0].politician_id == 10
+        assert result.affiliations[0].conference_id == 1
+        assert result.affiliations[0].role == "議員"
+        assert result.affiliations[1].politician_id == 20
+        assert result.affiliations[1].conference_id == 1
+        assert result.affiliations[1].role == "委員長"
 
         # Verify repository calls
         assert mock_affiliation_repo.create.call_count == 2
@@ -509,12 +528,15 @@ class TestManageConferenceMembersUseCase:
         mock_conference_service.calculate_affiliation_overlap.return_value = True
 
         # Execute
-        result = await usecase.create_affiliations(
+        request = CreateAffiliationsInputDTO(
             conference_id=1, start_date=date(2023, 1, 1)
         )
+        result = await usecase.create_affiliations(request)
 
         # Verify - should skip due to overlapping affiliation
-        assert len(result) == 0
+        assert result.created_count == 0
+        assert result.skipped_count == 2
+        assert len(result.affiliations) == 0
 
         # Verify no new affiliation was created
         mock_affiliation_repo.create.assert_not_called()
@@ -548,14 +570,16 @@ class TestManageConferenceMembersUseCase:
         mock_affiliation_repo.get_by_politician_and_conference.return_value = []
 
         # Execute
-        result = await usecase.create_affiliations(
+        request = CreateAffiliationsInputDTO(
             conference_id=None, start_date=date(2023, 1, 1)
         )
+        result = await usecase.create_affiliations(request)
 
         # Verify
-        assert len(result) == 2
-        assert result[0].politician_id == 10
-        assert result[1].politician_id == 20
+        assert result.created_count == 2
+        assert len(result.affiliations) == 2
+        assert result.affiliations[0].politician_id == 10
+        assert result.affiliations[1].politician_id == 20
 
         # Verify repository calls
         mock_extracted_repo.get_by_status.assert_called_once_with("matched")
@@ -579,12 +603,14 @@ class TestManageConferenceMembersUseCase:
         dto = usecase._to_extracted_dto(entity)
 
         # Verify
-        assert isinstance(dto, ExtractedConferenceMemberDTO)
+        assert isinstance(dto, ExtractedMemberDTO)
         assert dto.name == "山田太郎"
         assert dto.conference_id == 1
-        assert dto.party_name == "自由民主党"
+        assert dto.party_affiliation == "自由民主党"
         assert dto.role == "議員"
-        assert dto.profile_url is None  # Not available in ExtractedMemberEntity
+        assert dto.matched_politician_id == 10
+        assert dto.matching_status == "matched"
+        assert dto.confidence_score == 0.95
 
     @pytest.mark.asyncio
     async def test_error_handling_in_extract_members(
@@ -597,7 +623,8 @@ class TestManageConferenceMembersUseCase:
 
         # Execute
         with pytest.raises(Exception) as exc_info:
-            await usecase.extract_members(conference_id=1, force=False)
+            request = ExtractMembersInputDTO(conference_id=1, force=False)
+            await usecase.extract_members(request)
 
         # Verify
         assert "Network error" in str(exc_info.value)
@@ -612,7 +639,8 @@ class TestManageConferenceMembersUseCase:
 
         # Execute
         with pytest.raises(Exception) as exc_info:
-            await usecase.match_members(conference_id=1)
+            request = MatchMembersInputDTO(conference_id=1)
+            await usecase.match_members(request)
 
         # Verify
         assert "Database error" in str(exc_info.value)
@@ -627,7 +655,9 @@ class TestManageConferenceMembersUseCase:
         mock_scraper.scrape_conference_members.return_value = []  # No members found
 
         # Execute
-        result = await usecase.extract_members(conference_id=1, force=False)
+        request = ExtractMembersInputDTO(conference_id=1, force=False)
+        result = await usecase.extract_members(request)
 
         # Verify
-        assert len(result) == 0
+        assert result.extracted_count == 0
+        assert len(result.members) == 0
