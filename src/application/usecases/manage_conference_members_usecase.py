@@ -324,12 +324,9 @@ class ManageConferenceMembersUseCase:
 
         # Scrape and extract members using LLM
         # In a real implementation, this would scrape and use LLM to extract data
-        _ = await self.scraper.scrape_conference_members(
+        members_data = await self.scraper.scrape_conference_members(
             conference.members_introduction_url
         )
-
-        # Extract members from HTML (simplified for now)
-        members_data: list[dict[str, Any]] = []
 
         # Save to staging table
         created_members = []

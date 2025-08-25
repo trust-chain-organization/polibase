@@ -275,7 +275,7 @@ class TestManageConferenceMembersUseCase:
             role="議員",
             conference_id=1,
         )
-        mock_extracted_repo.get_pending_by_conference.return_value = [extracted_member]
+        mock_extracted_repo.get_pending_members.return_value = [extracted_member]
 
         politician = Politician(
             id=10, name="山田太郎", speaker_id=1, political_party_id=1
@@ -304,8 +304,8 @@ class TestManageConferenceMembersUseCase:
         assert result.results[0].matching_status == "matched"
 
         # Verify repository calls
-        mock_extracted_repo.get_pending_by_conference.assert_called_once_with(1)
-        mock_extracted_repo.update_matching_status.assert_called_once()
+        mock_extracted_repo.get_pending_members.assert_called_once_with(1)
+        mock_extracted_repo.update_matching_result.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_match_members_all_pending(
@@ -329,11 +329,18 @@ class TestManageConferenceMembersUseCase:
                 conference_id=1,
             ),
         ]
-        mock_extracted_repo.get_all_pending.return_value = extracted_members
+        mock_extracted_repo.get_pending_members.return_value = extracted_members
 
-        mock_politician_repo.search_by_name.return_value = [
-            Politician(id=10, name="山田太郎", speaker_id=1, political_party_id=1)
-        ]
+        politician = Politician(
+            id=10, name="山田太郎", speaker_id=1, political_party_id=1
+        )
+        mock_politician_repo.search_by_name.return_value = [politician]
+        mock_politician_repo.get_by_id.return_value = politician
+
+        mock_llm.match_conference_member.return_value = {
+            "matched_id": 10,
+            "confidence": 0.95,
+        }
 
         # Execute
         request = MatchMembersInputDTO(conference_id=None)
@@ -345,8 +352,8 @@ class TestManageConferenceMembersUseCase:
         assert all(r.confidence_score == 0.95 for r in result.results)
 
         # Verify repository calls
-        mock_extracted_repo.get_all_pending.assert_called_once()
-        assert mock_extracted_repo.update_matching_status.call_count == 2
+        mock_extracted_repo.get_pending_members.assert_called_once()
+        assert mock_extracted_repo.update_matching_result.call_count == 2
 
     @pytest.mark.asyncio
     async def test_match_member_to_politician_high_confidence(
@@ -358,9 +365,11 @@ class TestManageConferenceMembersUseCase:
             id=1, name="山田太郎", party_affiliation="自由民主党", role="議員"
         )
 
-        mock_politician_repo.search_by_name.return_value = [
-            Politician(id=10, name="山田太郎", speaker_id=1, political_party_id=1)
-        ]
+        politician = Politician(
+            id=10, name="山田太郎", speaker_id=1, political_party_id=1
+        )
+        mock_politician_repo.search_by_name.return_value = [politician]
+        mock_politician_repo.get_by_id.return_value = politician
 
         mock_llm.match_conference_member.return_value = {
             "matched_id": 10,
@@ -371,7 +380,7 @@ class TestManageConferenceMembersUseCase:
         result = await usecase._match_member_to_politician(member)
 
         # Verify
-        assert result.status == "matched"
+        assert result.matching_status == "matched"
         assert result.matched_politician_id == 10
         assert result.confidence_score == 0.95
         assert result.member_name == "山田太郎"
@@ -386,14 +395,14 @@ class TestManageConferenceMembersUseCase:
             id=1, name="山田太郎", party_affiliation="自由民主党", role="議員"
         )
 
-        mock_politician_repo.search_by_name.return_value = [
-            Politician(
-                id=10,
-                name="山田太朗",  # Slightly different name
-                speaker_id=1,
-                political_party_id=1,
-            )
-        ]
+        politician = Politician(
+            id=10,
+            name="山田太朗",  # Slightly different name
+            speaker_id=1,
+            political_party_id=1,
+        )
+        mock_politician_repo.search_by_name.return_value = [politician]
+        mock_politician_repo.get_by_id.return_value = politician
 
         mock_llm.match_conference_member.return_value = {
             "matched_id": 10,
@@ -404,13 +413,10 @@ class TestManageConferenceMembersUseCase:
         result = await usecase._match_member_to_politician(member)
 
         # Verify
-        # Status is still "matched" since candidates were found via search_by_name
-        # LLM matching only happens when no candidates are found initially
-        assert result.status == "matched"
+        # Status should be "needs_review" for confidence 0.6 (between 0.5 and 0.7)
+        assert result.matching_status == "needs_review"
         assert result.matched_politician_id == 10
-        assert (
-            result.confidence_score == 0.95
-        )  # From calculate_member_confidence_score mock
+        assert result.confidence_score == 0.6
         assert result.member_name == "山田太郎"
 
     @pytest.mark.asyncio
@@ -437,7 +443,7 @@ class TestManageConferenceMembersUseCase:
         result = await usecase._match_member_to_politician(member)
 
         # Verify
-        assert result.status == "no_match"
+        assert result.matching_status == "no_match"
         assert result.matched_politician_id is None
         # When LLM confidence is below threshold, the method returns default values
         assert result.confidence_score == 0.0
@@ -468,7 +474,7 @@ class TestManageConferenceMembersUseCase:
             ),
         ]
 
-        mock_extracted_repo.get_by_conference_and_status.return_value = matched_members
+        mock_extracted_repo.get_matched_members.return_value = matched_members
         mock_affiliation_repo.get_by_politician_and_conference.return_value = []
 
         # Execute
@@ -510,7 +516,7 @@ class TestManageConferenceMembersUseCase:
             matching_status="matched",
         )
 
-        mock_extracted_repo.get_by_conference_and_status.return_value = [matched_member]
+        mock_extracted_repo.get_matched_members.return_value = [matched_member]
 
         # Existing affiliation
         mock_affiliation_repo.get_by_politician_and_conference.return_value = [
@@ -566,7 +572,7 @@ class TestManageConferenceMembersUseCase:
             ),
         ]
 
-        mock_extracted_repo.get_by_status.return_value = matched_members
+        mock_extracted_repo.get_matched_members.return_value = matched_members
         mock_affiliation_repo.get_by_politician_and_conference.return_value = []
 
         # Execute
@@ -582,7 +588,7 @@ class TestManageConferenceMembersUseCase:
         assert result.affiliations[1].politician_id == 20
 
         # Verify repository calls
-        mock_extracted_repo.get_by_status.assert_called_once_with("matched")
+        mock_extracted_repo.get_matched_members.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_to_extracted_dto(self, usecase):
@@ -633,7 +639,7 @@ class TestManageConferenceMembersUseCase:
     async def test_error_handling_in_match_members(self, usecase, mock_extracted_repo):
         """Test error handling during member matching."""
         # Setup
-        mock_extracted_repo.get_pending_by_conference.side_effect = Exception(
+        mock_extracted_repo.get_pending_members.side_effect = Exception(
             "Database error"
         )
 
