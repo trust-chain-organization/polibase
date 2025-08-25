@@ -29,8 +29,8 @@ init_sentry()
 # Get logger
 logger = get_logger(__name__)
 
-from src.infrastructure.persistence.monitoring_repository_impl import (
-    MonitoringRepositoryImpl as MonitoringRepository,  # noqa: E402
+from src.infrastructure.persistence.monitoring_repository_impl import (  # noqa: E402
+    MonitoringRepositoryImpl as MonitoringRepository,
 )
 from src.utils.japan_map import (  # noqa: E402
     create_japan_map,

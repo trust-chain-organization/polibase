@@ -402,7 +402,7 @@ def main() -> list[int] | None:
                         )
 
                         # minutesレコードを作成（既存のものがあるかチェック）
-                        from src.infrastructure.persistence.base_repository_impl import (
+                        from src.infrastructure.persistence.base_repository_impl import (  # noqa: E501
                             BaseRepositoryImpl,
                         )
 

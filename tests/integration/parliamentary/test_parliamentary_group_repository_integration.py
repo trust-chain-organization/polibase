@@ -8,8 +8,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from src.config.database import DATABASE_URL
-from src.infrastructure.persistence.parliamentary_group_membership_repository_impl import (
-    ParliamentaryGroupMembershipRepositoryImpl as ParliamentaryGroupMembershipRepository,
+from src.infrastructure.persistence.parliamentary_group_membership_repository_impl import (  # noqa: E501
+    ParliamentaryGroupMembershipRepositoryImpl as ParliamentaryGroupMembershipRepository,  # noqa: E501
 )
 from src.infrastructure.persistence.parliamentary_group_repository_impl import (
     ParliamentaryGroupRepositoryImpl as ParliamentaryGroupRepository,
