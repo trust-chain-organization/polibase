@@ -16,7 +16,34 @@ from src.infrastructure.interfaces.web_scraper_service import IWebScraperService
 
 
 class ScrapePoliticiansUseCase:
-    """Use case for scraping politicians from party websites."""
+    """政治家情報スクレイピングユースケース
+
+    政党のウェブサイトから政治家情報を収集し、データベースに保存します。
+    重複チェックとデータのマージ機能を含みます。
+
+    Attributes:
+        party_repo: 政党リポジトリ
+        politician_repo: 政治家リポジトリ
+        speaker_repo: 発言者リポジトリ
+        politician_service: 政治家ドメインサービス
+        scraper: Webスクレイピングサービス
+
+    Example:
+        >>> use_case = ScrapePoliticiansUseCase(
+        ...     party_repo, politician_repo, speaker_repo,
+        ...     politician_service, scraper_service
+        ... )
+        >>> # 全政党から収集
+        >>> result = await use_case.execute(
+        ...     ScrapePoliticiansInputDTO(all_parties=True)
+        ... )
+        >>> print(f"収集した政治家数: {len(result)}")
+
+        >>> # 特定政党から収集（ドライラン）
+        >>> result = await use_case.execute(
+        ...     ScrapePoliticiansInputDTO(party_id=5, dry_run=True)
+        ... )
+    """
 
     def __init__(
         self,
@@ -26,6 +53,15 @@ class ScrapePoliticiansUseCase:
         politician_domain_service: PoliticianDomainService,
         web_scraper_service: IWebScraperService,
     ):
+        """政治家スクレイピングユースケースを初期化する
+
+        Args:
+            political_party_repository: 政党リポジトリの実装
+            politician_repository: 政治家リポジトリの実装
+            speaker_repository: 発言者リポジトリの実装
+            politician_domain_service: 政治家ドメインサービス
+            web_scraper_service: Webスクレイピングサービス
+        """
         self.party_repo = political_party_repository
         self.politician_repo = politician_repository
         self.speaker_repo = speaker_repository
@@ -36,7 +72,36 @@ class ScrapePoliticiansUseCase:
         self,
         request: ScrapePoliticiansInputDTO,
     ) -> list[PoliticianDTO]:
-        """Execute the politician scraping use case."""
+        """政治家情報のスクレイピングを実行する
+
+        処理の流れ：
+        1. 対象政党の特定（単一または全政党）
+        2. 各政党のメンバーリストURLからスクレイピング
+        3. 重複チェックとデータマージ
+        4. 新規登録または既存データ更新
+
+        Args:
+            request: スクレイピングリクエストDTO
+                - party_id: 特定政党のID（オプション）
+                - all_parties: 全政党を対象とするか
+                - dry_run: 実行せずに結果を確認するか
+
+        Returns:
+            PoliticianDTOのリスト。各DTOには以下が含まれる：
+            - id: 政治家ID（dry_runの場合は0）
+            - name: 政治家名
+            - speaker_id: 発言者ID
+            - political_party_id: 所属政党ID
+            - political_party_name: 所属政党名
+            - furigana: ふりがな
+            - position: 役職
+            - district: 選挙区
+            - profile_image_url: プロフィール画像URL
+            - profile_page_url: プロフィールページURL
+
+        Raises:
+            ValueError: party_idが無効、または必須パラメータが未指定の場合
+        """
         # Get parties to scrape
         if request.party_id:
             party = await self.party_repo.get_by_id(request.party_id)
@@ -83,7 +148,17 @@ class ScrapePoliticiansUseCase:
     async def _scrape_party_website(
         self, party: PoliticalParty
     ) -> list[ExtractedPoliticianDTO]:
-        """Scrape politicians from party website."""
+        """政党ウェブサイトから政治家情報をスクレイピングする
+
+        Args:
+            party: 対象政党エンティティ
+
+        Returns:
+            抽出された政治家情報のDTOリスト
+
+        Raises:
+            ValueError: 政党にIDがない場合
+        """
         if not party.members_list_url:
             return []
 
@@ -114,7 +189,20 @@ class ScrapePoliticiansUseCase:
     async def _create_or_update_politician(
         self, data: ExtractedPoliticianDTO
     ) -> PoliticianDTO | None:
-        """Create or update politician from extracted data."""
+        """抽出データから政治家を作成または更新する
+
+        重複チェックを行い、既存データがある場合は新しい情報で
+        更新します。新規の場合は発言者レコードも作成します。
+
+        Args:
+            data: 抽出された政治家データ
+
+        Returns:
+            作成または更新された政治家DTO（重複スキップの場合None）
+
+        Raises:
+            ValueError: 作成された発言者にIDがない場合
+        """
         # Check for existing politician
         existing = await self.politician_repo.get_by_name_and_party(
             data.name, data.party_id
@@ -186,7 +274,14 @@ class ScrapePoliticiansUseCase:
         return self._to_dto(created)
 
     def _to_dto(self, politician: Politician) -> PoliticianDTO:
-        """Convert politician entity to DTO."""
+        """政治家エンティティをDTOに変換する
+
+        Args:
+            politician: 政治家エンティティ
+
+        Returns:
+            政治家DTO
+        """
         return PoliticianDTO(
             id=politician.id if politician.id is not None else 0,
             name=politician.name,
