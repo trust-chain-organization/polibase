@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-# ExtractedConferenceMemberDTO import removed - using ExtractedMemberDTO from usecase module
+# Using ExtractedMemberDTO from usecase module directly
 from src.application.usecases.manage_conference_members_usecase import (
     CreateAffiliationsInputDTO,
     ExtractedMemberDTO,
