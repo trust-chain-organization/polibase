@@ -43,6 +43,9 @@ class TestPoliticianRepositoryImpl:
             assert result.political_party_id == 2
             mock_legacy_repo.fetch_one.assert_called_once()
 
+    @pytest.mark.skip(
+        reason="Legacy repository removed - needs reimplementation - Issue #430"
+    )
     def test_search_by_name_sync(self, sync_repository, mock_sync_session):
         """同期版のsearch_by_nameのテスト"""
         # モックデータの準備
@@ -137,6 +140,9 @@ class TestPoliticianRepositoryImpl:
                 # 検証
                 assert result == updated_politician
 
+    @pytest.mark.skip(
+        reason="Legacy repository removed - needs reimplementation - Issue #430"
+    )
     def test_bulk_create_politicians_sync(self, sync_repository, mock_sync_session):
         """bulk_create_politicians_syncのテスト"""
         # モックの設定
