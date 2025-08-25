@@ -249,7 +249,9 @@ class TestMain:
     @patch("src.process_minutes.setup_environment")
     @pytest.mark.skip(reason="Metaclass conflict in MeetingRepositoryImpl - Issue #436")
     @patch("src.process_minutes.setup_metrics")
-    @patch("src.infrastructure.persistence.meeting_repository_impl.MeetingRepositoryImpl")
+    @patch(
+        "src.infrastructure.persistence.meeting_repository_impl.MeetingRepositoryImpl"
+    )
     @patch("src.process_minutes.config")
     @patch("src.utils.gcs_storage.GCSStorage")
     @patch("src.infrastructure.persistence.base_repository_impl.BaseRepositoryImpl")
@@ -313,7 +315,9 @@ class TestMain:
     @patch("src.process_minutes.setup_environment")
     @pytest.mark.skip(reason="Metaclass conflict in MeetingRepositoryImpl - Issue #436")
     @patch("src.process_minutes.setup_metrics")
-    @patch("src.infrastructure.persistence.meeting_repository_impl.MeetingRepositoryImpl")
+    @patch(
+        "src.infrastructure.persistence.meeting_repository_impl.MeetingRepositoryImpl"
+    )
     @patch("src.process_minutes.config")
     @patch("src.utils.gcs_storage.GCSStorage")
     @patch("src.infrastructure.persistence.base_repository_impl.BaseRepositoryImpl")

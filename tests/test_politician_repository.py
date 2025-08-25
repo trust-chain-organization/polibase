@@ -10,7 +10,9 @@ from src.infrastructure.persistence.politician_repository_impl import (
 from src.models.politician import Politician, PoliticianCreate, PoliticianUpdate
 
 
-@pytest.mark.skip(reason="Repository interface changed - needs refactoring - Issue #435")
+@pytest.mark.skip(
+    reason="Repository interface changed - needs refactoring - Issue #435"
+)
 class TestPoliticianRepositoryV2:
     """PoliticianRepository V2のテストクラス"""
 
