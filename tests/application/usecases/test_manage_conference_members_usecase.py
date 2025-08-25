@@ -477,13 +477,13 @@ class TestManageConferenceMembersUseCase:
 
         mock_extracted_repo.get_matched_members.return_value = matched_members
         mock_affiliation_repo.get_by_politician_and_conference.return_value = []
-        
+
         # Mock politician retrieval
         mock_politician_repo.get_by_id.side_effect = [
             Politician(id=10, name="山田太郎", speaker_id=1, political_party_id=1),
             Politician(id=20, name="佐藤花子", speaker_id=2, political_party_id=2),
         ]
-        
+
         # Mock affiliation creation
         mock_affiliation_repo.create.side_effect = [
             PoliticianAffiliation(
@@ -605,13 +605,13 @@ class TestManageConferenceMembersUseCase:
 
         mock_extracted_repo.get_matched_members.return_value = matched_members
         mock_affiliation_repo.get_by_politician_and_conference.return_value = []
-        
+
         # Mock politician retrieval
         mock_politician_repo.get_by_id.side_effect = [
             Politician(id=10, name="山田太郎", speaker_id=1, political_party_id=1),
             Politician(id=20, name="佐藤花子", speaker_id=2, political_party_id=2),
         ]
-        
+
         # Mock affiliation creation
         mock_affiliation_repo.create.side_effect = [
             PoliticianAffiliation(
