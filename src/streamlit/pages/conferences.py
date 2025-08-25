@@ -3,8 +3,12 @@
 from typing import Any, cast
 
 import streamlit as st
+from src.domain.entities.conference import Conference
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
+)
+from src.infrastructure.persistence.governing_body_repository_impl import (
+    GoverningBodyRepositoryImpl,
 )
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.seed_generator import SeedGenerator
@@ -16,6 +20,7 @@ def manage_conferences():
     st.markdown("会議体（議会・委員会など）を管理します")
 
     conf_repo = RepositoryAdapter(ConferenceRepositoryImpl)
+    gb_repo = RepositoryAdapter(GoverningBodyRepositoryImpl)
 
     # 会議体管理用のメッセージを表示
     if (
@@ -55,8 +60,27 @@ def manage_conferences():
         # 会議体一覧
         st.subheader("登録済み会議体一覧")
 
-        conferences = conf_repo.get_all_conferences()
+        conferences = conf_repo.get_all()
+        governing_bodies = gb_repo.get_all()
+
+        # Convert entities to dictionaries with governing body info
+        conf_dicts = []
         if conferences:
+            gb_dict = {gb.id: gb for gb in governing_bodies}
+            for conf in conferences:
+                conf_dict = {
+                    "id": conf.id,
+                    "name": conf.name,
+                    "type": conf.type,
+                    "governing_body_id": conf.governing_body_id,
+                    "members_introduction_url": conf.members_introduction_url,
+                    "governing_body_name": gb_dict.get(conf.governing_body_id).name
+                    if conf.governing_body_id in gb_dict
+                    else None,
+                }
+                conf_dicts.append(conf_dict)
+
+        if conf_dicts:
             # SEEDファイル生成セクション（一番上に配置）
             with st.container():
                 col1, col2 = st.columns([3, 1])
@@ -107,22 +131,22 @@ def manage_conferences():
                 )
 
             # フィルタリング適用
-            filtered_conferences = conferences
+            filtered_conferences = conf_dicts
             if url_filter == "設定済み":
                 filtered_conferences = [
-                    conf for conf in conferences if conf.get("members_introduction_url")
+                    conf for conf in conf_dicts if conf.get("members_introduction_url")
                 ]
             elif url_filter == "未設定":
                 filtered_conferences = [
                     conf
-                    for conf in conferences
+                    for conf in conf_dicts
                     if not conf.get("members_introduction_url")
                 ]
 
             # 統計情報を表示
-            total_count = len(conferences)
+            total_count = len(conf_dicts)
             with_url_count = len(
-                [c for c in conferences if c.get("members_introduction_url")]
+                [c for c in conf_dicts if c.get("members_introduction_url")]
             )
             without_url_count = total_count - with_url_count
 
@@ -254,20 +278,23 @@ def manage_conferences():
                                         if selected_gb != "なし":
                                             for gb in governing_bodies:
                                                 if (
-                                                    f"{gb['name']} ({gb['type']})"
+                                                    f"{gb.name} ({gb.type})"
                                                     == selected_gb
                                                 ):
-                                                    selected_gb_id = gb["id"]
+                                                    selected_gb_id = gb.id
                                                     break
 
                                         # URLと開催主体を更新
-                                        conf_repo.update_conference(
-                                            conference_id=conf["id"],
+                                        updated_conf = Conference(
+                                            id=conf["id"],
+                                            name=conf["name"],
                                             governing_body_id=selected_gb_id,
+                                            type=conf.get("type"),
                                             members_introduction_url=(
                                                 new_url if new_url else None
                                             ),
                                         )
+                                        conf_repo.update(updated_conf)
                                         st.session_state[edit_key] = False
                                         st.session_state.conf_success_message = (
                                             f"✅ {conf['name']}を更新しました"
@@ -300,9 +327,9 @@ def manage_conferences():
 
         with st.form("new_conference_form"):
             # 開催主体選択
-            governing_bodies = conf_repo.get_governing_bodies()
+            governing_bodies = gb_repo.get_all()
             gb_options = ["なし"] + [
-                f"{gb['name']} ({gb['type']})" for gb in governing_bodies
+                f"{gb.name} ({gb.type})" for gb in governing_bodies
             ]
             gb_selected = st.selectbox("開催主体（任意）", gb_options)
 
@@ -310,8 +337,8 @@ def manage_conferences():
             selected_gb_id = None
             if gb_selected != "なし":
                 for gb in governing_bodies:
-                    if f"{gb['name']} ({gb['type']})" == gb_selected:
-                        selected_gb_id = gb["id"]
+                    if f"{gb.name} ({gb.type})" == gb_selected:
+                        selected_gb_id = gb.id
                         break
 
             # 会議体情報入力
@@ -333,20 +360,28 @@ def manage_conferences():
                     st.session_state.conf_error_message = "会議体名を入力してください"
                     st.rerun()
                 else:
-                    conf_id = conf_repo.create_conference(
+                    new_conf = Conference(
                         name=conf_name,
                         governing_body_id=selected_gb_id
                         if selected_gb_id is not None
                         else 0,
                         type=conf_type if conf_type else None,
                     )
+                    created_conf = conf_repo.create(new_conf)
+                    conf_id = created_conf.id if created_conf else None
                     if conf_id:
                         # 議員紹介URLが入力されていれば更新
-                        if members_url:
-                            conf_repo.update_conference_members_url(
-                                conference_id=conf_id,
+                        if members_url and conf_id:
+                            updated_conf = Conference(
+                                id=conf_id,
+                                name=conf_name,
+                                governing_body_id=selected_gb_id
+                                if selected_gb_id is not None
+                                else 0,
+                                type=conf_type if conf_type else None,
                                 members_introduction_url=members_url,
                             )
+                            conf_repo.update(updated_conf)
 
                         # 成功メッセージと詳細をセッション状態に保存
                         st.session_state.conf_success_message = (
@@ -377,14 +412,33 @@ def manage_conferences():
         # 編集・削除
         st.subheader("会議体の編集・削除")
 
-        conferences = conf_repo.get_all_conferences()
-        if not conferences:
+        conferences = conf_repo.get_all()
+        governing_bodies = gb_repo.get_all()
+
+        # Convert entities to dictionaries with governing body info
+        conf_dicts_tab3 = []
+        if conferences:
+            gb_dict = {gb.id: gb for gb in governing_bodies}
+            for conf in conferences:
+                conf_dict = {
+                    "id": conf.id,
+                    "name": conf.name,
+                    "type": conf.type,
+                    "governing_body_id": conf.governing_body_id,
+                    "members_introduction_url": conf.members_introduction_url,
+                    "governing_body_name": gb_dict.get(conf.governing_body_id).name
+                    if conf.governing_body_id in gb_dict
+                    else None,
+                }
+                conf_dicts_tab3.append(conf_dict)
+
+        if not conf_dicts_tab3:
             st.info("編集する会議体がありません")
         else:
             # 会議体選択
             conf_options: list[str] = []
             conf_map: dict[str, dict[str, Any]] = {}
-            for conf in conferences:
+            for conf in conf_dicts_tab3:
                 display_name = f"{conf['governing_body_name']} - {conf['name']}"
                 if conf.get("type"):
                     display_name += f" ({conf['type']})"
@@ -433,18 +487,16 @@ def manage_conferences():
                             st.error("会議体名を入力してください")
                         else:
                             # 基本情報を更新
-                            if conf_repo.update_conference(
-                                conference_id=selected_conf["id"],
+                            updated_conf = Conference(
+                                id=selected_conf["id"],
                                 name=new_name,
+                                governing_body_id=selected_conf["governing_body_id"],
                                 type=new_type if new_type else None,
-                            ):
-                                # 議員紹介URLを更新
-                                conf_repo.update_conference_members_url(
-                                    conference_id=selected_conf["id"],
-                                    members_introduction_url=new_members_url
-                                    if new_members_url
-                                    else None,
-                                )
+                                members_introduction_url=new_members_url
+                                if new_members_url
+                                else None,
+                            )
+                            if conf_repo.update(updated_conf):
                                 st.success("会議体を更新しました")
                                 st.rerun()
                             else:
@@ -457,7 +509,7 @@ def manage_conferences():
                 )
 
                 if st.button("🗑️ この会議体を削除", type="secondary"):
-                    if conf_repo.delete_conference(cast(int, selected_conf["id"])):
+                    if conf_repo.delete(cast(int, selected_conf["id"])):
                         st.success("会議体を削除しました")
                         st.rerun()
                     else:

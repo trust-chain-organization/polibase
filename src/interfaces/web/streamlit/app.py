@@ -7,10 +7,27 @@ following Clean Architecture principles with presenter pattern.
 import streamlit as st
 
 # Import new Clean Architecture views
+from src.interfaces.web.streamlit.views.conferences_view import (
+    render_conferences_page,
+)
+from src.interfaces.web.streamlit.views.conversations_speakers_view import (
+    render_conversations_speakers_page,
+)
+from src.interfaces.web.streamlit.views.conversations_view import (
+    render_conversations_page,
+)
+from src.interfaces.web.streamlit.views.governing_bodies_view import (
+    render_governing_bodies_page,
+)
 from src.interfaces.web.streamlit.views.meetings_view import render_meetings_page
+from src.interfaces.web.streamlit.views.parliamentary_groups_view import (
+    render_parliamentary_groups_page,
+)
 from src.interfaces.web.streamlit.views.political_parties_view import (
     render_political_parties_page,
 )
+from src.interfaces.web.streamlit.views.politicians_view import render_politicians_page
+from src.interfaces.web.streamlit.views.processes_view import render_processes_page
 
 # Import legacy pages (to be migrated)
 # These will be gradually replaced with Clean Architecture views
@@ -111,47 +128,26 @@ def main():
         # ✅ Migrated to Clean Architecture
         render_political_parties_page()
     elif page == "会議体管理":
-        # 🚧 Migration pending - use legacy if available
-        if manage_conferences:
-            manage_conferences()
-        else:
-            placeholder_page("会議体管理")()
+        # ✅ Migrated to Clean Architecture
+        render_conferences_page()
     elif page == "開催主体管理":
-        # 🚧 Migration pending - use legacy if available
-        if manage_governing_bodies:
-            manage_governing_bodies()
-        else:
-            placeholder_page("開催主体管理")()
+        # ✅ Migrated to Clean Architecture
+        render_governing_bodies_page()
     elif page == "政治家管理":
-        # 🚧 Migration pending - use legacy if available
-        if manage_politicians:
-            manage_politicians()
-        else:
-            placeholder_page("政治家管理")()
+        # ✅ Migrated to Clean Architecture
+        render_politicians_page()
     elif page == "議員団管理":
-        # 🚧 Migration pending - use legacy if available
-        if manage_parliamentary_groups:
-            manage_parliamentary_groups()
-        else:
-            placeholder_page("議員団管理")()
+        # ✅ Migrated to Clean Architecture
+        render_parliamentary_groups_page()
     elif page == "発言レコード一覧":
-        # 🚧 Migration pending - use legacy if available
-        if manage_conversations:
-            manage_conversations()
-        else:
-            placeholder_page("発言レコード一覧")()
+        # ✅ Migrated to Clean Architecture
+        render_conversations_page()
     elif page == "発言・発言者管理":
-        # 🚧 Migration pending - use legacy if available
-        if manage_conversations_speakers:
-            manage_conversations_speakers()
-        else:
-            placeholder_page("発言・発言者管理")()
+        # ✅ Migrated to Clean Architecture
+        render_conversations_speakers_page()
     elif page == "処理実行":
-        # 🚧 Migration pending - use legacy if available
-        if execute_processes:
-            execute_processes()
-        else:
-            placeholder_page("処理実行")()
+        # ✅ Migrated to Clean Architecture
+        render_processes_page()
 
     # Footer
     st.sidebar.divider()
@@ -159,7 +155,13 @@ def main():
     ### アーキテクチャ移行状況
     - ✅ 会議管理
     - ✅ 政党管理
-    - 🚧 その他のページ（移行中）
+    - ✅ 会議体管理
+    - ✅ 開催主体管理
+    - ✅ 議員団管理
+    - ✅ 政治家管理
+    - ✅ 発言・発言者管理
+    - ✅ 発言レコード一覧
+    - ✅ 処理実行
     """)
     st.sidebar.caption("© 2024 Polibase - Clean Architecture Edition")
 
@@ -179,12 +181,10 @@ def render_home_page():
     #### ✅ Clean Architecture対応済み
     - **会議管理**: 議会や委員会の会議情報を管理
     - **政党管理**: 政党情報と議員一覧URLの管理
-
-    #### 🚧 移行作業中
     - **会議体管理**: 議会や委員会などの会議体を管理
     - **開催主体管理**: 国、都道府県、市町村などの開催主体を管理
-    - **政治家管理**: 政治家の情報を管理
     - **議員団管理**: 議員団・会派の情報を管理
+    - **政治家管理**: 政治家の情報を管理
     - **発言管理**: 会議での発言記録を管理
     - **処理実行**: 各種バッチ処理の実行
 
@@ -242,13 +242,13 @@ def render_home_page():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("移行完了ページ", "2", "✅")
+        st.metric("移行完了ページ", "9", "✅")
 
     with col2:
-        st.metric("移行中ページ", "7", "🚧")
+        st.metric("移行中ページ", "0", "✅")
 
     with col3:
-        st.metric("進捗率", "22%", "📊")
+        st.metric("進捗率", "100%", "🎉")
 
 
 if __name__ == "__main__":

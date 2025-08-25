@@ -2,9 +2,8 @@
 
 from typing import Any
 
-from sqlalchemy import and_, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
 from src.application.dtos.speaker_dto import SpeakerWithConversationCountDTO
 from src.domain.entities.speaker import Speaker
@@ -12,11 +11,26 @@ from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
+class SpeakerModel:
+    """Speaker database model (dynamic)."""
+
+    id: int | None
+    name: str
+    political_party_name: str | None
+    position: str | None
+    is_politician: bool
+    politician_id: int | None
+
+    def __init__(self, **kwargs: Any):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
 class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
     """Implementation of speaker repository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession, model_class: type[Any]):
-        super().__init__(session, Speaker, model_class)
+    def __init__(self, session: AsyncSession):
+        super().__init__(session, Speaker, SpeakerModel)
 
     async def get_by_name_party_position(
         self,
@@ -25,40 +39,51 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
         position: str | None = None,
     ) -> Speaker | None:
         """Get speaker by name, party, and position."""
-        conditions = [self.model_class.name == name]
+        conditions = ["name = :name"]
+        params = {"name": name}
 
         if political_party_name is not None:
-            conditions.append(
-                self.model_class.political_party_name == political_party_name
-            )
+            conditions.append("political_party_name = :political_party_name")
+            params["political_party_name"] = political_party_name
         if position is not None:
-            conditions.append(self.model_class.position == position)
+            conditions.append("position = :position")
+            params["position"] = position
 
-        query = select(self.model_class).where(and_(*conditions))
-        result = await self.session.execute(query)
-        model = result.scalar_one_or_none()
+        query = text(f"""
+            SELECT * FROM speakers
+            WHERE {" AND ".join(conditions)}
+            LIMIT 1
+        """)
+        result = await self.session.execute(query, params)
+        row = result.fetchone()
 
-        if model:
-            return self._to_entity(model)
+        if row:
+            return self._row_to_entity(row)
         return None
 
     async def get_politicians(self) -> list[Speaker]:
         """Get all speakers who are politicians."""
-        query = select(self.model_class).where(self.model_class.is_politician)
+        query = text("""
+            SELECT * FROM speakers
+            WHERE is_politician = true
+            ORDER BY name
+        """)
         result = await self.session.execute(query)
-        models = result.scalars().all()
+        rows = result.fetchall()
 
-        return [self._to_entity(model) for model in models]
+        return [self._row_to_entity(row) for row in rows]
 
     async def search_by_name(self, name_pattern: str) -> list[Speaker]:
         """Search speakers by name pattern."""
-        query = select(self.model_class).where(
-            self.model_class.name.ilike(f"%{name_pattern}%")
-        )
-        result = await self.session.execute(query)
-        models = result.scalars().all()
+        query = text("""
+            SELECT * FROM speakers
+            WHERE name ILIKE :pattern
+            ORDER BY name
+        """)
+        result = await self.session.execute(query, {"pattern": f"%{name_pattern}%"})
+        rows = result.fetchall()
 
-        return [self._to_entity(model) for model in models]
+        return [self._row_to_entity(row) for row in rows]
 
     async def upsert(self, speaker: Speaker) -> Speaker:
         """Insert or update speaker (upsert)."""
@@ -175,27 +200,96 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
 
     async def find_by_name(self, name: str) -> Speaker | None:
         """Find speaker by name."""
-        query = select(self.model_class).where(self.model_class.name == name)
-        result = await self.session.execute(query)
-        model = result.scalar_one_or_none()
+        query = text("""
+            SELECT * FROM speakers
+            WHERE name = :name
+            LIMIT 1
+        """)
+        result = await self.session.execute(query, {"name": name})
+        row = result.fetchone()
 
-        if model:
-            return self._to_entity(model)
+        if row:
+            return self._row_to_entity(row)
         return None
 
     async def get_speakers_not_linked_to_politicians(self) -> list[Speaker]:
         """Get speakers who are not linked to politicians (is_politician=False)."""
-        query = (
-            select(self.model_class)
-            .where(
-                self.model_class.is_politician == False  # noqa: E712
-            )
-            .order_by(self.model_class.name)
-        )
+        query = text("""
+            SELECT * FROM speakers
+            WHERE is_politician = false
+            ORDER BY name
+        """)
         result = await self.session.execute(query)
-        models = result.scalars().all()
+        rows = result.fetchall()
 
-        return [self._to_entity(model) for model in models]
+        return [self._row_to_entity(row) for row in rows]
+
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = 0
+    ) -> list[Speaker]:
+        """Get all speakers."""
+        query_text = "SELECT * FROM speakers ORDER BY name"
+        params = {}
+
+        if limit is not None:
+            query_text += " LIMIT :limit OFFSET :offset"
+            params = {"limit": limit, "offset": offset or 0}
+
+        result = await self.session.execute(
+            text(query_text), params if params else None
+        )
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
+    async def get_by_id(self, entity_id: int) -> Speaker | None:
+        """Get speaker by ID."""
+        query = text("SELECT * FROM speakers WHERE id = :id")
+        result = await self.session.execute(query, {"id": entity_id})
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        return None
+
+    async def create(self, entity: Speaker) -> Speaker:
+        """Create a new speaker."""
+        query = text("""
+            INSERT INTO speakers (
+                name, type, political_party_name, position, is_politician
+            )
+            VALUES (
+                :name, :type, :political_party_name, :position, :is_politician
+            )
+            RETURNING *
+        """)
+
+        params = {
+            "name": entity.name,
+            "type": entity.type,
+            "political_party_name": entity.political_party_name,
+            "position": entity.position,
+            "is_politician": entity.is_politician,
+        }
+
+        result = await self.session.execute(query, params)
+        await self.session.commit()
+
+        row = result.first()
+        if row:
+            return self._row_to_entity(row)
+        raise RuntimeError("Failed to create speaker")
+
+    def _row_to_entity(self, row: Any) -> Speaker:
+        """Convert database row to domain entity."""
+        return Speaker(
+            id=row.id,
+            name=row.name,
+            type=getattr(row, "type", None),
+            political_party_name=getattr(row, "political_party_name", None),
+            position=getattr(row, "position", None),
+            is_politician=getattr(row, "is_politician", False),
+        )
 
     async def get_speakers_with_politician_info(self) -> list[dict[str, Any]]:
         """Get speakers with linked politician information."""

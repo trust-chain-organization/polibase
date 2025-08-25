@@ -4,6 +4,7 @@ This module provides the presenter layer for political party management,
 handling UI state and coordinating with use cases.
 """
 
+import builtins
 from typing import Any
 
 import pandas as pd
@@ -59,7 +60,7 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         """Save form state to session."""
         self.session.set("form_state", self.form_state.__dict__)
 
-    async def load_data(self, filter_type: str = "all") -> PoliticalPartyListOutputDto:
+    def load_data(self, filter_type: str = "all") -> PoliticalPartyListOutputDto:
         """Load political parties data.
 
         Args:
@@ -70,27 +71,27 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         """
         try:
             input_dto = PoliticalPartyListInputDto(filter_type=filter_type)
-            return await self.use_case.list_parties(input_dto)
+            return self.use_case.list_parties(input_dto)
         except Exception as e:
             self.logger.error(f"Error loading political parties: {e}", exc_info=True)
             raise
 
-    async def create(self, **kwargs: Any) -> Any:
+    def create(self, **kwargs: Any) -> Any:
         """Create is not supported for political parties (master data)."""
         raise NotImplementedError("政党の作成はサポートされていません")
 
-    async def read(self, **kwargs: Any) -> Any:
+    def read(self, **kwargs: Any) -> Any:
         """Read a single political party."""
         party_id = kwargs.get("party_id")
         if not party_id:
             raise ValueError("party_id is required")
 
-        party = await self.repository.get_by_id(party_id)
+        party = self.repository.get_by_id(party_id)  # type: ignore[attr-defined]
         if not party:
             raise ValueError(f"政党ID {party_id} が見つかりません")
         return party
 
-    async def update(self, **kwargs: Any) -> UpdatePoliticalPartyUrlOutputDto:
+    def update(self, **kwargs: Any) -> UpdatePoliticalPartyUrlOutputDto:
         """Update political party URL.
 
         Args:
@@ -108,13 +109,13 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         input_dto = UpdatePoliticalPartyUrlInputDto(
             party_id=party_id, members_list_url=members_list_url
         )
-        return await self.use_case.update_party_url(input_dto)
+        return self.use_case.update_party_url(input_dto)
 
-    async def delete(self, **kwargs: Any) -> Any:
+    def delete(self, **kwargs: Any) -> Any:
         """Delete is not supported for political parties (master data)."""
         raise NotImplementedError("政党の削除はサポートされていません")
 
-    async def list(self, **kwargs: Any) -> list[PoliticalParty]:
+    def list(self, **kwargs: Any) -> list[PoliticalParty]:
         """List all political parties.
 
         Args:
@@ -124,18 +125,18 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
             List of political parties
         """
         filter_type = kwargs.get("filter_type", "all")
-        result = await self.load_data(filter_type)
+        result = self.load_data(filter_type)
         return result.parties
 
-    async def generate_seed_file(self) -> GenerateSeedFileOutputDto:
+    def generate_seed_file(self) -> GenerateSeedFileOutputDto:
         """Generate seed file for political parties.
 
         Returns:
             Seed file generation result
         """
-        return await self.use_case.generate_seed_file()
+        return self.use_case.generate_seed_file()
 
-    def to_dataframe(self, parties: list[PoliticalParty]) -> pd.DataFrame:
+    def to_dataframe(self, parties: builtins.list[PoliticalParty]) -> pd.DataFrame:
         """Convert political parties to DataFrame for display.
 
         Args:

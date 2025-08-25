@@ -66,38 +66,34 @@ class TestSpeakerRepositoryImpl:
     @pytest.fixture
     def repository(self, mock_session):
         """Create speaker repository."""
-        return SpeakerRepositoryImpl(mock_session, MockSpeakerModel)
+        # Create repository and inject MockSpeakerModel as the model class
+        repo = SpeakerRepositoryImpl(mock_session)
+        repo.model_class = MockSpeakerModel
+        return repo
 
     @pytest.mark.asyncio
-    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
-    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
-    async def test_get_by_name_party_position_found(
-        self, mock_and, mock_select, repository, mock_session
-    ):
+    async def test_get_by_name_party_position_found(self, repository, mock_session):
         """Test get_by_name_party_position when speaker is found."""
-        # Setup
-        mock_model = MockSpeakerModel(
-            id=1,
-            name="山田太郎",
-            type="議員",
-            political_party_name="自民党",
-            position="議長",
-            is_politician=True,
-        )
-
-        # Mock the query chain
-        mock_query = MagicMock()
-        mock_where_result = MagicMock()
-        mock_query.where.return_value = mock_where_result
-        mock_select.return_value = mock_query
-        mock_and.return_value = MagicMock()
+        # Setup - Create a mock row that looks like a database result
+        mock_row = MagicMock()
+        mock_row._mapping = {
+            "id": 1,
+            "name": "山田太郎",
+            "type": "議員",
+            "political_party_name": "自民党",
+            "position": "議長",
+            "is_politician": True,
+        }
+        # Set up attribute access
+        for key, value in mock_row._mapping.items():
+            setattr(mock_row, key, value)
 
         # Create a mock result
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=mock_model)
+        mock_result.fetchone.return_value = mock_row
 
         # Create async mock for execute
-        async def async_execute(query):
+        async def async_execute(query, params=None):
             return mock_result
 
         mock_session.execute = async_execute
@@ -117,29 +113,14 @@ class TestSpeakerRepositoryImpl:
         assert result.position == "議長"
         assert result.is_politician is True
 
-        # Verify select was called with the model class
-        mock_select.assert_called_once_with(MockSpeakerModel)
-
     @pytest.mark.asyncio
-    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
-    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
-    async def test_get_by_name_party_position_not_found(
-        self, mock_and, mock_select, repository, mock_session
-    ):
+    async def test_get_by_name_party_position_not_found(self, repository, mock_session):
         """Test get_by_name_party_position when speaker is not found."""
-
-        # Mock the query chain
-        mock_query = MagicMock()
-        mock_where_result = MagicMock()
-        mock_query.where.return_value = mock_where_result
-        mock_select.return_value = mock_query
-        mock_and.return_value = MagicMock()
-
-        # Setup
+        # Create a mock result with no data
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=None)
+        mock_result.fetchone.return_value = None
 
-        async def async_execute(query):
+        async def async_execute(query, params=None):
             return mock_result
 
         mock_session.execute = async_execute
@@ -151,31 +132,27 @@ class TestSpeakerRepositoryImpl:
         assert result is None
 
     @pytest.mark.asyncio
-    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
-    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
     async def test_get_by_name_party_position_partial_match(
-        self, mock_and, mock_select, repository, mock_session
+        self, repository, mock_session
     ):
         """Test get_by_name_party_position with only name."""
         # Setup
-        mock_model = MockSpeakerModel(
-            id=1,
-            name="山田太郎",
-            type="議員",
-            is_politician=True,
-        )
-
-        # Mock the query chain
-        mock_query = MagicMock()
-        mock_where_result = MagicMock()
-        mock_query.where.return_value = mock_where_result
-        mock_select.return_value = mock_query
-        mock_and.return_value = MagicMock()
+        mock_row = MagicMock()
+        mock_row._mapping = {
+            "id": 1,
+            "name": "山田太郎",
+            "type": "議員",
+            "political_party_name": None,
+            "position": None,
+            "is_politician": True,
+        }
+        for key, value in mock_row._mapping.items():
+            setattr(mock_row, key, value)
 
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=mock_model)
+        mock_result.fetchone.return_value = mock_row
 
-        async def async_execute(query):
+        async def async_execute(query, params=None):
             return mock_result
 
         mock_session.execute = async_execute
@@ -190,38 +167,40 @@ class TestSpeakerRepositoryImpl:
         assert result.position is None
 
     @pytest.mark.asyncio
-    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
-    async def test_get_politicians(self, mock_select, repository, mock_session):
+    async def test_get_politicians(self, repository, mock_session):
         """Test get_politicians method."""
         # Setup
-        mock_models = [
-            MockSpeakerModel(
-                id=1,
-                name="山田太郎",
-                type="議員",
-                is_politician=True,
-            ),
-            MockSpeakerModel(
-                id=2,
-                name="鈴木花子",
-                type="議員",
-                is_politician=True,
-            ),
+        mock_rows = [
+            MagicMock(),
+            MagicMock(),
         ]
 
-        # Mock the query chain
-        mock_query = MagicMock()
-        mock_where_result = MagicMock()
-        mock_query.where.return_value = mock_where_result
-        mock_select.return_value = mock_query
+        mock_rows[0]._mapping = {
+            "id": 1,
+            "name": "山田太郎",
+            "type": "議員",
+            "political_party_name": "自民党",
+            "position": None,
+            "is_politician": True,
+        }
+        for key, value in mock_rows[0]._mapping.items():
+            setattr(mock_rows[0], key, value)
 
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = mock_models
+        mock_rows[1]._mapping = {
+            "id": 2,
+            "name": "鈴木花子",
+            "type": "議員",
+            "political_party_name": "民主党",
+            "position": None,
+            "is_politician": True,
+        }
+        for key, value in mock_rows[1]._mapping.items():
+            setattr(mock_rows[1], key, value)
 
         mock_result = MagicMock()
-        mock_result.scalars.return_value = mock_scalars
+        mock_result.fetchall.return_value = mock_rows
 
-        async def async_execute(query):
+        async def async_execute(query, params=None):
             return mock_result
 
         mock_session.execute = async_execute
@@ -236,36 +215,40 @@ class TestSpeakerRepositoryImpl:
         assert result[1].name == "鈴木花子"
 
     @pytest.mark.asyncio
-    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
-    async def test_search_by_name(self, mock_select, repository, mock_session):
+    async def test_search_by_name(self, repository, mock_session):
         """Test search_by_name method."""
         # Setup
-        mock_models = [
-            MockSpeakerModel(
-                id=1,
-                name="山田太郎",
-                type="議員",
-            ),
-            MockSpeakerModel(
-                id=2,
-                name="山田花子",
-                type="議員",
-            ),
+        mock_rows = [
+            MagicMock(),
+            MagicMock(),
         ]
 
-        # Mock the query chain
-        mock_query = MagicMock()
-        mock_where_result = MagicMock()
-        mock_query.where.return_value = mock_where_result
-        mock_select.return_value = mock_query
+        mock_rows[0]._mapping = {
+            "id": 1,
+            "name": "山田太郎",
+            "type": "議員",
+            "political_party_name": None,
+            "position": None,
+            "is_politician": False,
+        }
+        for key, value in mock_rows[0]._mapping.items():
+            setattr(mock_rows[0], key, value)
 
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = mock_models
+        mock_rows[1]._mapping = {
+            "id": 2,
+            "name": "山田花子",
+            "type": "議員",
+            "political_party_name": None,
+            "position": None,
+            "is_politician": False,
+        }
+        for key, value in mock_rows[1]._mapping.items():
+            setattr(mock_rows[1], key, value)
 
         mock_result = MagicMock()
-        mock_result.scalars.return_value = mock_scalars
+        mock_result.fetchall.return_value = mock_rows
 
-        async def async_execute(query):
+        async def async_execute(query, params=None):
             return mock_result
 
         mock_session.execute = async_execute
@@ -278,11 +261,7 @@ class TestSpeakerRepositoryImpl:
         assert all("山田" in speaker.name for speaker in result)
 
     @pytest.mark.asyncio
-    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
-    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
-    async def test_upsert_create_new(
-        self, mock_and, mock_select, repository, mock_session
-    ):
+    async def test_upsert_create_new(self, repository, mock_session):
         """Test upsert when creating new speaker."""
         # Setup
         new_speaker = Speaker(
@@ -292,48 +271,27 @@ class TestSpeakerRepositoryImpl:
             is_politician=True,
         )
 
-        # Mock the query chain for get_by_name_party_position
-        mock_query = MagicMock()
-        mock_where_result = MagicMock()
-        mock_query.where.return_value = mock_where_result
-        mock_select.return_value = mock_query
-        mock_and.return_value = MagicMock()
+        # Mock get_by_name_party_position to return None
+        with patch.object(repository, "get_by_name_party_position", return_value=None):
+            # Mock create to return the new speaker with ID
+            created_speaker = Speaker(
+                id=10,
+                name="新規議員",
+                type="議員",
+                political_party_name="新党",
+                is_politician=True,
+            )
+            with patch.object(repository, "create", return_value=created_speaker):
+                # Execute
+                result = await repository.upsert(new_speaker)
 
-        # Mock get_by_name_party_position to return None (not found)
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=None)
-
-        async def async_execute(query):
-            return mock_result
-
-        mock_session.execute = async_execute
-
-        # Mock async methods
-        async def async_commit():
-            pass
-
-        async def async_refresh(model):
-            model.id = 10
-
-        mock_session.commit = async_commit
-        mock_session.refresh = async_refresh
-        mock_session.add = MagicMock()
-
-        # Execute
-        result = await repository.upsert(new_speaker)
-
-        # Verify
-        assert result.id == 10
-        assert result.name == "新規議員"
-        assert result.political_party_name == "新党"
-        mock_session.add.assert_called_once()
+                # Verify
+                assert result.id == 10
+                assert result.name == "新規議員"
+                assert result.political_party_name == "新党"
 
     @pytest.mark.asyncio
-    @patch("src.infrastructure.persistence.speaker_repository_impl.select")
-    @patch("src.infrastructure.persistence.speaker_repository_impl.and_")
-    async def test_upsert_update_existing(
-        self, mock_and, mock_select, repository, mock_session
-    ):
+    async def test_upsert_update_existing(self, repository, mock_session):
         """Test upsert when updating existing speaker."""
         # Setup
         speaker = Speaker(
@@ -344,15 +302,8 @@ class TestSpeakerRepositoryImpl:
             is_politician=True,
         )
 
-        # Mock the query chain for get_by_name_party_position
-        mock_query = MagicMock()
-        mock_where_result = MagicMock()
-        mock_query.where.return_value = mock_where_result
-        mock_select.return_value = mock_query
-        mock_and.return_value = MagicMock()
-
         # Mock get_by_name_party_position to return existing speaker
-        existing_model = MockSpeakerModel(
+        existing_speaker = Speaker(
             id=1,
             name="山田太郎",
             type="議員",
@@ -361,37 +312,26 @@ class TestSpeakerRepositoryImpl:
             is_politician=True,
         )
 
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none = MagicMock(return_value=existing_model)
+        with patch.object(
+            repository, "get_by_name_party_position", return_value=existing_speaker
+        ):
+            # Mock update to return updated speaker
+            updated_speaker = Speaker(
+                id=1,
+                name="山田太郎",
+                type="議員",
+                political_party_name="自民党",
+                position="新役職",
+                is_politician=True,
+            )
+            with patch.object(repository, "update", return_value=updated_speaker):
+                # Execute
+                result = await repository.upsert(speaker)
 
-        async def async_execute(query):
-            return mock_result
-
-        mock_session.execute = async_execute
-
-        # Mock async methods
-        async def async_get(model_class, id):
-            return existing_model
-
-        async def async_commit():
-            pass
-
-        async def async_refresh(model):
-            pass
-
-        mock_session.get = async_get
-        mock_session.commit = async_commit
-        mock_session.refresh = async_refresh
-
-        # Execute
-        result = await repository.upsert(speaker)
-
-        # Verify
-        assert result.id == 1
-        assert result.name == "山田太郎"
-        assert result.position == "新役職"
-        # Model should be updated
-        assert existing_model.position == "新役職"
+                # Verify
+                assert result.id == 1
+                assert result.name == "山田太郎"
+                assert result.position == "新役職"
 
     @pytest.mark.asyncio
     async def test_to_entity_conversion(self, repository):

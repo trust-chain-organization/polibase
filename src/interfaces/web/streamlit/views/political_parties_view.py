@@ -4,8 +4,6 @@ This module provides the UI layer for political party management,
 using the presenter pattern for business logic.
 """
 
-import asyncio
-
 import streamlit as st
 from src.interfaces.web.streamlit.presenters.political_party_presenter import (
     PoliticalPartyPresenter,
@@ -54,7 +52,7 @@ def render_parties_list_tab(presenter: PoliticalPartyPresenter):
     # Load data
     try:
         # Run async function
-        result = asyncio.run(presenter.load_data(filter_type))
+        result = presenter.load_data(filter_type)
 
         # Display statistics
         with col2:
@@ -143,7 +141,7 @@ def save_party_url(presenter: PoliticalPartyPresenter, party_id: int, url: str):
         url = url.strip() if url else None
 
         # Update the URL
-        result = asyncio.run(presenter.update(party_id=party_id, members_list_url=url))
+        result = presenter.update(party_id=party_id, members_list_url=url)
 
         if result.success:
             st.success(result.message)
@@ -171,7 +169,7 @@ def render_seed_generation_tab(presenter: PoliticalPartyPresenter):
     if st.button("SEEDファイルを生成", type="primary"):
         with st.spinner("生成中..."):
             try:
-                result = asyncio.run(presenter.generate_seed_file())
+                result = presenter.generate_seed_file()
 
                 if result.success:
                     st.success(result.message)

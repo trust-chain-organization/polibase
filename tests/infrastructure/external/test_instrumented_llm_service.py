@@ -1,6 +1,6 @@
 """Tests for InstrumentedLLMService."""
 
-from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -28,17 +28,17 @@ class MockLLMService:
         self.temperature = 0.1
         self.model_name = "test-model"
 
-    async def set_history_repository(
+    def set_history_repository(
         self, repository: LLMProcessingHistoryRepository | None
     ) -> None:
         pass
 
-    async def get_processing_history(
+    def get_processing_history(
         self, reference_type: str | None = None, reference_id: int | None = None
     ) -> list[LLMProcessingHistory]:
         return []
 
-    async def match_speaker_to_politician(
+    def match_speaker_to_politician(
         self, context: LLMSpeakerMatchContext
     ) -> LLMMatchResult | None:
         return LLMMatchResult(
@@ -49,10 +49,10 @@ class MockLLMService:
             metadata={"test": "data"},
         )
 
-    async def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
+    def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
         return [{"speaker": "Test Speaker", "content": "Test content"}]
 
-    async def extract_party_members(
+    def extract_party_members(
         self, html_content: str, party_id: int
     ) -> LLMExtractResult:
         return LLMExtractResult(
@@ -62,7 +62,7 @@ class MockLLMService:
             metadata={"test": "data"},
         )
 
-    async def match_conference_member(
+    def match_conference_member(
         self, member_name: str, party_name: str | None, candidates: list[PoliticianDTO]
     ) -> LLMMatchResult | None:
         return LLMMatchResult(
@@ -83,10 +83,10 @@ def mock_llm_service():
 @pytest.fixture
 def mock_history_repository():
     """Create mock history repository."""
-    repo = AsyncMock(spec=LLMProcessingHistoryRepository)
-    repo.create = AsyncMock(side_effect=lambda x: x)  # Return the same object
-    repo.update = AsyncMock(return_value=None)
-    repo.get_by_input_reference = AsyncMock(return_value=[])
+    repo = MagicMock(spec=LLMProcessingHistoryRepository)
+    repo.create = MagicMock(side_effect=lambda x: x)  # Return the same object
+    repo.update = MagicMock(return_value=None)
+    repo.get_by_input_reference = MagicMock(return_value=[])
     return repo
 
 
@@ -104,8 +104,7 @@ def instrumented_service(mock_llm_service, mock_history_repository):
 class TestInstrumentedLLMService:
     """Test InstrumentedLLMService functionality."""
 
-    @pytest.mark.asyncio
-    async def test_match_speaker_to_politician_with_history(
+    def test_match_speaker_to_politician_with_history(
         self, instrumented_service, mock_history_repository
     ):
         """Test speaker matching records history."""
@@ -118,7 +117,7 @@ class TestInstrumentedLLMService:
             candidates=[],
         )
 
-        result = await instrumented_service.match_speaker_to_politician(context)
+        result = instrumented_service.match_speaker_to_politician(context)
 
         # Verify result
         assert result is not None
@@ -140,14 +139,13 @@ class TestInstrumentedLLMService:
             history_call.input_reference_id > 0
         )  # Generated from hash of speaker name
 
-    @pytest.mark.asyncio
-    async def test_extract_speeches_with_history(
+    def test_extract_speeches_with_history(
         self, instrumented_service, mock_history_repository
     ):
         """Test speech extraction records history."""
         text = "Test meeting minutes text"
 
-        result = await instrumented_service.extract_speeches_from_text(text)
+        result = instrumented_service.extract_speeches_from_text(text)
 
         # Verify result
         assert len(result) == 1
@@ -162,17 +160,14 @@ class TestInstrumentedLLMService:
         assert history_call.processing_type == ProcessingType.SPEECH_EXTRACTION
         assert history_call.prompt_variables["text_length"] == len(text)
 
-    @pytest.mark.asyncio
-    async def test_extract_party_members_with_history(
+    def test_extract_party_members_with_history(
         self, instrumented_service, mock_history_repository
     ):
         """Test party member extraction records history."""
         html_content = "<html>Test content</html>"
         party_id = 5
 
-        result = await instrumented_service.extract_party_members(
-            html_content, party_id
-        )
+        result = instrumented_service.extract_party_members(html_content, party_id)
 
         # Verify result
         assert result["success"] is True
@@ -188,8 +183,7 @@ class TestInstrumentedLLMService:
         assert history_call.input_reference_type == "party"
         assert history_call.input_reference_id == party_id
 
-    @pytest.mark.asyncio
-    async def test_match_conference_member_with_history(
+    def test_match_conference_member_with_history(
         self, instrumented_service, mock_history_repository
     ):
         """Test conference member matching records history."""
@@ -200,7 +194,7 @@ class TestInstrumentedLLMService:
             PoliticianDTO(id=2, name="Politician 2", party_name="Party B"),
         ]
 
-        result = await instrumented_service.match_conference_member(
+        result = instrumented_service.match_conference_member(
             member_name, party_name, candidates
         )
 
@@ -220,13 +214,10 @@ class TestInstrumentedLLMService:
         assert history_call.prompt_variables["party_name"] == party_name
         assert history_call.prompt_variables["candidates_count"] == 2
 
-    @pytest.mark.asyncio
-    async def test_processing_with_error(
-        self, mock_llm_service, mock_history_repository
-    ):
+    def test_processing_with_error(self, mock_llm_service, mock_history_repository):
         """Test history recording when processing fails."""
         # Make the LLM service raise an error
-        mock_llm_service.match_speaker_to_politician = AsyncMock(
+        mock_llm_service.match_speaker_to_politician = MagicMock(
             side_effect=Exception("Test error")
         )
 
@@ -248,7 +239,7 @@ class TestInstrumentedLLMService:
 
         # Should raise the exception
         with pytest.raises(Exception, match="Test error"):
-            await instrumented_service.match_speaker_to_politician(context)
+            instrumented_service.match_speaker_to_politician(context)
 
         # Verify history was still recorded with failure
         assert mock_history_repository.create.called
@@ -259,8 +250,7 @@ class TestInstrumentedLLMService:
         assert update_call.status == ProcessingStatus.FAILED
         assert update_call.error_message == "Test error"
 
-    @pytest.mark.asyncio
-    async def test_no_history_repository(self, mock_llm_service):
+    def test_no_history_repository(self, mock_llm_service):
         """Test service works without history repository."""
         instrumented_service = InstrumentedLLMService(
             llm_service=mock_llm_service,
@@ -279,12 +269,11 @@ class TestInstrumentedLLMService:
         )
 
         # Should work normally without recording history
-        result = await instrumented_service.match_speaker_to_politician(context)
+        result = instrumented_service.match_speaker_to_politician(context)
         assert result is not None
         assert result["matched"] is True
 
-    @pytest.mark.asyncio
-    async def test_get_processing_history(
+    def test_get_processing_history(
         self, instrumented_service, mock_history_repository
     ):
         """Test retrieving processing history."""
@@ -303,15 +292,14 @@ class TestInstrumentedLLMService:
         mock_history_repository.get_by_input_reference.return_value = expected_history
 
         # Get history
-        history = await instrumented_service.get_processing_history("speaker", 1)
+        history = instrumented_service.get_processing_history("speaker", 1)
 
         # Verify
         assert len(history) == 1
         assert history[0].processing_type == ProcessingType.SPEAKER_MATCHING
         mock_history_repository.get_by_input_reference.assert_called_with("speaker", 1)
 
-    @pytest.mark.asyncio
-    async def test_set_history_repository(self, mock_llm_service):
+    def test_set_history_repository(self, mock_llm_service):
         """Test setting history repository."""
         service = InstrumentedLLMService(
             llm_service=mock_llm_service,
@@ -324,8 +312,8 @@ class TestInstrumentedLLMService:
         assert service._history_repository is None
 
         # Set repository
-        new_repo = AsyncMock(spec=LLMProcessingHistoryRepository)
-        await service.set_history_repository(new_repo)
+        new_repo = MagicMock(spec=LLMProcessingHistoryRepository)
+        service.set_history_repository(new_repo)
 
         # Verify it was set
         assert service._history_repository == new_repo

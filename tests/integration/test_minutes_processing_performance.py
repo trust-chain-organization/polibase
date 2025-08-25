@@ -47,10 +47,10 @@ class TestMinutesProcessingPerformance:
         mock.get_prompt = Mock(side_effect=mock_get_prompt)
         mock.invoke_with_retry = Mock(side_effect=mock_invoke_with_retry)
 
-        # Mock async methods
+        # Mock async methods for repository, but sync for extract_speeches
         mock.set_history_repository = AsyncMock()
         mock.get_processing_history = AsyncMock(return_value=[])
-        mock.extract_speeches_from_text = AsyncMock(return_value=[])
+        mock.extract_speeches_from_text = Mock(return_value=[])
 
         return mock
 
@@ -104,18 +104,17 @@ class TestMinutesProcessingPerformance:
         result = divider.section_divide_run("テスト議事録")
         assert result is not None
 
-    @pytest.mark.asyncio
-    async def test_async_history_recording_performance(
+    def test_sync_history_recording_performance(
         self, mock_llm_service, mock_history_repository
     ):
-        """Test async history recording performance."""
+        """Test sync history recording performance."""
 
-        # Configure LLM service with realistic async delay
-        async def mock_extract_speeches(text):
-            await AsyncMock(side_effect=lambda: time.sleep(0.1))()  # 100ms delay
+        # Configure LLM service with realistic delay
+        def mock_extract_speeches(text):
+            time.sleep(0.1)  # 100ms delay
             return [{"speaker": "テスト", "content": "内容"}]
 
-        mock_llm_service.extract_speeches_from_text = AsyncMock(
+        mock_llm_service.extract_speeches_from_text = Mock(
             side_effect=mock_extract_speeches
         )
 
@@ -127,14 +126,14 @@ class TestMinutesProcessingPerformance:
             model_version="1.0",
         )
 
-        # Measure time for async operation
+        # Measure time for sync operation
         start_time = time.time()
-        result = await instrumented_service.extract_speeches_from_text("テストテキスト")
+        result = instrumented_service.extract_speeches_from_text("テストテキスト")
         end_time = time.time()
 
         # Total time should be close to LLM delay (100ms) plus small overhead
         total_time = end_time - start_time
-        # Allow up to 60ms overhead for history recording (async operations)
+        # Allow up to 60ms overhead for history recording
         assert total_time < 0.16  # 100ms + 60ms overhead tolerance
         assert len(result) == 1
         # Ensure it's not too slow

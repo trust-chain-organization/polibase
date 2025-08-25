@@ -40,6 +40,7 @@ from src.infrastructure.persistence.governing_body_repository_impl import (
 from src.infrastructure.persistence.llm_processing_history_repository_impl import (
     LLMProcessingHistoryRepositoryImpl,
 )
+from src.infrastructure.persistence.llm_service_adapter import LLMServiceAdapter
 from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
 from src.infrastructure.persistence.monitoring_repository_impl import (
     MonitoringRepositoryImpl,
@@ -176,31 +177,26 @@ class RepositoryContainer(containers.DeclarativeContainer):
     speaker_repository = providers.Factory(
         SpeakerRepositoryImpl,
         session=database.async_session,
-        model_class=MockSpeakerModel,
     )
 
     politician_repository = providers.Factory(
         PoliticianRepositoryImpl,
         session=database.async_session,
-        model_class=MockPoliticianModel,
     )
 
     meeting_repository = providers.Factory(
         MeetingRepositoryImpl,
         session=database.async_session,
-        model_class=MockMeetingModel,
     )
 
     conversation_repository = providers.Factory(
         ConversationRepositoryImpl,
         session=database.async_session,
-        model_class=MockConversationModel,
     )
 
     minutes_repository = providers.Factory(
-        lambda session, model_class: MockRepository("minutes"),
+        lambda session: MockRepository("minutes"),
         session=database.async_session,
-        model_class=MockMinutesModel,
     )
 
     conference_repository = providers.Factory(
@@ -254,11 +250,18 @@ class ServiceContainer(containers.DeclarativeContainer):
 
     config = providers.Configuration()
 
-    llm_service: providers.Provider[ILLMService] = providers.Factory(
+    # Create async LLM service
+    async_llm_service: providers.Provider[ILLMService] = providers.Factory(
         GeminiLLMService,
         api_key=config.google_api_key,
         model_name=config.llm_model,
         temperature=config.llm_temperature,
+    )
+
+    # Wrap with adapter for synchronous use cases
+    llm_service = providers.Factory(
+        LLMServiceAdapter,
+        llm_service=async_llm_service,
     )
 
     storage_service: providers.Provider[IStorageService] = providers.Singleton(
@@ -305,6 +308,7 @@ class UseCaseContainer(containers.DeclarativeContainer):
         speaker_repository=repositories.speaker_repository,
         politician_repository=repositories.politician_repository,
         conversation_repository=repositories.conversation_repository,
+        speaker_domain_service=services.speaker_domain_service,
         llm_service=services.llm_service,
     )
 

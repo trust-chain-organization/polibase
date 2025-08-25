@@ -46,7 +46,7 @@ def render_meetings_list_tab(presenter: MeetingPresenter):
 
     # Load governing bodies for filter
     try:
-        governing_bodies = asyncio.run(presenter.get_governing_bodies())
+        governing_bodies = presenter.get_governing_bodies()
 
         with col1:
             gb_options = ["すべて"] + [gb["display_name"] for gb in governing_bodies]
@@ -165,7 +165,7 @@ def render_edit_form(presenter: MeetingPresenter, meeting_data):
         st.subheader("会議を編集")
 
         # Load governing bodies and conferences for dropdowns
-        governing_bodies = asyncio.run(presenter.get_governing_bodies())
+        governing_bodies = presenter.get_governing_bodies()
 
         # Find current governing body
         current_gb_id = None
@@ -248,7 +248,7 @@ def render_new_meeting_tab(presenter: MeetingPresenter):
 
     with st.form("new_meeting_form"):
         # Load governing bodies
-        governing_bodies = asyncio.run(presenter.get_governing_bodies())
+        governing_bodies = presenter.get_governing_bodies()
 
         if not governing_bodies:
             st.error("開催主体が登録されていません。")
@@ -305,7 +305,7 @@ def render_seed_generation_tab(presenter: MeetingPresenter):
     if st.button("SEEDファイルを生成", type="primary"):
         with st.spinner("生成中..."):
             try:
-                result = asyncio.run(presenter.generate_seed_file())
+                result = presenter.generate_seed_file()
 
                 if result.success:
                     st.success(result.message)
@@ -402,7 +402,7 @@ def delete_meeting(presenter: MeetingPresenter, meeting_id: int):
         meeting_id: Meeting ID
     """
     try:
-        result = asyncio.run(presenter.delete(meeting_id=meeting_id))
+        result = presenter.delete(meeting_id=meeting_id)
 
         if result.success:
             st.success(result.message)

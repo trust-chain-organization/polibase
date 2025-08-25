@@ -1,6 +1,6 @@
 """Tests for MatchSpeakersUseCase with LLM history recording."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -11,49 +11,42 @@ from src.domain.entities.llm_processing_history import (
     ProcessingStatus,
     ProcessingType,
 )
-from src.domain.repositories import (
-    ConversationRepository,
-    PoliticianRepository,
-    SpeakerRepository,
-)
-from src.domain.services import SpeakerDomainService
 from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
-from src.infrastructure.interfaces.llm_service import ILLMService
 
 
 class TestMatchSpeakersUseCaseWithHistory:
     """Test cases for MatchSpeakersUseCase with history recording."""
 
     @pytest.fixture
-    def mock_speaker_repo(self) -> AsyncMock:
+    def mock_speaker_repo(self) -> MagicMock:
         """Create mock speaker repository."""
-        return AsyncMock(spec=SpeakerRepository)
+        return MagicMock()
 
     @pytest.fixture
-    def mock_politician_repo(self) -> AsyncMock:
+    def mock_politician_repo(self) -> MagicMock:
         """Create mock politician repository."""
-        return AsyncMock(spec=PoliticianRepository)
+        return MagicMock()
 
     @pytest.fixture
-    def mock_conversation_repo(self) -> AsyncMock:
+    def mock_conversation_repo(self) -> MagicMock:
         """Create mock conversation repository."""
-        return AsyncMock(spec=ConversationRepository)
+        return MagicMock()
 
     @pytest.fixture
     def mock_speaker_service(self) -> MagicMock:
         """Create mock speaker domain service."""
-        service = MagicMock(spec=SpeakerDomainService)
+        service = MagicMock()
         service.normalize_speaker_name.return_value = "normalized_name"
         service.calculate_name_similarity.return_value = 0.9
         return service
 
     @pytest.fixture
-    def mock_base_llm_service(self) -> AsyncMock:
+    def mock_base_llm_service(self) -> MagicMock:
         """Create mock base LLM service."""
-        service = AsyncMock(spec=ILLMService)
+        service = MagicMock()
         service.temperature = 0.1
         service.model_name = "gemini-2.0-flash"
-        service.match_speaker_to_politician = AsyncMock(
+        service.match_speaker_to_politician = MagicMock(
             return_value={
                 "matched_id": 1,
                 "confidence": 0.95,
@@ -63,9 +56,9 @@ class TestMatchSpeakersUseCaseWithHistory:
         return service
 
     @pytest.fixture
-    def mock_history_repo(self) -> AsyncMock:
+    def mock_history_repo(self) -> MagicMock:
         """Create mock history repository."""
-        repo = AsyncMock()
+        repo = MagicMock()
 
         # Create a proper history entry that starts in IN_PROGRESS and gets updated
         history_entry = LLMProcessingHistory(
@@ -81,7 +74,7 @@ class TestMatchSpeakersUseCaseWithHistory:
         )
 
         # Mock create to return the entry and update to modify it
-        async def mock_create(entry: LLMProcessingHistory) -> LLMProcessingHistory:
+        def mock_create(entry: LLMProcessingHistory) -> LLMProcessingHistory:
             # Copy the entry's properties to our fixture
             history_entry.status = entry.status
             history_entry.processing_type = entry.processing_type
@@ -89,20 +82,20 @@ class TestMatchSpeakersUseCaseWithHistory:
             history_entry.model_version = entry.model_version
             return history_entry
 
-        async def mock_update(entry: LLMProcessingHistory) -> LLMProcessingHistory:
+        def mock_update(entry: LLMProcessingHistory) -> LLMProcessingHistory:
             # Update status when update is called
             history_entry.status = entry.status
             history_entry.result = entry.result
             return history_entry
 
-        repo.create = AsyncMock(side_effect=mock_create)
-        repo.update = AsyncMock(side_effect=mock_update)
+        repo.create = MagicMock(side_effect=mock_create)
+        repo.update = MagicMock(side_effect=mock_update)
 
         return repo
 
     @pytest.fixture
     def instrumented_llm_service(
-        self, mock_base_llm_service: AsyncMock, mock_history_repo: AsyncMock
+        self, mock_base_llm_service: MagicMock, mock_history_repo: MagicMock
     ) -> InstrumentedLLMService:
         """Create instrumented LLM service with history recording."""
         return InstrumentedLLMService(
@@ -115,9 +108,9 @@ class TestMatchSpeakersUseCaseWithHistory:
     @pytest.fixture
     def use_case(
         self,
-        mock_speaker_repo: AsyncMock,
-        mock_politician_repo: AsyncMock,
-        mock_conversation_repo: AsyncMock,
+        mock_speaker_repo: MagicMock,
+        mock_politician_repo: MagicMock,
+        mock_conversation_repo: MagicMock,
         mock_speaker_service: MagicMock,
         instrumented_llm_service: InstrumentedLLMService,
     ) -> MatchSpeakersUseCase:
@@ -130,13 +123,12 @@ class TestMatchSpeakersUseCaseWithHistory:
             llm_service=instrumented_llm_service,
         )
 
-    @pytest.mark.asyncio
-    async def test_llm_matching_records_history(
+    def test_llm_matching_records_history(
         self,
         use_case: MatchSpeakersUseCase,
-        mock_speaker_repo: AsyncMock,
-        mock_politician_repo: AsyncMock,
-        mock_history_repo: AsyncMock,
+        mock_speaker_repo: MagicMock,
+        mock_politician_repo: MagicMock,
+        mock_history_repo: MagicMock,
     ):
         """Test that LLM-based matching records history."""
         # Arrange
@@ -161,7 +153,7 @@ class TestMatchSpeakersUseCaseWithHistory:
         mock_politician_repo.get_by_id.return_value = politician
 
         # Act
-        results = await use_case.execute(use_llm=True)
+        results = use_case.execute(use_llm=True)
 
         # Assert
         assert len(results) == 1
@@ -187,13 +179,12 @@ class TestMatchSpeakersUseCaseWithHistory:
         updated_history = mock_history_repo.update.call_args[0][0]
         assert updated_history.status == ProcessingStatus.COMPLETED
 
-    @pytest.mark.asyncio
-    async def test_rule_based_matching_no_history(
+    def test_rule_based_matching_no_history(
         self,
         use_case: MatchSpeakersUseCase,
-        mock_speaker_repo: AsyncMock,
-        mock_politician_repo: AsyncMock,
-        mock_history_repo: AsyncMock,
+        mock_speaker_repo: MagicMock,
+        mock_politician_repo: MagicMock,
+        mock_history_repo: MagicMock,
     ):
         """Test that rule-based matching doesn't record LLM history."""
         # Arrange
@@ -217,7 +208,7 @@ class TestMatchSpeakersUseCaseWithHistory:
         ]  # Rule-based match found
 
         # Act
-        results = await use_case.execute(use_llm=False)
+        results = use_case.execute(use_llm=False)
 
         # Assert
         assert len(results) == 1
@@ -229,12 +220,11 @@ class TestMatchSpeakersUseCaseWithHistory:
         # Verify history was NOT recorded (rule-based doesn't use LLM)
         mock_history_repo.create.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_set_input_reference_called(
+    def test_set_input_reference_called(
         self,
         use_case: MatchSpeakersUseCase,
-        mock_speaker_repo: AsyncMock,
-        mock_politician_repo: AsyncMock,
+        mock_speaker_repo: MagicMock,
+        mock_politician_repo: MagicMock,
         instrumented_llm_service: InstrumentedLLMService,
     ):
         """Test that set_input_reference is called when LLM matching is used."""
@@ -263,7 +253,7 @@ class TestMatchSpeakersUseCaseWithHistory:
             instrumented_llm_service, "set_input_reference"
         ) as mock_set_ref:
             # Act
-            await use_case.execute(use_llm=True)
+            use_case.execute(use_llm=True)
 
             # Assert
             mock_set_ref.assert_called_once_with(
@@ -271,13 +261,12 @@ class TestMatchSpeakersUseCaseWithHistory:
                 reference_id=123,
             )
 
-    @pytest.mark.asyncio
-    async def test_matching_with_no_candidates(
+    def test_matching_with_no_candidates(
         self,
         use_case: MatchSpeakersUseCase,
-        mock_speaker_repo: AsyncMock,
-        mock_politician_repo: AsyncMock,
-        mock_history_repo: AsyncMock,
+        mock_speaker_repo: MagicMock,
+        mock_politician_repo: MagicMock,
+        mock_history_repo: MagicMock,
     ):
         """Test matching when no politician candidates are available."""
         # Arrange
@@ -290,9 +279,12 @@ class TestMatchSpeakersUseCaseWithHistory:
         mock_politician_repo.get_by_speaker_id.return_value = None
         mock_politician_repo.search_by_name.return_value = []
         mock_politician_repo.get_all.return_value = []  # No candidates
+        # Ensure get_all_cached doesn't exist so it uses get_all
+        if hasattr(mock_politician_repo, "get_all_cached"):
+            del mock_politician_repo.get_all_cached
 
         # Act
-        results = await use_case.execute(use_llm=True)
+        results = use_case.execute(use_llm=True)
 
         # Assert
         assert len(results) == 1
@@ -306,13 +298,12 @@ class TestMatchSpeakersUseCaseWithHistory:
         # Verify history was NOT recorded (no LLM call made)
         mock_history_repo.create.assert_not_called()
 
-    @pytest.mark.asyncio
-    async def test_history_recording_failure_doesnt_break_matching(
+    def test_history_recording_failure_doesnt_break_matching(
         self,
         use_case: MatchSpeakersUseCase,
-        mock_speaker_repo: AsyncMock,
-        mock_politician_repo: AsyncMock,
-        mock_history_repo: AsyncMock,
+        mock_speaker_repo: MagicMock,
+        mock_politician_repo: MagicMock,
+        mock_history_repo: MagicMock,
     ):
         """Test that history recording failure doesn't break the matching process."""
         # Arrange
@@ -337,7 +328,7 @@ class TestMatchSpeakersUseCaseWithHistory:
         mock_history_repo.create.side_effect = Exception("Database error")
 
         # Act
-        results = await use_case.execute(use_llm=True)
+        results = use_case.execute(use_llm=True)
 
         # Assert - matching should still succeed
         assert len(results) == 1

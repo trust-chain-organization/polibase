@@ -7,6 +7,12 @@ import pandas as pd
 
 import streamlit as st
 from src.exceptions import DatabaseError, RecordNotFoundError, SaveError, UpdateError
+from src.infrastructure.persistence.conference_repository_impl import (
+    ConferenceRepositoryImpl,
+)
+from src.infrastructure.persistence.governing_body_repository_impl import (
+    GoverningBodyRepositoryImpl,
+)
 from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.seed_generator import SeedGenerator
@@ -36,13 +42,19 @@ def show_meetings_list():
     """会議一覧を表示"""
     st.subheader("会議一覧")
 
-    repo = RepositoryAdapter(MeetingRepositoryImpl)
+    meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
+    gb_repo = RepositoryAdapter(GoverningBodyRepositoryImpl)
+    conf_repo = RepositoryAdapter(ConferenceRepositoryImpl)
 
     # フィルター
     col1, col2 = st.columns(2)
 
     with col1:
-        governing_bodies = repo.get_governing_bodies()
+        governing_bodies_entities = gb_repo.get_all()
+        governing_bodies = [
+            {"id": gb.id, "name": gb.name, "type": gb.type}
+            for gb in governing_bodies_entities
+        ]
         gb_options = ["すべて"] + [
             f"{gb['name']} ({gb['type']})" for gb in governing_bodies
         ]
@@ -55,9 +67,13 @@ def show_meetings_list():
                 if f"{gb['name']} ({gb['type']})" == gb_selected:
                     selected_gb = gb
                     break
-            conferences = repo.get_conferences_by_governing_body(
-                selected_gb["id"] if selected_gb else 0
-            )
+            # Get all conferences and filter by governing body
+            all_conferences = conf_repo.get_all()
+            conferences = [
+                {"id": c.id, "name": c.name, "governing_body_id": c.governing_body_id}
+                for c in all_conferences
+                if c.governing_body_id == (selected_gb["id"] if selected_gb else 0)
+            ]
         else:
             conferences = []
 
@@ -81,7 +97,31 @@ def show_meetings_list():
                 st.info("会議体を選択してください")
 
     # 会議一覧取得
-    meetings: list[dict[str, Any]] = repo.get_meetings(conference_id=selected_conf_id)
+    all_meetings = meeting_repo.get_all()
+    all_conferences = conf_repo.get_all()
+    all_governing_bodies = gb_repo.get_all()
+
+    # Create lookups for conference and governing body names
+    conf_lookup = {c.id: c for c in all_conferences}
+    gb_lookup = {gb.id: gb for gb in all_governing_bodies}
+
+    meetings: list[dict[str, Any]] = []
+    for m in all_meetings:
+        if selected_conf_id is None or m.conference_id == selected_conf_id:
+            conf = conf_lookup.get(m.conference_id)
+            gb = gb_lookup.get(conf.governing_body_id) if conf else None
+            meetings.append(
+                {
+                    "id": m.id,
+                    "conference_id": m.conference_id,
+                    "date": m.date,
+                    "url": m.url,
+                    "gcs_pdf_uri": m.gcs_pdf_uri,
+                    "gcs_text_uri": m.gcs_text_uri,
+                    "conference_name": conf.name if conf else "不明",
+                    "governing_body_name": gb.name if gb else "不明",
+                }
+            )
 
     if meetings:
         # SEEDファイル生成セクション（一番上に配置）
@@ -182,7 +222,7 @@ def show_meetings_list():
             with col3:
                 if st.button("削除", key=f"delete_{row['id']}"):
                     meeting_id = int(row["id"])  # type: ignore[arg-type,index]
-                    if repo.delete_meeting(meeting_id):
+                    if meeting_repo.delete(meeting_id):
                         st.success("会議を削除しました")
                         st.rerun()
                     else:
@@ -194,20 +234,30 @@ def show_meetings_list():
     else:
         st.info("会議が登録されていません")
 
-    repo.close()
+    meeting_repo.close()
+    gb_repo.close()
+    conf_repo.close()
 
 
 def add_new_meeting():
     """新規会議登録フォーム"""
     st.subheader("新規会議登録")
 
-    repo = RepositoryAdapter(MeetingRepositoryImpl)
+    meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
+    gb_repo = RepositoryAdapter(GoverningBodyRepositoryImpl)
+    conf_repo = RepositoryAdapter(ConferenceRepositoryImpl)
 
     # 開催主体選択（フォームの外）
-    governing_bodies = repo.get_governing_bodies()
+    governing_bodies_entities = gb_repo.get_all()
+    governing_bodies = [
+        {"id": gb.id, "name": gb.name, "type": gb.type}
+        for gb in governing_bodies_entities
+    ]
     if not governing_bodies:
         st.error("開催主体が登録されていません。先にマスターデータを登録してください。")
-        repo.close()
+        meeting_repo.close()
+        gb_repo.close()
+        conf_repo.close()
         return
 
     gb_options = [f"{gb['name']} ({gb['type']})" for gb in governing_bodies]
@@ -223,10 +273,17 @@ def add_new_meeting():
     # 会議体選択（選択された開催主体に紐づくもののみ表示）
     conferences = []
     if selected_gb:
-        conferences = repo.get_conferences_by_governing_body(selected_gb["id"])
+        all_conferences = conf_repo.get_all()
+        conferences = [
+            {"id": c.id, "name": c.name, "governing_body_id": c.governing_body_id}
+            for c in all_conferences
+            if c.governing_body_id == selected_gb["id"]
+        ]
         if not conferences:
             st.error("選択された開催主体に会議体が登録されていません")
-            repo.close()
+            meeting_repo.close()
+            gb_repo.close()
+            conf_repo.close()
             return
 
     conf_options: list[str] = []
@@ -267,11 +324,15 @@ def add_new_meeting():
                 st.error("URLを入力してください")
             else:
                 try:
-                    meeting_id = repo.create_meeting(
+                    from src.domain.entities.meeting import Meeting
+
+                    new_meeting = Meeting(
                         conference_id=selected_conf["id"],
-                        meeting_date=meeting_date,
-                        url=url,
+                        date=meeting_date,
+                        url=url if url else None,
                     )
+                    created_meeting = meeting_repo.create(new_meeting)
+                    meeting_id = created_meeting.id if created_meeting else None
                     st.success(f"会議を登録しました (ID: {meeting_id})")
 
                     # フォームをリセット
@@ -283,7 +344,7 @@ def add_new_meeting():
 
     # 登録済み会議体の確認セクション
     with st.expander("登録済み会議体一覧", expanded=False):
-        all_conferences = repo.get_all_conferences()
+        all_conferences = conf_repo.get_all()
         if all_conferences:
             # 開催主体ごとにグループ化して表示
             conf_df = pd.DataFrame(all_conferences)
@@ -297,7 +358,9 @@ def add_new_meeting():
         else:
             st.info("会議体が登録されていません")
 
-    repo.close()
+    meeting_repo.close()
+    gb_repo.close()
+    conf_repo.close()
 
 
 def edit_meeting():
@@ -310,22 +373,46 @@ def edit_meeting():
         )
         return
 
-    repo = RepositoryAdapter(MeetingRepositoryImpl)
+    meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
+    gb_repo = RepositoryAdapter(GoverningBodyRepositoryImpl)
+    conf_repo = RepositoryAdapter(ConferenceRepositoryImpl)
 
     # 編集対象の会議情報を取得
-    meeting = repo.get_meeting_by_id(st.session_state.edit_meeting_id)
+    meeting_entity = meeting_repo.get_by_id(st.session_state.edit_meeting_id)
+    if not meeting_entity:
+        st.error("会議が見つかりません")
+        st.session_state.edit_mode = False
+        return
+
+    # Convert to dictionary
+    meeting = {
+        "id": meeting_entity.id,
+        "conference_id": meeting_entity.conference_id,
+        "date": meeting_entity.date,
+        "url": meeting_entity.url,
+        "gcs_pdf_uri": meeting_entity.gcs_pdf_uri,
+        "gcs_text_uri": meeting_entity.gcs_text_uri,
+    }
     if not meeting:
         st.error("会議が見つかりません")
         st.session_state.edit_mode = False
         st.session_state.edit_meeting_id = None
         return
 
+    # Get conference info for display
+    conference = conf_repo.get_by_id(meeting["conference_id"])
+    if conference:
+        gb = (
+            gb_repo.get_by_id(conference.governing_body_id)
+            if conference.governing_body_id
+            else None
+        )
+        edit_info = f"編集中: {gb.name if gb else '不明'} - {conference.name}"
+    else:
+        edit_info = "編集中"
+
     # Cast meeting to dict for proper type handling
     meeting_dict = cast(dict[str, Any], meeting)
-    edit_info = (
-        f"編集中: {meeting_dict['governing_body_name']} - "
-        f"{meeting_dict['conference_name']}"
-    )
     st.info(edit_info)
 
     with st.form("edit_meeting_form"):
@@ -354,11 +441,17 @@ def edit_meeting():
                 st.error("URLを入力してください")
             else:
                 try:
-                    if repo.update_meeting(
-                        meeting_id=st.session_state.edit_meeting_id,
-                        meeting_date=meeting_date,
+                    from src.domain.entities.meeting import Meeting
+
+                    updated_meeting = Meeting(
+                        id=st.session_state.edit_meeting_id,
+                        conference_id=meeting["conference_id"],
+                        date=meeting_date,
                         url=url,
-                    ):
+                        gcs_pdf_uri=meeting.get("gcs_pdf_uri"),
+                        gcs_text_uri=meeting.get("gcs_text_uri"),
+                    )
+                    if meeting_repo.update(updated_meeting):
                         st.success("会議を更新しました")
                         st.session_state.edit_mode = False
                         st.session_state.edit_meeting_id = None
@@ -375,4 +468,6 @@ def edit_meeting():
             st.session_state.edit_meeting_id = None
             st.rerun()
 
-    repo.close()
+    meeting_repo.close()
+    gb_repo.close()
+    conf_repo.close()

@@ -24,7 +24,7 @@ class SyncSpeakerRepositoryAdapter(TypedRepository[SpeakerModel]):
 
         # Create async adapter and repository implementation
         self.async_session = AsyncSessionAdapter(self.session)
-        self.async_repo = SpeakerRepositoryImpl(self.async_session, SpeakerModel)
+        self.async_repo = SpeakerRepositoryImpl(self.async_session)
 
         # Create or get event loop
         try:
