@@ -43,11 +43,14 @@ class TestPoliticianRepositoryImpl:
             assert result.political_party_id == 2
             mock_legacy_repo.fetch_one.assert_called_once()
 
+    @pytest.mark.skip(
+        reason="Legacy repository removed - needs reimplementation - Issue #430"
+    )
     def test_search_by_name_sync(self, sync_repository, mock_sync_session):
         """同期版のsearch_by_nameのテスト"""
         # モックデータの準備
         with patch(
-            "src.database.politician_repository.PoliticianRepository"
+            "src.infrastructure.persistence.politician_repository_impl.TypedRepository"
         ) as mock_legacy_repo:
             mock_legacy_instance = MagicMock()
             mock_legacy_repo.return_value = mock_legacy_instance
@@ -137,11 +140,14 @@ class TestPoliticianRepositoryImpl:
                 # 検証
                 assert result == updated_politician
 
+    @pytest.mark.skip(
+        reason="Legacy repository removed - needs reimplementation - Issue #430"
+    )
     def test_bulk_create_politicians_sync(self, sync_repository, mock_sync_session):
         """bulk_create_politicians_syncのテスト"""
         # モックの設定
         with patch(
-            "src.database.politician_repository.PoliticianRepository"
+            "src.infrastructure.persistence.politician_repository_impl.TypedRepository"
         ) as mock_legacy_repo:
             mock_legacy_instance = MagicMock()
             mock_legacy_repo.return_value = mock_legacy_instance

@@ -8,7 +8,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from src.config.database import DATABASE_URL
-from src.database.monitoring_repository import MonitoringRepository
+from src.infrastructure.persistence.monitoring_repository_impl import (
+    MonitoringRepositoryImpl as MonitoringRepository,
+)
 
 # Skip all tests in this module if running in CI environment
 pytestmark = pytest.mark.skipif(

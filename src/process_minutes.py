@@ -265,10 +265,12 @@ def main() -> list[int] | None:
 
         # --process-all-gcsが指定された場合、すべてのGCS URIを持つmeetingを処理
         if args.process_all_gcs:
-            from src.database.meeting_repository import MeetingRepository
+            from src.infrastructure.persistence.meeting_repository_impl import (
+                MeetingRepositoryImpl,
+            )
             from src.utils.gcs_storage import GCSStorage
 
-            repo = MeetingRepository()
+            repo = MeetingRepositoryImpl()
             # GCS text URIを持つすべてのmeetingを取得
             meetings_with_gcs = repo.fetch_as_dict(
                 """
@@ -321,9 +323,11 @@ def main() -> list[int] | None:
                     print(f"   ✅ テキストを取得しました ({len(extracted_text)} 文字)")
 
                     # minutesレコードを作成（既存のものがあるかチェック）
-                    from src.database.base_repository import BaseRepository
+                    from src.infrastructure.persistence.base_repository_impl import (
+                        BaseRepositoryImpl,
+                    )
 
-                    minutes_repo = BaseRepository(use_session=False)
+                    minutes_repo = BaseRepositoryImpl()
 
                     # 既存のminutesレコードを確認
                     existing_minutes = minutes_repo.fetch_one(
@@ -370,10 +374,12 @@ def main() -> list[int] | None:
 
         # meeting_idが指定された場合、GCS URIをチェック
         elif args.meeting_id:
-            from src.database.meeting_repository import MeetingRepository
+            from src.infrastructure.persistence.meeting_repository_impl import (
+                MeetingRepositoryImpl,
+            )
             from src.utils.gcs_storage import GCSStorage
 
-            repo = MeetingRepository()
+            repo = MeetingRepositoryImpl()
             meeting = repo.get_meeting_by_id(args.meeting_id)
             repo.close()
 
@@ -396,9 +402,11 @@ def main() -> list[int] | None:
                         )
 
                         # minutesレコードを作成（既存のものがあるかチェック）
-                        from src.database.base_repository import BaseRepository
+                        from src.infrastructure.persistence.base_repository_impl import (  # noqa: E501
+                            BaseRepositoryImpl,
+                        )
 
-                        minutes_repo = BaseRepository(use_session=False)
+                        minutes_repo = BaseRepositoryImpl()
 
                         # 既存のminutesレコードを確認
                         existing_minutes = minutes_repo.fetch_one(

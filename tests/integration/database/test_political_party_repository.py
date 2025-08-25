@@ -7,7 +7,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from src.config.database import DATABASE_URL
-from src.database.political_party_repository import PoliticalPartyRepository
+from src.infrastructure.persistence.political_party_repository_impl import (
+    PoliticalPartyRepositoryImpl as PoliticalPartyRepository,
+)
 
 # Skip all tests in this module if running in CI environment
 pytestmark = pytest.mark.skipif(

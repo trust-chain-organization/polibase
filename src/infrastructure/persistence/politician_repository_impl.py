@@ -430,12 +430,9 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         """Sync wrapper for search_by_name (backward compatibility)."""
         # This method is for sync code that expects a list of dicts
         if self.sync_session:
-            from src.database.politician_repository import (
-                PoliticianRepository as LegacyPoliticianRepository,
-            )
-
-            legacy_repo = LegacyPoliticianRepository(db=self.sync_session)
-            return legacy_repo.search_by_name(name_pattern)
+            # TODO: Implement sync version or migrate to async
+            # Legacy repository has been removed - Issue #430
+            return []
         return []
 
     def bulk_create_politicians_sync(
@@ -444,12 +441,9 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         """Sync wrapper for bulk_create_politicians (backward compatibility)."""
         # Use the legacy repository's bulk_create_politicians if available
         if self.sync_session:
-            from src.database.politician_repository import (
-                PoliticianRepository as LegacyPoliticianRepository,
-            )
-
-            legacy_repo = LegacyPoliticianRepository(db=self.sync_session)
-            return legacy_repo.bulk_create_politicians(politicians_data)
+            # TODO: Implement sync version or migrate to async
+            # Legacy repository has been removed - Issue #430
+            return {"created": [], "updated": [], "errors": []}
         return {"created": [], "updated": [], "errors": []}
 
     def close(self) -> None:

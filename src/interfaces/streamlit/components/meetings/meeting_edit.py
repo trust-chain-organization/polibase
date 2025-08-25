@@ -3,8 +3,10 @@
 from datetime import date
 
 import streamlit as st
-from src.database.meeting_repository import MeetingRepository
 from src.exceptions import DatabaseError, RecordNotFoundError, UpdateError
+from src.infrastructure.persistence.meeting_repository_impl import (
+    MeetingRepositoryImpl as MeetingRepository,
+)
 
 
 def edit_meeting():
