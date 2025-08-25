@@ -47,7 +47,7 @@ class TestPoliticianRepositoryImpl:
         """同期版のsearch_by_nameのテスト"""
         # モックデータの準備
         with patch(
-            "src.database.politician_repository.PoliticianRepository"
+            "src.infrastructure.persistence.politician_repository_impl.TypedRepository"
         ) as mock_legacy_repo:
             mock_legacy_instance = MagicMock()
             mock_legacy_repo.return_value = mock_legacy_instance
@@ -141,7 +141,7 @@ class TestPoliticianRepositoryImpl:
         """bulk_create_politicians_syncのテスト"""
         # モックの設定
         with patch(
-            "src.database.politician_repository.PoliticianRepository"
+            "src.infrastructure.persistence.politician_repository_impl.TypedRepository"
         ) as mock_legacy_repo:
             mock_legacy_instance = MagicMock()
             mock_legacy_repo.return_value = mock_legacy_instance

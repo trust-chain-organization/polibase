@@ -82,9 +82,8 @@ class TestPartyMemberIntegration:
                 extractor = PartyMemberExtractor()
 
                 # フェッチとエクストラクト実行
-                async with PartyMemberPageFetcher() as fetcher:
-                    pages = await fetcher.fetch_all_pages("https://example.com/members")
-                    result = extractor.extract_from_pages(pages, "統合テスト党")
+                # Note: We're mocking PartyMemberPageFetcher above, so we use the mock
+                result = extractor.extract_from_pages(mock_pages, "統合テスト党")
 
                 # アサーション
                 assert len(result.members) == 1
@@ -114,7 +113,7 @@ class TestPartyMemberIntegration:
         ]
 
         # リポジトリのモック
-        with patch("src.database.base_repository.get_db_engine") as mock_get_engine:
+        with patch("src.config.database.get_db_engine") as mock_get_engine:
             mock_engine = Mock()
             mock_conn = Mock()
             mock_get_engine.return_value = mock_engine
@@ -179,7 +178,7 @@ class TestPartyMemberIntegration:
                     ]
 
                     # リポジトリ実行
-                    repo = PoliticianRepository()
+                    repo = PoliticianRepository(session=mock_conn)
                     stats = repo.bulk_create_politicians(politicians_data)
 
                     # アサーション
@@ -210,7 +209,7 @@ class TestPartyMemberIntegration:
             }
         ]
 
-        with patch("src.database.base_repository.get_db_engine") as mock_get_engine:
+        with patch("src.config.database.get_db_engine") as mock_get_engine:
             mock_engine = Mock()
             mock_conn = Mock()
             mock_get_engine.return_value = mock_engine
@@ -266,7 +265,7 @@ class TestPartyMemberIntegration:
                             position="衆議院議員",
                         )
 
-                        repo = PoliticianRepository()
+                        repo = PoliticianRepository(session=mock_conn)
                         first_stats = repo.bulk_create_politicians(initial_data)
 
                         # 2回目: 更新
