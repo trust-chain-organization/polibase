@@ -73,13 +73,13 @@ class InstrumentedLLMService(ILLMService):
         self._input_reference_type = reference_type
         self._input_reference_id = reference_id
 
-    async def set_history_repository(
+    def set_history_repository(  # type: ignore[override]
         self, repository: LLMProcessingHistoryRepository | None
     ) -> None:
         """Set the history repository for recording LLM operations."""
         self._history_repository = repository
 
-    async def get_processing_history(
+    def get_processing_history(  # type: ignore[override]
         self, reference_type: str | None = None, reference_id: int | None = None
     ) -> list[LLMProcessingHistory]:
         """Get processing history for this service."""
@@ -92,7 +92,7 @@ class InstrumentedLLMService(ILLMService):
             )
         return []
 
-    async def _record_processing(
+    def _record_processing(
         self,
         processing_type: ProcessingType,
         input_reference_type: str,
@@ -158,6 +158,18 @@ class InstrumentedLLMService(ILLMService):
             # Execute the actual processing
             result = processing_func(*args, **kwargs)
 
+            # Handle async processing function
+            if inspect.iscoroutine(result):
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_closed():
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                result = loop.run_until_complete(result)
+
             # Update history with success
             if history_entry and self._history_repository:
                 # Extract result metadata
@@ -167,12 +179,15 @@ class InstrumentedLLMService(ILLMService):
                 # Handle async repository update
                 update_result = self._history_repository.update(history_entry)  # type: ignore[attr-defined]
                 if inspect.iscoroutine(update_result):
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
                     try:
-                        loop.run_until_complete(update_result)
-                    finally:
-                        loop.close()
+                        loop = asyncio.get_event_loop()
+                        if loop.is_closed():
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    loop.run_until_complete(update_result)
 
             return result
 
@@ -181,8 +196,18 @@ class InstrumentedLLMService(ILLMService):
             if history_entry and self._history_repository:
                 history_entry.fail_processing(str(e))
 
-                # Update repository for failure
-                await self._history_repository.update(history_entry)  # type: ignore[attr-defined]
+                # Handle async repository update for failure
+                update_result = self._history_repository.update(history_entry)  # type: ignore[attr-defined]
+                if inspect.iscoroutine(update_result):
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_closed():
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    loop.run_until_complete(update_result)
 
             # Re-raise the exception
             raise
@@ -214,7 +239,7 @@ class InstrumentedLLMService(ILLMService):
 
         return metadata
 
-    async def match_speaker_to_politician(
+    def match_speaker_to_politician(  # type: ignore[override]
         self, context: LLMSpeakerMatchContext
     ) -> LLMMatchResult | None:
         """Match a speaker to a politician using LLM with history recording."""
@@ -232,7 +257,7 @@ class InstrumentedLLMService(ILLMService):
             # TypedDict doesn't have speaker_id, use speaker_name as reference
             reference_id = hash(context.get("speaker_name", "")) % 1000000
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.SPEAKER_MATCHING,
             reference_type,
             reference_id,
@@ -242,7 +267,7 @@ class InstrumentedLLMService(ILLMService):
             context,
         )
 
-    async def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
+    def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:  # type: ignore[override]
         """Extract speeches from meeting minutes text with history recording."""
         prompt_template = "speech_extraction"
         prompt_variables = {"text_length": len(text)}
@@ -255,7 +280,7 @@ class InstrumentedLLMService(ILLMService):
             else hash(text[:100]) % 1000000  # Simple hash for tracking
         )
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.SPEECH_EXTRACTION,
             reference_type,
             reference_id,
@@ -265,7 +290,7 @@ class InstrumentedLLMService(ILLMService):
             text,
         )
 
-    async def process_minutes_division(
+    def process_minutes_division(
         self,
         processing_func: Callable[..., Any],
         prompt_name: str,
@@ -278,7 +303,7 @@ class InstrumentedLLMService(ILLMService):
         reference_type = self._input_reference_type or "meeting"
         reference_id = self._input_reference_id or 0
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.MINUTES_DIVISION,
             reference_type,
             reference_id,
@@ -289,7 +314,7 @@ class InstrumentedLLMService(ILLMService):
             **kwargs,
         )
 
-    async def extract_party_members(
+    def extract_party_members(  # type: ignore[override]
         self, html_content: str, party_id: int
     ) -> LLMExtractResult:
         """Extract party member information from HTML with history recording."""
@@ -299,7 +324,7 @@ class InstrumentedLLMService(ILLMService):
         reference_type = "party"
         reference_id = party_id
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.POLITICIAN_EXTRACTION,
             reference_type,
             reference_id,
@@ -310,7 +335,7 @@ class InstrumentedLLMService(ILLMService):
             party_id,
         )
 
-    async def match_conference_member(
+    def match_conference_member(  # type: ignore[override]
         self, member_name: str, party_name: str | None, candidates: list[PoliticianDTO]
     ) -> LLMMatchResult | None:
         """Match a conference member to a politician with history recording."""
@@ -325,7 +350,7 @@ class InstrumentedLLMService(ILLMService):
         reference_type = "conference_member"
         reference_id = hash(member_name) % 1000000
 
-        return await self._record_processing(
+        return self._record_processing(
             ProcessingType.CONFERENCE_MEMBER_MATCHING,
             reference_type,
             reference_id,
@@ -410,12 +435,15 @@ class InstrumentedLLMService(ILLMService):
                 # Update history - handle async repository
                 update_result = self._history_repository.update(history)  # type: ignore[attr-defined]
                 if inspect.iscoroutine(update_result):
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
                     try:
-                        loop.run_until_complete(update_result)
-                    finally:
-                        loop.close()
+                        loop = asyncio.get_event_loop()
+                        if loop.is_closed():
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    loop.run_until_complete(update_result)
 
                 return result
 
@@ -428,12 +456,15 @@ class InstrumentedLLMService(ILLMService):
                 # Update history - handle async repository
                 update_result = self._history_repository.update(history)  # type: ignore[attr-defined]
                 if inspect.iscoroutine(update_result):
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
                     try:
-                        loop.run_until_complete(update_result)
-                    finally:
-                        loop.close()
+                        loop = asyncio.get_event_loop()
+                        if loop.is_closed():
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    loop.run_until_complete(update_result)
 
                 raise
 

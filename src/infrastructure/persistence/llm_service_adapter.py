@@ -41,6 +41,11 @@ class LLMServiceAdapter:
         """Get the temperature."""
         return self._llm_service.temperature
 
+    @property
+    def api_key(self) -> str:
+        """Get the API key."""
+        return getattr(self._llm_service, "api_key", "")
+
     def _run_async(self, coro: Coroutine[Any, Any, T]) -> T:
         """Run an async function in sync context.
 
