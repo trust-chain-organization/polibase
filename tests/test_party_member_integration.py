@@ -5,7 +5,9 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.database.politician_repository import PoliticianRepository
+from src.infrastructure.persistence.politician_repository_impl import (
+    PoliticianRepositoryImpl as PoliticianRepository,
+)
 from src.party_member_extractor.extractor import PartyMemberExtractor
 from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
 from src.party_member_extractor.models import (

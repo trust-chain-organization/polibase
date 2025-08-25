@@ -6,7 +6,9 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.database.speaker_repository import SpeakerRepository
+from src.infrastructure.persistence.speaker_repository_impl import (
+    SpeakerRepositoryImpl as SpeakerRepository,
+)
 
 
 @pytest.fixture

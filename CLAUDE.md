@@ -243,7 +243,7 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 
 ### Clean Architecture Implementation
 
-Polibase is transitioning to Clean Architecture for improved maintainability and testability. The architecture separates concerns into distinct layers:
+Polibase has successfully migrated to Clean Architecture (Phase 3 cleanup in progress). The architecture separates concerns into distinct layers:
 
 #### Layer Structure
 
@@ -284,12 +284,13 @@ Polibase is transitioning to Clean Architecture for improved maintainability and
    - **CLI**: Command-line interfaces (migration in progress)
    - **Web**: Streamlit UI (migration in progress)
 
-#### Migration Strategy
+#### Migration Status
 
-The codebase is being gradually migrated to Clean Architecture:
-- New features are implemented using the new architecture
-- Existing code is refactored module by module
-- Legacy code continues to work during migration
+Clean Architecture migration is nearly complete (Phase 3: Legacy cleanup):
+- ✅ All core repositories migrated to infrastructure layer
+- ✅ Domain entities and services implemented
+- ✅ Use cases and DTOs created
+- ⏳ Removing remaining legacy files (6 files left)
 - See [CLEAN_ARCHITECTURE_MIGRATION.md](docs/CLEAN_ARCHITECTURE_MIGRATION.md) for details
 
 ### System Design Principles
@@ -380,7 +381,7 @@ Polibase follows these core design principles:
   - `extracted_conference_members`: Staging table for member extraction
   - `parliamentary_groups`: Parliamentary groups (議員団/会派) within conferences
   - `parliamentary_group_memberships`: Tracks politician membership in groups over time
-- Repository pattern used for database operations (`src/database/`)
+- Repository pattern with Clean Architecture (`src/infrastructure/persistence/`)
 - Migrations in `database/migrations/` for schema updates:
   - `004_add_gcs_uri_to_meetings.sql`: Adds GCS URI columns to meetings table
   - `005_add_members_introduction_url_to_conferences.sql`: Adds member URL to conferences

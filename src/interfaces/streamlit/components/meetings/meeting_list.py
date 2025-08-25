@@ -5,7 +5,9 @@ from typing import Any, cast
 import pandas as pd
 
 import streamlit as st
-from src.database.meeting_repository import MeetingRepository
+from src.infrastructure.persistence.meeting_repository_impl import (
+    MeetingRepositoryImpl as MeetingRepository,
+)
 
 
 def show_meetings_list():

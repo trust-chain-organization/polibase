@@ -4,7 +4,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.database.politician_repository import PoliticianRepository
+from src.infrastructure.persistence.politician_repository_impl import (
+    PoliticianRepositoryImpl as PoliticianRepository,
+)
 from src.models.politician import Politician, PoliticianCreate, PoliticianUpdate
 
 
