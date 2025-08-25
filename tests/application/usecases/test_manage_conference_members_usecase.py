@@ -558,7 +558,7 @@ class TestManageConferenceMembersUseCase:
 
         # Mock overlap detection to return True (indicating overlap)
         mock_conference_service.calculate_affiliation_overlap.return_value = True
-        
+
         # Mock politician retrieval (won't be called due to skip, but adding for safety)
         mock_politician_repo.get_by_id.return_value = Politician(
             id=10, name="山田太郎", speaker_id=1, political_party_id=1
