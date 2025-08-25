@@ -16,6 +16,7 @@ from src.application.usecases.manage_conference_members_usecase import (
 )
 from src.domain.entities.conference import Conference
 from src.domain.entities.politician import Politician
+from src.domain.entities.politician_affiliation import PoliticianAffiliation
 
 
 def create_mock_extracted_member(**kwargs: Any) -> Mock:
@@ -482,6 +483,24 @@ class TestManageConferenceMembersUseCase:
             Politician(id=10, name="山田太郎", speaker_id=1, political_party_id=1),
             Politician(id=20, name="佐藤花子", speaker_id=2, political_party_id=2),
         ]
+        
+        # Mock affiliation creation
+        mock_affiliation_repo.create.side_effect = [
+            PoliticianAffiliation(
+                id=1,
+                politician_id=10,
+                conference_id=1,
+                role="議員",
+                start_date=date(2023, 1, 1),
+            ),
+            PoliticianAffiliation(
+                id=2,
+                politician_id=20,
+                conference_id=1,
+                role="委員長",
+                start_date=date(2023, 1, 1),
+            ),
+        ]
 
         # Execute
         request = CreateAffiliationsInputDTO(
@@ -591,6 +610,24 @@ class TestManageConferenceMembersUseCase:
         mock_politician_repo.get_by_id.side_effect = [
             Politician(id=10, name="山田太郎", speaker_id=1, political_party_id=1),
             Politician(id=20, name="佐藤花子", speaker_id=2, political_party_id=2),
+        ]
+        
+        # Mock affiliation creation
+        mock_affiliation_repo.create.side_effect = [
+            PoliticianAffiliation(
+                id=1,
+                politician_id=10,
+                conference_id=1,
+                role="議員",
+                start_date=date(2023, 1, 1),
+            ),
+            PoliticianAffiliation(
+                id=2,
+                politician_id=20,
+                conference_id=2,
+                role="委員長",
+                start_date=date(2023, 1, 1),
+            ),
         ]
 
         # Execute
