@@ -451,7 +451,7 @@ class TestManageConferenceMembersUseCase:
 
     @pytest.mark.asyncio
     async def test_create_affiliations_success(
-        self, usecase, mock_extracted_repo, mock_affiliation_repo
+        self, usecase, mock_extracted_repo, mock_affiliation_repo, mock_politician_repo
     ):
         """Test successful creation of affiliations."""
         # Setup
@@ -476,6 +476,12 @@ class TestManageConferenceMembersUseCase:
 
         mock_extracted_repo.get_matched_members.return_value = matched_members
         mock_affiliation_repo.get_by_politician_and_conference.return_value = []
+        
+        # Mock politician retrieval
+        mock_politician_repo.get_by_id.side_effect = [
+            Politician(id=10, name="山田太郎", speaker_id=1, political_party_id=1),
+            Politician(id=20, name="佐藤花子", speaker_id=2, political_party_id=2),
+        ]
 
         # Execute
         request = CreateAffiliationsInputDTO(
@@ -504,6 +510,7 @@ class TestManageConferenceMembersUseCase:
         mock_extracted_repo,
         mock_affiliation_repo,
         mock_conference_service,
+        mock_politician_repo,
     ):
         """Test skipping creation when affiliation already exists."""
         # Setup
@@ -532,6 +539,11 @@ class TestManageConferenceMembersUseCase:
 
         # Mock overlap detection to return True (indicating overlap)
         mock_conference_service.calculate_affiliation_overlap.return_value = True
+        
+        # Mock politician retrieval (won't be called due to skip, but adding for safety)
+        mock_politician_repo.get_by_id.return_value = Politician(
+            id=10, name="山田太郎", speaker_id=1, political_party_id=1
+        )
 
         # Execute
         request = CreateAffiliationsInputDTO(
@@ -541,7 +553,7 @@ class TestManageConferenceMembersUseCase:
 
         # Verify - should skip due to overlapping affiliation
         assert result.created_count == 0
-        assert result.skipped_count == 2
+        assert result.skipped_count == 1  # Only 1 member to skip
         assert len(result.affiliations) == 0
 
         # Verify no new affiliation was created
@@ -549,7 +561,7 @@ class TestManageConferenceMembersUseCase:
 
     @pytest.mark.asyncio
     async def test_create_affiliations_all_conferences(
-        self, usecase, mock_extracted_repo, mock_affiliation_repo
+        self, usecase, mock_extracted_repo, mock_affiliation_repo, mock_politician_repo
     ):
         """Test creating affiliations for all conferences."""
         # Setup
@@ -574,6 +586,12 @@ class TestManageConferenceMembersUseCase:
 
         mock_extracted_repo.get_matched_members.return_value = matched_members
         mock_affiliation_repo.get_by_politician_and_conference.return_value = []
+        
+        # Mock politician retrieval
+        mock_politician_repo.get_by_id.side_effect = [
+            Politician(id=10, name="山田太郎", speaker_id=1, political_party_id=1),
+            Politician(id=20, name="佐藤花子", speaker_id=2, political_party_id=2),
+        ]
 
         # Execute
         request = CreateAffiliationsInputDTO(
