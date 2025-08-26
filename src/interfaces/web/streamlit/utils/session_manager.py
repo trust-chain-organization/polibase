@@ -87,7 +87,7 @@ class SessionManager:
             keys_to_delete = [
                 key
                 for key in st.session_state.keys()
-                if key.startswith(f"{self.namespace}_")
+                if isinstance(key, str) and key.startswith(f"{self.namespace}_")
             ]
             for key in keys_to_delete:
                 del st.session_state[key]
@@ -165,7 +165,9 @@ class FormSessionManager(SessionManager):
         """Clear all form fields."""
         prefix = f"{self.namespace}_field_"
         keys_to_delete = [
-            key for key in st.session_state.keys() if key.startswith(prefix)
+            key
+            for key in st.session_state.keys()
+            if isinstance(key, str) and key.startswith(prefix)
         ]
         for key in keys_to_delete:
             del st.session_state[key]
@@ -176,7 +178,7 @@ class FormSessionManager(SessionManager):
         Returns:
             True if form has been modified, False otherwise
         """
-        return self.get("is_dirty", False)
+        return bool(self.get("is_dirty", False))
 
     def mark_dirty(self) -> None:
         """Mark form as having unsaved changes."""

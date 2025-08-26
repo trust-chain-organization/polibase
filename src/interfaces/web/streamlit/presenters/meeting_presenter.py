@@ -315,7 +315,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         """
         if not meetings:
             return pd.DataFrame(
-                columns=["ID", "開催日", "開催主体・会議体", "URL", "GCS"]
+                {"ID": [], "開催日": [], "開催主体・会議体": [], "URL": [], "GCS": []}
             )
 
         df = pd.DataFrame(meetings)
