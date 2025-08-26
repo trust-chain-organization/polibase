@@ -10,7 +10,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from src.database.typed_repository import TypedRepository
 from src.domain.entities.politician import Politician
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
@@ -60,18 +59,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             self.session = session
             self.entity_class = Politician
             self.model_class = model_class
-
-        # Initialize legacy repository for sync operations
-        self.legacy_repo = None
-        if self.sync_session:
-            from src.models.politician import Politician as PoliticianPydanticModel
-
-            self.legacy_repo = TypedRepository(
-                PoliticianPydanticModel,
-                "politicians",
-                use_session=True,
-                session=self.sync_session,
-            )
 
     async def get_by_name_and_party(
         self, name: str, political_party_id: int | None = None
@@ -393,14 +380,16 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         self, name: str, political_party_id: int | None = None
     ) -> Any:
         """Sync wrapper for get_by_name_and_party (backward compatibility)."""
-        if self.legacy_repo:
+        if self.sync_session:
             query = "SELECT * FROM politicians WHERE name = :name"
             params: dict[str, Any] = {"name": name}
             if political_party_id is not None:
                 query += " AND political_party_id = :party_id"
                 params["party_id"] = political_party_id
             query += " LIMIT 1"
-            return self.legacy_repo.fetch_one(query, params)
+            result = self.sync_session.execute(text(query), params)
+            row = result.first()
+            return row._asdict() if row else None
         return None
 
     def find_by_name(self, name: str) -> list[Any]:
@@ -416,14 +405,30 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
 
     def create_sync(self, politician_create: PoliticianCreate) -> Any:
         """Sync wrapper for create (backward compatibility)."""
-        if self.legacy_repo and hasattr(self.legacy_repo, "create"):
-            return self.legacy_repo.create(politician_create)  # type: ignore
+        if self.sync_session:
+            data = politician_create.model_dump(exclude_unset=True)
+            columns = ", ".join(data.keys())
+            values = ", ".join([f":{key}" for key in data.keys()])
+            query = f"INSERT INTO politicians ({columns}) VALUES ({values}) RETURNING *"
+            result = self.sync_session.execute(text(query), data)
+            self.sync_session.commit()
+            row = result.first()
+            return row._asdict() if row else None
         return None
 
     def update_v2(self, politician_id: int, update_data: PoliticianUpdate) -> Any:
         """Sync wrapper for update (backward compatibility)."""
-        if self.legacy_repo and hasattr(self.legacy_repo, "update"):
-            return self.legacy_repo.update(politician_id, update_data)  # type: ignore
+        if self.sync_session:
+            data = update_data.model_dump(exclude_unset=True)
+            if not data:
+                return None
+            set_clause = ", ".join([f"{key} = :{key}" for key in data.keys()])
+            query = f"UPDATE politicians SET {set_clause} WHERE id = :id RETURNING *"
+            data["id"] = politician_id
+            result = self.sync_session.execute(text(query), data)
+            self.sync_session.commit()
+            row = result.first()
+            return row._asdict() if row else None
         return None
 
     def search_by_name_sync(self, name_pattern: str) -> list[dict[str, Any]]:
@@ -496,9 +501,10 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         query: str,
         params: dict[str, Any] | None = None,
     ) -> list[Any]:
-        """Fetch all rows as models - wrapper for TypedRepository.fetch_all."""
-        if self.legacy_repo and hasattr(self.legacy_repo, "fetch_all"):
-            return list(self.legacy_repo.fetch_all(query, params))  # type: ignore
+        """Fetch all rows as models."""
+        if self.sync_session:
+            result = self.sync_session.execute(text(query), params or {})
+            return [model_class(**row._asdict()) for row in result.fetchall()]
         return []
 
     async def get_all(

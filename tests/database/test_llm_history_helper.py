@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.database.llm_history_helper import SyncLLMHistoryHelper
+from src.infrastructure.persistence.llm_history_helper import SyncLLMHistoryHelper
 
 # Type aliases for shorter lines
 MockGen = Generator[MagicMock]

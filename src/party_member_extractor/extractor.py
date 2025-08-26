@@ -6,8 +6,8 @@ from typing import cast
 
 from bs4 import BeautifulSoup, Tag
 
-from ..database.llm_history_helper import SyncLLMHistoryHelper
 from ..infrastructure.interfaces.llm_service import ILLMService
+from ..infrastructure.persistence.llm_history_helper import SyncLLMHistoryHelper
 from ..services.llm_factory import LLMServiceFactory
 from .models import PartyMemberInfo, PartyMemberList, WebPageContent
 

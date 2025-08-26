@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from src.config.database import DATABASE_URL
-from src.database.speaker_matching_service import SpeakerMatchingService
+from src.domain.services.speaker_matching_service import SpeakerMatchingService
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl,
 )
@@ -138,7 +138,7 @@ class SpeakerExtractorFromMinutes:
 
         if use_llm:
             # LLMを使用した高度なマッチング
-            from src.database.politician_matching_service import (
+            from src.domain.services.politician_matching_service import (
                 PoliticianMatchingService,
             )
 

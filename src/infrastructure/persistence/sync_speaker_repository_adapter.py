@@ -6,7 +6,6 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from src.database.typed_repository import TypedRepository
 from src.domain.entities.speaker import Speaker
 from src.infrastructure.persistence.async_session_adapter import AsyncSessionAdapter
 from src.infrastructure.persistence.speaker_repository_impl import (
@@ -15,12 +14,14 @@ from src.infrastructure.persistence.speaker_repository_impl import (
 from src.models.speaker_v2 import Speaker as SpeakerModel
 
 
-class SyncSpeakerRepositoryAdapter(TypedRepository[SpeakerModel]):
+class SyncSpeakerRepositoryAdapter:
     """Synchronous adapter for async SpeakerRepository."""
 
     def __init__(self, session: Session | None = None):
         """Initialize synchronous adapter."""
-        super().__init__(SpeakerModel, "speakers", use_session=True, session=session)
+        self.session = session
+        self.model_class = SpeakerModel
+        self.table_name = "speakers"
 
         # Create async adapter and repository implementation
         self.async_session = AsyncSessionAdapter(self.session)

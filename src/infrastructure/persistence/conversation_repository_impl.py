@@ -10,10 +10,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from src.database.base_repository import BaseRepository as LegacyBaseRepository
-from src.database.speaker_matching_service import SpeakerMatchingService
 from src.domain.entities.conversation import Conversation
 from src.domain.repositories.conversation_repository import ConversationRepository
+from src.domain.services.speaker_matching_service import SpeakerMatchingService
 from src.exceptions import IntegrityError, SaveError
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
@@ -63,7 +62,6 @@ class ConversationRepositoryImpl(
     sync_session: Session | None
     async_session: AsyncSession | None
     speaker_matching_service: SpeakerMatchingService | None
-    legacy_repo: LegacyBaseRepository | None
 
     def __init__(
         self,
@@ -98,13 +96,6 @@ class ConversationRepositoryImpl(
             self.model_class = model_class
 
         self.speaker_matching_service = speaker_matching_service
-        self.legacy_repo = None
-
-        # Initialize legacy repository if sync session is provided
-        if self.sync_session is not None:
-            self.legacy_repo = LegacyBaseRepository(
-                use_session=True, session=self.sync_session
-            )
 
     async def get_by_minutes(self, minutes_id: int) -> list[Conversation]:
         """Get all conversations for a minutes record."""
@@ -242,13 +233,22 @@ class ConversationRepositoryImpl(
 
             await self.async_session.commit()
             return created
-        elif self.legacy_repo is not None:
-            # Sync implementation with legacy repo
+        elif self.sync_session is not None:
+            # Sync implementation
             created: list[Conversation] = []
             for conv in conversations:
-                conv_id = self.legacy_repo.insert(
-                    table="conversations",
-                    data={
+                query = text("""
+                    INSERT INTO conversations
+                    (minutes_id, speaker_id, speaker_name, comment, sequence_number,
+                     chapter_number, sub_chapter_number)
+                    VALUES
+                    (:minutes_id, :speaker_id, :speaker_name, :comment,
+                     :sequence_number, :chapter_number, :sub_chapter_number)
+                    RETURNING id
+                """)
+                result = self.sync_session.execute(
+                    query,
+                    {
                         "minutes_id": conv.minutes_id,
                         "speaker_id": conv.speaker_id,
                         "speaker_name": conv.speaker_name,
@@ -257,13 +257,12 @@ class ConversationRepositoryImpl(
                         "chapter_number": conv.chapter_number,
                         "sub_chapter_number": conv.sub_chapter_number,
                     },
-                    returning="id",
                 )
+                conv_id = result.scalar()
                 conv.id = conv_id
                 created.append(conv)
 
-            if self.sync_session is not None:
-                self.sync_session.commit()
+            self.sync_session.commit()
             return created
         else:
             # This should never happen
@@ -391,10 +390,19 @@ class ConversationRepositoryImpl(
                 },
             )
             conversation_id = result.scalar()
-        elif self.legacy_repo is not None:
-            conversation_id = self.legacy_repo.insert(
-                table="conversations",
-                data={
+        elif self.sync_session is not None:
+            query = text("""
+                INSERT INTO conversations
+                (minutes_id, speaker_id, speaker_name, comment,
+                 sequence_number, chapter_number, sub_chapter_number)
+                VALUES
+                (:minutes_id, :speaker_id, :speaker_name, :comment,
+                 :sequence_number, :chapter_number, :sub_chapter_number)
+                RETURNING id
+            """)
+            result = self.sync_session.execute(
+                query,
+                {
                     "minutes_id": minutes_id,
                     "speaker_id": speaker_id,
                     "speaker_name": speaker_and_speech_content.speaker,
@@ -403,8 +411,8 @@ class ConversationRepositoryImpl(
                     "chapter_number": speaker_and_speech_content.chapter_number,
                     "sub_chapter_number": speaker_and_speech_content.sub_chapter_number,
                 },
-                returning="id",
             )
+            conversation_id = result.scalar()
         else:
             # This should never happen
             return None

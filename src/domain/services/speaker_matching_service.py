@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from ..config.database import get_db_session
-from ..exceptions import DatabaseError, LLMError, QueryError
-from ..services import ChainFactory, LLMService
-from .llm_history_helper import SyncLLMHistoryHelper
+from src.config.database import get_db_session
+from src.exceptions import DatabaseError, LLMError, QueryError
+from src.infrastructure.persistence.llm_history_helper import SyncLLMHistoryHelper
+from src.services import ChainFactory, LLMService
 
 if TYPE_CHECKING:
     pass

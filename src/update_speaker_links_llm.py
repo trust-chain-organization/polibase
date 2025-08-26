@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.config import config
 from src.config.database import test_connection
-from src.database.speaker_matching_service import SpeakerMatchingService
+from src.domain.services.speaker_matching_service import SpeakerMatchingService
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl,
 )
