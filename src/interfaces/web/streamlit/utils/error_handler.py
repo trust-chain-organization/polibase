@@ -120,7 +120,7 @@ async def with_async_error_handling(
                 handle_ui_error(e, context or func.__name__)
                 return None
 
-        return wrapper
+        return wrapper  # type: ignore[return-value]
 
     return decorator
 

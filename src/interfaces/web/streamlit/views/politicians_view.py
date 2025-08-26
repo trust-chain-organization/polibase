@@ -77,7 +77,7 @@ def render_politicians_list_tab(presenter: PoliticianPresenter):
                 )
                 party_counts[party_name] = party_counts.get(party_name, 0) + 1
             if party_counts:
-                max_party = max(party_counts, key=party_counts.get)
+                max_party = max(party_counts, key=party_counts.get)  # type: ignore[arg-type]
                 st.metric("最多政党", f"{max_party} ({party_counts[max_party]}名)")
         with col3:
             with_url = len([p for p in politicians if p.profile_page_url])
@@ -198,7 +198,7 @@ def render_edit_delete_tab(presenter: PoliticianPresenter):
                         party_map.get(new_party) if new_party != "無所属" else None
                     )
                     success, error = presenter.update(
-                        selected_politician.id,
+                        selected_politician.id,  # type: ignore[arg-type]
                         new_name,
                         party_id,
                         new_district if new_district else None,
@@ -216,7 +216,7 @@ def render_edit_delete_tab(presenter: PoliticianPresenter):
         st.warning("⚠️ 政治家を削除すると、関連する発言記録も影響を受けます")
 
         if st.button("🗑️ この政治家を削除", type="secondary"):
-            success, error = presenter.delete(selected_politician.id)
+            success, error = presenter.delete(selected_politician.id)  # type: ignore[arg-type]
             if success:
                 st.success(f"政治家「{selected_politician.name}」を削除しました")
                 st.rerun()

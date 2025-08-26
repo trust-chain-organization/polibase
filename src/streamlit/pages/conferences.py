@@ -74,7 +74,7 @@ def manage_conferences():
                     "type": conf.type,
                     "governing_body_id": conf.governing_body_id,
                     "members_introduction_url": conf.members_introduction_url,
-                    "governing_body_name": gb_dict.get(conf.governing_body_id).name
+                    "governing_body_name": gb_dict[conf.governing_body_id].name
                     if conf.governing_body_id in gb_dict
                     else None,
                 }
@@ -288,7 +288,7 @@ def manage_conferences():
                                         updated_conf = Conference(
                                             id=conf["id"],
                                             name=conf["name"],
-                                            governing_body_id=selected_gb_id,
+                                            governing_body_id=selected_gb_id,  # type: ignore[arg-type]
                                             type=conf.get("type"),
                                             members_introduction_url=(
                                                 new_url if new_url else None
@@ -426,7 +426,7 @@ def manage_conferences():
                     "type": conf.type,
                     "governing_body_id": conf.governing_body_id,
                     "members_introduction_url": conf.members_introduction_url,
-                    "governing_body_name": gb_dict.get(conf.governing_body_id).name
+                    "governing_body_name": gb_dict[conf.governing_body_id].name
                     if conf.governing_body_id in gb_dict
                     else None,
                 }

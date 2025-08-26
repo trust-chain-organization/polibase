@@ -4,7 +4,6 @@ This module provides the UI layer for meeting management,
 using the presenter pattern for business logic.
 """
 
-import asyncio
 from datetime import date
 from typing import Any
 
@@ -336,8 +335,8 @@ def create_meeting(
         url: Meeting URL
     """
     try:
-        result = asyncio.run(
-            presenter.create(conference_id=conference_id, date=meeting_date, url=url)
+        result = presenter.create(
+            conference_id=conference_id, date=meeting_date, url=url
         )
 
         if result.success:
@@ -369,13 +368,11 @@ def update_meeting(
         url: Meeting URL
     """
     try:
-        result = asyncio.run(
-            presenter.update(
-                meeting_id=meeting_id,
-                conference_id=conference_id,
-                date=meeting_date,
-                url=url,
-            )
+        result = presenter.update(
+            meeting_id=meeting_id,
+            conference_id=conference_id,
+            date=meeting_date,
+            url=url,
         )
 
         if result.success:
@@ -397,7 +394,7 @@ def delete_meeting(presenter: MeetingPresenter, meeting_id: int):
         meeting_id: Meeting ID
     """
     try:
-        result = asyncio.run(presenter.delete(meeting_id=meeting_id))
+        result = presenter.delete(meeting_id=meeting_id)
 
         if result.success:
             st.success(result.message)

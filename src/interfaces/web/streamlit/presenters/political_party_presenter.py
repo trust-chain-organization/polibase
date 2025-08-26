@@ -60,8 +60,19 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         """Save form state to session."""
         self.session.set("form_state", self.form_state.__dict__)
 
-    def load_data(self, filter_type: str = "all") -> PoliticalPartyListOutputDto:
+    def load_data(self) -> list[PoliticalParty]:
         """Load political parties data.
+
+        Returns:
+            List of political parties
+        """
+        result = self.load_data_filtered("all")
+        return result.parties
+
+    def load_data_filtered(
+        self, filter_type: str = "all"
+    ) -> PoliticalPartyListOutputDto:
+        """Load political parties data with filter.
 
         Args:
             filter_type: Filter type ('all', 'with_url', 'without_url')
@@ -125,7 +136,7 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
             List of political parties
         """
         filter_type = kwargs.get("filter_type", "all")
-        result = self.load_data(filter_type)
+        result = self.load_data_filtered(filter_type)
         return result.parties
 
     def generate_seed_file(self) -> GenerateSeedFileOutputDto:
@@ -145,6 +156,10 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         Returns:
             DataFrame for display
         """
+        if not parties:
+            # Create empty DataFrame with proper column specification
+            return pd.DataFrame({"ID": [], "政党名": [], "議員一覧URL": []})
+
         data = []
         for party in parties:
             data.append(
@@ -154,9 +169,6 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
                     "議員一覧URL": party.members_list_url or "未設定",
                 }
             )
-
-        if not data:
-            return pd.DataFrame(columns=["ID", "政党名", "議員一覧URL"])
 
         return pd.DataFrame(data)
 

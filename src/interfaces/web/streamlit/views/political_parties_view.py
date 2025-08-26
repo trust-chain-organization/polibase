@@ -4,6 +4,8 @@ This module provides the UI layer for political party management,
 using the presenter pattern for business logic.
 """
 
+from typing import Any
+
 import streamlit as st
 from src.interfaces.web.streamlit.presenters.political_party_presenter import (
     PoliticalPartyPresenter,
@@ -79,7 +81,7 @@ def render_parties_list_tab(presenter: PoliticalPartyPresenter):
         handle_ui_error(e, "政党一覧の読み込み")
 
 
-def render_party_row(presenter: PoliticalPartyPresenter, party):
+def render_party_row(presenter: PoliticalPartyPresenter, party: Any) -> None:
     """Render a single party row with edit capability.
 
     Args:
@@ -94,6 +96,7 @@ def render_party_row(presenter: PoliticalPartyPresenter, party):
     with col2:
         st.text(party.name)
 
+    new_url: str = ""  # Initialize outside the if block
     with col3:
         if presenter.is_editing(party.id):
             # Edit mode
@@ -128,7 +131,7 @@ def render_party_row(presenter: PoliticalPartyPresenter, party):
                 st.rerun()
 
 
-def save_party_url(presenter: PoliticalPartyPresenter, party_id: int, url: str):
+def save_party_url(presenter: PoliticalPartyPresenter, party_id: int, url: str) -> None:
     """Save political party URL.
 
     Args:
@@ -138,10 +141,10 @@ def save_party_url(presenter: PoliticalPartyPresenter, party_id: int, url: str):
     """
     try:
         # Clean up the URL (empty string becomes None)
-        url = url.strip() if url else None
+        url_cleaned: str | None = url.strip() if url else None
 
         # Update the URL
-        result = presenter.update(party_id=party_id, members_list_url=url)
+        result = presenter.update(party_id=party_id, members_list_url=url_cleaned)
 
         if result.success:
             st.success(result.message)

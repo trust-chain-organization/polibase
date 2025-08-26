@@ -272,7 +272,7 @@ def main() -> list[int] | None:
 
             repo = MeetingRepositoryImpl()
             # GCS text URIを持つすべてのmeetingを取得
-            meetings_with_gcs = repo.fetch_as_dict(
+            meetings_with_gcs = repo.fetch_as_dict(  # type: ignore[attr-defined]
                 """
                 SELECT id, url, gcs_text_uri
                 FROM meetings
@@ -280,7 +280,7 @@ def main() -> list[int] | None:
                 ORDER BY id
                 """
             )
-            repo.close()
+            repo.close()  # type: ignore[attr-defined]
 
             if not meetings_with_gcs:
                 logger.warning("No meetings found with GCS text URIs")
@@ -330,7 +330,7 @@ def main() -> list[int] | None:
                     minutes_repo = BaseRepositoryImpl()
 
                     # 既存のminutesレコードを確認
-                    existing_minutes = minutes_repo.fetch_one(
+                    existing_minutes = minutes_repo.fetch_one(  # type: ignore[attr-defined]
                         "SELECT id FROM minutes WHERE meeting_id = :meeting_id",
                         {"meeting_id": meeting_id},
                     )
@@ -339,7 +339,7 @@ def main() -> list[int] | None:
                         minutes_id = existing_minutes[0]
                         print(f"   ℹ️  既存のMinutes ID {minutes_id} を使用します")
                     else:
-                        minutes_id = minutes_repo.insert(
+                        minutes_id = minutes_repo.insert(  # type: ignore[attr-defined]
                             table="minutes",
                             data={
                                 "meeting_id": meeting_id,
@@ -380,8 +380,8 @@ def main() -> list[int] | None:
             from src.utils.gcs_storage import GCSStorage
 
             repo = MeetingRepositoryImpl()
-            meeting = repo.get_meeting_by_id(args.meeting_id)
-            repo.close()
+            meeting = repo.get_meeting_by_id(args.meeting_id)  # type: ignore[attr-defined]
+            repo.close()  # type: ignore[attr-defined]
 
             if meeting and meeting.gcs_text_uri:
                 logger.info(
@@ -409,7 +409,7 @@ def main() -> list[int] | None:
                         minutes_repo = BaseRepositoryImpl()
 
                         # 既存のminutesレコードを確認
-                        existing_minutes = minutes_repo.fetch_one(
+                        existing_minutes = minutes_repo.fetch_one(  # type: ignore[attr-defined]
                             "SELECT id FROM minutes WHERE meeting_id = :meeting_id",
                             {"meeting_id": args.meeting_id},
                         )
@@ -420,7 +420,7 @@ def main() -> list[int] | None:
                                 f"Using existing minutes record with ID: {minutes_id}"
                             )
                         else:
-                            minutes_id = minutes_repo.insert(
+                            minutes_id = minutes_repo.insert(  # type: ignore[attr-defined]
                                 table="minutes",
                                 data={
                                     "meeting_id": args.meeting_id,

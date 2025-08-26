@@ -62,7 +62,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         """Save form state to session."""
         self.session.set("form_state", self.form_state.__dict__)
 
-    async def load_data(self) -> list[Meeting]:
+    def load_data(self) -> list[Meeting]:
         """Load all meetings.
 
         Returns:
@@ -162,7 +162,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             for conf in conferences
         ]
 
-    async def create(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
+    def create(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
         """Create a new meeting.
 
         Args:
@@ -212,7 +212,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
 
         return self.meeting_repo.get_by_id(meeting_id)
 
-    async def update(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
+    def update(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
         """Update a meeting.
 
         Args:
@@ -252,7 +252,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             self.logger.error(f"Error updating meeting: {e}", exc_info=True)
             return WebResponseDTO.error_response(f"会議の更新に失敗しました: {str(e)}")
 
-    async def delete(self, **kwargs: Any) -> WebResponseDTO[bool]:
+    def delete(self, **kwargs: Any) -> WebResponseDTO[bool]:
         """Delete a meeting.
 
         Args:
@@ -315,7 +315,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         """
         if not meetings:
             return pd.DataFrame(
-                columns=["ID", "開催日", "開催主体・会議体", "URL", "GCS"]
+                {"ID": [], "開催日": [], "開催主体・会議体": [], "URL": [], "GCS": []}
             )
 
         df = pd.DataFrame(meetings)

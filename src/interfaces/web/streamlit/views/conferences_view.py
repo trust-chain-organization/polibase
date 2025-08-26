@@ -1,6 +1,7 @@
 """View for conference management."""
 
 import asyncio
+from typing import cast
 
 import streamlit as st
 from src.application.usecases.manage_conferences_usecase import (
@@ -37,13 +38,21 @@ def render_conferences_page():
     )
 
     with tab1:
-        render_conferences_list(presenter, governing_body_repo)
+        render_conferences_list(
+            presenter, cast(GoverningBodyRepository, governing_body_repo)
+        )
 
     with tab2:
-        render_new_conference_form(presenter, governing_body_repo)
+        render_new_conference_form(
+            presenter, cast(GoverningBodyRepository, governing_body_repo)
+        )
 
     with tab3:
-        render_edit_delete_form(presenter, conference_repo, governing_body_repo)
+        render_edit_delete_form(
+            presenter,
+            cast(ConferenceRepository, conference_repo),
+            cast(GoverningBodyRepository, governing_body_repo),
+        )
 
     with tab4:
         render_seed_generator(presenter)

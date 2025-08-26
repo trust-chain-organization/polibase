@@ -34,7 +34,7 @@ class BasePresenter(ABC, Generic[T]):  # noqa: UP046
         self.logger = get_logger(self.__class__.__name__)
 
     @abstractmethod
-    async def load_data(self) -> T:
+    def load_data(self) -> T:
         """Load data for the view.
 
         This method should be implemented by each presenter to load
@@ -46,7 +46,7 @@ class BasePresenter(ABC, Generic[T]):  # noqa: UP046
         pass
 
     @abstractmethod
-    async def handle_action(self, action: str, **kwargs: Any) -> Any:
+    def handle_action(self, action: str, **kwargs: Any) -> Any:
         """Handle user actions from the view.
 
         This method should be implemented by each presenter to handle
@@ -99,7 +99,7 @@ class CRUDPresenter(BasePresenter[T], ABC):
     Extends BasePresenter with standard CRUD operation methods.
     """
 
-    async def handle_action(self, action: str, **kwargs: Any) -> Any:
+    def handle_action(self, action: str, **kwargs: Any) -> Any:
         """Handle CRUD actions.
 
         Args:
@@ -111,41 +111,41 @@ class CRUDPresenter(BasePresenter[T], ABC):
         """
         try:
             if action == "create":
-                return await self.create(**kwargs)
+                return self.create(**kwargs)
             elif action == "read":
-                return await self.read(**kwargs)
+                return self.read(**kwargs)
             elif action == "update":
-                return await self.update(**kwargs)
+                return self.update(**kwargs)
             elif action == "delete":
-                return await self.delete(**kwargs)
+                return self.delete(**kwargs)
             elif action == "list":
-                return await self.list(**kwargs)
+                return self.list(**kwargs)
             else:
                 raise ValueError(f"Unknown action: {action}")
         except Exception as e:
             raise Exception(self.handle_error(e, f"handling {action}")) from e
 
     @abstractmethod
-    async def create(self, **kwargs: Any) -> Any:
+    def create(self, **kwargs: Any) -> Any:
         """Create a new entity."""
         pass
 
     @abstractmethod
-    async def read(self, **kwargs: Any) -> Any:
+    def read(self, **kwargs: Any) -> Any:
         """Read an entity."""
         pass
 
     @abstractmethod
-    async def update(self, **kwargs: Any) -> Any:
+    def update(self, **kwargs: Any) -> Any:
         """Update an entity."""
         pass
 
     @abstractmethod
-    async def delete(self, **kwargs: Any) -> Any:
+    def delete(self, **kwargs: Any) -> Any:
         """Delete an entity."""
         pass
 
     @abstractmethod
-    async def list(self, **kwargs: Any) -> list[Any]:
+    def list(self, **kwargs: Any) -> list[Any]:
         """List entities."""
         pass

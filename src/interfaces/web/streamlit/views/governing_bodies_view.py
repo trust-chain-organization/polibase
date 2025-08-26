@@ -174,7 +174,9 @@ def render_edit_delete_tab(presenter: GoverningBodyPresenter):
                 edit_type = st.selectbox(
                     "種別",
                     type_options,
-                    index=type_options.index(selected_gb.type),
+                    index=type_options.index(selected_gb.type)
+                    if selected_gb.type
+                    else 0,
                     key="edit_gb_type",
                 )
                 edit_org_code = st.text_input(

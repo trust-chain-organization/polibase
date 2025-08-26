@@ -40,7 +40,7 @@ def render_parliamentary_groups_list_tab(presenter: ParliamentaryGroupPresenter)
     conferences = presenter.get_all_conferences()
 
     # Conference filter
-    def get_conf_display_name(c):
+    def get_conf_display_name(c: Any) -> str:
         gb_name = (
             c.governing_body.name
             if hasattr(c, "governing_body") and c.governing_body
@@ -117,7 +117,7 @@ def render_new_parliamentary_group_tab(presenter: ParliamentaryGroupPresenter):
         st.error("会議体が登録されていません。先に会議体を登録してください。")
         return
 
-    def get_conf_display_name(c):
+    def get_conf_display_name(c: Any) -> str:
         gb_name = (
             c.governing_body.name
             if hasattr(c, "governing_body") and c.governing_body
@@ -149,6 +149,8 @@ def render_new_parliamentary_group_tab(presenter: ParliamentaryGroupPresenter):
         conf_id = conf_map[selected_conf]
         if not group_name:
             st.error("議員団名を入力してください")
+        elif conf_id is None:
+            st.error("会議体を選択してください")
         else:
             success, group, error = presenter.create(
                 group_name,
@@ -294,8 +296,8 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
         conf = next((c for c in conferences if c.id == group.conference_id), None)
         if conf:
             gb_name = (
-                conf.governing_body.name
-                if hasattr(conf, "governing_body") and conf.governing_body
+                conf.governing_body.name  # type: ignore[attr-defined]
+                if hasattr(conf, "governing_body") and conf.governing_body  # type: ignore[attr-defined]
                 else ""
             )
             conf_name = f"{gb_name} - {conf.name}"
