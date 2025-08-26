@@ -42,7 +42,7 @@ jobs:
               # srcディレクトリ内のモジュールを確認
               from src import exceptions
               from src import cli
-              from src.database import base_repository
+              from src.infrastructure.persistence import base_repository_impl
               from src.application import usecases
               from src.domain import entities
               print('✅ Basic imports successful')
