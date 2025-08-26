@@ -5,53 +5,64 @@ from typing import Any, cast
 import pandas as pd
 
 import streamlit as st
-from src.infrastructure.persistence.meeting_repository_impl import (
-    MeetingRepositoryImpl as MeetingRepository,
+from src.infrastructure.persistence.conference_repository_impl import (
+    ConferenceRepositoryImpl,
 )
+from src.infrastructure.persistence.governing_body_repository_impl import (
+    GoverningBodyRepositoryImpl,
+)
+from src.infrastructure.persistence.meeting_repository_impl import (
+    MeetingRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 
 def show_meetings_list():
     """会議一覧を表示"""
     st.subheader("会議一覧")
 
-    repo = MeetingRepository()
+    meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
+    governing_body_repo = RepositoryAdapter(GoverningBodyRepositoryImpl)
+    conference_repo = RepositoryAdapter(ConferenceRepositoryImpl)
 
     # フィルター
     col1, col2 = st.columns(2)
 
     with col1:
-        governing_bodies = repo.get_governing_bodies()
-        gb_options = ["すべて"] + [
-            f"{gb['name']} ({gb['type']})" for gb in governing_bodies
-        ]
+        governing_bodies = governing_body_repo.get_all()
+        gb_options = ["すべて"] + [f"{gb.name} ({gb.type})" for gb in governing_bodies]
         gb_selected = st.selectbox("開催主体", gb_options, key="list_gb")
 
         if gb_selected != "すべて":
             # 選択されたオプションから対応するgoverning_bodyを探す
             selected_gb = None
             for _i, gb in enumerate(governing_bodies):
-                if f"{gb['name']} ({gb['type']})" == gb_selected:
+                if f"{gb.name} ({gb.type})" == gb_selected:
                     selected_gb = gb
                     break
-            conferences = (
-                repo.get_conferences_by_governing_body(selected_gb["id"])
-                if selected_gb
-                else []
-            )
+            if selected_gb:
+                all_conferences = conference_repo.get_all()
+                conferences = [
+                    conf
+                    for conf in all_conferences
+                    if conf.governing_body_id == selected_gb.id
+                ]
+            else:
+                conferences = []
         else:
             conferences = []
 
     with col2:
         if conferences:
-            conf_options = ["すべて"] + [conf["name"] for conf in conferences]
+            conf_options = ["すべて"] + [conf.name for conf in conferences]
             conf_selected = st.selectbox("会議体", conf_options, key="list_conf")
 
             if conf_selected != "すべて":
                 # 選択されたオプションから対応するconferenceを探す
                 selected_conf_id = None
                 for conf in conferences:
-                    if conf["name"] == conf_selected:
-                        selected_conf_id = conf["id"]
+                    if conf.name == conf_selected:
+                        selected_conf_id = conf.id
                         break
             else:
                 selected_conf_id = None
@@ -61,7 +72,10 @@ def show_meetings_list():
                 st.info("会議体を選択してください")
 
     # 会議一覧取得
-    meetings = repo.get_meetings(conference_id=selected_conf_id)
+    all_meetings, _ = meeting_repo.get_meetings_with_filters(
+        conference_id=selected_conf_id, limit=1000
+    )
+    meetings = all_meetings
 
     if meetings:
         # DataFrameに変換
@@ -109,7 +123,7 @@ def show_meetings_list():
             with col3:
                 if st.button("削除", key=f"delete_{cast(int, row['id'])}"):
                     meeting_id = cast(int, row["id"])
-                    if repo.delete_meeting(meeting_id):
+                    if meeting_repo.delete(meeting_id):
                         st.success("会議を削除しました")
                         st.rerun()
                     else:
@@ -121,4 +135,6 @@ def show_meetings_list():
     else:
         st.info("会議が登録されていません")
 
-    repo.close()
+    meeting_repo.close()
+    governing_body_repo.close()
+    conference_repo.close()

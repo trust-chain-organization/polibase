@@ -329,7 +329,7 @@ class ManageConferenceMembersUseCase:
         )
 
         # Save to staging table
-        created_members = []
+        created_members: list[ExtractedConferenceMember] = []
         for member_data in members_data:
             member = ExtractedConferenceMember(
                 conference_id=request.conference_id,
@@ -381,7 +381,7 @@ class ManageConferenceMembersUseCase:
         else:
             members = await self.extracted_repo.get_pending_members()
 
-        results = []
+        results: list[MemberMatchResultDTO] = []
         for member in members:
             match_result = await self._match_member_to_politician(member)
             results.append(match_result)
@@ -433,7 +433,7 @@ class ManageConferenceMembersUseCase:
         else:
             members = await self.extracted_repo.get_matched_members()
 
-        created_affiliations = []
+        created_affiliations: list[PoliticianAffiliationDTO] = []
         skipped_count = 0
 
         for member in members:

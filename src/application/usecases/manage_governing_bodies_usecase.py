@@ -279,7 +279,7 @@ class ManageGoverningBodiesUseCase:
                 "(id, name, type, organization_code, organization_type) VALUES\n"
             )
 
-            values = []
+            values: list[str] = []
             for gb in all_bodies:
                 org_code = (
                     f"'{gb.organization_code}'" if gb.organization_code else "NULL"

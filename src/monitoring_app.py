@@ -9,11 +9,14 @@ import plotly.graph_objects as go
 from streamlit_folium import st_folium  # type: ignore[import-untyped]
 
 import streamlit as st
-
-# Initialize logging and Sentry before other imports
 from src.common.logging import get_logger, setup_logging
 from src.config.sentry import init_sentry
 from src.config.settings import get_settings
+from src.infrastructure.persistence.monitoring_repository_impl import (
+    MonitoringRepositoryImpl,
+)
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+from src.utils.japan_map import create_japan_map, create_prefecture_details_card
 
 # Initialize settings
 settings = get_settings()
@@ -28,14 +31,6 @@ init_sentry()
 
 # Get logger
 logger = get_logger(__name__)
-
-from src.infrastructure.persistence.monitoring_repository_impl import (  # noqa: E402
-    MonitoringRepositoryImpl as MonitoringRepository,
-)
-from src.utils.japan_map import (  # noqa: E402
-    create_japan_map,
-    create_prefecture_details_card,
-)
 
 # ページ設定
 st.set_page_config(
@@ -73,7 +68,7 @@ def main():
     st.sidebar.markdown(f"最終更新: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     # リポジトリ初期化（デフォルトでセッションベース）
-    repo = MonitoringRepository()
+    repo = RepositoryAdapter(MonitoringRepositoryImpl)
 
     # タブ作成
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
@@ -102,7 +97,7 @@ def main():
         display_detailed_coverage_tab(repo)
 
 
-def display_overview_tab(repo: MonitoringRepository):
+def display_overview_tab(repo: RepositoryAdapter):
     """全体概要タブの表示"""
     st.header("📈 全体概要")
 
@@ -182,7 +177,7 @@ def display_overview_tab(repo: MonitoringRepository):
         st.info("過去7日間のデータ入力はありません")
 
 
-def display_conference_coverage_tab(repo: MonitoringRepository):
+def display_conference_coverage_tab(repo: RepositoryAdapter):
     """議会別カバレッジタブの表示"""
     st.header("🏛️ 議会別カバレッジ")
 
@@ -279,7 +274,7 @@ def display_conference_coverage_tab(repo: MonitoringRepository):
         st.info("表示するデータがありません")
 
 
-def display_timeline_tab(repo: MonitoringRepository):
+def display_timeline_tab(repo: RepositoryAdapter):
     """時系列分析タブの表示"""
     st.header("📅 時系列分析")
 
@@ -345,7 +340,7 @@ def display_timeline_tab(repo: MonitoringRepository):
         st.info("表示するデータがありません")
 
 
-def display_detailed_coverage_tab(repo: MonitoringRepository):
+def display_detailed_coverage_tab(repo: RepositoryAdapter):
     """データ充実度詳細タブの表示"""
     st.header("🎯 データ充実度詳細")
 
@@ -362,7 +357,7 @@ def display_detailed_coverage_tab(repo: MonitoringRepository):
         display_committee_type_coverage(repo)
 
 
-def display_party_coverage(repo: MonitoringRepository):
+def display_party_coverage(repo: RepositoryAdapter):
     """政党別カバレッジの表示"""
     st.subheader("政党別データカバレッジ")
 
@@ -401,7 +396,7 @@ def display_party_coverage(repo: MonitoringRepository):
         st.info("政党データがありません")
 
 
-def display_prefecture_coverage(repo: MonitoringRepository):
+def display_prefecture_coverage(repo: RepositoryAdapter):
     """都道府県別カバレッジの表示"""
     st.subheader("都道府県別データカバレッジ")
 
@@ -427,7 +422,7 @@ def display_prefecture_coverage(repo: MonitoringRepository):
         st.info("都道府県データがありません")
 
 
-def display_committee_type_coverage(repo: MonitoringRepository):
+def display_committee_type_coverage(repo: RepositoryAdapter):
     """委員会タイプ別カバレッジの表示"""
     st.subheader("委員会タイプ別データカバレッジ")
 
@@ -449,7 +444,7 @@ def display_committee_type_coverage(repo: MonitoringRepository):
         st.info("委員会データがありません")
 
 
-def display_japan_map_tab(repo: MonitoringRepository):
+def display_japan_map_tab(repo: RepositoryAdapter):
     """日本地図タブの表示"""
     st.header("🗾 日本地図でみるデータカバレッジ")
 

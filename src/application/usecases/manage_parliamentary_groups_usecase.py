@@ -285,7 +285,7 @@ class ManageParliamentaryGroupsUseCase:
                 "(id, name, conference_id, url, description, is_active) VALUES\n"
             )
 
-            values = []
+            values: list[str] = []
             for group in all_groups:
                 url = f"'{group.url}'" if group.url else "NULL"
                 description = f"'{group.description}'" if group.description else "NULL"
