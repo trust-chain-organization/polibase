@@ -1,7 +1,5 @@
 """kaigiroku.netスクレーパーのテスト"""
 
-import asyncio
-import os
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -198,42 +196,104 @@ class TestKaigirokuNetScraper:
         assert "兵藤しんいち議員" in text
 
 
-@pytest.mark.skipif(
-    os.environ.get("CI") == "true", reason="Skip integration test in CI environment"
-)
 @pytest.mark.asyncio
 async def test_scraper_integration():
-    """統合テスト: 実際のURLでスクレーパーをテスト（ネットワーク接続が必要）"""
+    """統合テスト: スクレーパーをモックで動作確認"""
     scraper = KaigirokuNetScraper(headless=True)
 
-    # 小さい議事録でテスト
+    # テスト用URL
     url = "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
 
-    try:
-        result = await scraper.fetch_minutes(url)
+    # モックページを作成
+    mock_page = AsyncMock()
+    mock_page.url = url
+    mock_page.goto = AsyncMock()
+    mock_page.wait_for_load_state = AsyncMock()
+    mock_page.content = AsyncMock(
+        return_value="""
+        <html>
+            <body>
+                <div id="tab-minute-plain">会議録</div>
+                <div id="plain-minute">
+                    令和７年１月まちづくり委員会（第１９回）
+                    第19回　まちづくり委員会記録
+                    ◯令和７年１月23日（木）
+                    ◯議題
+                    まちづくりについて
+                    ◯出席者
+                    山田太郎議員
+                    鈴木花子委員
+                </div>
+            </body>
+        </html>
+        """
+    )
+    mock_page.query_selector = AsyncMock()
+    mock_page.query_selector_all = AsyncMock(return_value=[])
+    mock_page.evaluate = AsyncMock(return_value="令和７年１月まちづくり委員会")
 
-        if result:
-            print("\n--- Minutes Summary ---")
-            print(f"Title: {result.title}")
-            print(f"Date: {result.date}")
-            print(f"Council ID: {result.council_id}")
-            print(f"Schedule ID: {result.schedule_id}")
-            print(f"Content length: {len(result.content)} characters")
-            print(f"Speakers found: {len(result.speakers)}")
-            print(f"PDF URL: {result.pdf_url}")
+    # モックブラウザーを作成
+    mock_browser = AsyncMock()
+    mock_browser.close = AsyncMock()
+    mock_browser.new_context = AsyncMock()
+    mock_context = AsyncMock()
+    mock_context.new_page = AsyncMock(return_value=mock_page)
+    mock_browser.new_context.return_value = mock_context
 
-            assert result.council_id == "6030"
-            assert result.schedule_id == "1"
-            assert len(result.content) > 0
-            print("\n✅ Integration test passed!")
-        else:
-            print("\n❌ Failed to fetch minutes")
+    # playwrightのモック
+    with patch(
+        "src.web_scraper.kaigiroku_net_scraper.async_playwright"
+    ) as mock_playwright:
+        mock_p = AsyncMock()
+        mock_p.chromium.launch = AsyncMock(return_value=mock_browser)
+        mock_playwright.return_value.__aenter__.return_value = mock_p
 
-    except Exception as e:
-        print(f"\n❌ Integration test failed: {e}")
-        raise
+        # 必要なメソッドをモック（PDFを見つけないように設定）
+        with patch.object(
+            scraper, "_find_pdf_download_url", AsyncMock(return_value=None)
+        ):
+            with patch.object(
+                scraper, "_extract_iframe_content", AsyncMock(return_value=None)
+            ):
+                with patch.object(scraper, "_wait_for_content", AsyncMock()):
+                    with patch.object(
+                        scraper, "_find_text_view_url", AsyncMock(return_value=None)
+                    ):
+                        with patch.object(
+                            scraper.content_extractor,
+                            "extract_title",
+                            return_value="まちづくり委員会",
+                        ):
+                            with patch.object(
+                                scraper.content_extractor,
+                                "extract_content",
+                                return_value="令和７年１月まちづくり委員会（第１９回）\n議題：まちづくりについて",
+                            ):
+                                with patch.object(
+                                    scraper.content_extractor,
+                                    "extract_metadata",
+                                    return_value={},
+                                ):
+                                    with patch.object(
+                                        scraper.speaker_extractor,
+                                        "extract_speakers_with_context",
+                                        return_value=[],
+                                    ):
+                                        with patch.object(
+                                            scraper,
+                                            "_extract_date",
+                                            AsyncMock(return_value="2025-01-23"),
+                                        ):
+                                            result = await scraper.fetch_minutes(url)
+
+                                            # 結果を検証
+                                            assert result is not None
+                                            assert result.council_id == "6030"
+                                            assert result.schedule_id == "1"
+                                            assert len(result.content) > 0
+                                            assert "まちづくり委員会" in result.content
 
 
 if __name__ == "__main__":
-    # 統合テストを実行
-    asyncio.run(test_scraper_integration())
+    # テスト実行
+    pytest.main([__file__, "-v"])
