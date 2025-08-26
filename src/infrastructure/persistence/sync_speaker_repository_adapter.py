@@ -24,8 +24,12 @@ class SyncSpeakerRepositoryAdapter:
         self.table_name = "speakers"
 
         # Create async adapter and repository implementation
-        self.async_session = AsyncSessionAdapter(self.session)
-        self.async_repo = SpeakerRepositoryImpl(self.async_session)
+        if self.session is not None:
+            self.async_session = AsyncSessionAdapter(self.session)
+            self.async_repo = SpeakerRepositoryImpl(self.async_session)
+        else:
+            self.async_session = None  # type: ignore[assignment]
+            self.async_repo = None  # type: ignore[assignment]
 
         # Create or get event loop
         try:
@@ -78,6 +82,8 @@ class SyncSpeakerRepositoryAdapter:
 
     def find_by_name(self, name: str) -> SpeakerModel | None:
         """Find speaker by name."""
+        if not self.async_repo:
+            return None
         result = self._run_async(self.async_repo.find_by_name(name))
         if result:
             return self._entity_to_model(result)
@@ -85,6 +91,8 @@ class SyncSpeakerRepositoryAdapter:
 
     def get_all_speakers(self) -> list[SpeakerModel]:
         """Get all speakers."""
+        if not self.async_repo:
+            return []
         entities = self._run_async(self.async_repo.get_all())
         return (
             [self._entity_to_model(entity) for entity in entities] if entities else []
@@ -92,11 +100,15 @@ class SyncSpeakerRepositoryAdapter:
 
     def get_speakers_count(self) -> int:
         """Get count of speakers."""
+        if not self.async_repo:
+            return 0
         speakers = self._run_async(self.async_repo.get_all())
         return len(speakers) if speakers else 0
 
     def get_speakers_not_linked_to_politicians(self) -> list[SpeakerModel]:
         """Get speakers not linked to politicians."""
+        if not self.async_repo:
+            return []
         entities = self._run_async(
             self.async_repo.get_speakers_not_linked_to_politicians()
         )
@@ -106,11 +118,19 @@ class SyncSpeakerRepositoryAdapter:
 
     def get_speakers_with_politician_info(self) -> list[dict[str, Any]]:
         """Get speakers with politician info."""
+        if not self.async_repo:
+            return []
         result = self._run_async(self.async_repo.get_speakers_with_politician_info())
         return result if result else []
 
     def get_speaker_politician_stats(self) -> dict[str, int | float]:
         """Get speaker-politician statistics."""
+        if not self.async_repo:
+            return {
+                "total_speakers": 0,
+                "linked_to_politicians": 0,
+                "link_percentage": 0.0,
+            }
         result = self._run_async(self.async_repo.get_speaker_politician_stats())
         return (
             result

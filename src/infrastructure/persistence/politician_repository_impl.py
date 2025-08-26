@@ -389,7 +389,14 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             query += " LIMIT 1"
             result = self.sync_session.execute(text(query), params)
             row = result.first()
-            return row._asdict() if row else None
+            if row:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    return dict(mapping)
+                # Fallback to dict conversion
+                return dict(row)
+            return None
         return None
 
     def find_by_name(self, name: str) -> list[Any]:
@@ -413,7 +420,14 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             result = self.sync_session.execute(text(query), data)
             self.sync_session.commit()
             row = result.first()
-            return row._asdict() if row else None
+            if row:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    return dict(mapping)
+                # Fallback to dict conversion
+                return dict(row)
+            return None
         return None
 
     def update_v2(self, politician_id: int, update_data: PoliticianUpdate) -> Any:
@@ -428,7 +442,14 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             result = self.sync_session.execute(text(query), data)
             self.sync_session.commit()
             row = result.first()
-            return row._asdict() if row else None
+            if row:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    return dict(mapping)
+                # Fallback to dict conversion
+                return dict(row)
+            return None
         return None
 
     def search_by_name_sync(self, name_pattern: str) -> list[dict[str, Any]]:
@@ -504,7 +525,17 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         """Fetch all rows as models."""
         if self.sync_session:
             result = self.sync_session.execute(text(query), params or {})
-            return [model_class(**row._asdict()) for row in result.fetchall()]
+            rows = result.fetchall()
+            result_list = []
+            for row in rows:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    result_list.append(model_class(**dict(mapping)))
+                else:
+                    # Fallback to dict conversion
+                    result_list.append(model_class(**dict(row)))
+            return result_list
         return []
 
     async def get_all(
@@ -523,7 +554,10 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             query_text += " LIMIT :limit OFFSET :offset"
             params = {"limit": limit, "offset": offset or 0}
 
-        result = await self.session.execute(
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(
             text(query_text), params if params else None
         )
         rows = result.fetchall()
@@ -538,7 +572,10 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             LEFT JOIN political_parties pp ON p.political_party_id = pp.id
             WHERE p.id = :id
         """)
-        result = await self.session.execute(query, {"id": entity_id})
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(query, {"id": entity_id})
         row = result.fetchone()
 
         if row:
@@ -570,8 +607,11 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             "profile_url": entity.profile_page_url,
         }
 
-        result = await self.session.execute(query, params)
-        await self.session.commit()
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(query, params)
+        await self.async_session.commit()
 
         row = result.first()
         if row:
@@ -606,8 +646,11 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             "profile_url": entity.profile_page_url,
         }
 
-        result = await self.session.execute(query, params)
-        await self.session.commit()
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(query, params)
+        await self.async_session.commit()
 
         row = result.first()
         if row:
@@ -617,7 +660,10 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
     async def delete(self, entity_id: int) -> bool:
         """Delete a politician by ID."""
         query = text("DELETE FROM politicians WHERE id = :id")
-        result = await self.session.execute(query, {"id": entity_id})
-        await self.session.commit()
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(query, {"id": entity_id})
+        await self.async_session.commit()
 
         return result.rowcount > 0  # type: ignore[attr-defined]

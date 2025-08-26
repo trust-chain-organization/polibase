@@ -20,7 +20,9 @@ class TestSyncLLMHistoryHelper:
     @pytest.fixture
     def mock_settings(self) -> MockGen:
         """Mock settings."""
-        with patch("src.database.llm_history_helper.settings") as mock:
+        with patch(
+            "src.infrastructure.persistence.llm_history_helper.settings"
+        ) as mock:
             mock.get_database_url.return_value = "sqlite:///:memory:"
             yield mock
 

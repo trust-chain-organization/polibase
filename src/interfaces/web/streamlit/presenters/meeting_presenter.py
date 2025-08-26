@@ -62,7 +62,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         """Save form state to session."""
         self.session.set("form_state", self.form_state.__dict__)
 
-    def load_data(self) -> list[Meeting]:
+    async def load_data(self) -> list[Meeting]:
         """Load all meetings.
 
         Returns:
@@ -162,7 +162,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             for conf in conferences
         ]
 
-    def create(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
+    async def create(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
         """Create a new meeting.
 
         Args:
