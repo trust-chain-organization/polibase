@@ -212,7 +212,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
 
         return self.meeting_repo.get_by_id(meeting_id)
 
-    def update(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
+    async def update(self, **kwargs: Any) -> WebResponseDTO[Meeting]:
         """Update a meeting.
 
         Args:
@@ -252,7 +252,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             self.logger.error(f"Error updating meeting: {e}", exc_info=True)
             return WebResponseDTO.error_response(f"会議の更新に失敗しました: {str(e)}")
 
-    def delete(self, **kwargs: Any) -> WebResponseDTO[bool]:
+    async def delete(self, **kwargs: Any) -> WebResponseDTO[bool]:
         """Delete a meeting.
 
         Args:
