@@ -456,20 +456,103 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         """Sync wrapper for search_by_name (backward compatibility)."""
         # This method is for sync code that expects a list of dicts
         if self.sync_session:
-            # TODO: Implement sync version or migrate to async
-            # Legacy repository has been removed - Issue #430
-            return []
+            query = """
+                SELECT * FROM politicians
+                WHERE name LIKE :pattern
+                ORDER BY name
+            """
+            result = self.sync_session.execute(
+                text(query), {"pattern": f"%{name_pattern}%"}
+            )
+            rows = result.fetchall()
+            results = []
+            for row in rows:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    results.append(dict(mapping))
+                else:
+                    # Fallback to dict conversion
+                    results.append(dict(row))
+            return results
         return []
 
     def bulk_create_politicians_sync(
         self, politicians_data: list[dict[str, Any]]
     ) -> dict[str, list[Any] | list[dict[str, Any]]]:
         """Sync wrapper for bulk_create_politicians (backward compatibility)."""
-        # Use the legacy repository's bulk_create_politicians if available
         if self.sync_session:
-            # TODO: Implement sync version or migrate to async
-            # Legacy repository has been removed - Issue #430
-            return {"created": [], "updated": [], "errors": []}
+            created = []
+            updated = []
+            errors = []
+
+            for data in politicians_data:
+                try:
+                    # Check if politician exists
+                    existing = self.find_by_name_and_party(
+                        data.get("name", ""), data.get("political_party_id")
+                    )
+
+                    if existing:
+                        # Update existing politician if needed
+                        update_fields = []
+                        update_values = {"id": existing["id"]}
+                        for field in [
+                            "position",
+                            "prefecture",
+                            "electoral_district",
+                            "profile_url",
+                            "party_position",
+                            "speaker_id",
+                        ]:
+                            if field in data and data[field] != existing.get(field):
+                                update_fields.append(f"{field} = :{field}")
+                                update_values[field] = data[field]
+
+                        if update_fields:
+                            query = (
+                                f"UPDATE politicians SET {', '.join(update_fields)} "
+                                f"WHERE id = :id RETURNING *"
+                            )
+                            result = self.sync_session.execute(
+                                text(query), update_values
+                            )
+                            row = result.first()
+                            if row:
+                                mapping = getattr(row, "_mapping", None)
+                                if mapping:
+                                    updated.append(dict(mapping))
+                                else:
+                                    updated.append(dict(row))
+                    else:
+                        # Create new politician
+                        columns = ", ".join(data.keys())
+                        values = ", ".join([f":{key}" for key in data.keys()])
+                        query = (
+                            f"INSERT INTO politicians ({columns}) "
+                            f"VALUES ({values}) RETURNING *"
+                        )
+                        result = self.sync_session.execute(text(query), data)
+                        row = result.first()
+                        if row:
+                            mapping = getattr(row, "_mapping", None)
+                            if mapping:
+                                created.append(dict(mapping))
+                            else:
+                                created.append(dict(row))
+
+                except SQLIntegrityError as e:
+                    errors.append(
+                        {
+                            "data": data,
+                            "error": f"Duplicate or constraint violation: {str(e)}",
+                        }
+                    )
+                except Exception as e:
+                    errors.append({"data": data, "error": f"Error: {str(e)}"})
+
+            self.sync_session.commit()
+            return {"created": created, "updated": updated, "errors": errors}
         return {"created": [], "updated": [], "errors": []}
 
     def close(self) -> None:

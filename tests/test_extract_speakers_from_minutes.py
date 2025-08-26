@@ -167,7 +167,7 @@ class TestSpeakerExtractorFromMinutes:
         """Test LLM-based speaker to politician linking"""
         # Arrange
         with patch(
-            "src.database.politician_matching_service.PoliticianMatchingService"
+            "src.domain.services.politician_matching_service.PoliticianMatchingService"
         ) as mock_matching_class:
             mock_matching_service = Mock()
             mock_matching_service.batch_link_speakers_to_politicians.return_value = {

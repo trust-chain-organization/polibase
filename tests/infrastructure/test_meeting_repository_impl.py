@@ -17,4 +17,3 @@ class TestMeetingRepositoryImplWithSyncSession:
         """Test that sync session is properly initialized"""
         assert self.repo.sync_session == self.sync_session
         assert self.repo.async_session is None
-        assert self.repo.legacy_repo is not None
