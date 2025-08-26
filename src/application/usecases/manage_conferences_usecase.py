@@ -229,7 +229,7 @@ class ManageConferencesUseCase:
                 "(id, name, governing_body_id, type, members_introduction_url) VALUES\n"
             )
 
-            values = []
+            values: list[str] = []
             for conf in all_conferences:
                 gb_id = conf.governing_body_id if conf.governing_body_id else "NULL"
                 conf_type = f"'{conf.type}'" if conf.type else "NULL"

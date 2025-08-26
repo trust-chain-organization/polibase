@@ -6,6 +6,7 @@ using the presenter pattern for business logic.
 
 import asyncio
 from datetime import date
+from typing import Any
 
 import streamlit as st
 from src.interfaces.web.streamlit.presenters.meeting_presenter import MeetingPresenter
@@ -63,9 +64,7 @@ def render_meetings_list_tab(presenter: MeetingPresenter):
         # Load conferences based on governing body
         conferences = []
         if selected_gb_id:
-            conferences = asyncio.run(
-                presenter.get_conferences_by_governing_body(selected_gb_id)
-            )
+            conferences = presenter.get_conferences_by_governing_body(selected_gb_id)
 
         with col2:
             if conferences:
@@ -88,8 +87,8 @@ def render_meetings_list_tab(presenter: MeetingPresenter):
                 st.rerun()
 
         # Load and display meetings
-        meetings = asyncio.run(
-            presenter.load_meetings_with_filters(selected_gb_id, selected_conf_id)
+        meetings = presenter.load_meetings_with_filters(
+            selected_gb_id, selected_conf_id
         )
 
         if meetings:
@@ -97,8 +96,8 @@ def render_meetings_list_tab(presenter: MeetingPresenter):
             df = presenter.to_dataframe(meetings)
 
             # Display as table with actions
-            for index, row in df.iterrows():
-                render_meeting_row(presenter, row, meetings[index])
+            for idx, (_, row) in enumerate(df.iterrows()):
+                render_meeting_row(presenter, row, meetings[idx])
         else:
             st.info("表示する会議がありません。")
 
@@ -106,7 +105,9 @@ def render_meetings_list_tab(presenter: MeetingPresenter):
         handle_ui_error(e, "会議一覧の読み込み")
 
 
-def render_meeting_row(presenter: MeetingPresenter, display_row, meeting_data):
+def render_meeting_row(
+    presenter: MeetingPresenter, display_row: Any, meeting_data: dict[str, Any]
+):
     """Render a single meeting row with actions.
 
     Args:
@@ -154,7 +155,7 @@ def render_meeting_row(presenter: MeetingPresenter, display_row, meeting_data):
         render_edit_form(presenter, meeting_data)
 
 
-def render_edit_form(presenter: MeetingPresenter, meeting_data):
+def render_edit_form(presenter: MeetingPresenter, meeting_data: dict[str, Any]):
     """Render the edit form for a meeting.
 
     Args:
@@ -170,9 +171,7 @@ def render_edit_form(presenter: MeetingPresenter, meeting_data):
         # Find current governing body
         current_gb_id = None
         for gb in governing_bodies:
-            conferences = asyncio.run(
-                presenter.get_conferences_by_governing_body(gb["id"])
-            )
+            conferences = presenter.get_conferences_by_governing_body(gb["id"])
             if any(c["id"] == meeting_data["conference_id"] for c in conferences):
                 current_gb_id = gb["id"]
                 break
@@ -193,9 +192,7 @@ def render_edit_form(presenter: MeetingPresenter, meeting_data):
         )
 
         # Conference selection based on governing body
-        conferences = asyncio.run(
-            presenter.get_conferences_by_governing_body(selected_gb["id"])
-        )
+        conferences = presenter.get_conferences_by_governing_body(selected_gb["id"])
 
         conf_index = 0
         for i, conf in enumerate(conferences):
@@ -264,9 +261,7 @@ def render_new_meeting_tab(presenter: MeetingPresenter):
         # Conference selection based on governing body
         conferences = []
         if selected_gb:
-            conferences = asyncio.run(
-                presenter.get_conferences_by_governing_body(selected_gb["id"])
-            )
+            conferences = presenter.get_conferences_by_governing_body(selected_gb["id"])
 
         if not conferences:
             st.error("選択した開催主体に会議体が登録されていません。")
@@ -402,7 +397,7 @@ def delete_meeting(presenter: MeetingPresenter, meeting_id: int):
         meeting_id: Meeting ID
     """
     try:
-        result = presenter.delete(meeting_id=meeting_id)
+        result = asyncio.run(presenter.delete(meeting_id=meeting_id))
 
         if result.success:
             st.success(result.message)

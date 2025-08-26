@@ -5,8 +5,9 @@ from datetime import date
 import streamlit as st
 from src.exceptions import DatabaseError, RecordNotFoundError, UpdateError
 from src.infrastructure.persistence.meeting_repository_impl import (
-    MeetingRepositoryImpl as MeetingRepository,
+    MeetingRepositoryImpl,
 )
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
 
 def edit_meeting():
@@ -19,10 +20,11 @@ def edit_meeting():
         )
         return
 
-    repo = MeetingRepository()
+    # Use RepositoryAdapter to handle async methods from sync context
+    meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
 
     # 編集対象の会議情報を取得
-    meeting = repo.get_meeting_by_id_with_info(st.session_state.edit_meeting_id)
+    meeting = meeting_repo.get_meeting_by_id_with_info(st.session_state.edit_meeting_id)
     if not meeting:
         st.error("会議が見つかりません")
         st.session_state.edit_mode = False
@@ -57,11 +59,19 @@ def edit_meeting():
                 st.error("URLを入力してください")
             else:
                 try:
-                    if repo.update_meeting(
-                        meeting_id=st.session_state.edit_meeting_id,
-                        meeting_date=meeting_date,
-                        url=url,
-                    ):
+                    # Update the meeting using the repository
+
+                    meeting_entity = meeting_repo.get_by_id(
+                        st.session_state.edit_meeting_id
+                    )
+                    if meeting_entity:
+                        meeting_entity.date = meeting_date
+                        meeting_entity.url = url
+                        updated_meeting = meeting_repo.update(meeting_entity)
+                    else:
+                        updated_meeting = None
+
+                    if updated_meeting:
                         st.success("会議を更新しました")
                         st.session_state.edit_mode = False
                         st.session_state.edit_meeting_id = None
@@ -78,4 +88,4 @@ def edit_meeting():
             st.session_state.edit_meeting_id = None
             st.rerun()
 
-    repo.close()
+    meeting_repo.close()
