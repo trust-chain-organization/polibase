@@ -1,6 +1,7 @@
 [run]
 branch = True
 source = src
+relative_files = True
 omit =
     src/test_utils/*
     src/streamlit/*
@@ -9,6 +10,8 @@ omit =
     */tests/*
     */__pycache__/*
     */migrations/*
+    */dependency_injector/*
+    *.pyx
 
 [report]
 precision = 1

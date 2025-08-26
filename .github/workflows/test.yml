@@ -119,11 +119,12 @@ jobs:
           path: |
             htmlcov/
             coverage.json
+            coverage.xml
 
       - name: Upload coverage to Codecov
+        # Only run for non-fork PRs (fork PRs don't have access to secrets)
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         uses: codecov/codecov-action@v4
-        # Continue even if this fails (fork PRs don't have access to secrets)
-        continue-on-error: true
         with:
           file: ./coverage.xml
           flags: unittests
@@ -132,14 +133,27 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Comment PR with coverage
-        if: github.event_name == 'pull_request'
+        # Only run for non-fork PRs (fork PRs have permission issues)
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: py-cov-action/python-coverage-comment-action@v3
-        # Continue even if this fails (fork PRs have permission issues)
-        continue-on-error: true
         with:
           GITHUB_TOKEN: ${{ github.token }}
           MINIMUM_GREEN: 85
           MINIMUM_ORANGE: 70
+
+      - name: Coverage summary for fork PRs
+        # Show coverage summary in GitHub Actions logs for fork PRs
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "## Coverage Report for Fork PR" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Fork PRs cannot post coverage comments or upload to Codecov due to security restrictions." >> $GITHUB_STEP_SUMMARY
+          echo "Coverage reports are available as artifacts in this workflow run." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          uv run coverage report | tail -n 20 >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
   code-quality:
     name: Code Quality Checks
