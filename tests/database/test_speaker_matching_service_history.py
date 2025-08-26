@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.database.speaker_matching_service import SpeakerMatchingService
+from src.domain.services.speaker_matching_service import SpeakerMatchingService
 
 # Type aliases for shorter lines
 MockGen = Generator[MagicMock]
@@ -31,14 +31,14 @@ class TestSpeakerMatchingServiceHistory:
     def mock_history_helper(self) -> MockGen:
         """Mock history helper."""
         with patch(
-            "src.database.speaker_matching_service.SyncLLMHistoryHelper"
+            "src.domain.services.speaker_matching_service.SyncLLMHistoryHelper"
         ) as mock_class:
             mock_instance = MagicMock()
             mock_class.return_value = mock_instance
             yield mock_instance
 
-    @patch("src.database.speaker_matching_service.get_db_session")
-    @patch("src.database.speaker_matching_service.ChainFactory")
+    @patch("src.domain.services.speaker_matching_service.get_db_session")
+    @patch("src.domain.services.speaker_matching_service.ChainFactory")
     def test_init_with_history_enabled(
         self,
         mock_chain_factory: MagicMock,
@@ -56,8 +56,8 @@ class TestSpeakerMatchingServiceHistory:
         assert service.history_helper is not None
         assert service.model_name == "gemini-1.5-flash"
 
-    @patch("src.database.speaker_matching_service.get_db_session")
-    @patch("src.database.speaker_matching_service.ChainFactory")
+    @patch("src.domain.services.speaker_matching_service.get_db_session")
+    @patch("src.domain.services.speaker_matching_service.ChainFactory")
     def test_init_with_history_disabled(
         self,
         mock_chain_factory: Any,
@@ -73,8 +73,8 @@ class TestSpeakerMatchingServiceHistory:
 
         assert service.history_helper is None
 
-    @patch("src.database.speaker_matching_service.get_db_session")
-    @patch("src.database.speaker_matching_service.ChainFactory")
+    @patch("src.domain.services.speaker_matching_service.get_db_session")
+    @patch("src.domain.services.speaker_matching_service.ChainFactory")
     def test_find_best_match_records_history_on_success(
         self,
         mock_chain_factory: Any,
@@ -98,7 +98,7 @@ class TestSpeakerMatchingServiceHistory:
 
         # Create service with mocked history helper
         with patch(
-            "src.database.speaker_matching_service.SyncLLMHistoryHelper"
+            "src.domain.services.speaker_matching_service.SyncLLMHistoryHelper"
         ) as mock_helper_class:
             mock_history_instance = MagicMock()
             mock_helper_class.return_value = mock_history_instance
@@ -133,8 +133,8 @@ class TestSpeakerMatchingServiceHistory:
                 prompt_template="speaker_matching",
             )
 
-    @patch("src.database.speaker_matching_service.get_db_session")
-    @patch("src.database.speaker_matching_service.ChainFactory")
+    @patch("src.domain.services.speaker_matching_service.get_db_session")
+    @patch("src.domain.services.speaker_matching_service.ChainFactory")
     def test_find_best_match_records_history_on_no_match(
         self,
         mock_chain_factory: Any,
@@ -156,7 +156,7 @@ class TestSpeakerMatchingServiceHistory:
         }
 
         with patch(
-            "src.database.speaker_matching_service.SyncLLMHistoryHelper"
+            "src.domain.services.speaker_matching_service.SyncLLMHistoryHelper"
         ) as mock_helper_class:
             mock_history_instance = MagicMock()
             mock_helper_class.return_value = mock_history_instance
@@ -180,8 +180,8 @@ class TestSpeakerMatchingServiceHistory:
             assert call_args.kwargs["speaker_id"] is None
             assert call_args.kwargs["confidence"] == 0.3
 
-    @patch("src.database.speaker_matching_service.get_db_session")
-    @patch("src.database.speaker_matching_service.ChainFactory")
+    @patch("src.domain.services.speaker_matching_service.get_db_session")
+    @patch("src.domain.services.speaker_matching_service.ChainFactory")
     def test_history_recording_failure_does_not_break_main_flow(
         self,
         mock_chain_factory: Any,
@@ -203,7 +203,7 @@ class TestSpeakerMatchingServiceHistory:
         }
 
         with patch(
-            "src.database.speaker_matching_service.SyncLLMHistoryHelper"
+            "src.domain.services.speaker_matching_service.SyncLLMHistoryHelper"
         ) as mock_helper_class:
             mock_history_instance = MagicMock()
             # Make history recording raise an exception
@@ -228,8 +228,8 @@ class TestSpeakerMatchingServiceHistory:
             assert result.matched is True
             assert result.speaker_id == 123
 
-    @patch("src.database.speaker_matching_service.get_db_session")
-    @patch("src.database.speaker_matching_service.ChainFactory")
+    @patch("src.domain.services.speaker_matching_service.get_db_session")
+    @patch("src.domain.services.speaker_matching_service.ChainFactory")
     def test_batch_update_closes_history_helper(
         self,
         mock_chain_factory: Any,
@@ -244,7 +244,7 @@ class TestSpeakerMatchingServiceHistory:
         mock_session.execute.return_value.fetchall.return_value = []
 
         with patch(
-            "src.database.speaker_matching_service.SyncLLMHistoryHelper"
+            "src.domain.services.speaker_matching_service.SyncLLMHistoryHelper"
         ) as mock_helper_class:
             mock_history_instance = MagicMock()
             mock_helper_class.return_value = mock_history_instance
@@ -259,8 +259,8 @@ class TestSpeakerMatchingServiceHistory:
             # Verify history helper was closed
             mock_history_instance.close.assert_called_once()
 
-    @patch("src.database.speaker_matching_service.get_db_session")
-    @patch("src.database.speaker_matching_service.ChainFactory")
+    @patch("src.domain.services.speaker_matching_service.get_db_session")
+    @patch("src.domain.services.speaker_matching_service.ChainFactory")
     def test_low_confidence_match_still_records_history(
         self,
         mock_chain_factory: Any,
@@ -284,7 +284,7 @@ class TestSpeakerMatchingServiceHistory:
         }
 
         with patch(
-            "src.database.speaker_matching_service.SyncLLMHistoryHelper"
+            "src.domain.services.speaker_matching_service.SyncLLMHistoryHelper"
         ) as mock_helper_class:
             mock_history_instance = MagicMock()
             mock_helper_class.return_value = mock_history_instance

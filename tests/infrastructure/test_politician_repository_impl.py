@@ -28,47 +28,69 @@ class TestPoliticianRepositoryImpl:
     def test_find_by_name_and_party_sync(self, sync_repository, mock_sync_session):
         """同期版のfind_by_name_and_partyのテスト"""
         # モックデータの準備
-        with patch.object(sync_repository, "legacy_repo") as mock_legacy_repo:
-            mock_politician = MagicMock()
-            mock_politician.name = "テスト太郎"
-            mock_politician.political_party_id = 2
-            mock_legacy_repo.fetch_one.return_value = mock_politician
+        mock_row = MagicMock()
+        mock_row.name = "テスト太郎"
+        mock_row.political_party_id = 2
+        mock_row.id = 1
+        mock_row.speaker_id = None
+        mock_row.position = None
+        mock_row.prefecture = None
+        mock_row.electoral_district = None
+        mock_row.profile_url = None
+        mock_row.party_position = None
+        mock_row._mapping = {
+            "id": 1,
+            "name": "テスト太郎",
+            "political_party_id": 2,
+            "speaker_id": None,
+            "position": None,
+            "prefecture": None,
+            "electoral_district": None,
+            "profile_url": None,
+            "party_position": None,
+        }
 
-            # テスト実行 (同期メソッド)
-            result = sync_repository.find_by_name_and_party("テスト太郎", 2)
+        mock_result = MagicMock()
+        mock_result.first.return_value = mock_row
+        mock_sync_session.execute.return_value = mock_result
 
-            # 検証
-            assert result is not None
-            assert result.name == "テスト太郎"
-            assert result.political_party_id == 2
-            mock_legacy_repo.fetch_one.assert_called_once()
+        # テスト実行 (同期メソッド)
+        result = sync_repository.find_by_name_and_party("テスト太郎", 2)
 
-    @pytest.mark.skip(
-        reason="Legacy repository removed - needs reimplementation - Issue #430"
-    )
+        # 検証
+        assert result is not None
+        assert result["name"] == "テスト太郎"
+        assert result["political_party_id"] == 2
+        mock_sync_session.execute.assert_called_once()
+
     def test_search_by_name_sync(self, sync_repository, mock_sync_session):
         """同期版のsearch_by_nameのテスト"""
+
         # モックデータの準備
-        with patch(
-            "src.infrastructure.persistence.politician_repository_impl.TypedRepository"
-        ) as mock_legacy_repo:
-            mock_legacy_instance = MagicMock()
-            mock_legacy_repo.return_value = mock_legacy_instance
+        def create_dict_row(data):
+            mock_row = MagicMock()
+            mock_row._mapping = data
+            for key, value in data.items():
+                setattr(mock_row, key, value)
+            return mock_row
 
-            # Mock search_by_name to return list of dicts
-            mock_legacy_instance.search_by_name.return_value = [
-                {"id": 1, "name": "テスト太郎", "political_party_id": 2},
-                {"id": 2, "name": "テスト次郎", "political_party_id": 2},
-            ]
+        mock_rows = [
+            create_dict_row({"id": 1, "name": "テスト太郎", "political_party_id": 2}),
+            create_dict_row({"id": 2, "name": "テスト次郎", "political_party_id": 2}),
+        ]
 
-            # テスト実行
-            results = sync_repository.search_by_name_sync("テスト")
+        mock_result = MagicMock()
+        mock_result.fetchall.return_value = mock_rows
+        mock_sync_session.execute.return_value = mock_result
 
-            # 検証
-            assert len(results) == 2
-            assert results[0]["name"] == "テスト太郎"
-            assert results[1]["name"] == "テスト次郎"
-            mock_legacy_instance.search_by_name.assert_called_once_with("テスト")
+        # テスト実行
+        results = sync_repository.search_by_name_sync("テスト")
+
+        # 検証
+        assert len(results) == 2
+        assert results[0]["name"] == "テスト太郎"
+        assert results[1]["name"] == "テスト次郎"
+        mock_sync_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_upsert_create_new(self):
@@ -140,34 +162,35 @@ class TestPoliticianRepositoryImpl:
                 # 検証
                 assert result == updated_politician
 
-    @pytest.mark.skip(
-        reason="Legacy repository removed - needs reimplementation - Issue #430"
-    )
     def test_bulk_create_politicians_sync(self, sync_repository, mock_sync_session):
         """bulk_create_politicians_syncのテスト"""
-        # モックの設定
-        with patch(
-            "src.infrastructure.persistence.politician_repository_impl.TypedRepository"
-        ) as mock_legacy_repo:
-            mock_legacy_instance = MagicMock()
-            mock_legacy_repo.return_value = mock_legacy_instance
-
-            # Mock bulk_create_politicians to return expected result
-            mock_legacy_instance.bulk_create_politicians.return_value = {
-                "created": [{"name": "バルク太郎", "id": 20}],
-                "updated": [],
-                "errors": [],
+        # テストデータ
+        politicians_data = [
+            {
+                "name": "バルク太郎",
+                "speaker_id": 15,
+                "political_party_id": 5,
+                "position": "衆議院議員",
             }
+        ]
 
-            # テストデータ
-            politicians_data = [
-                {
-                    "name": "バルク太郎",
-                    "speaker_id": 15,
-                    "political_party_id": 5,
-                    "position": "衆議院議員",
-                }
-            ]
+        # Mock find_by_name_and_party to return None (not exists)
+        with patch.object(sync_repository, "find_by_name_and_party", return_value=None):
+            # Mock the insert operation
+            mock_row = MagicMock()
+            mock_row._mapping = {
+                "id": 20,
+                "name": "バルク太郎",
+                "speaker_id": 15,
+                "political_party_id": 5,
+                "position": "衆議院議員",
+            }
+            mock_result = MagicMock()
+            mock_result.first.return_value = mock_row
+            mock_sync_session.execute.return_value = mock_result
+
+            # Mock the commit
+            mock_sync_session.commit = MagicMock()
 
             # テスト実行
             result = sync_repository.bulk_create_politicians_sync(politicians_data)
@@ -177,11 +200,11 @@ class TestPoliticianRepositoryImpl:
             assert "updated" in result
             assert "errors" in result
             assert len(result["created"]) == 1
+            assert result["created"][0]["name"] == "バルク太郎"
             assert len(result["updated"]) == 0
             assert len(result["errors"]) == 0
-            mock_legacy_instance.bulk_create_politicians.assert_called_once_with(
-                politicians_data
-            )
+            mock_sync_session.execute.assert_called()
+            mock_sync_session.commit.assert_called()
 
     def test_fetch_as_dict_sync(self, sync_repository, mock_sync_session):
         """fetch_as_dict_syncのテスト"""

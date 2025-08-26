@@ -25,7 +25,9 @@ from src.common.metrics import (  # noqa: E402
     create_counter,
     setup_metrics,
 )
-from src.database.instrumented_repository import InstrumentedRepository  # noqa: E402
+
+# from src.database.instrumented_repository import InstrumentedRepository  # noqa: E402
+# Removed after migration
 from src.services.instrumented_llm_service import InstrumentedLLMService  # noqa: E402
 
 # ロギングとメトリクスの設定
@@ -222,21 +224,8 @@ def test_llm_instrumentation():
 def test_database_instrumentation():
     """データベースリポジトリの計測テスト."""
     print("\n=== データベースリポジトリの計測テスト ===")
-
-    try:
-        # 計測付きリポジトリのインスタンスを作成
-        # （実際のDB接続は不要なのでuse_session=False）
-        repo = InstrumentedRepository(use_session=False)
-
-        # メトリクスが初期化されていることを確認
-        assert repo.db_operations is not None
-        assert repo.db_connections is not None
-
-        print("✅ データベースリポジトリの計測が初期化されました")
-
-    except Exception as e:
-        logger.warning(f"データベーステストをスキップ: {e}")
-        print("⚠️  データベースのテストはスキップされました")
+    # InstrumentedRepository was removed during Clean Architecture migration
+    print("⚠️  InstrumentedRepositoryは移行により削除されました")
 
 
 def show_metrics_summary():

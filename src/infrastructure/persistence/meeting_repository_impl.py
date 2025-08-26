@@ -54,20 +54,6 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             self.entity_class = Meeting
             self.model_class = model_class
 
-        self.legacy_repo = None
-
-        # Initialize legacy repository if sync session is provided
-        if self.sync_session:
-            from src.database.typed_repository import TypedRepository
-
-            # Use the dynamic model class for legacy repo too
-            self.legacy_repo = TypedRepository(
-                self.model_class,
-                "meetings",
-                use_session=True,
-                session=self.sync_session,  # type: ignore
-            )
-
     async def get_by_conference_and_date(
         self, conference_id: int, meeting_date: date
     ) -> Meeting | None:
@@ -83,14 +69,21 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             model = result.scalar_one_or_none()
             return self._to_entity(model) if model else None
         else:
-            # Use legacy repository for sync session
-            if self.legacy_repo:
-                meetings = self.legacy_repo.get_meetings(  # type: ignore
-                    conference_id=conference_id, limit=100
+            # Use raw SQL for sync session
+            if self.sync_session:
+                from sqlalchemy import text
+
+                sql = (
+                    "SELECT * FROM meetings WHERE conference_id = :conference_id "
+                    "AND date = :date LIMIT 1"
                 )
-                for meeting_dict in meetings:
-                    if meeting_dict.get("date") == meeting_date:
-                        return self._dict_to_entity(meeting_dict)
+                result = self.sync_session.execute(
+                    text(sql), {"conference_id": conference_id, "date": meeting_date}
+                )
+                row = result.first()
+                if row:
+                    meeting_dict = dict(row._mapping)  # type: ignore
+                    return self._dict_to_entity(meeting_dict)
             return None
 
     async def get_by_conference(
@@ -118,7 +111,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                     sql += " LIMIT :limit"
                     params["limit"] = limit
                 result = self.sync_session.execute(text(sql), params)
-                meetings = []
+                meetings: list[Meeting] = []
                 for row in result:
                     meeting_dict = dict(row._mapping)  # type: ignore
                     meetings.append(self._dict_to_entity(meeting_dict))
@@ -161,7 +154,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 if limit:
                     sql += f" LIMIT {limit}"
                 result = self.sync_session.execute(text(sql))
-                meetings = []
+                meetings: list[Meeting] = []
                 for row in result:
                     meeting_dict = dict(row._mapping)  # type: ignore
                     meetings.append(self._dict_to_entity(meeting_dict))
@@ -198,7 +191,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             if self.sync_session:
                 from sqlalchemy import text
 
-                update_parts = []
+                update_parts: list[str] = []
                 params: dict[str, Any] = {"meeting_id": meeting_id}
                 if pdf_uri is not None:
                     update_parts.append("gcs_pdf_uri = :pdf_uri")

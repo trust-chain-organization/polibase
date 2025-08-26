@@ -49,7 +49,7 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
         """Save form state to session."""
         self.session.set("governing_body_form_state", self.form_state)
 
-    def load_data(self) -> list[GoverningBody]:
+    async def load_data(self) -> list[GoverningBody]:
         """Load all governing bodies."""
         try:
             result = self.use_case.list_governing_bodies(GoverningBodyListInputDto())

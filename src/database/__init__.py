@@ -1,9 +1,0 @@
-"""
-データベース関連モジュール
-"""
-
-from .base_repository import BaseRepository
-
-__all__ = [
-    "BaseRepository",
-]

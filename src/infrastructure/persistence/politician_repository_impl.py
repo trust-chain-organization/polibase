@@ -10,7 +10,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-from src.database.typed_repository import TypedRepository
 from src.domain.entities.politician import Politician
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
@@ -60,18 +59,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             self.session = session
             self.entity_class = Politician
             self.model_class = model_class
-
-        # Initialize legacy repository for sync operations
-        self.legacy_repo = None
-        if self.sync_session:
-            from src.models.politician import Politician as PoliticianPydanticModel
-
-            self.legacy_repo = TypedRepository(
-                PoliticianPydanticModel,
-                "politicians",
-                use_session=True,
-                session=self.sync_session,
-            )
 
     async def get_by_name_and_party(
         self, name: str, political_party_id: int | None = None
@@ -393,14 +380,23 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         self, name: str, political_party_id: int | None = None
     ) -> Any:
         """Sync wrapper for get_by_name_and_party (backward compatibility)."""
-        if self.legacy_repo:
+        if self.sync_session:
             query = "SELECT * FROM politicians WHERE name = :name"
             params: dict[str, Any] = {"name": name}
             if political_party_id is not None:
                 query += " AND political_party_id = :party_id"
                 params["party_id"] = political_party_id
             query += " LIMIT 1"
-            return self.legacy_repo.fetch_one(query, params)
+            result = self.sync_session.execute(text(query), params)
+            row = result.first()
+            if row:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    return dict(mapping)
+                # Fallback to dict conversion
+                return dict(row)
+            return None
         return None
 
     def find_by_name(self, name: str) -> list[Any]:
@@ -416,34 +412,147 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
 
     def create_sync(self, politician_create: PoliticianCreate) -> Any:
         """Sync wrapper for create (backward compatibility)."""
-        if self.legacy_repo and hasattr(self.legacy_repo, "create"):
-            return self.legacy_repo.create(politician_create)  # type: ignore
+        if self.sync_session:
+            data = politician_create.model_dump(exclude_unset=True)
+            columns = ", ".join(data.keys())
+            values = ", ".join([f":{key}" for key in data.keys()])
+            query = f"INSERT INTO politicians ({columns}) VALUES ({values}) RETURNING *"
+            result = self.sync_session.execute(text(query), data)
+            self.sync_session.commit()
+            row = result.first()
+            if row:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    return dict(mapping)
+                # Fallback to dict conversion
+                return dict(row)
+            return None
         return None
 
     def update_v2(self, politician_id: int, update_data: PoliticianUpdate) -> Any:
         """Sync wrapper for update (backward compatibility)."""
-        if self.legacy_repo and hasattr(self.legacy_repo, "update"):
-            return self.legacy_repo.update(politician_id, update_data)  # type: ignore
+        if self.sync_session:
+            data = update_data.model_dump(exclude_unset=True)
+            if not data:
+                return None
+            set_clause = ", ".join([f"{key} = :{key}" for key in data.keys()])
+            query = f"UPDATE politicians SET {set_clause} WHERE id = :id RETURNING *"
+            data["id"] = politician_id
+            result = self.sync_session.execute(text(query), data)
+            self.sync_session.commit()
+            row = result.first()
+            if row:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    return dict(mapping)
+                # Fallback to dict conversion
+                return dict(row)
+            return None
         return None
 
     def search_by_name_sync(self, name_pattern: str) -> list[dict[str, Any]]:
         """Sync wrapper for search_by_name (backward compatibility)."""
         # This method is for sync code that expects a list of dicts
         if self.sync_session:
-            # TODO: Implement sync version or migrate to async
-            # Legacy repository has been removed - Issue #430
-            return []
+            query = """
+                SELECT * FROM politicians
+                WHERE name LIKE :pattern
+                ORDER BY name
+            """
+            result = self.sync_session.execute(
+                text(query), {"pattern": f"%{name_pattern}%"}
+            )
+            rows = result.fetchall()
+            results = []
+            for row in rows:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    results.append(dict(mapping))
+                else:
+                    # Fallback to dict conversion
+                    results.append(dict(row))
+            return results
         return []
 
     def bulk_create_politicians_sync(
         self, politicians_data: list[dict[str, Any]]
     ) -> dict[str, list[Any] | list[dict[str, Any]]]:
         """Sync wrapper for bulk_create_politicians (backward compatibility)."""
-        # Use the legacy repository's bulk_create_politicians if available
         if self.sync_session:
-            # TODO: Implement sync version or migrate to async
-            # Legacy repository has been removed - Issue #430
-            return {"created": [], "updated": [], "errors": []}
+            created = []
+            updated = []
+            errors = []
+
+            for data in politicians_data:
+                try:
+                    # Check if politician exists
+                    existing = self.find_by_name_and_party(
+                        data.get("name", ""), data.get("political_party_id")
+                    )
+
+                    if existing:
+                        # Update existing politician if needed
+                        update_fields = []
+                        update_values = {"id": existing["id"]}
+                        for field in [
+                            "position",
+                            "prefecture",
+                            "electoral_district",
+                            "profile_url",
+                            "party_position",
+                            "speaker_id",
+                        ]:
+                            if field in data and data[field] != existing.get(field):
+                                update_fields.append(f"{field} = :{field}")
+                                update_values[field] = data[field]
+
+                        if update_fields:
+                            query = (
+                                f"UPDATE politicians SET {', '.join(update_fields)} "
+                                f"WHERE id = :id RETURNING *"
+                            )
+                            result = self.sync_session.execute(
+                                text(query), update_values
+                            )
+                            row = result.first()
+                            if row:
+                                mapping = getattr(row, "_mapping", None)
+                                if mapping:
+                                    updated.append(dict(mapping))
+                                else:
+                                    updated.append(dict(row))
+                    else:
+                        # Create new politician
+                        columns = ", ".join(data.keys())
+                        values = ", ".join([f":{key}" for key in data.keys()])
+                        query = (
+                            f"INSERT INTO politicians ({columns}) "
+                            f"VALUES ({values}) RETURNING *"
+                        )
+                        result = self.sync_session.execute(text(query), data)
+                        row = result.first()
+                        if row:
+                            mapping = getattr(row, "_mapping", None)
+                            if mapping:
+                                created.append(dict(mapping))
+                            else:
+                                created.append(dict(row))
+
+                except SQLIntegrityError as e:
+                    errors.append(
+                        {
+                            "data": data,
+                            "error": f"Duplicate or constraint violation: {str(e)}",
+                        }
+                    )
+                except Exception as e:
+                    errors.append({"data": data, "error": f"Error: {str(e)}"})
+
+            self.sync_session.commit()
+            return {"created": created, "updated": updated, "errors": errors}
         return {"created": [], "updated": [], "errors": []}
 
     def close(self) -> None:
@@ -496,9 +605,20 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         query: str,
         params: dict[str, Any] | None = None,
     ) -> list[Any]:
-        """Fetch all rows as models - wrapper for TypedRepository.fetch_all."""
-        if self.legacy_repo and hasattr(self.legacy_repo, "fetch_all"):
-            return list(self.legacy_repo.fetch_all(query, params))  # type: ignore
+        """Fetch all rows as models."""
+        if self.sync_session:
+            result = self.sync_session.execute(text(query), params or {})
+            rows = result.fetchall()
+            result_list = []
+            for row in rows:
+                # Use getattr to avoid protected member access warning
+                mapping = getattr(row, "_mapping", None)
+                if mapping:
+                    result_list.append(model_class(**dict(mapping)))
+                else:
+                    # Fallback to dict conversion
+                    result_list.append(model_class(**dict(row)))
+            return result_list
         return []
 
     async def get_all(
@@ -517,7 +637,10 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             query_text += " LIMIT :limit OFFSET :offset"
             params = {"limit": limit, "offset": offset or 0}
 
-        result = await self.session.execute(
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(
             text(query_text), params if params else None
         )
         rows = result.fetchall()
@@ -532,7 +655,10 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             LEFT JOIN political_parties pp ON p.political_party_id = pp.id
             WHERE p.id = :id
         """)
-        result = await self.session.execute(query, {"id": entity_id})
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(query, {"id": entity_id})
         row = result.fetchone()
 
         if row:
@@ -564,8 +690,11 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             "profile_url": entity.profile_page_url,
         }
 
-        result = await self.session.execute(query, params)
-        await self.session.commit()
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(query, params)
+        await self.async_session.commit()
 
         row = result.first()
         if row:
@@ -600,8 +729,11 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             "profile_url": entity.profile_page_url,
         }
 
-        result = await self.session.execute(query, params)
-        await self.session.commit()
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(query, params)
+        await self.async_session.commit()
 
         row = result.first()
         if row:
@@ -611,7 +743,10 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
     async def delete(self, entity_id: int) -> bool:
         """Delete a politician by ID."""
         query = text("DELETE FROM politicians WHERE id = :id")
-        result = await self.session.execute(query, {"id": entity_id})
-        await self.session.commit()
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(query, {"id": entity_id})
+        await self.async_session.commit()
 
         return result.rowcount > 0  # type: ignore[attr-defined]

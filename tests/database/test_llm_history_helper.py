@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.database.llm_history_helper import SyncLLMHistoryHelper
+from src.infrastructure.persistence.llm_history_helper import SyncLLMHistoryHelper
 
 # Type aliases for shorter lines
 MockGen = Generator[MagicMock]
@@ -20,7 +20,9 @@ class TestSyncLLMHistoryHelper:
     @pytest.fixture
     def mock_settings(self) -> MockGen:
         """Mock settings."""
-        with patch("src.database.llm_history_helper.settings") as mock:
+        with patch(
+            "src.infrastructure.persistence.llm_history_helper.settings"
+        ) as mock:
             mock.get_database_url.return_value = "sqlite:///:memory:"
             yield mock
 

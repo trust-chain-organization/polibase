@@ -159,7 +159,9 @@ class TestLLMServiceIntegration:
                 }
             ]
         ):
-            from src.database.speaker_matching_service import SpeakerMatchingService
+            from src.domain.services.speaker_matching_service import (
+                SpeakerMatchingService,
+            )
 
             service = SpeakerMatchingService()
             assert service.llm_service is not None
@@ -178,7 +180,7 @@ class TestLLMServiceIntegration:
                 }
             ]
         ):
-            from src.database.politician_matching_service import (
+            from src.domain.services.politician_matching_service import (
                 PoliticianMatchingService,
             )
 
