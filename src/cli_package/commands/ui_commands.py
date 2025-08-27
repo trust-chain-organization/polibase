@@ -77,8 +77,12 @@ class UICommands(BaseCommand):
         UICommands.show_progress(f"  - {access_url}/conferences  (会議体管理)")
         UICommands.show_progress("  ... and more")
         UICommands.show_progress("Press Ctrl+C to stop the server")
+        UICommands.show_progress("")
+        UICommands.show_progress("You can now view your Streamlit app in your browser.")
+        UICommands.show_progress(f"  URL: {access_url}")
 
         # 新しいStreamlitアプリケーションを起動
+        # browser.gatherUsageStatsをfalseにしてUsage statistics収集メッセージも抑制
         subprocess.run(
             [
                 sys.executable,
@@ -92,6 +96,10 @@ class UICommands(BaseCommand):
                 host,
                 "--server.headless",
                 "true",  # Dockerでの実行に必要
+                "--browser.gatherUsageStats",
+                "false",  # Usage statistics収集を無効化
+                "--logger.level",
+                "warning",  # INFOレベルのログを抑制
             ]
         )
 
@@ -126,6 +134,9 @@ class UICommands(BaseCommand):
         UICommands.show_progress("Starting monitoring dashboard...")
         UICommands.show_progress(f"Access the dashboard at: {access_url}")
         UICommands.show_progress("Press Ctrl+C to stop the server")
+        UICommands.show_progress("")
+        UICommands.show_progress("You can now view your Streamlit app in your browser.")
+        UICommands.show_progress(f"  URL: {access_url}")
 
         # 監視ダッシュボードを起動
         subprocess.run(
@@ -141,6 +152,10 @@ class UICommands(BaseCommand):
                 host,
                 "--server.headless",
                 "true",  # Dockerでの実行に必要
+                "--browser.gatherUsageStats",
+                "false",  # Usage statistics収集を無効化
+                "--logger.level",
+                "warning",  # INFOレベルのログを抑制
             ]
         )
 
