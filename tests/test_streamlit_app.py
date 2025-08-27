@@ -166,7 +166,7 @@ class TestStreamlitAppComponents:
 
         # Verify
         mock_st.error.assert_called_with(
-            "開催主体が登録されていません。先にマスターデータを登録してください。"
+            "会議体が登録されている開催主体がありません。先に会議体を登録してください。"
         )
         # The function creates 3 repository adapters
         assert mock_repo_class.call_count == 3
@@ -273,19 +273,19 @@ class TestStreamlitAppComponents:
     @patch("src.streamlit.pages.meetings.st")
     def test_edit_meeting_no_selection(self, mock_st):
         """Test edit meeting when no meeting is selected"""
-        # Mock session state
-        mock_st.session_state.edit_mode = False
-        mock_st.session_state.edit_meeting_id = None
+        # Mock session state - testing when edit_meeting is called
+        # directly without proper session state
+        mock_st.session_state = {}
 
         # Import and call function
         from src.streamlit.pages.meetings import edit_meeting
 
         edit_meeting()
 
-        # Verify
-        mock_st.info.assert_called_with(
-            "編集する会議を選択してください（会議一覧タブから編集ボタンをクリック）"
-        )
+        # Verify - edit_meeting now returns early if no
+        # edit_meeting_id is in session state
+        # No info message is shown anymore since edit tab was removed
+        mock_st.info.assert_not_called()
 
     @patch("src.streamlit.pages.meetings.RepositoryAdapter")
     @patch("src.streamlit.pages.meetings.st")

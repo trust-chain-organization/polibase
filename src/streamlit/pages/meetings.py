@@ -23,19 +23,30 @@ def manage_meetings():
     st.header("会議管理")
     st.markdown("議事録の会議情報を管理します")
 
-    # 会議管理用のタブを作成
-    meeting_tab1, meeting_tab2, meeting_tab3 = st.tabs(
-        ["会議一覧", "新規会議登録", "会議編集"]
-    )
+    # 編集モードが有効な場合、直接編集画面を表示
+    if st.session_state.get("edit_mode", False) and st.session_state.get(
+        "edit_meeting_id"
+    ):
+        # 編集モード時は編集タブのみを表示
+        col1, col2 = st.columns([8, 2])
+        with col1:
+            st.info("編集モード - 編集が完了するかキャンセルすると一覧に戻ります")
+        with col2:
+            if st.button("一覧に戻る", type="secondary"):
+                st.session_state.edit_mode = False
+                st.session_state.edit_meeting_id = None
+                st.rerun()
 
-    with meeting_tab1:
-        show_meetings_list()
-
-    with meeting_tab2:
-        add_new_meeting()
-
-    with meeting_tab3:
         edit_meeting()
+    else:
+        # 通常モード時はタブを表示（編集タブは削除）
+        meeting_tab1, meeting_tab2 = st.tabs(["会議一覧", "新規会議登録"])
+
+        with meeting_tab1:
+            show_meetings_list()
+
+        with meeting_tab2:
+            add_new_meeting()
 
 
 def show_meetings_list():
@@ -249,12 +260,24 @@ def add_new_meeting():
 
     # 開催主体選択（フォームの外）
     governing_bodies_entities = gb_repo.get_all()
+    all_conferences = conf_repo.get_all()
+
+    # 会議体が紐づいている開催主体のみをフィルタリング
+    gb_ids_with_conferences: set[int] = set()
+    for conf in all_conferences:
+        gb_ids_with_conferences.add(conf.governing_body_id)
+
+    # フィルタリングされた開催主体のリストを作成
     governing_bodies = [
         {"id": gb.id, "name": gb.name, "type": gb.type}
         for gb in governing_bodies_entities
+        if gb.id in gb_ids_with_conferences
     ]
+
     if not governing_bodies:
-        st.error("開催主体が登録されていません。先にマスターデータを登録してください。")
+        st.error(
+            "会議体が登録されている開催主体がありません。先に会議体を登録してください。"
+        )
         meeting_repo.close()
         gb_repo.close()
         conf_repo.close()
@@ -273,12 +296,13 @@ def add_new_meeting():
     # 会議体選択（選択された開催主体に紐づくもののみ表示）
     conferences = []
     if selected_gb:
-        all_conferences = conf_repo.get_all()
+        # all_conferences は既に取得済みなので再利用
         conferences = [
             {"id": c.id, "name": c.name, "governing_body_id": c.governing_body_id}
             for c in all_conferences
             if c.governing_body_id == selected_gb["id"]
         ]
+        # フィルタリング済みなので、会議体が必ず存在するはず
         if not conferences:
             st.error("選択された開催主体に会議体が登録されていません")
             meeting_repo.close()
@@ -347,14 +371,26 @@ def add_new_meeting():
         all_conferences = conf_repo.get_all()
         if all_conferences:
             # 開催主体ごとにグループ化して表示
-            conf_df = pd.DataFrame(all_conferences)
+            # GoverningBodyエンティティのIDから名前を引くためのマップを作成
+            gb_map = {gb.id: gb for gb in governing_bodies_entities}
 
-            for gb_name in conf_df["governing_body_name"].unique():  # type: ignore[union-attr]
-                gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]  # type: ignore[arg-type,index]
+            # 開催主体ごとに会議体をグループ化
+            conf_by_gb: dict[str, list[dict[str, str | None]]] = {}
+            for conf in all_conferences:
+                gb_id = conf.governing_body_id
+                if gb_id in gb_map:
+                    gb = gb_map[gb_id]
+                    gb_name = f"{gb.name} ({gb.type})" if gb.type else gb.name
+                    if gb_name not in conf_by_gb:
+                        conf_by_gb[gb_name] = []
+                    conf_by_gb[gb_name].append({"name": conf.name, "type": conf.type})
+
+            # グループ化された会議体を表示
+            for gb_name, conferences in conf_by_gb.items():
                 st.markdown(f"**{gb_name}**")
-                display_df = gb_conf_df[["name", "type"]].copy()  # type: ignore[union-attr]
-                display_df.columns = ["会議体名", "会議体種別"]  # type: ignore[union-attr]
-                st.dataframe(display_df, use_container_width=True, hide_index=True)  # type: ignore[arg-type]
+                display_df = pd.DataFrame(conferences)
+                display_df.columns = ["会議体名", "会議体種別"]
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
         else:
             st.info("会議体が登録されていません")
 
@@ -367,10 +403,11 @@ def edit_meeting():
     """会議編集フォーム"""
     st.subheader("会議編集")
 
-    if not st.session_state.edit_mode or not st.session_state.edit_meeting_id:
-        st.info(
-            "編集する会議を選択してください（会議一覧タブから編集ボタンをクリック）"
-        )
+    # edit_modeがFalseまたはedit_meeting_idがない場合は早期リターン
+    if not st.session_state.get("edit_mode", False) or not st.session_state.get(
+        "edit_meeting_id"
+    ):
+        # manage_meetings関数側で既にメッセージを表示しているので、ここではリターンのみ
         return
 
     meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
