@@ -40,6 +40,43 @@ git worktreeを使用している場合、`docker/docker-compose.override.yml`�
 1. **必ずdocker-compose.override.ymlも指定**: git worktreeを使用している場合は、すべてのdocker composeコマンドで`-f docker/docker-compose.override.yml`を追加してください
 2. **ポート番号の確認**: 実際のポート番号は`docker ps`または`docker/docker-compose.override.yml`で確認してください
 
+### Quick Start with Just (推奨)
+
+[Just](https://github.com/casey/just)コマンドランナーを使用すると、git worktreeの検出とdocker-compose.override.ymlの自動適用が行われます：
+
+```bash
+# Install just (if not installed)
+brew install just  # macOS
+# or
+cargo install just  # via Rust
+
+# Basic commands
+just up        # Start containers and launch Streamlit (worktree自動検出)
+just down      # Stop and remove containers
+just db        # Connect to database
+just test      # Run tests with type checking
+just format    # Format code with ruff
+just lint      # Lint and auto-fix code
+
+# Additional commands
+just monitoring         # Launch monitoring dashboard
+just process-minutes    # Process meeting minutes
+just pytest            # Run pytest only
+just logs              # View container logs
+just ports             # Show current port configuration
+just help              # Show CLI help
+just exec <command>    # Execute command in container
+
+# List all available commands
+just --list
+```
+
+**justコマンドの利点**:
+- git worktreeを自動検出し、必要に応じて`setup-worktree-ports.sh`を実行
+- `docker-compose.override.yml`が存在する場合は自動的に含める
+- コマンドが短く覚えやすい
+- 一貫性のある実行環境を保証
+
 ### Running the Application
 
 #### Using the Unified CLI (Recommended)

@@ -4,7 +4,6 @@
 output.csv
 .pytest_cache/
 coverage.xml
-justfile
 
 # Database backups
 database/backups/*.sql
