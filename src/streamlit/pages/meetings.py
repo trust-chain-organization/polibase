@@ -23,19 +23,39 @@ def manage_meetings():
     st.header("会議管理")
     st.markdown("議事録の会議情報を管理します")
 
-    # 会議管理用のタブを作成
-    meeting_tab1, meeting_tab2, meeting_tab3 = st.tabs(
-        ["会議一覧", "新規会議登録", "会議編集"]
-    )
+    # 編集モードが有効な場合、直接編集画面を表示
+    if st.session_state.get("edit_mode", False) and st.session_state.get(
+        "edit_meeting_id"
+    ):
+        # 編集モード時は編集タブのみを表示
+        col1, col2 = st.columns([8, 2])
+        with col1:
+            st.info("編集モード - 編集が完了するかキャンセルすると一覧に戻ります")
+        with col2:
+            if st.button("一覧に戻る", type="secondary"):
+                st.session_state.edit_mode = False
+                st.session_state.edit_meeting_id = None
+                st.rerun()
 
-    with meeting_tab1:
-        show_meetings_list()
-
-    with meeting_tab2:
-        add_new_meeting()
-
-    with meeting_tab3:
         edit_meeting()
+    else:
+        # 通常モード時はタブを表示
+        meeting_tab1, meeting_tab2, meeting_tab3 = st.tabs(
+            ["会議一覧", "新規会議登録", "会議編集"]
+        )
+
+        with meeting_tab1:
+            show_meetings_list()
+
+        with meeting_tab2:
+            add_new_meeting()
+
+        with meeting_tab3:
+            # 編集タブでは編集モードでない場合のメッセージを表示
+            st.subheader("会議編集")
+            st.info(
+                "編集する会議を選択してください（会議一覧タブから編集ボタンをクリック）"
+            )
 
 
 def show_meetings_list():
@@ -392,10 +412,11 @@ def edit_meeting():
     """会議編集フォーム"""
     st.subheader("会議編集")
 
-    if not st.session_state.edit_mode or not st.session_state.edit_meeting_id:
-        st.info(
-            "編集する会議を選択してください（会議一覧タブから編集ボタンをクリック）"
-        )
+    # edit_modeがFalseまたはedit_meeting_idがない場合は早期リターン
+    if not st.session_state.get("edit_mode", False) or not st.session_state.get(
+        "edit_meeting_id"
+    ):
+        # manage_meetings関数側で既にメッセージを表示しているので、ここではリターンのみ
         return
 
     meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
