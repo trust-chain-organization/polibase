@@ -570,11 +570,6 @@ When working on this project, refer to these documentation files for detailed in
     2. **必ず** `database/02_run_migrations.sql` に追加して、`reset-database.sh` 実行時に適用されるようにする
 - **GCS URI Format**: Always use `gs://` format for GCS URIs, not HTTPS URLs
 - **Intermediate Files**: Always create temporary or intermediate files (including markdown files for planning, summaries, etc.) in the `tmp/` directory. This directory is gitignored to keep the repository clean
-- **UI Testing with Playwright**: When testing or verifying Streamlit UI behavior, use Playwright MCP tools (`mcp__playwright__*`) to:
-  - Navigate to the Streamlit app (check actual port with `docker ps` or `docker/docker-compose.override.yml`)
-  - Take screenshots to verify UI changes
-  - Interact with UI elements to test functionality
-  - Capture and verify error messages or success notifications
 - **CI/CDでのテストスキップ**: テストやチェックを`continue-on-error: true`でスキップする場合は、必ず対応するIssueを作成すること
   - スキップした理由を明確に記載
   - 修正方法を具体的に記述
