@@ -4,6 +4,7 @@ from .conferences import manage_conferences
 from .conversations import manage_conversations
 from .conversations_speakers import manage_conversations_speakers
 from .governing_bodies import manage_governing_bodies
+from .llm_history import manage_llm_history
 from .meetings import manage_meetings
 from .parliamentary_groups import manage_parliamentary_groups
 from .political_parties import manage_political_parties
@@ -15,6 +16,7 @@ __all__ = [
     "manage_conversations",
     "manage_conversations_speakers",
     "manage_governing_bodies",
+    "manage_llm_history",
     "manage_meetings",
     "manage_parliamentary_groups",
     "manage_politicians",
