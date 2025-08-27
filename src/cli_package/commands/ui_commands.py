@@ -1,5 +1,6 @@
 """CLI commands for user interface operations"""
 
+import os
 import subprocess
 import sys
 
@@ -10,6 +11,32 @@ from ..base import BaseCommand, with_error_handling
 
 class UICommands(BaseCommand):
     """Commands for launching user interfaces"""
+
+    @staticmethod
+    def detect_actual_host_port(
+        container_port: int, env_var_name: str | None = None
+    ) -> int | None:
+        """Detect actual host port from environment variable.
+
+        Args:
+            container_port: The internal container port (e.g., 8501 for Streamlit)
+            env_var_name: Environment variable name to check for port override
+
+        Returns:
+            The actual host port if found, None otherwise
+        """
+        # First check environment variable if provided
+        if env_var_name:
+            port_str = os.environ.get(env_var_name)
+            if port_str:
+                try:
+                    return int(port_str)
+                except (ValueError, TypeError):
+                    pass
+
+        # If no environment variable, return None
+        # (we can't access docker-compose.override.yml from inside container)
+        return None
 
     @staticmethod
     @click.command()
@@ -29,11 +56,17 @@ class UICommands(BaseCommand):
         - Manage conference members (会議体メンバー管理)
         - And more features with modern navigation
         """
+        # Detect actual host port from environment variable if available
+        actual_host_port = UICommands.detect_actual_host_port(
+            port, env_var_name="STREAMLIT_HOST_PORT"
+        )
+        display_port = actual_host_port if actual_host_port else port
+
         # Docker環境での実行を考慮
         if host == "0.0.0.0":
-            access_url = f"http://localhost:{port}"
+            access_url = f"http://localhost:{display_port}"
         else:
-            access_url = f"http://{host}:{port}"
+            access_url = f"http://{host}:{display_port}"
 
         UICommands.show_progress("Starting Streamlit app with URL routing...")
         UICommands.show_progress(f"Access the app at: {access_url}")
@@ -44,8 +77,12 @@ class UICommands(BaseCommand):
         UICommands.show_progress(f"  - {access_url}/conferences  (会議体管理)")
         UICommands.show_progress("  ... and more")
         UICommands.show_progress("Press Ctrl+C to stop the server")
+        UICommands.show_progress("")
+        UICommands.show_progress("You can now view your Streamlit app in your browser.")
+        UICommands.show_progress(f"  URL: {access_url}")
 
         # 新しいStreamlitアプリケーションを起動
+        # browser.gatherUsageStatsをfalseにしてUsage statistics収集メッセージも抑制
         subprocess.run(
             [
                 sys.executable,
@@ -59,6 +96,10 @@ class UICommands(BaseCommand):
                 host,
                 "--server.headless",
                 "true",  # Dockerでの実行に必要
+                "--browser.gatherUsageStats",
+                "false",  # Usage statistics収集を無効化
+                "--logger.level",
+                "warning",  # INFOレベルのログを抑制
             ]
         )
 
@@ -78,15 +119,24 @@ class UICommands(BaseCommand):
         - Analyze timeline of data input activities
         - Track detailed coverage by party, prefecture, and committee type
         """
+        # Detect actual host port from environment variable if available
+        actual_host_port = UICommands.detect_actual_host_port(
+            port, env_var_name="MONITORING_HOST_PORT"
+        )
+        display_port = actual_host_port if actual_host_port else port
+
         # Docker環境での実行を考慮
         if host == "0.0.0.0":
-            access_url = f"http://localhost:{port}"
+            access_url = f"http://localhost:{display_port}"
         else:
-            access_url = f"http://{host}:{port}"
+            access_url = f"http://{host}:{display_port}"
 
         UICommands.show_progress("Starting monitoring dashboard...")
         UICommands.show_progress(f"Access the dashboard at: {access_url}")
         UICommands.show_progress("Press Ctrl+C to stop the server")
+        UICommands.show_progress("")
+        UICommands.show_progress("You can now view your Streamlit app in your browser.")
+        UICommands.show_progress(f"  URL: {access_url}")
 
         # 監視ダッシュボードを起動
         subprocess.run(
@@ -102,6 +152,10 @@ class UICommands(BaseCommand):
                 host,
                 "--server.headless",
                 "true",  # Dockerでの実行に必要
+                "--browser.gatherUsageStats",
+                "false",  # Usage statistics収集を無効化
+                "--logger.level",
+                "warning",  # INFOレベルのログを抑制
             ]
         )
 
