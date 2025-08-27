@@ -20,13 +20,13 @@ init_sentry()
 
 # Import page functions - this is done after initializing logging and Sentry
 # which is a necessary pattern for this application
-from src.interfaces.web.llm_history_page import manage_llm_history  # noqa: E402
 from src.streamlit.pages import (  # noqa: E402
     execute_processes,
     manage_conferences,
     manage_conversations,
     manage_conversations_speakers,
     manage_governing_bodies,
+    manage_llm_history,
     manage_meetings,
     manage_parliamentary_groups,
     manage_political_parties,
