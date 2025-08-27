@@ -39,23 +39,14 @@ def manage_meetings():
 
         edit_meeting()
     else:
-        # 通常モード時はタブを表示
-        meeting_tab1, meeting_tab2, meeting_tab3 = st.tabs(
-            ["会議一覧", "新規会議登録", "会議編集"]
-        )
+        # 通常モード時はタブを表示（編集タブは削除）
+        meeting_tab1, meeting_tab2 = st.tabs(["会議一覧", "新規会議登録"])
 
         with meeting_tab1:
             show_meetings_list()
 
         with meeting_tab2:
             add_new_meeting()
-
-        with meeting_tab3:
-            # 編集タブでは編集モードでない場合のメッセージを表示
-            st.subheader("会議編集")
-            st.info(
-                "編集する会議を選択してください（会議一覧タブから編集ボタンをクリック）"
-            )
 
 
 def show_meetings_list():
