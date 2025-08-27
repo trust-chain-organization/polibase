@@ -347,14 +347,26 @@ def add_new_meeting():
         all_conferences = conf_repo.get_all()
         if all_conferences:
             # 開催主体ごとにグループ化して表示
-            conf_df = pd.DataFrame(all_conferences)
+            # GoverningBodyエンティティのIDから名前を引くためのマップを作成
+            gb_map = {gb.id: gb for gb in governing_bodies_entities}
 
-            for gb_name in conf_df["governing_body_name"].unique():  # type: ignore[union-attr]
-                gb_conf_df = conf_df[conf_df["governing_body_name"] == gb_name]  # type: ignore[arg-type,index]
+            # 開催主体ごとに会議体をグループ化
+            conf_by_gb: dict[str, list[dict[str, str | None]]] = {}
+            for conf in all_conferences:
+                gb_id = conf.governing_body_id
+                if gb_id in gb_map:
+                    gb = gb_map[gb_id]
+                    gb_name = f"{gb.name} ({gb.type})" if gb.type else gb.name
+                    if gb_name not in conf_by_gb:
+                        conf_by_gb[gb_name] = []
+                    conf_by_gb[gb_name].append({"name": conf.name, "type": conf.type})
+
+            # グループ化された会議体を表示
+            for gb_name, conferences in conf_by_gb.items():
                 st.markdown(f"**{gb_name}**")
-                display_df = gb_conf_df[["name", "type"]].copy()  # type: ignore[union-attr]
-                display_df.columns = ["会議体名", "会議体種別"]  # type: ignore[union-attr]
-                st.dataframe(display_df, use_container_width=True, hide_index=True)  # type: ignore[arg-type]
+                display_df = pd.DataFrame(conferences)
+                display_df.columns = ["会議体名", "会議体種別"]
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
         else:
             st.info("会議体が登録されていません")
 
