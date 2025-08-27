@@ -45,11 +45,6 @@ git worktreeを使用している場合、`docker/docker-compose.override.yml`�
 [Just](https://github.com/casey/just)コマンドランナーを使用すると、git worktreeの検出とdocker-compose.override.ymlの自動適用が行われます：
 
 ```bash
-# Install just (if not installed)
-brew install just  # macOS
-# or
-cargo install just  # via Rust
-
 # Basic commands
 just up        # Start containers and launch Streamlit (worktree自動検出)
 just down      # Stop and remove containers
