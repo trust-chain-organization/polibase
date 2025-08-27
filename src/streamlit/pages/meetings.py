@@ -249,12 +249,24 @@ def add_new_meeting():
 
     # 開催主体選択（フォームの外）
     governing_bodies_entities = gb_repo.get_all()
+    all_conferences = conf_repo.get_all()
+
+    # 会議体が紐づいている開催主体のみをフィルタリング
+    gb_ids_with_conferences: set[int] = set()
+    for conf in all_conferences:
+        gb_ids_with_conferences.add(conf.governing_body_id)
+
+    # フィルタリングされた開催主体のリストを作成
     governing_bodies = [
         {"id": gb.id, "name": gb.name, "type": gb.type}
         for gb in governing_bodies_entities
+        if gb.id in gb_ids_with_conferences
     ]
+
     if not governing_bodies:
-        st.error("開催主体が登録されていません。先にマスターデータを登録してください。")
+        st.error(
+            "会議体が登録されている開催主体がありません。先に会議体を登録してください。"
+        )
         meeting_repo.close()
         gb_repo.close()
         conf_repo.close()
@@ -273,12 +285,13 @@ def add_new_meeting():
     # 会議体選択（選択された開催主体に紐づくもののみ表示）
     conferences = []
     if selected_gb:
-        all_conferences = conf_repo.get_all()
+        # all_conferences は既に取得済みなので再利用
         conferences = [
             {"id": c.id, "name": c.name, "governing_body_id": c.governing_body_id}
             for c in all_conferences
             if c.governing_body_id == selected_gb["id"]
         ]
+        # フィルタリング済みなので、会議体が必ず存在するはず
         if not conferences:
             st.error("選択された開催主体に会議体が登録されていません")
             meeting_repo.close()
