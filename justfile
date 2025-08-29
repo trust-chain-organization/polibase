@@ -21,8 +21,19 @@ down: _setup_worktree
 
 # Start containers and launch Streamlit
 up: _setup_worktree
+	#!/bin/bash
 	docker compose {{compose_cmd}} up -d
-	docker compose {{compose_cmd}} exec polibase uv run polibase streamlit
+	# Detect actual host port from docker-compose.override.yml if it exists
+	if [ -f docker/docker-compose.override.yml ]; then
+		HOST_PORT=$(grep ":8501" docker/docker-compose.override.yml | awk -F'"' '{print $2}' | cut -d: -f1)
+		if [ -n "$HOST_PORT" ]; then
+			docker compose {{compose_cmd}} exec -e STREAMLIT_HOST_PORT=$HOST_PORT polibase uv run polibase streamlit
+		else
+			docker compose {{compose_cmd}} exec polibase uv run polibase streamlit
+		fi
+	else
+		docker compose {{compose_cmd}} exec polibase uv run polibase streamlit
+	fi
 
 # Connect to database
 db: _setup_worktree
@@ -48,7 +59,18 @@ pytest: _setup_worktree
 
 # Run monitoring dashboard
 monitoring: _setup_worktree
-	docker compose {{compose_cmd}} exec polibase uv run polibase monitoring
+	#!/bin/bash
+	# Detect actual host port from docker-compose.override.yml if it exists
+	if [ -f docker/docker-compose.override.yml ]; then
+		HOST_PORT=$(grep ":8502" docker/docker-compose.override.yml | awk -F'"' '{print $2}' | cut -d: -f1)
+		if [ -n "$HOST_PORT" ]; then
+			docker compose {{compose_cmd}} exec -e MONITORING_HOST_PORT=$HOST_PORT polibase uv run polibase monitoring
+		else
+			docker compose {{compose_cmd}} exec polibase uv run polibase monitoring
+		fi
+	else
+		docker compose {{compose_cmd}} exec polibase uv run polibase monitoring
+	fi
 
 # Process meeting minutes
 process-minutes: _setup_worktree
