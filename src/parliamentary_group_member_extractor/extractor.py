@@ -51,7 +51,7 @@ class ParliamentaryGroupMemberExtractor:
                     parliamentary_group_id=parliamentary_group_id,
                     url=url,
                     extracted_members=[],
-                    error="Failed to fetch HTML content",
+                    error="URLからコンテンツを取得できませんでした。URLが正しいか、またはPlaywrightが正しくインストールされているか確認してください。",
                 )
 
             # BeautifulSoupでHTMLを解析
@@ -167,14 +167,25 @@ HTMLコンテンツ（構造の参考用）:
         Returns:
             HTMLコンテンツ、エラー時はNone
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         try:
             async with PartyMemberPageFetcher() as fetcher:
                 pages = await fetcher.fetch_all_pages(url, max_pages=1)
                 if pages:
                     return pages[0].html_content  # html → html_content に修正
+                logger.warning(f"No pages fetched from URL: {url}")
                 return None
         except Exception as e:
-            print(f"Error fetching HTML: {e}")
+            logger.error(f"Error fetching HTML from {url}: {str(e)}")
+            # より詳細なエラー情報を提供
+            if "playwright" in str(e).lower():
+                logger.error(
+                    "Playwright error - browser may not be properly installed. "
+                    "Run: docker compose exec polibase uv run playwright install"
+                )
             return None
 
     def extract_members_sync(
