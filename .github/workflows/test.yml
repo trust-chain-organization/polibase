@@ -48,21 +48,9 @@ jobs:
             **/pyproject.toml
             **/uv.lock
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('**/uv.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
       - name: Install dependencies
         run: |
           uv sync --extra dev
-
-      - name: Install Playwright browsers
-        run: |
-          uv run playwright install chromium --with-deps
 
       - name: Set up test environment
         run: |
@@ -307,21 +295,9 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-integration
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
       - name: Install dependencies
         run: |
           uv sync --extra dev
-
-      - name: Install Playwright browsers
-        run: |
-          uv run playwright install chromium --with-deps
 
       - name: Set up test environment
         run: |
