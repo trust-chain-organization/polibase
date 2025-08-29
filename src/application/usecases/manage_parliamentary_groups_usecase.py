@@ -1,11 +1,18 @@
 """Use case for managing parliamentary groups."""
 
+import asyncio
 from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import ParliamentaryGroup
+from src.parliamentary_group_member_extractor.extractor import (
+    ParliamentaryGroupMemberExtractor,
+)
+from src.parliamentary_group_member_extractor.service import (
+    ParliamentaryGroupMembershipService,
+)
 
 logger = get_logger(__name__)
 
@@ -138,13 +145,48 @@ class GenerateSeedFileOutputDto:
 class ManageParliamentaryGroupsUseCase:
     """Use case for managing parliamentary groups."""
 
-    def __init__(self, parliamentary_group_repository: Any):
+    def __init__(
+        self,
+        parliamentary_group_repository: Any,
+        politician_repository: Any | None = None,
+        membership_repository: Any | None = None,
+        llm_service: Any | None = None,
+    ):
         """Initialize the use case.
 
         Args:
             parliamentary_group_repository: Repository instance (can be sync or async)
+            politician_repository: Politician repository instance
+            membership_repository: Membership repository instance
+            llm_service: LLM service instance
         """
         self.parliamentary_group_repository = parliamentary_group_repository
+        self.politician_repository = politician_repository
+        self.membership_repository = membership_repository
+        self.llm_service = llm_service
+
+        # Initialize extractor and service if all dependencies are available
+        if llm_service:
+            self.extractor = ParliamentaryGroupMemberExtractor(llm_service)
+        else:
+            self.extractor = None
+
+        if all(
+            [
+                politician_repository,
+                parliamentary_group_repository,
+                membership_repository,
+                llm_service,
+            ]
+        ):
+            self.membership_service = ParliamentaryGroupMembershipService(
+                llm_service=llm_service,
+                politician_repo=politician_repository,
+                group_repo=parliamentary_group_repository,
+                membership_repo=membership_repository,
+            )
+        else:
+            self.membership_service = None
 
     def list_parliamentary_groups(
         self, input_dto: ParliamentaryGroupListInputDto
@@ -261,12 +303,102 @@ class ManageParliamentaryGroupsUseCase:
     ) -> ExtractMembersOutputDto:
         """Extract members from parliamentary group URL."""
         try:
-            # This would integrate with the parliamentary group member extractor
-            # For now, return a placeholder
-            return ExtractMembersOutputDto(
-                success=False,
-                error_message="メンバー抽出機能は現在実装中です。",
+            # Check if services are available
+            if not self.extractor or not self.membership_service:
+                return ExtractMembersOutputDto(
+                    success=False,
+                    error_message="必要なサービスが初期化されていません。LLMサービスとリポジトリが設定されているか確認してください。",
+                )
+
+            # Extract members from URL using async extractor
+            extraction_result = asyncio.run(
+                self.extractor.extract_members(
+                    parliamentary_group_id=input_dto.parliamentary_group_id,
+                    url=input_dto.url,
+                )
             )
+
+            if extraction_result.error:
+                return ExtractMembersOutputDto(
+                    success=False,
+                    error_message=f"メンバー抽出エラー: {extraction_result.error}",
+                )
+
+            # Convert extracted members to DTO format
+            extracted_members = [
+                ExtractedMember(
+                    name=member.name,
+                    role=member.role,
+                    party_name=member.party_name,
+                    district=member.district,
+                    additional_info=member.additional_info,
+                )
+                for member in extraction_result.extracted_members
+            ]
+
+            if input_dto.dry_run:
+                # Dry run mode - just return extracted members without saving
+                return ExtractMembersOutputDto(
+                    success=True,
+                    extracted_members=extracted_members,
+                    created_count=0,
+                    skipped_count=0,
+                )
+
+            # Match politicians with extracted members
+            matching_results_from_service = asyncio.run(
+                self.membership_service.match_politicians(
+                    extracted_members=extraction_result.extracted_members,
+                    conference_id=None,  # Can be set if needed to narrow search
+                )
+            )
+
+            # Create memberships if not dry run
+            if not input_dto.dry_run:
+                creation_result = self.membership_service.create_memberships(
+                    parliamentary_group_id=input_dto.parliamentary_group_id,
+                    matching_results=matching_results_from_service,
+                    start_date=input_dto.start_date,
+                    confidence_threshold=input_dto.confidence_threshold,
+                    dry_run=False,
+                )
+                created_count = creation_result.created_count
+                skipped_count = creation_result.skipped_count
+            else:
+                # In dry run mode, just count potential matches
+                created_count = 0
+                skipped_count = 0
+                for match in matching_results_from_service:
+                    if (
+                        match.politician_id
+                        and match.confidence_score >= input_dto.confidence_threshold
+                    ):
+                        created_count += 1
+                    else:
+                        skipped_count += 1
+
+            # Convert service results to DTO format
+            matching_results = []
+            for idx, match in enumerate(matching_results_from_service):
+                extracted_member = extracted_members[idx]
+                matching_results.append(
+                    MemberMatchingResult(
+                        extracted_member=extracted_member,
+                        politician_id=match.politician_id,
+                        politician_name=match.politician_name,
+                        confidence_score=match.confidence_score,
+                        matching_reason=match.matching_reason,
+                    )
+                )
+
+            return ExtractMembersOutputDto(
+                success=True,
+                extracted_members=extracted_members,
+                matching_results=matching_results,
+                created_count=created_count,
+                skipped_count=skipped_count,
+            )
+
         except Exception as e:
             logger.error(f"Failed to extract members: {e}")
             return ExtractMembersOutputDto(success=False, error_message=str(e))

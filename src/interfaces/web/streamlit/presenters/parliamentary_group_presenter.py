@@ -16,11 +16,18 @@ from src.application.usecases.manage_parliamentary_groups_usecase import (
 from src.common.logging import get_logger
 from src.domain.entities import Conference, ParliamentaryGroup
 from src.infrastructure.di.container import Container
+from src.infrastructure.external.llm_service import GeminiLLMService
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
 )
+from src.infrastructure.persistence.parliamentary_group_membership_repository_impl import (  # noqa: E501
+    ParliamentaryGroupMembershipRepositoryImpl,
+)
 from src.infrastructure.persistence.parliamentary_group_repository_impl import (
     ParliamentaryGroupRepositoryImpl,
+)
+from src.infrastructure.persistence.politician_repository_impl import (
+    PoliticianRepositoryImpl,
 )
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.interfaces.web.streamlit.presenters.base import BasePresenter
@@ -38,7 +45,19 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
             ParliamentaryGroupRepositoryImpl
         )
         self.conference_repo = RepositoryAdapter(ConferenceRepositoryImpl)
-        self.use_case = ManageParliamentaryGroupsUseCase(self.parliamentary_group_repo)
+        self.politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
+        self.membership_repo = RepositoryAdapter(
+            ParliamentaryGroupMembershipRepositoryImpl
+        )
+        self.llm_service = GeminiLLMService()
+
+        # Initialize use case with all required dependencies
+        self.use_case = ManageParliamentaryGroupsUseCase(
+            parliamentary_group_repository=self.parliamentary_group_repo,
+            politician_repository=self.politician_repo,
+            membership_repository=self.membership_repo,
+            llm_service=self.llm_service,
+        )
         self.session = SessionManager()
         self.form_state = self._get_or_create_form_state()
         self.logger = get_logger(__name__)
