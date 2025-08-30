@@ -12,6 +12,9 @@ from src.domain.entities.llm_processing_history import (
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
 from src.domain.entities.parliamentary_group import ParliamentaryGroup
+from src.domain.entities.parliamentary_group_membership import (
+    ParliamentaryGroupMembership,
+)
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician import Politician
 from src.domain.entities.prompt_version import PromptVersion
@@ -26,6 +29,7 @@ __all__ = [
     "Meeting",
     "Minutes",
     "ParliamentaryGroup",
+    "ParliamentaryGroupMembership",
     "PoliticalParty",
     "Politician",
     "ProcessingStatus",

@@ -127,17 +127,20 @@ class ParliamentaryGroupMembershipService:
         # まず完全一致で検索
         candidates = []
 
-        # 名前で検索（部分一致）
+        # 名前のスペースを正規化（全角・半角スペースを削除）
+        normalized_name = name.replace(" ", "").replace("　", "")
+
+        # 名前で検索（部分一致、スペースを無視）
         query = """
         SELECT DISTINCT p.id, p.name, p.political_party_id, pp.name as party_name,
                p.electoral_district, p.profile_url
         FROM politicians p
         LEFT JOIN political_parties pp ON p.political_party_id = pp.id
         LEFT JOIN politician_affiliations pa ON p.id = pa.politician_id
-        WHERE p.name LIKE :name_pattern
+        WHERE REPLACE(REPLACE(p.name, ' ', ''), '　', '') LIKE :name_pattern
         """
 
-        params: dict[str, str | int] = {"name_pattern": f"%{name}%"}
+        params: dict[str, str | int] = {"name_pattern": f"%{normalized_name}%"}
 
         # 会議体で絞り込み
         if conference_id:
@@ -231,26 +234,33 @@ JSONで回答してください。
             ]
         )
 
-        chain = prompt | self.llm_service.llm  # type: ignore[var-annotated]
+        # GeminiLLMServiceを直接使用（LangChainのラッパーとして）
+        # シンプルな文字列レスポンス用にLLMを直接呼び出す
+        formatted_prompt = prompt.format(
+            member_name=extracted_member.name,
+            member_role=extracted_member.role or "なし",
+            member_party=extracted_member.party_name or "なし",
+            member_district=extracted_member.district or "なし",
+            member_info=extracted_member.additional_info or "なし",
+            candidates=candidates_text,
+        )
 
         try:
-            response = await chain.ainvoke(  # type: ignore[misc]
-                {
-                    "member_name": extracted_member.name,
-                    "member_role": extracted_member.role or "なし",
-                    "member_party": extracted_member.party_name or "なし",
-                    "member_district": extracted_member.district or "なし",
-                    "member_info": extracted_member.additional_info or "なし",
-                    "candidates": candidates_text,
-                }
-            )
+            # LLMのllmプロパティを使用
+            from langchain_core.messages import HumanMessage
+
+            message = HumanMessage(content=formatted_prompt)
+            response = self.llm_service.llm.invoke([message])
 
             # レスポンスをパース
-            # response.contentが文字列であることを確認
-            if isinstance(response.content, str):  # type: ignore[misc]
-                result = json.loads(response.content)
+            if hasattr(response, "content"):
+                content = response.content
+                if isinstance(content, str):
+                    result = json.loads(content)
+                else:
+                    raise ValueError(f"Unexpected content type: {type(content)}")
             else:
-                # リスト形式の場合はエラーとして扱う
+                # 予期しない形式の場合はエラーとして扱う
                 raise ValueError("Unexpected response format from LLM")
 
             if result["best_match_id"] == -1:

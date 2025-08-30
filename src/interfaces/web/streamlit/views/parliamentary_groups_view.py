@@ -3,6 +3,8 @@
 from datetime import date
 from typing import Any, cast
 
+import pandas as pd
+
 import streamlit as st
 from src.interfaces.web.streamlit.presenters.parliamentary_group_presenter import (
     ParliamentaryGroupPresenter,
@@ -365,8 +367,53 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
 
                     # Display extracted members
                     st.markdown("### 抽出されたメンバー")
-                    # This would display the actual extraction results
-                    st.info("メンバー抽出機能は現在実装中です")
+
+                    # Create a DataFrame for display
+                    members_data = []
+                    for member in result.extracted_members:
+                        members_data.append(
+                            {
+                                "名前": member.name,
+                                "役職": member.role or "-",
+                                "政党": member.party_name or "-",
+                                "選挙区": member.district or "-",
+                                "備考": member.additional_info or "-",
+                            }
+                        )
+
+                    df_members = pd.DataFrame(members_data)
+                    st.dataframe(df_members, use_container_width=True)
+
+                    # Display matching results if not in dry run mode
+                    if result.matching_results:
+                        st.markdown("### マッチング結果")
+
+                        # Summary
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("作成済み", result.created_count)
+                        with col2:
+                            st.metric("スキップ", result.skipped_count)
+                        with col3:
+                            st.metric("総数", len(result.matching_results))
+
+                        # Detailed results
+                        matching_data = []
+                        for match in result.matching_results:
+                            matching_data.append(
+                                {
+                                    "メンバー名": match.extracted_member.name,
+                                    "政治家ID": match.politician_id or "-",
+                                    "政治家名": match.politician_name or "-",
+                                    "信頼度": f"{match.confidence_score:.2f}"
+                                    if match.politician_id
+                                    else "-",
+                                    "理由": match.matching_reason,
+                                }
+                            )
+
+                        df_matching = pd.DataFrame(matching_data)
+                        st.dataframe(df_matching, use_container_width=True)
                 else:
                     st.warning("メンバーが抽出されませんでした")
             else:

@@ -11,25 +11,25 @@ from bs4 import BeautifulSoup
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 
+from src.infrastructure.external.llm_service import GeminiLLMService
 from src.parliamentary_group_member_extractor.models import (
     ExtractedMember,
     ExtractedMemberList,
     MemberExtractionResult,
 )
 from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
-from src.services.llm_service import LLMService
 
 
 class ParliamentaryGroupMemberExtractor:
     """議員団メンバー抽出器"""
 
-    def __init__(self, llm_service: LLMService | None = None):
+    def __init__(self, llm_service: GeminiLLMService | None = None):
         """初期化
 
         Args:
             llm_service: LLMサービスインスタンス
         """
-        self.llm_service = llm_service or LLMService()
+        self.llm_service = llm_service or GeminiLLMService()
 
     async def extract_members(
         self, parliamentary_group_id: int, url: str
@@ -51,7 +51,7 @@ class ParliamentaryGroupMemberExtractor:
                     parliamentary_group_id=parliamentary_group_id,
                     url=url,
                     extracted_members=[],
-                    error="Failed to fetch HTML content",
+                    error="URLからコンテンツを取得できませんでした。URLが正しいか、またはPlaywrightが正しくインストールされているか確認してください。",
                 )
 
             # BeautifulSoupでHTMLを解析
@@ -131,21 +131,22 @@ HTMLコンテンツ（構造の参考用）:
             },
         )
 
-        # LLMチェーンの実行
-        chain = prompt | self.llm_service.llm | output_parser  # type: ignore[var-annotated]
-
+        # LLMチェーンの実行 - GeminiLLMServiceの適切なメソッドを使用
         try:
             # HTMLが長すぎる場合は最初の部分のみを使用
             truncated_html = (
                 html_content[:10000] if len(html_content) > 10000 else html_content
             )
 
-            result = await chain.ainvoke(  # type: ignore[misc]
-                {
-                    "text_content": text_content[:5000],  # テキストも制限
-                    "html_content": truncated_html,
-                }
+            # プロンプトを作成
+            formatted_prompt = prompt.format(
+                text_content=text_content[:5000],
+                html_content=truncated_html,
             )
+
+            # GeminiLLMServiceのget_structured_llmを使って構造化された出力を取得
+            structured_llm = self.llm_service.get_structured_llm(ExtractedMemberList)
+            result = await structured_llm.ainvoke(formatted_prompt)
 
             # resultがExtractedMemberListであることを確認し、membersを返す
             if isinstance(result, ExtractedMemberList):
@@ -167,14 +168,25 @@ HTMLコンテンツ（構造の参考用）:
         Returns:
             HTMLコンテンツ、エラー時はNone
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         try:
             async with PartyMemberPageFetcher() as fetcher:
                 pages = await fetcher.fetch_all_pages(url, max_pages=1)
                 if pages:
                     return pages[0].html_content  # html → html_content に修正
+                logger.warning(f"No pages fetched from URL: {url}")
                 return None
         except Exception as e:
-            print(f"Error fetching HTML: {e}")
+            logger.error(f"Error fetching HTML from {url}: {str(e)}")
+            # より詳細なエラー情報を提供
+            if "playwright" in str(e).lower():
+                logger.error(
+                    "Playwright error - browser may not be properly installed. "
+                    "Run: docker compose exec polibase uv run playwright install"
+                )
             return None
 
     def extract_members_sync(

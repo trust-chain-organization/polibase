@@ -21,14 +21,27 @@ class PartyMemberPageFetcher:
         self.settings = get_settings()
 
     async def __aenter__(self):
-        playwright = await async_playwright().start()
-        self.browser = await playwright.chromium.launch(
-            headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"]
-        )
-        self.context = await self.browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        )
-        return self
+        try:
+            playwright = await async_playwright().start()
+            self.browser = await playwright.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-dev-shm-usage",
+                ],
+            )
+            self.context = await self.browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                )
+            )
+            return self
+        except Exception as e:
+            logger.error(f"Failed to initialize browser: {e}")
+            raise
 
     async def __aexit__(
         self,
@@ -121,7 +134,10 @@ class PartyMemberPageFetcher:
             return pages_content
 
         except Exception as e:
-            logger.warning(f"Error during page fetching: {e}")
+            logger.error(f"Error during page fetching from {start_url}: {e}")
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
             # エラーが発生しても、取得済みのページは返す
             return pages_content if pages_content else []
         finally:
