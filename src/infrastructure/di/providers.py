@@ -42,6 +42,7 @@ from src.infrastructure.persistence.llm_processing_history_repository_impl impor
 )
 from src.infrastructure.persistence.llm_service_adapter import LLMServiceAdapter
 from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
+from src.infrastructure.persistence.minutes_repository_impl import MinutesRepositoryImpl
 from src.infrastructure.persistence.monitoring_repository_impl import (
     MonitoringRepositoryImpl,
 )
@@ -195,7 +196,7 @@ class RepositoryContainer(containers.DeclarativeContainer):
     )
 
     minutes_repository = providers.Factory(
-        lambda session: MockRepository("minutes"),
+        MinutesRepositoryImpl,
         session=database.async_session,
     )
 
