@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/var/cache/apt \
     apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     curl \
-    # Playwright用の最小限の依存関係
+    # Playwright用の完全な依存関係
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
     libcups2 libdrm2 libdbus-1-3 libatspi2.0-0 \
     libx11-6 libxcomposite1 libxdamage1 libxext6 \
@@ -42,6 +42,13 @@ RUN --mount=type=cache,target=/var/cache/apt \
     libglib2.0-0 libexpat1 libxtst6 libxss1 \
     fonts-liberation libappindicator3-1 libnss3-dev \
     libgdk-pixbuf-xlib-2.0-0 libgtk-3-0 libxshmfence1 \
+    # 追加の依存関係（エラーメッセージから）
+    libicu74 libxslt1.1 libwebp7 libwebpdemux2 \
+    libwebpmux3 libenchant-2-2 libsecret-1-0 \
+    libhyphen0 libmanette-0.2-0 libgles2 \
+    libegl1 libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
+    libgstreamer-plugins-bad1.0-0 libwoff1 libevent-2.1-7 \
+    libvpx9 libopus0 \
     && rm -rf /var/lib/apt/lists/*
 
 # ステージ3: 最終イメージ

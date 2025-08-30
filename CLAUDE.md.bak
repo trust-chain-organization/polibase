@@ -36,7 +36,7 @@ git worktreeを使用している場合、`docker/docker-compose.override.yml`�
 - 例: Streamlitが9291番、APIが8790番、Monitoringが9292番など（worktreeによって異なります）
 - コンテナ内部のポート番号（8501など）は変わりませんが、ホストからアクセスする際のポート番号が変更されます
 
-**重要**: 
+**重要**:
 1. **必ずdocker-compose.override.ymlも指定**: git worktreeを使用している場合は、すべてのdocker composeコマンドで`-f docker/docker-compose.override.yml`を追加してください
 2. **ポート番号の確認**: 実際のポート番号は`docker ps`または`docker/docker-compose.override.yml`で確認してください
 
