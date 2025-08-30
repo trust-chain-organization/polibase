@@ -106,10 +106,11 @@ class TestParliamentaryGroupMemberExtractor:
             assert result.parliamentary_group_id == 1
             assert result.url == "https://example.com"
             assert len(result.extracted_members) == 0
-            assert (
-                result.error
-                == "URLからコンテンツを取得できませんでした。URLが正しいか、またはPlaywrightが正しくインストールされているか確認してください。"
+            expected_error = (
+                "URLからコンテンツを取得できませんでした。"
+                "URLが正しいか、またはPlaywrightが正しくインストールされているか確認してください。"
             )
+            assert result.error == expected_error
 
     @pytest.mark.asyncio
     async def test_extract_members_llm_error(self, extractor, sample_html):

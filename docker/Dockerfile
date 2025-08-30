@@ -42,13 +42,13 @@ RUN --mount=type=cache,target=/var/cache/apt \
     libglib2.0-0 libexpat1 libxtst6 libxss1 \
     fonts-liberation libappindicator3-1 libnss3-dev \
     libgtk-3-0 libxshmfence1 \
-    # 追加の依存関係（Debian bookworm用）
-    libicu72 libxslt1.1 libwebp7 libwebpdemux2 \
+    # 追加の依存関係（Debian trixie用 - Python 3.13）
+    libicu76 libxslt1.1 libwebp7 libwebpdemux2 \
     libwebpmux3 libenchant-2-2 libsecret-1-0 \
     libhyphen0 libgles2 \
     libegl1 libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
-    libgstreamer-plugins-bad1.0-0 libevent-2.1-7 \
-    libvpx7 libopus0 \
+    libgstreamer-plugins-bad1.0-0 libevent-2.1-7t64 \
+    libvpx9 libopus0 \
     && rm -rf /var/lib/apt/lists/*
 
 # ステージ3: 最終イメージ
