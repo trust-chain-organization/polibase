@@ -246,19 +246,21 @@ JSONで回答してください。
         )
 
         try:
-            # invoke_llmメソッドを使用（同期メソッドのため asyncio.to_thread を使用）
-            import asyncio
+            # LLMのllmプロパティを使用
+            from langchain_core.messages import HumanMessage
 
-            response = await asyncio.to_thread(
-                self.llm_service.invoke_llm,
-                [{"role": "user", "content": formatted_prompt}],
-            )
+            message = HumanMessage(content=formatted_prompt)
+            response = self.llm_service.llm.invoke([message])
 
             # レスポンスをパース
-            if isinstance(response, str):
-                result = json.loads(response)
+            if hasattr(response, "content"):
+                content = response.content
+                if isinstance(content, str):
+                    result = json.loads(content)
+                else:
+                    raise ValueError(f"Unexpected content type: {type(content)}")
             else:
-                # リスト形式の場合はエラーとして扱う
+                # 予期しない形式の場合はエラーとして扱う
                 raise ValueError("Unexpected response format from LLM")
 
             if result["best_match_id"] == -1:

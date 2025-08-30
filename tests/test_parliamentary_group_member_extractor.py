@@ -106,7 +106,10 @@ class TestParliamentaryGroupMemberExtractor:
             assert result.parliamentary_group_id == 1
             assert result.url == "https://example.com"
             assert len(result.extracted_members) == 0
-            assert result.error == "Failed to fetch HTML content"
+            assert (
+                result.error
+                == "URLからコンテンツを取得できませんでした。URLが正しいか、またはPlaywrightが正しくインストールされているか確認してください。"
+            )
 
     @pytest.mark.asyncio
     async def test_extract_members_llm_error(self, extractor, sample_html):

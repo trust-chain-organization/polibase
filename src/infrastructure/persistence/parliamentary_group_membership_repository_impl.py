@@ -30,7 +30,7 @@ class ParliamentaryGroupMembershipRepositoryImpl:
                 """),
                 {"group_id": group_id},
             )
-            return [dict(row._mapping) for row in result]
+            return [dict(row) for row in result]
 
     async def get_by_politician(self, politician_id: int) -> list[dict[str, Any]]:
         """Get memberships by politician"""
@@ -42,7 +42,7 @@ class ParliamentaryGroupMembershipRepositoryImpl:
                 """),
                 {"politician_id": politician_id},
             )
-            return [dict(row._mapping) for row in result]
+            return [dict(row) for row in result]
 
     async def get_active_by_group(
         self, group_id: int, as_of_date: date | None = None
@@ -61,7 +61,7 @@ class ParliamentaryGroupMembershipRepositoryImpl:
                 """),
                 {"group_id": group_id, "as_of_date": as_of_date},
             )
-            return [dict(row._mapping) for row in result]
+            return [dict(row) for row in result]
 
     async def get_current_members(self, group_id: int) -> list[dict[str, Any]]:
         """Get current members of a parliamentary group"""
@@ -92,7 +92,7 @@ class ParliamentaryGroupMembershipRepositoryImpl:
             ).first()
 
             if existing:
-                return dict(existing._mapping)
+                return dict(existing)
 
             # Create new membership
             result = session.execute(
@@ -121,7 +121,7 @@ class ParliamentaryGroupMembershipRepositoryImpl:
                     f"politician_id={politician_id}, "
                     f"group_id={group_id}, role={role}"
                 )
-                return dict(membership._mapping)
+                return dict(membership)
 
             return {}
 
@@ -142,7 +142,7 @@ class ParliamentaryGroupMembershipRepositoryImpl:
             session.commit()
 
             membership = result.first()
-            return dict(membership._mapping) if membership else None
+            return dict(membership) if membership else None
 
     async def delete_by_group(self, group_id: int) -> int:
         """Delete all memberships for a group"""
@@ -155,7 +155,7 @@ class ParliamentaryGroupMembershipRepositoryImpl:
                 {"group_id": group_id},
             )
             session.commit()
-            return result.rowcount
+            return result.rowcount or 0  # type: ignore[attr-defined]
 
     async def get_all(self) -> list[dict[str, Any]]:
         """Get all memberships"""
@@ -166,4 +166,4 @@ class ParliamentaryGroupMembershipRepositoryImpl:
                     "ORDER BY created_at DESC"
                 )
             )
-            return [dict(row._mapping) for row in result]
+            return [dict(row) for row in result]
