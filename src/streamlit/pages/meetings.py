@@ -1,20 +1,29 @@
 """会議管理ページ"""
 
+import asyncio
 from datetime import date
 from typing import Any, cast
 
 import pandas as pd
 
 import streamlit as st
+from src.domain.services.meeting_processing_status_service import (
+    MeetingProcessingStatusService,
+)
 from src.exceptions import DatabaseError, RecordNotFoundError, SaveError, UpdateError
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
+)
+from src.infrastructure.persistence.conversation_repository_impl import (
+    ConversationRepositoryImpl,
 )
 from src.infrastructure.persistence.governing_body_repository_impl import (
     GoverningBodyRepositoryImpl,
 )
 from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
+from src.infrastructure.persistence.minutes_repository_impl import MinutesRepositoryImpl
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+from src.infrastructure.persistence.speaker_repository_impl import SpeakerRepositoryImpl
 from src.seed_generator import SeedGenerator
 
 
@@ -116,11 +125,51 @@ def show_meetings_list():
     conf_lookup = {c.id: c for c in all_conferences}
     gb_lookup = {gb.id: gb for gb in all_governing_bodies}
 
+    # 処理状態サービス用の非同期セッション作成
+    from src.config.database import get_db_session
+    from src.infrastructure.persistence.async_session_adapter import AsyncSessionAdapter
+
+    sync_session = get_db_session()
+    async_session = AsyncSessionAdapter(sync_session)
+
+    # 非同期リポジトリの初期化
+    minutes_repo_async = MinutesRepositoryImpl(async_session)
+    conversation_repo_async = ConversationRepositoryImpl(async_session)
+    speaker_repo_async = SpeakerRepositoryImpl(async_session)
+
+    # 処理状態サービスの初期化
+    processing_status_service = MeetingProcessingStatusService(
+        minutes_repository=minutes_repo_async,
+        conversation_repository=conversation_repo_async,
+        speaker_repository=speaker_repo_async,
+    )
+
+    # 非同期処理を実行するための関数
+    async def get_meeting_status(meeting_id: int):
+        return await processing_status_service.get_processing_status(meeting_id)
+
     meetings: list[dict[str, Any]] = []
     for m in all_meetings:
         if selected_conf_id is None or m.conference_id == selected_conf_id:
             conf = conf_lookup.get(m.conference_id)
             gb = gb_lookup.get(conf.governing_body_id) if conf else None
+
+            # 処理状態を取得
+            try:
+                import nest_asyncio
+
+                nest_asyncio.apply()
+                status = asyncio.run(get_meeting_status(m.id))
+            except Exception:
+                # エラーが発生した場合はデフォルト値を使用
+                status = {
+                    "has_minutes": False,
+                    "has_conversations": False,
+                    "has_speakers": False,
+                    "conversation_count": 0,
+                    "speaker_count": 0,
+                }
+
             meetings.append(
                 {
                     "id": m.id,
@@ -131,6 +180,11 @@ def show_meetings_list():
                     "gcs_text_uri": m.gcs_text_uri,
                     "conference_name": conf.name if conf else "不明",
                     "governing_body_name": gb.name if gb else "不明",
+                    "has_minutes": status["has_minutes"],
+                    "has_conversations": status["has_conversations"],
+                    "has_speakers": status["has_speakers"],
+                    "conversation_count": status["conversation_count"],
+                    "speaker_count": status["speaker_count"],
                 }
             )
 
@@ -179,6 +233,22 @@ def show_meetings_list():
             df["governing_body_name"] + " - " + df["conference_name"]
         )
 
+        # 処理状態の表示用カラムを追加
+        def get_conversation_status(row):
+            if row["has_conversations"]:
+                return f"✅ ({row['conversation_count']}件)"
+            else:
+                return "❌ 未抽出"
+
+        def get_speaker_status(row):
+            if row["has_speakers"]:
+                return f"✅ ({row['speaker_count']}件)"
+            else:
+                return "❌ 未抽出"
+
+        df["発言抽出状態"] = df.apply(get_conversation_status, axis=1)
+        df["発言者抽出状態"] = df.apply(get_speaker_status, axis=1)
+
         # 編集・削除ボタン用のカラム
         for _idx, row in df.iterrows():
             col1, col2, col3 = st.columns([6, 1, 1])
@@ -224,6 +294,20 @@ def show_meetings_list():
                         help="議事録スクレイピングを実行するとGCSにアップロードされます",
                     )
 
+                # 処理状態を表示（インラインで表示）
+                status_text = []
+                if row["has_conversations"]:
+                    status_text.append(f"✅ 発言: {row['conversation_count']}件")
+                else:
+                    status_text.append("❌ 発言: 未抽出")
+
+                if row["has_speakers"]:
+                    status_text.append(f"✅ 発言者: {row['speaker_count']}件")
+                else:
+                    status_text.append("❌ 発言者: 未抽出")
+
+                st.markdown("**処理状態:** " + " | ".join(status_text))
+
             with col2:
                 if st.button("編集", key=f"edit_{row['id']}"):
                     st.session_state.edit_mode = True
@@ -248,6 +332,7 @@ def show_meetings_list():
     meeting_repo.close()
     gb_repo.close()
     conf_repo.close()
+    sync_session.close()
 
 
 def add_new_meeting():

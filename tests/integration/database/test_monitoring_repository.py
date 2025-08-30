@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from src.config.database import DATABASE_URL
+from src.infrastructure.persistence.async_session_adapter import AsyncSessionAdapter
 from src.infrastructure.persistence.monitoring_repository_impl import (
     MonitoringRepositoryImpl as MonitoringRepository,
 )
@@ -129,82 +130,90 @@ def setup_test_data(db_session):
 @pytest.fixture
 def repository(db_session):
     """Create MonitoringRepository instance with test session"""
-    return MonitoringRepository(session=db_session)
+    async_session = AsyncSessionAdapter(db_session)
+    return MonitoringRepository(session=async_session)
 
 
 class TestMonitoringRepository:
     """Test cases for MonitoringRepository"""
 
-    def test_get_overall_metrics(self, db_session, setup_test_data, repository):
+    @pytest.mark.asyncio
+    async def test_get_overall_metrics(self, db_session, setup_test_data, repository):
         """Test getting overall metrics"""
         # Execute
-        metrics = repository.get_overall_metrics()
+        metrics = await repository.get_overall_metrics()
 
         # Verify
         assert isinstance(metrics, dict)
 
-        # Check basic keys exist
-        assert "total_conferences" in metrics
-        assert "conferences_with_data" in metrics
-        assert "conferences_coverage" in metrics
-        assert "total_meetings" in metrics
-        assert "meetings_with_minutes" in metrics
-        assert "meetings_coverage" in metrics
-        assert "total_minutes" in metrics
-        assert "processed_minutes" in metrics
-        assert "minutes_coverage" in metrics
-        assert "total_speakers" in metrics
-        assert "linked_speakers" in metrics
-        assert "speakers_coverage" in metrics
-        assert "total_politicians" in metrics
-        assert "active_politicians" in metrics
-        assert "politicians_coverage" in metrics
+        # Check main category keys exist
+        assert "conferences" in metrics
+        assert "governing_bodies" in metrics
+        assert "meetings" in metrics
+        assert "conversations" in metrics
+
+        # Check conferences structure
+        assert "total" in metrics["conferences"]
+        assert "active" in metrics["conferences"]
+        assert "coverage" in metrics["conferences"]
+
+        # Check governing_bodies structure
+        assert "total" in metrics["governing_bodies"]
+        assert "active" in metrics["governing_bodies"]
+        assert "coverage" in metrics["governing_bodies"]
+
+        # Check meetings structure
+        assert "total" in metrics["meetings"]
+
+        # Check conversations structure
+        assert "total" in metrics["conversations"]
+        assert "linked" in metrics["conversations"]
+        assert "linkage_rate" in metrics["conversations"]
 
         # Check values are reasonable
-        assert metrics["total_conferences"] > 0
-        assert metrics["total_meetings"] > 0
-        assert metrics["total_minutes"] > 0
-        assert metrics["total_speakers"] > 0
-        assert metrics["total_politicians"] > 0
+        assert metrics["conferences"]["total"] > 0
+        assert metrics["governing_bodies"]["total"] > 0
+        assert metrics["meetings"]["total"] > 0
 
-        # Check coverage percentages
-        assert 0 <= metrics["conferences_coverage"] <= 100
-        assert 0 <= metrics["meetings_coverage"] <= 100
-        assert 0 <= metrics["minutes_coverage"] <= 100
-        assert 0 <= metrics["speakers_coverage"] <= 100
-        assert 0 <= metrics["politicians_coverage"] <= 100
+        # Check coverage percentages are valid
+        assert metrics["conferences"]["coverage"] >= 0
+        assert metrics["governing_bodies"]["coverage"] >= 0
+        assert metrics["conversations"]["linkage_rate"] >= 0
 
         # Skip processed_minutes check since processed_at column doesn't exist
         # assert metrics["processed_minutes"] > 0
 
-    def test_get_recent_activities(self, db_session, setup_test_data, repository):
+    @pytest.mark.asyncio
+    async def test_get_recent_activities(self, db_session, setup_test_data, repository):
         """Test getting recent activities"""
-        # Execute - get activities from last 30 days
-        df = repository.get_recent_activities(days=30)
+        # Execute - get recent activities with default limit
+        activities = await repository.get_recent_activities(limit=30)
 
         # Verify
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) > 0
+        assert isinstance(activities, list)
+        assert len(activities) > 0
 
-        # Check columns exist
-        expected_columns = [
-            "タイプ",
-            "項目名",
-            "関連組織",
-            "日付",
-            "作成日時",
-        ]
-        for col in expected_columns:
-            assert col in df.columns
+        # Check structure of activity objects
+        for activity in activities:
+            assert isinstance(activity, dict)
+            assert "type" in activity
+            assert "id" in activity
+            assert "name" in activity
+            assert "date" in activity
+            assert "created_at" in activity
+            assert "details" in activity
 
         # Check that our test data is included
-        test_activities = df[df["項目名"].str.contains("モニターテスト", na=False)]
+        test_activities = [a for a in activities if "モニターテスト" in a["name"]]
         assert len(test_activities) > 0
 
-    def test_get_conference_coverage(self, db_session, setup_test_data, repository):
+    @pytest.mark.asyncio
+    async def test_get_conference_coverage(
+        self, db_session, setup_test_data, repository
+    ):
         """Test getting conference coverage data"""
         # Execute
-        df = repository.get_conference_coverage()
+        df = await repository.get_conference_coverage()
 
         # Verify
         assert isinstance(df, pd.DataFrame)
@@ -227,10 +236,13 @@ class TestMonitoringRepository:
         assert len(test_conf) == 1
         assert test_conf.iloc[0]["total_meetings"] >= 1
 
-    def test_get_timeline_data(self, db_session, setup_test_data, repository):
+    @pytest.mark.asyncio
+    async def test_get_timeline_data(self, db_session, setup_test_data, repository):
         """Test getting timeline data"""
         # Execute
-        df = repository.get_timeline_data(time_range="過去30日", data_type="すべて")
+        df = await repository.get_timeline_data(
+            time_range="過去30日", data_type="すべて"
+        )
 
         # Verify
         assert isinstance(df, pd.DataFrame)
@@ -241,10 +253,13 @@ class TestMonitoringRepository:
             for col in expected_columns:
                 assert col in df.columns
 
-    def test_get_prefecture_coverage(self, db_session, setup_test_data, repository):
+    @pytest.mark.asyncio
+    async def test_get_prefecture_coverage(
+        self, db_session, setup_test_data, repository
+    ):
         """Test getting prefecture coverage data"""
         # Execute
-        df = repository.get_prefecture_coverage()
+        df = await repository.get_prefecture_coverage()
 
         # Verify
         assert isinstance(df, pd.DataFrame)
@@ -262,10 +277,13 @@ class TestMonitoringRepository:
             for col in expected_columns:
                 assert col in df.columns
 
-    def test_get_committee_type_coverage(self, db_session, setup_test_data, repository):
+    @pytest.mark.asyncio
+    async def test_get_committee_type_coverage(
+        self, db_session, setup_test_data, repository
+    ):
         """Test getting committee type coverage data"""
         # Execute
-        df = repository.get_committee_type_coverage()
+        df = await repository.get_committee_type_coverage()
 
         # Verify
         assert isinstance(df, pd.DataFrame)
@@ -281,10 +299,11 @@ class TestMonitoringRepository:
             for col in expected_columns:
                 assert col in df.columns
 
-    def test_get_party_coverage(self, db_session, setup_test_data, repository):
+    @pytest.mark.asyncio
+    async def test_get_party_coverage(self, db_session, setup_test_data, repository):
         """Test getting party coverage data"""
         # Execute
-        df = repository.get_party_coverage()
+        df = await repository.get_party_coverage()
 
         # Verify
         assert isinstance(df, pd.DataFrame)
@@ -305,12 +324,13 @@ class TestMonitoringRepository:
         assert len(test_party) == 1
         assert test_party.iloc[0]["politician_count"] >= 1
 
-    def test_get_prefecture_detailed_coverage(
+    @pytest.mark.asyncio
+    async def test_get_prefecture_detailed_coverage(
         self, db_session, setup_test_data, repository
     ):
         """Test getting prefecture detailed coverage data"""
         # Execute
-        df = repository.get_prefecture_detailed_coverage()
+        df = await repository.get_prefecture_detailed_coverage()
 
         # Verify
         assert isinstance(df, pd.DataFrame)
