@@ -79,13 +79,14 @@ class MinutesRepositoryImpl(BaseRepositoryImpl[Minutes], MinutesRepository):
 
     def _to_model(self, entity: Minutes) -> Any:
         """Convert domain entity to SQLAlchemy model."""
-        model = MinutesModel()
+        data = {
+            "meeting_id": entity.meeting_id,
+            "url": entity.url,
+            "processed_at": entity.processed_at,
+        }
         if entity.id:
-            model.id = entity.id
-        model.meeting_id = entity.meeting_id
-        model.url = entity.url
-        model.processed_at = entity.processed_at
-        return model
+            data["id"] = entity.id
+        return MinutesModel(**data)
 
     def _update_model(self, model: Any, entity: Minutes) -> None:
         """Update SQLAlchemy model from domain entity."""

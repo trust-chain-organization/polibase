@@ -234,13 +234,13 @@ def show_meetings_list():
         )
 
         # 処理状態の表示用カラムを追加
-        def get_conversation_status(row):
+        def get_conversation_status(row: pd.Series) -> str:
             if row["has_conversations"]:
                 return f"✅ ({row['conversation_count']}件)"
             else:
                 return "❌ 未抽出"
 
-        def get_speaker_status(row):
+        def get_speaker_status(row: pd.Series) -> str:
             if row["has_speakers"]:
                 return f"✅ ({row['speaker_count']}件)"
             else:
