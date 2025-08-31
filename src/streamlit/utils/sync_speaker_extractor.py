@@ -119,13 +119,36 @@ class SyncSpeakerExtractor:
                 conversations, speaker_repo, speaker_service
             )
 
-            # 結果をログに記録
-            self.logger.add_log(
-                self.meeting_id,
-                f"🔍 {len(conversations)}件の発言から"
-                f"{extraction_result['unique_speakers']}人の発言者を検出しました",
-                "info",
-            )
+            # 結果をログに記録（詳細付き）
+            speaker_details = extraction_result.get("speaker_details", [])
+            if speaker_details:
+                # 発言者リストを作成
+                speaker_summary = []
+                for i, (name, party, is_new) in enumerate(speaker_details[:10], 1):
+                    status = "🆕 新規" if is_new else "📌 既存"
+                    party_text = f" ({party})" if party else ""
+                    speaker_summary.append(f"{i}. {name}{party_text} - {status}")
+
+                if len(speaker_details) > 10:
+                    speaker_summary.append(
+                        f"\n... 他{len(speaker_details) - 10}人の発言者"
+                    )
+
+                self.logger.add_log(
+                    self.meeting_id,
+                    f"🔍 {len(conversations)}件の発言から"
+                    f"{extraction_result['unique_speakers']}人の発言者を検出しました",
+                    "info",
+                    details="\n".join(speaker_summary),
+                )
+            else:
+                self.logger.add_log(
+                    self.meeting_id,
+                    f"🔍 {len(conversations)}件の発言から"
+                    f"{extraction_result['unique_speakers']}人の発言者を検出しました",
+                    "info",
+                )
+
             self.logger.add_log(
                 self.meeting_id,
                 f"✅ 新規作成: {extraction_result['new_speakers']}人、"
@@ -181,7 +204,7 @@ class SyncSpeakerExtractor:
 
     def _extract_and_create_speakers(
         self, conversations: list[Any], speaker_repo: Any, speaker_service: Any
-    ) -> dict[str, int]:
+    ) -> dict[str, Any]:
         """発言から一意な発言者を抽出し、発言者レコードを作成する
 
         Args:
@@ -194,6 +217,7 @@ class SyncSpeakerExtractor:
                 - unique_speakers: ユニークな発言者数
                 - new_speakers: 新規作成された発言者数
                 - existing_speakers: 既存の発言者数
+                - speaker_details: 発言者の詳細リスト [(名前, 政党, 新規フラグ), ...]
         """
         speaker_names: set[tuple[str, str | None]] = set()
 
@@ -211,6 +235,7 @@ class SyncSpeakerExtractor:
         # 発言者レコードを作成
         new_speakers = 0
         existing_speakers = 0
+        speaker_details = []  # 詳細情報を保存
 
         for name, party_info in speaker_names:
             # 既存の発言者をチェック
@@ -225,9 +250,11 @@ class SyncSpeakerExtractor:
                 )
                 speaker_repo.create(speaker)
                 new_speakers += 1
+                speaker_details.append((name, party_info, True))  # True = 新規
                 logger.debug(f"Created new speaker: {name}")
             else:
                 existing_speakers += 1
+                speaker_details.append((name, party_info, False))  # False = 既存
                 logger.debug(f"Speaker already exists: {name}")
 
         logger.info(
@@ -239,4 +266,5 @@ class SyncSpeakerExtractor:
             "unique_speakers": len(speaker_names),
             "new_speakers": new_speakers,
             "existing_speakers": existing_speakers,
+            "speaker_details": speaker_details,
         }
