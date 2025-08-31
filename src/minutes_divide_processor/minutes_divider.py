@@ -267,25 +267,6 @@ class MinutesDivider:
         # 出席者リストパターンをチェック
         section_text = section_string.section_string
 
-        # 出席者リストや参加者一覧を示すパターン
-        attendance_patterns = [
-            r"◯出席委員",
-            r"◯欠席委員",
-            r"◯委員会説明員",
-            r"◯配付資料",
-            r"◯要求資料",
-            r"◯特記事項",
-            r"出席者一覧",
-            r"参加者リスト",
-            r"委員長\s+[^\n]+議員\n副委員長\s+[^\n]+議員",  # 役職者リストパターン
-        ]
-
-        # セクションが出席者リストである場合はスキップ
-        for pattern in attendance_patterns:
-            if re.search(pattern, section_text):
-                print(f"出席者リストセクションをスキップ: {section_text[:50]}...")
-                return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
-
         # 実際の発言が含まれているかチェック（○や◆などの発言者記号があるか）
         speech_indicators = [
             r"○[^○\n]+（[^）]+）",
@@ -296,6 +277,29 @@ class MinutesDivider:
         has_speech = any(
             re.search(pattern, section_text) for pattern in speech_indicators
         )
+
+        # 出席者リストや参加者一覧を示すパターン
+        attendance_patterns = [
+            r"◯出席委員",
+            r"◯欠席委員",
+            r"◯委員会説明員",
+            r"◯配付資料",
+            r"◯要求資料",
+            r"◯特記事項",
+            r"出席者一覧",
+            r"参加者リスト",
+        ]
+
+        # セクションが出席者リストのみで発言が含まれていない場合はスキップ
+        has_attendance = any(
+            re.search(pattern, section_text) for pattern in attendance_patterns
+        )
+
+        if has_attendance and not has_speech:
+            print(
+                f"出席者リストセクション（発言なし）をスキップ: {section_text[:50]}..."
+            )
+            return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
 
         # 発言者記号がない場合で、短いテキストの場合はスキップ
         if not has_speech and len(section_text) < 100:
