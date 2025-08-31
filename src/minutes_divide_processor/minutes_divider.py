@@ -271,21 +271,41 @@ class MinutesDivider:
         Returns:
             MinutesBoundary: 境界検出結果
         """
+        logger.info("=== detect_attendee_boundary started ===")
+        logger.info(f"Input text length: {len(minutes_text)}")
+
         # 境界検出用のプロンプトを取得
-        prompt_template = self.llm_service.get_prompt("minutes_boundary_detect")
+        logger.info("Getting prompt template...")
+        try:
+            prompt_template = self.llm_service.get_prompt("minutes_boundary_detect")
+            logger.info("Prompt template retrieved successfully")
+        except KeyError as e:
+            logger.error(f"Prompt template not found: {e}")
+            logger.warning("Falling back to treating entire text as speech")
+            return MinutesBoundary(
+                boundary_found=False,
+                boundary_text=None,
+                boundary_type="none",
+                confidence=0.0,
+                reason="境界検出プロンプトが見つかりません",
+            )
 
         # 構造化LLMを取得
+        logger.info("Getting structured LLM...")
         structured_llm = self.llm_service.get_structured_llm(MinutesBoundary)
 
         # チェーンを構築
+        logger.info("Building chain...")
         chain = prompt_template | structured_llm
 
         try:
             # LLMで境界を検出
+            logger.info("Invoking LLM for boundary detection...")
             result = self.llm_service.invoke_with_retry(
                 chain,
                 {"minutes_text": minutes_text},
             )
+            logger.info(f"LLM invocation completed, result type: {type(result)}")
 
             if isinstance(result, MinutesBoundary):
                 return result
@@ -367,12 +387,27 @@ class MinutesDivider:
         # セクション全体のテキストを取得
         section_text = section_string.section_string
 
+        # デバッグログ
+        logger.info("=== speech_divide_run started ===")
+        logger.info(f"Section text length: {len(section_text)}")
+        logger.info(f"Section text preview: {section_text[:200]}...")
+
         # LLMベースの境界検出を実行
+        logger.info("Calling detect_attendee_boundary...")
         boundary = self.detect_attendee_boundary(section_text)
+        logger.info(
+            f"Boundary detection result: found={boundary.boundary_found}, "
+            f"type={boundary.boundary_type}, confidence={boundary.confidence}"
+        )
 
         # 境界に基づいてテキストを分割
+        logger.info("Calling split_minutes_by_boundary...")
         attendee_part, speech_part = self.split_minutes_by_boundary(
             section_text, boundary
+        )
+        logger.info(
+            f"Split result: attendee_part length={len(attendee_part)}, "
+            f"speech_part length={len(speech_part)}"
         )
 
         # 発言部分がない場合はスキップ
