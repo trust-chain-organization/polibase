@@ -563,9 +563,14 @@ class MinutesDivider:
         # 発言部分のみを処理対象とする
         section_text = speech_part
 
-        # 発言部分が短すぎる場合はスキップ（意味のある発言がない可能性が高い）
-        if len(section_text) < 50:
-            logger.info(f"Speech part too short, skipping: {section_text[:30]}...")
+        # 発言部分が短すぎる場合でも、明らかに発言パターンが含まれている場合は処理を続行
+        # ○や◆で始まる行がある場合は発言として扱う
+        import re
+
+        has_speech_pattern = bool(re.search(r"^[○◆]", section_text, re.MULTILINE))
+
+        if len(section_text) < 30 and not has_speech_pattern:
+            logger.info("Speech part too short and no speech pattern found, skipping")
             return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
 
         # 国会議事録向けのプロンプトを使用
