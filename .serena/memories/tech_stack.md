@@ -1,44 +1,107 @@
 # Polibase Tech Stack
 
 ## Core Technologies
-- **Language**: Python 3.13
+- **Language**: Python 3.11+ (3.13 in Docker environment)
 - **Package Manager**: UV (modern Python package manager)
 - **Database**: PostgreSQL 15 with SQLAlchemy ORM
 - **Container**: Docker & Docker Compose
+- **Task Runner**: Just command runner
 
-## Frameworks & Libraries
-- **LLM**: Google Gemini API (gemini-2.0-flash, gemini-1.5-flash) via LangChain
+## LLM & AI
+- **LLM API**: Google Gemini API
+  - gemini-2.0-flash (primary)
+  - gemini-1.5-flash (fallback)
+- **LLM Framework**: LangChain for LLM integration
 - **State Management**: LangGraph for complex workflows
-- **Web Framework**: Streamlit for UI
+- **Prompt Management**: Versioned prompts (開発中)
+
+## Web Technologies
+- **UI Framework**: Streamlit for web interface
+- **Web Scraping**:
+  - Playwright (primary, JavaScript-heavy sites)
+  - BeautifulSoup4 (HTML parsing)
+  - Selenium (legacy)
 - **API Framework**: FastAPI with Uvicorn
-- **PDF Processing**: pypdfium2
-- **Web Scraping**: Playwright, BeautifulSoup4, Selenium
 - **Async**: aiohttp, asyncio
-- **Cloud Storage**: Google Cloud Storage
+
+## Data Processing
+- **PDF Processing**: pypdfium2
+- **Data Manipulation**: Pandas, NumPy
+- **JSON**: orjson for performance
+- **Validation**: Pydantic for data models
+
+## Cloud & Storage
+- **Cloud Storage**: Google Cloud Storage (GCS)
+- **GCS Auth**: gcloud CLI
+- **Storage Pattern**: Date-based organization
 
 ## Data Visualization
-- Plotly for interactive charts
-- Folium for Japan map visualization
-- Streamlit-folium for map integration
-- Pandas for data manipulation
+- **Interactive Charts**: Plotly
+- **Map Visualization**: Folium (Japan maps)
+- **Streamlit Integration**: streamlit-folium
+- **Dashboard**: Streamlit-based monitoring
 
 ## Development Tools
-- **Code Formatter**: Ruff (line length: 88)
-- **Type Checker**: Pyright (Python 3.13, standard mode)
-- **Pre-commit Hooks**: Ruff, Pyright, Prettier (YAML/JSON)
-- **Testing**: pytest with pytest-asyncio, pytest-cov, pytest-mock
-- **Logging**: structlog
-- **Monitoring**: OpenTelemetry, Prometheus, Grafana, Loki
+- **Code Formatter**: Ruff
+  - Line length: 88 characters
+  - Import sorting enabled
+- **Type Checker**: Pyright
+  - Python 3.11+ type hints
+  - Standard mode
+- **Pre-commit Hooks**:
+  - Ruff (Python)
+  - Prettier (YAML/JSON)
+  - Standard hooks
+- **Testing**:
+  - pytest with fixtures
+  - pytest-asyncio for async tests
+  - pytest-cov for coverage
+  - pytest-mock for mocking
+
+## Monitoring & Logging
+- **Logging**: structlog for structured logging
+- **Monitoring**: OpenTelemetry
+- **Metrics**: Prometheus
+- **Visualization**: Grafana
+- **Log Aggregation**: Loki
 - **Error Tracking**: Sentry SDK
 
-## Architecture
-- Transitioning to Clean Architecture
-- Domain-driven design with entities, repositories, use cases
-- Repository pattern for data access
-- Dependency injection in use cases
-- DTOs for layer separation
-- Async/await throughout
+## Architecture Patterns
+- **Clean Architecture**: Domain-driven design
+- **Repository Pattern**: Data access abstraction
+- **Dependency Injection**: Use case composition
+- **DTO Pattern**: Layer separation
+- **Async/Await**: Throughout the application
+- **Staging Tables**: For data review workflows
 
-## MCP Servers
-- Playwright MCP for UI testing
-- Serena MCP for code intelligence and semantic operations
+## CI/CD
+- **CI Platform**: GitHub Actions
+- **Workflows**:
+  - Test on push/PR
+  - Ruff formatting check
+  - Pyright type checking
+  - pytest execution
+- **Docker Build**: Multi-stage builds
+
+## MCP Servers (Claude Code Integration)
+- **Playwright MCP**: Browser automation for testing
+- **Serena MCP**: Code intelligence and semantic operations
+- **Context7 MCP**: Library documentation retrieval
+
+## Database Technologies
+- **ORM**: SQLAlchemy 2.0+
+- **Migrations**: Sequential SQL files
+- **Connection Pool**: SQLAlchemy pool
+- **Async DB**: asyncpg (planned)
+
+## Environment Management
+- **Config**: Environment variables (.env)
+- **Secrets**: Never committed, use .env.example
+- **Docker Networking**: Custom networks
+- **Port Management**: docker-compose.override.yml for git worktree
+
+## Current Development Focus
+- LLM処理履歴記録システム
+- プロンプトバージョン管理
+- インstrumentedLLMService (デコレータパターン)
+- Clean Architecture完全移行
