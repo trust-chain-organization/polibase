@@ -34,6 +34,41 @@ prompts:
 
     description: "Extract speeches from section"
 
+  minutes_boundary_detect:
+    template: |
+      以下の議事録テキストを分析し、出席者情報（参加者リスト、委員名簿など）と実際の議事内容（発言記録）の境界を見つけてください。
+
+      # 分析方法
+      1. 議事録の構造を理解してください（出席者リスト→議事内容の順が一般的）
+      2. 以下のパターンを探してください：
+         - 出席者情報の終了点（例：委員名の列挙の終わり）
+         - 議事開始の合図（例：「開会」「議長」「委員長」の発言開始）
+         - 時刻表記（例：［午後２時47分　開会］）
+         - 発言者記号の開始（例：○議長、◆委員）
+
+      # 出力形式
+      境界の前後20文字を含むテキストを以下のJSON形式で返してください：
+      {{
+        "boundary_found": true/false,
+        "boundary_text": "境界前10-20文字...｜境界｜...境界後10-20文字",
+        "boundary_type": "separator_line" | "speech_start" | "time_marker" | "none",
+        "confidence": 0.0-1.0,
+        "reason": "境界判定の理由"
+      }}
+
+      # 注意事項
+      - 境界が明確でない場合は boundary_found: false を返してください
+      - boundary_text の「｜境界｜」は実際の境界位置を示すマーカーです
+      - 出席者情報が無い場合は、最初から議事内容として扱ってください
+
+      議事録テキスト:
+      {minutes_text}
+
+    variables:
+      - minutes_text
+
+    description: "Detect boundary between attendee list and speech content"
+
   speech_divide_kokkai:
     template: |
       以下の国会議事録のセクションから実際に発言した人と発言内容のみを抽出してください。

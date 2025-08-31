@@ -1,5 +1,5 @@
 import operator
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -79,6 +79,22 @@ class SpeakerAndSpeechContentList(BaseModel):
     speaker_and_speech_content_list: list[SpeakerAndSpeechContent] = Field(
         default_factory=lambda: [], description="各発言者と発言内容のリスト"
     )
+
+
+class MinutesBoundary(BaseModel):
+    """議事録の出席者情報と発言部分の境界検出結果"""
+
+    boundary_found: bool = Field(..., description="境界が見つかったかどうか")
+    boundary_text: str | None = Field(
+        None, description="境界前後の文字列（｜境界｜でマーク）"
+    )
+    boundary_type: Literal["separator_line", "speech_start", "time_marker", "none"] = (
+        Field("none", description="境界の種類")
+    )
+    confidence: float = Field(
+        0.0, description="境界検出の信頼度（0.0-1.0）", ge=0.0, le=1.0
+    )
+    reason: str = Field("", description="境界判定の理由")
 
 
 class MinutesProcessState(BaseModel):

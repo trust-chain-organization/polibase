@@ -13,6 +13,7 @@ from ..services.llm_factory import LLMServiceFactory
 
 # Use relative import for modules within the same package
 from .models import (
+    MinutesBoundary,
     RedividedSectionInfoList,
     RedivideSectionString,
     RedivideSectionStringList,
@@ -261,49 +262,130 @@ class MinutesDivider:
         return RedividedSectionInfoList(redivided_section_info_list=section_info_list)
 
     # 発言者と発言内容に分割する
+    def detect_attendee_boundary(self, minutes_text: str) -> MinutesBoundary:
+        """議事録テキストから出席者情報と発言部分の境界を検出する
+
+        Args:
+            minutes_text: 議事録の全文
+
+        Returns:
+            MinutesBoundary: 境界検出結果
+        """
+        # 境界検出用のプロンプトを取得
+        prompt_template = self.llm_service.get_prompt("minutes_boundary_detect")
+
+        # 構造化LLMを取得
+        structured_llm = self.llm_service.get_structured_llm(MinutesBoundary)
+
+        # チェーンを構築
+        chain = prompt_template | structured_llm
+
+        try:
+            # LLMで境界を検出
+            result = self.llm_service.invoke_with_retry(
+                chain,
+                {"minutes_text": minutes_text},
+            )
+
+            if isinstance(result, MinutesBoundary):
+                return result
+            else:
+                logger.warning("Unexpected result type from boundary detection")
+                return MinutesBoundary(
+                    boundary_found=False,
+                    boundary_text=None,
+                    boundary_type="none",
+                    confidence=0.0,
+                    reason="LLMからの結果が予期しない形式でした",
+                )
+
+        except Exception as e:
+            logger.error(f"Error in boundary detection: {e}")
+            return MinutesBoundary(
+                boundary_found=False,
+                boundary_text=None,
+                boundary_type="none",
+                confidence=0.0,
+                reason=f"境界検出中にエラーが発生しました: {str(e)}",
+            )
+
+    def split_minutes_by_boundary(
+        self, minutes_text: str, boundary: MinutesBoundary
+    ) -> tuple[str, str]:
+        """境界情報に基づいて議事録を出席者部分と発言部分に分割する
+
+        Args:
+            minutes_text: 議事録の全文
+            boundary: 境界検出結果
+
+        Returns:
+            Tuple[str, str]: (出席者部分, 発言部分)
+        """
+        if not boundary.boundary_found or not boundary.boundary_text:
+            # 境界が見つからない場合は全体を発言部分として扱う
+            return "", minutes_text
+
+        # boundary_textから境界マーカー「｜境界｜」を探す
+        boundary_marker = "｜境界｜"
+        if boundary_marker not in boundary.boundary_text:
+            # マーカーがない場合も全体を発言部分として扱う
+            logger.warning("Boundary marker not found in boundary_text")
+            return "", minutes_text
+
+        # 境界マーカーの前後のテキストを取得
+        parts = boundary.boundary_text.split(boundary_marker)
+        if len(parts) != 2:
+            logger.warning("Invalid boundary_text format")
+            return "", minutes_text
+
+        before_boundary = parts[0].strip()
+        after_boundary = parts[1].strip()
+
+        # 元のテキストから境界位置を特定
+        # まず境界前のテキストを探す
+        if before_boundary in minutes_text:
+            before_index = minutes_text.find(before_boundary)
+            # 境界前テキストの終了位置を境界とする
+            split_index = before_index + len(before_boundary)
+        elif after_boundary in minutes_text:
+            # 境界前が見つからない場合は境界後のテキストで探す
+            split_index = minutes_text.find(after_boundary)
+        else:
+            # どちらも見つからない場合は全体を発言部分として扱う
+            logger.warning("Could not locate boundary in original text")
+            return "", minutes_text
+
+        # テキストを分割
+        attendee_part = minutes_text[:split_index].strip()
+        speech_part = minutes_text[split_index:].strip()
+
+        return attendee_part, speech_part
+
     def speech_divide_run(
         self, section_string: SectionString
     ) -> SpeakerAndSpeechContentList:
-        # 出席者リストパターンをチェック
+        # セクション全体のテキストを取得
         section_text = section_string.section_string
 
-        # 実際の発言が含まれているかチェック（○や◆などの発言者記号があるか）
-        speech_indicators = [
-            r"○[^○\n]+（[^）]+）",
-            r"◆[^◆\n]+（[^）]+）",
-            r"○議長",
-            r"○委員長",
-        ]
-        has_speech = any(
-            re.search(pattern, section_text) for pattern in speech_indicators
+        # LLMベースの境界検出を実行
+        boundary = self.detect_attendee_boundary(section_text)
+
+        # 境界に基づいてテキストを分割
+        attendee_part, speech_part = self.split_minutes_by_boundary(
+            section_text, boundary
         )
 
-        # 出席者リストや参加者一覧を示すパターン
-        attendance_patterns = [
-            r"◯出席委員",
-            r"◯欠席委員",
-            r"◯委員会説明員",
-            r"◯配付資料",
-            r"◯要求資料",
-            r"◯特記事項",
-            r"出席者一覧",
-            r"参加者リスト",
-        ]
-
-        # セクションが出席者リストのみで発言が含まれていない場合はスキップ
-        has_attendance = any(
-            re.search(pattern, section_text) for pattern in attendance_patterns
-        )
-
-        if has_attendance and not has_speech:
-            print(
-                f"出席者リストセクション（発言なし）をスキップ: {section_text[:50]}..."
-            )
+        # 発言部分がない場合はスキップ
+        if not speech_part:
+            logger.info("No speech content found in section")
             return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
 
-        # 発言者記号がない場合で、短いテキストの場合はスキップ
-        if not has_speech and len(section_text) < 100:
-            print(f"発言が含まれていないセクションをスキップ: {section_text[:50]}...")
+        # 発言部分のみを処理対象とする
+        section_text = speech_part
+
+        # 発言部分が短すぎる場合はスキップ（意味のある発言がない可能性が高い）
+        if len(section_text) < 50:
+            logger.info(f"Speech part too short, skipping: {section_text[:30]}...")
             return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
 
         # 国会議事録向けのプロンプトを使用
