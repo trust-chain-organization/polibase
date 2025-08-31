@@ -17,11 +17,11 @@ from src.infrastructure.persistence.conversation_repository_impl import (
 from src.infrastructure.persistence.minutes_repository_impl import (
     MinutesRepositoryImpl as AsyncMinutesRepo,
 )
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.infrastructure.persistence.speaker_repository_impl import (
     SpeakerRepositoryImpl as AsyncSpeakerRepo,
 )
 from src.streamlit.utils.processing_logger import ProcessingLogger
-from src.streamlit.utils.repository_adapter import RepositoryAdapter
 
 logger = logging.getLogger(__name__)
 
