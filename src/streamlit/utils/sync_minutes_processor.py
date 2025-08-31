@@ -222,7 +222,11 @@ class SyncMinutesProcessor:
                         f"Downloaded text from GCS ({len(text)} characters)",
                         meeting_id=meeting.id,
                     )
+
+                    # メタデータ削除の処理を削除し、全テキストを返す
+                    # LLMベースの境界検出で適切に処理される
                     return text
+
             except Exception as e:
                 logger.warning(f"Failed to download from GCS: {e}")
 
@@ -252,6 +256,58 @@ class SyncMinutesProcessor:
         agent = MinutesProcessAgent(llm_service=llm_service)
 
         logger.info(f"Processing minutes (text length: {len(text)})")
+
+        # エージェントの実行をフックして中間結果をログに出力
+        original_divide_to_keyword = agent._divide_minutes_to_keyword  # type: ignore[attr-defined]
+        original_divide_to_string = agent._divide_minutes_to_string  # type: ignore[attr-defined]
+
+        def logged_divide_to_keyword(state: Any) -> dict[str, Any]:
+            result = original_divide_to_keyword(state)
+
+            # キーワード抽出結果をログに出力
+            if "section_info_list" in result:
+                keywords = []
+                for section_info in result["section_info_list"]:
+                    keyword_str = (
+                        f"章{section_info.chapter_number}: {section_info.keyword}"
+                    )
+                    keywords.append(keyword_str)
+
+                self.logger.add_log(
+                    self.meeting_id,
+                    f"🔍 {len(keywords)}個のキーワードを抽出しました",
+                    "info",
+                    details="\n".join(keywords),
+                )
+
+            return result
+
+        def logged_divide_to_string(state: Any) -> dict[str, str]:
+            result = original_divide_to_string(state)
+
+            # 分割結果をログに出力
+            if state.section_info_list:
+                division_summary = []
+                for i, section_info in enumerate(state.section_info_list, 1):
+                    summary_str = f"セクション{i}: {section_info.keyword[:50]}..."
+                    division_summary.append(summary_str)
+
+                section_count = len(state.section_info_list)
+                log_msg = (
+                    f"✂️ キーワードを使用して{section_count}個のセクションに分割しました"
+                )
+                self.logger.add_log(
+                    self.meeting_id,
+                    log_msg,
+                    "info",
+                    details="\n".join(division_summary[:10]),  # 最初の10件のみ表示
+                )
+
+            return result
+
+        # メソッドを一時的に置き換え
+        agent._divide_minutes_to_keyword = logged_divide_to_keyword  # type: ignore[attr-defined]
+        agent._divide_minutes_to_string = logged_divide_to_string  # type: ignore[attr-defined]
 
         # 同期的に実行
         results = agent.run(text)

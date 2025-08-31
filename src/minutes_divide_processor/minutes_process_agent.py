@@ -53,11 +53,12 @@ class MinutesProcessAgent:
         workflow.add_edge("check_length", "divide_speech")
         workflow.add_conditional_edges(
             "divide_speech",
-            lambda state: state.index < state.section_list_length,  # type: ignore[arg-type, no-any-return]
+            # indexは1から始まるので、<= で比較する必要がある
+            lambda state: state.index <= state.section_list_length,  # type: ignore[arg-type, no-any-return]
             {True: "divide_speech", False: END},
         )
 
-        return workflow.compile(checkpointer=checkpointer, store=self.in_memory_store)  # type: ignore[return-value]
+        return workflow.compile(checkpointer=checkpointer, store=self.in_memory_store)  # type: ignore[return-value]  # type: ignore[return-value]
 
     def _get_from_memory(self, namespace: str, memory_id: str) -> Any | None:
         namespace_for_memory = ("1", namespace)

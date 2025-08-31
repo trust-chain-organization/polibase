@@ -13,6 +13,7 @@ from ..services.llm_factory import LLMServiceFactory
 
 # Use relative import for modules within the same package
 from .models import (
+    MinutesBoundary,
     RedividedSectionInfoList,
     RedivideSectionString,
     RedivideSectionStringList,
@@ -91,54 +92,108 @@ class MinutesDivider:
         else:
             section_info_list_data = section_info_list.section_info_list
 
+        # Unicode正規化（NFKC）と追加の正規化を適用
+        import unicodedata
+
+        def normalize_text(text: str) -> str:
+            """テキストを正規化する関数
+            1. NFKC正規化で全角英数字・記号を半角に
+            2. 議事録特有の記号を統一
+            3. タブ文字をスペースに変換
+            """
+            # NFKC正規化
+            normalized = unicodedata.normalize("NFKC", text)
+            # 議事録特有の記号の正規化
+            # ◯ (U+25EF) → ○ (U+25CB)
+            normalized = normalized.replace("◯", "○")
+            # ● (U+25CF) → ○ (U+25CB)
+            normalized = normalized.replace("●", "○")
+            # タブ文字をスペースに変換
+            normalized = normalized.replace("\t", " ")
+            # 連続するスペースを1つに統一
+            import re
+
+            normalized = re.sub(r" +", " ", normalized)
+            return normalized
+
+        # 議事録全体を正規化
+        normalized_minutes = normalize_text(processed_minutes)
+
         split_minutes_list: list[SectionString] = []
         start_index = 0
         skipped_keywords: list[str] = []
         i = 0
         output_order = 1  # 出現順を記録する変数
+
         while i < len(section_info_list_data):
             section_info = section_info_list_data[i]
-            keyword = section_info.keyword
+            # キーワードも同様に正規化
+            keyword = normalize_text(section_info.keyword)
+
             # 最初のキーワードの場合、議事録の先頭から検索を開始
             if i == 0 and start_index == 0:
-                start_index = processed_minutes.find(keyword)
+                start_index = normalized_minutes.find(keyword)
                 if start_index == -1:
-                    start_index = 0
-                    print(
-                        f"最初のキーワード '{keyword}' が見つからないため、"
-                        + "議事録の先頭から開始します"
-                    )
+                    # 部分一致も試す（キーワードが長すぎる場合）
+                    if len(keyword) > 10:
+                        partial_keyword = keyword[:10]
+                        start_index = normalized_minutes.find(partial_keyword)
+                        if start_index != -1:
+                            logger.info(
+                                f"Found keyword using partial match: {partial_keyword}"
+                            )
+
+                    if start_index == -1:
+                        start_index = 0
+                        print(
+                            f"キーワード '{section_info.keyword}' が"
+                            + "見つからないため、先頭から開始します"
+                        )
             # キーワードが見つからない場合はスキップ
             if start_index == -1:
                 print(
-                    f"警告: キーワード '{keyword}' が議事録に見つかりません。"
-                    + "スキップします。"
+                    f"警告: キーワード '{section_info.keyword}' が"
+                    + "見つかりません。スキップします。"
                 )
-                skipped_keywords.append(keyword)
+                skipped_keywords.append(section_info.keyword)
                 i += 1
                 continue
             # 次のキーワードの開始位置を検索
             next_keyword_index = -1
             j = i + 1
             while j < len(section_info_list_data):
-                next_keyword = section_info_list_data[j].keyword
-                next_keyword_index = processed_minutes.find(
-                    next_keyword, start_index + len(keyword)
+                next_section = section_info_list_data[j]
+                # 次のキーワードも正規化
+                next_keyword = normalize_text(next_section.keyword)
+                next_keyword_index = normalized_minutes.find(
+                    next_keyword, start_index + 1
                 )
+                if next_keyword_index == -1 and len(next_keyword) > 10:
+                    # 部分一致も試す
+                    partial_next = next_keyword[:10]
+                    next_keyword_index = normalized_minutes.find(
+                        partial_next, start_index + 1
+                    )
+                    if next_keyword_index != -1:
+                        logger.info(
+                            f"Found next keyword using partial match: {partial_next}"
+                        )
+
                 if next_keyword_index != -1:
                     break
                 else:
                     print(
-                        f"警告: キーワード '{next_keyword}' が議事録に"
+                        f"警告: キーワード '{next_section.keyword}' が議事録に"
                         + "見つかりません。スキップします。"
                     )
-                    skipped_keywords.append(next_keyword)
+                    skipped_keywords.append(next_section.keyword)
                     j += 1
             if next_keyword_index == -1:
-                end_index = len(processed_minutes)
+                end_index = len(normalized_minutes)
             else:
                 end_index = next_keyword_index
-            # 分割された文字列を取得
+            # 分割された文字列を取得（元のテキストから取得）
+            # 正規化されたテキストでインデックスを見つけて、元のテキストから抽出
             split_text = processed_minutes[start_index:end_index].strip()
             # SectionStringインスタンスを作成してlistにappend
             split_minutes_list.append(
@@ -261,45 +316,315 @@ class MinutesDivider:
         return RedividedSectionInfoList(redivided_section_info_list=section_info_list)
 
     # 発言者と発言内容に分割する
+    def detect_attendee_boundary(self, minutes_text: str) -> MinutesBoundary:
+        """議事録テキストから出席者情報と発言部分の境界を検出する
+
+        Args:
+            minutes_text: 議事録の全文
+
+        Returns:
+            MinutesBoundary: 境界検出結果
+        """
+        logger.info("=== detect_attendee_boundary started ===")
+        logger.info(f"Input text length: {len(minutes_text)}")
+
+        # 境界検出用のプロンプトを取得
+        logger.info("Getting prompt template...")
+        try:
+            prompt_template = self.llm_service.get_prompt("minutes_boundary_detect")
+            logger.info("Prompt template retrieved successfully")
+        except KeyError as e:
+            logger.error(f"Prompt template not found: {e}")
+            logger.warning("Falling back to treating entire text as speech")
+            return MinutesBoundary(
+                boundary_found=False,
+                boundary_text=None,
+                boundary_type="none",
+                confidence=0.0,
+                reason="境界検出プロンプトが見つかりません",
+            )
+
+        # 構造化LLMを取得
+        logger.info("Getting structured LLM...")
+        structured_llm = self.llm_service.get_structured_llm(MinutesBoundary)
+
+        # チェーンを構築
+        logger.info("Building chain...")
+        chain = prompt_template | structured_llm
+
+        try:
+            # LLMで境界を検出
+            logger.info("Invoking LLM for boundary detection...")
+            result = self.llm_service.invoke_with_retry(
+                chain,
+                {"minutes_text": minutes_text},
+            )
+            logger.info(f"LLM invocation completed, result type: {type(result)}")
+
+            if isinstance(result, MinutesBoundary):
+                # 結果の詳細をログ出力
+                logger.info("Boundary detection result details:")
+                logger.info(f"  - boundary_found: {result.boundary_found}")
+                logger.info(f"  - boundary_type: {result.boundary_type}")
+                logger.info(f"  - confidence: {result.confidence}")
+                logger.info(f"  - reason: {result.reason}")
+                logger.info(f"  - boundary_text: {result.boundary_text}")
+
+                if result.boundary_text:
+                    # boundary_textの詳細を確認
+                    logger.info(
+                        f"  - boundary_text length: {len(result.boundary_text)}"
+                    )
+                    logger.info(
+                        f"  - Contains '｜境界｜': {'｜境界｜' in result.boundary_text}"
+                    )
+
+                return result
+            else:
+                logger.warning("Unexpected result type from boundary detection")
+                return MinutesBoundary(
+                    boundary_found=False,
+                    boundary_text=None,
+                    boundary_type="none",
+                    confidence=0.0,
+                    reason="LLMからの結果が予期しない形式でした",
+                )
+
+        except Exception as e:
+            logger.error(f"Error in boundary detection: {e}")
+            return MinutesBoundary(
+                boundary_found=False,
+                boundary_text=None,
+                boundary_type="none",
+                confidence=0.0,
+                reason=f"境界検出中にエラーが発生しました: {str(e)}",
+            )
+
+    def split_minutes_by_boundary(
+        self, minutes_text: str, boundary: MinutesBoundary
+    ) -> tuple[str, str]:
+        """境界情報に基づいて議事録を出席者部分と発言部分に分割する
+
+        Args:
+            minutes_text: 議事録の全文
+            boundary: 境界検出結果
+
+        Returns:
+            Tuple[str, str]: (出席者部分, 発言部分)
+        """
+        logger.info("=== split_minutes_by_boundary started ===")
+
+        if not boundary.boundary_found or not boundary.boundary_text:
+            # 境界が見つからない場合は全体を発言部分として扱う
+            logger.info("No boundary found, treating entire text as speech")
+            return "", minutes_text
+
+        # boundary_textから境界マーカーを探す（複数のパターンに対応）
+        boundary_markers = ["｜境界｜", "|境界|", "境界", "｜", "|"]
+        boundary_marker = None
+        for marker in boundary_markers:
+            if marker in boundary.boundary_text:
+                boundary_marker = marker
+                break
+
+        logger.info("Looking for boundary marker in boundary_text")
+        logger.info(f"boundary_text content: {repr(boundary.boundary_text)}")
+
+        if boundary_marker:
+            logger.info(f"Found boundary marker: '{boundary_marker}'")
+            # 境界マーカーの前後のテキストを取得
+            parts = boundary.boundary_text.split(boundary_marker)
+            if len(parts) >= 2:
+                before_boundary = parts[0].strip()
+                after_boundary = parts[
+                    -1
+                ].strip()  # 最後の部分を使用（複数マーカーがある場合の対応）
+            else:
+                # マーカーで分割できない場合
+                logger.warning(f"Could not split by marker: {boundary.boundary_text}")
+                before_boundary = ""
+                after_boundary = boundary.boundary_text.strip()
+        else:
+            # マーカーがない場合、全体を境界後のテキストとして扱う
+            logger.warning(
+                f"No boundary marker found in boundary_text: {boundary.boundary_text}"
+            )
+            # 境界テキスト全体を使って検索を試みる
+            before_boundary = ""
+            after_boundary = boundary.boundary_text.strip()
+
+        logger.info(f"Before boundary text: {repr(before_boundary)}")
+        logger.info(f"After boundary text: {repr(after_boundary)}")
+
+        # 元のテキストから境界位置を特定
+        split_index = -1
+
+        # まず境界前のテキストを探す
+        if before_boundary and len(before_boundary) > 5:  # 5文字以上の場合のみ検索
+            # 改行文字を含む検索と含まない検索を両方試す
+            search_patterns = [
+                before_boundary,
+                before_boundary.replace(
+                    "\\n", "\n"
+                ),  # エスケープされた改行を実際の改行に
+                before_boundary.replace("\n", " "),  # 改行をスペースに
+                before_boundary.replace("\n", ""),  # 改行を削除
+            ]
+
+            for pattern in search_patterns:
+                if pattern in minutes_text:
+                    before_index = minutes_text.find(pattern)
+                    split_index = before_index + len(pattern)
+                    logger.info(
+                        f"Found boundary using before_text at index {split_index}"
+                    )
+                    break
+
+        # 境界前で見つからない場合は境界後のテキストで探す
+        if split_index == -1 and after_boundary and len(after_boundary) > 5:
+            search_patterns = [
+                after_boundary,
+                after_boundary.replace("\\n", "\n"),
+                after_boundary.replace("\n", " "),
+                after_boundary.replace("\n", ""),
+            ]
+
+            for pattern in search_patterns:
+                if pattern in minutes_text:
+                    split_index = minutes_text.find(pattern)
+                    logger.info(
+                        f"Found boundary using after_text at index {split_index}"
+                    )
+                    break
+
+        # それでも見つからない場合、部分一致を試みる
+        if split_index == -1:
+            logger.warning("Could not find exact match, trying partial match")
+
+            # 境界後テキストの最初の10文字で検索
+            if after_boundary and len(after_boundary) > 10:
+                partial = after_boundary[:10]
+                if partial in minutes_text:
+                    split_index = minutes_text.find(partial)
+                    logger.info(
+                        f"Found boundary using partial text at index {split_index}"
+                    )
+
+            # それでも見つからない場合、発言パターンを探す
+            if split_index == -1:
+                # 一般的な発言開始パターンを探す
+                speech_patterns = [
+                    r"○.*?議長",
+                    r"◆.*?議員",
+                    r"［.*?開会］",
+                    r"【.*?】",
+                    r"○委員長",
+                    r"◆委員",
+                ]
+
+                import re
+
+                for pattern in speech_patterns:
+                    match = re.search(pattern, minutes_text)
+                    if match:
+                        split_index = match.start()
+                        logger.info(
+                            f"Found boundary using pattern '{pattern}' at {split_index}"
+                        )
+                        break
+
+        if split_index == -1:
+            # どうしても見つからない場合は全体を発言部分として扱う
+            logger.warning(
+                f"Could not locate boundary in original text. "
+                f"Tried multiple patterns from boundary_text: {boundary.boundary_text}"
+            )
+            # デバッグ用: 元テキストの先頭と末尾を表示
+            logger.info(
+                f"Original text preview (first 200 chars): {minutes_text[:200]}"
+            )
+            logger.info(
+                f"Original text preview (last 200 chars): {minutes_text[-200:]}"
+            )
+            return "", minutes_text
+
+        # テキストを分割
+        attendee_part = minutes_text[:split_index].strip()
+        speech_part = minutes_text[split_index:].strip()
+
+        logger.info(f"Split successful at index {split_index}")
+        logger.info(f"Attendee part length: {len(attendee_part)}")
+        logger.info(f"Speech part length: {len(speech_part)}")
+
+        # 出席者部分のプレビュー（デバッグ用）
+        if attendee_part:
+            preview_len = min(100, len(attendee_part))
+            logger.info(f"Attendee part preview: ...{attendee_part[-preview_len:]}")
+
+        # 発言部分のプレビュー（デバッグ用）
+        if speech_part:
+            preview_len = min(100, len(speech_part))
+            logger.info(f"Speech part preview: {speech_part[:preview_len]}...")
+
+        return attendee_part, speech_part
+
     def speech_divide_run(
         self, section_string: SectionString
     ) -> SpeakerAndSpeechContentList:
-        # 出席者リストパターンをチェック
+        # セクション全体のテキストを取得
         section_text = section_string.section_string
 
-        # 出席者リストや参加者一覧を示すパターン
-        attendance_patterns = [
-            r"◯出席委員",
-            r"◯欠席委員",
-            r"◯委員会説明員",
-            r"◯配付資料",
-            r"◯要求資料",
-            r"◯特記事項",
-            r"出席者一覧",
-            r"参加者リスト",
-            r"委員長\s+[^\n]+議員\n副委員長\s+[^\n]+議員",  # 役職者リストパターン
-        ]
+        # デバッグログ
+        logger.info("=== speech_divide_run started ===")
+        logger.info(f"Section text length: {len(section_text)}")
+        logger.info(f"Section text preview: {section_text[:200]}...")
 
-        # セクションが出席者リストである場合はスキップ
-        for pattern in attendance_patterns:
-            if re.search(pattern, section_text):
-                print(f"出席者リストセクションをスキップ: {section_text[:50]}...")
-                return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
-
-        # 実際の発言が含まれているかチェック（○や◆などの発言者記号があるか）
-        speech_indicators = [
-            r"○[^○\n]+（[^）]+）",
-            r"◆[^◆\n]+（[^）]+）",
-            r"○議長",
-            r"○委員長",
-        ]
-        has_speech = any(
-            re.search(pattern, section_text) for pattern in speech_indicators
+        # LLMベースの境界検出を実行
+        logger.info("Calling detect_attendee_boundary...")
+        boundary = self.detect_attendee_boundary(section_text)
+        logger.info(
+            f"Boundary detection result: found={boundary.boundary_found}, "
+            f"type={boundary.boundary_type}, confidence={boundary.confidence}"
         )
 
-        # 発言者記号がない場合で、短いテキストの場合はスキップ
-        if not has_speech and len(section_text) < 100:
-            print(f"発言が含まれていないセクションをスキップ: {section_text[:50]}...")
+        # 重要: boundary_textの内容も必ずログ出力
+        if boundary.boundary_text:
+            logger.info(f"Boundary text content: {repr(boundary.boundary_text)}")
+        else:
+            logger.warning("Boundary text is None or empty!")
+
+        # 境界に基づいてテキストを分割
+        logger.info("Calling split_minutes_by_boundary...")
+        attendee_part, speech_part = self.split_minutes_by_boundary(
+            section_text, boundary
+        )
+        logger.info(
+            f"Split result: attendee_part length={len(attendee_part)}, "
+            f"speech_part length={len(speech_part)}"
+        )
+
+        # デバッグ: 分割結果のプレビュー
+        if attendee_part:
+            logger.info(f"Attendee part last 100 chars: ...{attendee_part[-100:]}")
+        if speech_part:
+            logger.info(f"Speech part first 100 chars: {speech_part[:100]}...")
+
+        # 発言部分がない場合はスキップ
+        if not speech_part:
+            logger.info("No speech content found in section")
+            return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
+
+        # 発言部分のみを処理対象とする
+        section_text = speech_part
+
+        # 発言部分が短すぎる場合でも、明らかに発言パターンが含まれている場合は処理を続行
+        # ○や◆で始まる行がある場合は発言として扱う
+        import re
+
+        has_speech_pattern = bool(re.search(r"^[○◆]", section_text, re.MULTILINE))
+
+        if len(section_text) < 30 and not has_speech_pattern:
+            logger.info("Speech part too short and no speech pattern found, skipping")
             return SpeakerAndSpeechContentList(speaker_and_speech_content_list=[])
 
         # 国会議事録向けのプロンプトを使用
