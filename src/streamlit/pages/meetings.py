@@ -1,15 +1,23 @@
 """会議管理ページ"""
 
 import asyncio
+import threading
 from datetime import date
 from typing import Any, cast
 
 import pandas as pd
 
 import streamlit as st
+from src.application.usecases.execute_minutes_processing_usecase import (
+    ExecuteMinutesProcessingDTO,
+    ExecuteMinutesProcessingUseCase,
+)
+from src.common.logging import get_logger
+from src.config.async_database import get_async_session
 from src.domain.services.meeting_processing_status_service import (
     MeetingProcessingStatusService,
 )
+from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.exceptions import DatabaseError, RecordNotFoundError, SaveError, UpdateError
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
@@ -25,6 +33,8 @@ from src.infrastructure.persistence.minutes_repository_impl import MinutesReposi
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.infrastructure.persistence.speaker_repository_impl import SpeakerRepositoryImpl
 from src.seed_generator import SeedGenerator
+
+logger = get_logger(__name__)
 
 
 def manage_meetings():
@@ -249,9 +259,9 @@ def show_meetings_list():
         df["発言抽出状態"] = df.apply(get_conversation_status, axis=1)
         df["発言者抽出状態"] = df.apply(get_speaker_status, axis=1)
 
-        # 編集・削除ボタン用のカラム
+        # 編集・削除・発言抽出ボタン用のカラム
         for _idx, row in df.iterrows():
-            col1, col2, col3 = st.columns([6, 1, 1])
+            col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
 
             with col1:
                 # URLを表示
@@ -315,6 +325,60 @@ def show_meetings_list():
                     st.rerun()
 
             with col3:
+                # 発言抽出ボタン（Conversationsがない、かつGCSテキストURIがある場合）
+                row_dict = cast(dict[str, Any], row)
+                meeting_id = int(row["id"])  # type: ignore[arg-type,index]
+                has_conversations = row_dict.get("has_conversations", False)
+                gcs_text_uri = row_dict.get("gcs_text_uri", None)
+
+                # 処理中の状態を管理
+                processing_key = f"processing_{meeting_id}"
+                is_processing = st.session_state.get(processing_key, False)
+
+                # エラーメッセージがあれば表示
+                error_key = f"error_{meeting_id}"
+                if error_key in st.session_state:
+                    st.error(f"処理エラー: {st.session_state[error_key]}")
+                    del st.session_state[error_key]
+
+                if is_processing:
+                    st.button(
+                        "処理中...",
+                        key=f"extract_{row['id']}",
+                        disabled=True,
+                        type="secondary",
+                    )
+                elif not has_conversations and gcs_text_uri:
+                    if st.button(
+                        "発言抽出",
+                        key=f"extract_{row['id']}",
+                        type="primary",
+                        help="議事録から発言を抽出します",
+                    ):
+                        # 処理中フラグを設定
+                        st.session_state[processing_key] = True
+                        # ログ表示用のコンテナを作成
+                        st.session_state[f"show_log_{meeting_id}"] = True
+                        st.session_state[f"log_{meeting_id}"] = []
+                        # バックグラウンドで処理を実行
+                        execute_minutes_processing_new(meeting_id)
+                        st.rerun()
+                elif has_conversations:
+                    st.button(
+                        "抽出済",
+                        key=f"extract_{row['id']}",
+                        disabled=True,
+                        help="既に発言が抽出されています",
+                    )
+                else:
+                    st.button(
+                        "発言抽出",
+                        key=f"extract_{row['id']}",
+                        disabled=True,
+                        help="GCSテキストURIが設定されていません",
+                    )
+
+            with col4:
                 if st.button("削除", key=f"delete_{row['id']}"):
                     meeting_id = int(row["id"])  # type: ignore[arg-type,index]
                     if meeting_repo.delete(meeting_id):
@@ -324,6 +388,60 @@ def show_meetings_list():
                         st.error(
                             "会議を削除できませんでした（関連する議事録が存在する可能性があります）"
                         )
+
+            # ログ表示エリア
+            if st.session_state.get(f"show_log_{meeting_id}", False):
+                from src.streamlit.utils.processing_logger import ProcessingLogger
+
+                proc_logger = ProcessingLogger()
+
+                with st.expander(f"処理ログ - 会議ID {meeting_id}", expanded=True):
+                    # ファイルからログを読み込む
+                    log_entries = proc_logger.get_logs(meeting_id)
+
+                    if log_entries:
+                        # ログコンテナを作成して全ログを表示
+                        log_container = st.container(height=400)
+                        with log_container:
+                            for log_entry in log_entries:
+                                formatted_msg = log_entry.get("formatted", "")
+                                level = log_entry.get("level", "INFO")
+                                details = log_entry.get("details", None)
+
+                                # 詳細データがある場合は折りたたみで表示
+                                if details:
+                                    with st.expander(formatted_msg, expanded=False):
+                                        # 詳細データをコードブロックで表示
+                                        st.code(details, language="text")
+                                else:
+                                    # 通常のログメッセージ
+                                    if level == "ERROR" or "❌" in formatted_msg:
+                                        st.error(formatted_msg)
+                                    elif level == "WARNING":
+                                        st.warning(formatted_msg)
+                                    elif level == "SUCCESS" or "✅" in formatted_msg:
+                                        st.success(formatted_msg)
+                                    else:
+                                        st.info(formatted_msg)
+                    else:
+                        st.info("処理を開始しています...")
+
+                    # 処理状態を確認
+                    is_processing = proc_logger.get_processing_status(meeting_id)
+                    if not is_processing:
+                        if st.button("ログを閉じる", key=f"close_log_{meeting_id}"):
+                            del st.session_state[f"show_log_{meeting_id}"]
+                            # 処理中フラグもクリア
+                            if f"processing_{meeting_id}" in st.session_state:
+                                del st.session_state[f"processing_{meeting_id}"]
+                            st.rerun()
+                    else:
+                        # 処理中は自動リロード
+                        st.caption("🔄 処理中... (自動的に更新されます)")
+                        import time
+
+                        time.sleep(2)
+                        st.rerun()
 
             st.divider()
     else:
@@ -593,3 +711,209 @@ def edit_meeting():
     meeting_repo.close()
     gb_repo.close()
     conf_repo.close()
+
+
+def execute_minutes_processing_new(meeting_id: int):
+    """議事録処理をバックグラウンドで実行する（新版）
+
+    Args:
+        meeting_id: 処理対象の会議ID
+    """
+    from src.streamlit.utils.processing_logger import ProcessingLogger
+
+    # ロガーを初期化
+    proc_logger = ProcessingLogger()
+    proc_logger.clear_logs(meeting_id)  # 既存のログをクリア
+    proc_logger.set_processing_status(meeting_id, True)  # 処理中フラグを設定
+
+    # セッションステートにログ表示フラグを設定
+    st.session_state[f"show_log_{meeting_id}"] = True
+    st.session_state[f"processing_{meeting_id}"] = True
+
+    def run_async_processing():
+        """同期処理を実行するラッパー関数"""
+        from src.streamlit.utils.processing_logger import ProcessingLogger
+        from src.streamlit.utils.sync_minutes_processor import SyncMinutesProcessor
+
+        proc_logger = ProcessingLogger()
+
+        try:
+            # 同期的なプロセッサを使用
+            processor = SyncMinutesProcessor(meeting_id)
+            result = processor.process()
+
+            # 処理完了フラグを更新
+            proc_logger.set_processing_status(meeting_id, False)
+            return result
+
+        except Exception as e:
+            proc_logger.add_log(
+                meeting_id, f"❌ エラーが発生しました: {str(e)}", "error"
+            )
+            logger.error(f"Failed to process meeting {meeting_id}: {e}", exc_info=True)
+
+            # 処理完了フラグを更新
+            proc_logger.set_processing_status(meeting_id, False)
+            raise
+
+    # バックグラウンドスレッドで処理を実行
+    thread = threading.Thread(target=run_async_processing, daemon=True)
+    thread.start()
+
+    # UIフィードバック用のメッセージ
+    st.info(f"🔄 会議ID {meeting_id} の発言抽出処理を開始しました...")
+    st.caption("処理には数分かかる場合があります。完了後、自動的に画面が更新されます。")
+
+
+def execute_minutes_processing_old(meeting_id: int):
+    """議事録処理をバックグラウンドで実行する
+
+    Args:
+        meeting_id: 処理対象の会議ID
+    """
+    import logging
+    from datetime import datetime
+
+    # ログをセッションステートに追加するヘルパー関数
+    def add_log(message: str, level: str = "info"):
+        """ログメッセージをセッションステートに追加する"""
+        log_key = f"log_{meeting_id}"
+        if log_key not in st.session_state:
+            st.session_state[log_key] = []
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        st.session_state[log_key].append(f"[{timestamp}] [{level.upper()}] {message}")
+
+    # カスタムログハンドラーを作成
+    class SessionStateLogHandler(logging.Handler):
+        """ログをセッションステートに保存するハンドラー"""
+
+        def emit(self, record: logging.LogRecord) -> None:
+            try:
+                msg = self.format(record)
+                level = record.levelname.lower()
+                if record.name.startswith("src."):  # srcモジュールのログのみキャプチャ
+                    add_log(msg, level)
+            except Exception:
+                self.handleError(record)
+
+    def run_async_processing():
+        """非同期処理を実行するラッパー関数"""
+        loop = None
+        try:
+            # ログハンドラーを設定
+            log_handler = SessionStateLogHandler()
+            log_handler.setFormatter(logging.Formatter("%(message)s"))
+
+            # 関連するロガーにハンドラーを追加
+            loggers_to_capture = [
+                "src.application.usecases.execute_minutes_processing_usecase",
+                "src.minutes_divide_processor",
+                "src.infrastructure.external",
+                "src.domain.services",
+            ]
+
+            for logger_name in loggers_to_capture:
+                target_logger = logging.getLogger(logger_name)
+                target_logger.addHandler(log_handler)
+                target_logger.setLevel(logging.INFO)
+
+            add_log("処理を開始します", "info")
+            add_log(f"会議ID {meeting_id} の議事録処理を実行します", "info")
+
+            # nest_asyncioを使用してイベントループの問題を解決
+            import nest_asyncio
+
+            nest_asyncio.apply()
+
+            # 新しいイベントループを作成
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            async def process():
+                """非同期処理の本体"""
+                add_log("データベースに接続しています...", "info")
+                # 新しいセッションを作成（別スレッドで実行するため）
+                async with get_async_session() as session:
+                    # リポジトリの初期化
+                    add_log("リポジトリを初期化しています...", "info")
+                    meeting_repo = MeetingRepositoryImpl(session)
+                    minutes_repo = MinutesRepositoryImpl(session)
+                    conversation_repo = ConversationRepositoryImpl(session)
+                    speaker_repo = SpeakerRepositoryImpl(session)
+                    speaker_service = SpeakerDomainService()
+
+                    # ユースケースの初期化
+                    add_log("ユースケースを初期化しています...", "info")
+                    use_case = ExecuteMinutesProcessingUseCase(
+                        meeting_repository=meeting_repo,
+                        minutes_repository=minutes_repo,
+                        conversation_repository=conversation_repo,
+                        speaker_repository=speaker_repo,
+                        speaker_domain_service=speaker_service,
+                    )
+
+                    # 処理の実行
+                    add_log("議事録処理を実行しています...", "info")
+                    request = ExecuteMinutesProcessingDTO(
+                        meeting_id=meeting_id, force_reprocess=False
+                    )
+                    result = await use_case.execute(request)
+
+                    add_log("✅ 処理が完了しました", "success")
+                    add_log(f"抽出された発言数: {result.total_conversations}件", "info")
+                    add_log(f"抽出された発言者数: {result.unique_speakers}人", "info")
+                    add_log(f"処理時間: {result.processing_time_seconds:.2f}秒", "info")
+
+                    logger.info(
+                        f"Minutes processing completed for meeting {meeting_id}: "
+                        f"{result.total_conversations} conversations extracted"
+                    )
+
+                    # 処理完了後、処理中フラグをクリア
+                    processing_key = f"processing_{meeting_id}"
+                    if processing_key in st.session_state:
+                        del st.session_state[processing_key]
+
+                    # ログ表示を維持（完了後も表示を続ける）
+                    st.session_state[f"show_log_{meeting_id}"] = True
+
+                    return result
+
+            # 非同期処理を実行
+            result = loop.run_until_complete(process())
+
+            # ハンドラーを削除
+            for logger_name in loggers_to_capture:
+                target_logger = logging.getLogger(logger_name)
+                target_logger.removeHandler(log_handler)
+
+            return result
+
+        except Exception as e:
+            add_log(f"❌ エラーが発生しました: {str(e)}", "error")
+            logger.error(f"Failed to process meeting {meeting_id}: {e}", exc_info=True)
+
+            # エラー時も処理中フラグをクリア
+            processing_key = f"processing_{meeting_id}"
+            if processing_key in st.session_state:
+                del st.session_state[processing_key]
+
+            # エラーメッセージをセッションステートに保存
+            error_key = f"error_{meeting_id}"
+            st.session_state[error_key] = str(e)
+
+            # ログ表示を維持（エラー時も表示を続ける）
+            st.session_state[f"show_log_{meeting_id}"] = True
+
+            raise
+        finally:
+            if loop:
+                loop.close()
+
+    # バックグラウンドスレッドで処理を実行
+    thread = threading.Thread(target=run_async_processing, daemon=True)
+    thread.start()
+
+    # UIフィードバック用のメッセージ
+    st.info(f"🔄 会議ID {meeting_id} の発言抽出処理を開始しました...")
+    st.caption("処理には数分かかる場合があります。完了後、自動的に画面が更新されます。")
