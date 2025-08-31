@@ -239,7 +239,7 @@ class ExecuteMinutesProcessingUseCase:
             )
 
         # MinutesProcessAgentを使用して処理
-        agent = MinutesProcessAgent(llm_service=llm_service)  # type: ignore[arg-type]
+        agent = MinutesProcessAgent(llm_service=llm_service)
 
         logger.info(f"Processing minutes (text length: {len(text)})")
 
@@ -262,7 +262,7 @@ class ExecuteMinutesProcessingUseCase:
         Returns:
             list[Conversation]: 保存された発言エンティティリスト
         """
-        conversations = []
+        conversations: list[Conversation] = []
         for idx, result in enumerate(results):
             conv = Conversation(
                 minutes_id=minutes_id,

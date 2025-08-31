@@ -63,7 +63,7 @@ class SyncMinutesProcessor:
             処理結果
         """
         start_time = datetime.now()
-        errors = []
+        errors: list[str] = []
 
         try:
             self.logger.add_log(self.meeting_id, "処理を開始します", "info")
@@ -135,7 +135,7 @@ class SyncMinutesProcessor:
 
             # 抽出結果のサマリーをログに記録
             if results:
-                result_summary = []
+                result_summary: list[str] = []
                 for i, result in enumerate(results[:5], 1):  # 最初の5件を表示
                     speaker = getattr(result, "speaker", "不明")
                     content = getattr(result, "speech_content", "")
@@ -263,7 +263,7 @@ class SyncMinutesProcessor:
         self, results: list[Any], minutes_id: int, repo: Any
     ) -> list[Conversation]:
         """発言をデータベースに保存する"""
-        conversations = []
+        conversations: list[Conversation] = []
         for idx, result in enumerate(results):
             conv = Conversation(
                 minutes_id=minutes_id,
@@ -287,7 +287,7 @@ class SyncMinutesProcessor:
         from src.domain.services.speaker_domain_service import SpeakerDomainService
 
         speaker_service = SpeakerDomainService()
-        speaker_names = set()
+        speaker_names: set[tuple[str, str | None]] = set()
 
         for conv in conversations:
             if conv.speaker_name:

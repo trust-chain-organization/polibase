@@ -1,6 +1,8 @@
 """議事録処理のログ管理ユーティリティ"""
 
 import json
+import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -8,12 +10,18 @@ from pathlib import Path
 class ProcessingLogger:
     """処理ログをファイルに保存・読み込むクラス"""
 
-    def __init__(self, base_dir: str = "/tmp/polibase_logs"):
+    def __init__(self, base_dir: str | None = None):
         """初期化
 
         Args:
             base_dir: ログファイルを保存するディレクトリ
+                （Noneの場合は環境変数またはtempfileを使用）
         """
+        if base_dir is None:
+            # 環境変数から取得、なければtempfileで安全なディレクトリを作成
+            base_dir = os.environ.get(
+                "POLIBASE_LOG_DIR", os.path.join(tempfile.gettempdir(), "polibase_logs")
+            )
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
@@ -29,7 +37,11 @@ class ProcessingLogger:
         return self.base_dir / f"meeting_{meeting_id}.json"
 
     def add_log(
-        self, meeting_id: int, message: str, level: str = "info", details: str = None
+        self,
+        meeting_id: int,
+        message: str,
+        level: str = "info",
+        details: str | None = None,
     ) -> None:
         """ログメッセージを追加
 
@@ -63,7 +75,7 @@ class ProcessingLogger:
         with open(log_file, "w", encoding="utf-8") as f:
             json.dump(logs, f, ensure_ascii=False, indent=2)
 
-    def get_logs(self, meeting_id: int) -> list[dict]:
+    def get_logs(self, meeting_id: int) -> list[dict[str, str]]:
         """ログを取得
 
         Args:
