@@ -378,10 +378,30 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
         Returns:
             Prompt template instance
         """
-        # Return a ChatPromptTemplate for the given prompt name
-        # This is a simplified implementation - in practice, you might want to
-        # load prompts from a configuration or template file
-        return ChatPromptTemplate.from_template(f"{{{{ {prompt_name} }}}}")
+        # Load prompts from YAML file
+        import os
+
+        import yaml
+
+        prompts_path = os.path.join(
+            os.path.dirname(__file__), "../../prompts/prompts.yaml"
+        )
+
+        with open(prompts_path, encoding="utf-8") as f:
+            prompts_data = yaml.safe_load(f)
+
+        if "prompts" not in prompts_data:
+            raise KeyError("No prompts section found in prompts.yaml")
+
+        prompts = prompts_data["prompts"]
+
+        if prompt_name not in prompts:
+            raise KeyError(f"Prompt '{prompt_name}' not found in prompts.yaml")
+
+        prompt_config = prompts[prompt_name]
+        template = prompt_config.get("template", "")
+
+        return ChatPromptTemplate.from_template(template)
 
     def invoke_with_retry(self, chain: Any, inputs: dict[str, Any]) -> Any:
         """Invoke an LLM chain with retry logic.

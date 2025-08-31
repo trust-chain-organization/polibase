@@ -308,6 +308,23 @@ class MinutesDivider:
             logger.info(f"LLM invocation completed, result type: {type(result)}")
 
             if isinstance(result, MinutesBoundary):
+                # 結果の詳細をログ出力
+                logger.info("Boundary detection result details:")
+                logger.info(f"  - boundary_found: {result.boundary_found}")
+                logger.info(f"  - boundary_type: {result.boundary_type}")
+                logger.info(f"  - confidence: {result.confidence}")
+                logger.info(f"  - reason: {result.reason}")
+                logger.info(f"  - boundary_text: {result.boundary_text}")
+
+                if result.boundary_text:
+                    # boundary_textの詳細を確認
+                    logger.info(
+                        f"  - boundary_text length: {len(result.boundary_text)}"
+                    )
+                    logger.info(
+                        f"  - Contains '｜境界｜': {'｜境界｜' in result.boundary_text}"
+                    )
+
                 return result
             else:
                 logger.warning("Unexpected result type from boundary detection")
@@ -341,43 +358,159 @@ class MinutesDivider:
         Returns:
             Tuple[str, str]: (出席者部分, 発言部分)
         """
+        logger.info("=== split_minutes_by_boundary started ===")
+
         if not boundary.boundary_found or not boundary.boundary_text:
             # 境界が見つからない場合は全体を発言部分として扱う
+            logger.info("No boundary found, treating entire text as speech")
             return "", minutes_text
 
-        # boundary_textから境界マーカー「｜境界｜」を探す
-        boundary_marker = "｜境界｜"
-        if boundary_marker not in boundary.boundary_text:
-            # マーカーがない場合も全体を発言部分として扱う
-            logger.warning("Boundary marker not found in boundary_text")
-            return "", minutes_text
+        # boundary_textから境界マーカーを探す（複数のパターンに対応）
+        boundary_markers = ["｜境界｜", "|境界|", "境界", "｜", "|"]
+        boundary_marker = None
+        for marker in boundary_markers:
+            if marker in boundary.boundary_text:
+                boundary_marker = marker
+                break
 
-        # 境界マーカーの前後のテキストを取得
-        parts = boundary.boundary_text.split(boundary_marker)
-        if len(parts) != 2:
-            logger.warning("Invalid boundary_text format")
-            return "", minutes_text
+        logger.info("Looking for boundary marker in boundary_text")
+        logger.info(f"boundary_text content: {repr(boundary.boundary_text)}")
 
-        before_boundary = parts[0].strip()
-        after_boundary = parts[1].strip()
+        if boundary_marker:
+            logger.info(f"Found boundary marker: '{boundary_marker}'")
+            # 境界マーカーの前後のテキストを取得
+            parts = boundary.boundary_text.split(boundary_marker)
+            if len(parts) >= 2:
+                before_boundary = parts[0].strip()
+                after_boundary = parts[
+                    -1
+                ].strip()  # 最後の部分を使用（複数マーカーがある場合の対応）
+            else:
+                # マーカーで分割できない場合
+                logger.warning(f"Could not split by marker: {boundary.boundary_text}")
+                before_boundary = ""
+                after_boundary = boundary.boundary_text.strip()
+        else:
+            # マーカーがない場合、全体を境界後のテキストとして扱う
+            logger.warning(
+                f"No boundary marker found in boundary_text: {boundary.boundary_text}"
+            )
+            # 境界テキスト全体を使って検索を試みる
+            before_boundary = ""
+            after_boundary = boundary.boundary_text.strip()
+
+        logger.info(f"Before boundary text: {repr(before_boundary)}")
+        logger.info(f"After boundary text: {repr(after_boundary)}")
 
         # 元のテキストから境界位置を特定
+        split_index = -1
+
         # まず境界前のテキストを探す
-        if before_boundary in minutes_text:
-            before_index = minutes_text.find(before_boundary)
-            # 境界前テキストの終了位置を境界とする
-            split_index = before_index + len(before_boundary)
-        elif after_boundary in minutes_text:
-            # 境界前が見つからない場合は境界後のテキストで探す
-            split_index = minutes_text.find(after_boundary)
-        else:
-            # どちらも見つからない場合は全体を発言部分として扱う
-            logger.warning("Could not locate boundary in original text")
+        if before_boundary and len(before_boundary) > 5:  # 5文字以上の場合のみ検索
+            # 改行文字を含む検索と含まない検索を両方試す
+            search_patterns = [
+                before_boundary,
+                before_boundary.replace(
+                    "\\n", "\n"
+                ),  # エスケープされた改行を実際の改行に
+                before_boundary.replace("\n", " "),  # 改行をスペースに
+                before_boundary.replace("\n", ""),  # 改行を削除
+            ]
+
+            for pattern in search_patterns:
+                if pattern in minutes_text:
+                    before_index = minutes_text.find(pattern)
+                    split_index = before_index + len(pattern)
+                    logger.info(
+                        f"Found boundary using before_text at index {split_index}"
+                    )
+                    break
+
+        # 境界前で見つからない場合は境界後のテキストで探す
+        if split_index == -1 and after_boundary and len(after_boundary) > 5:
+            search_patterns = [
+                after_boundary,
+                after_boundary.replace("\\n", "\n"),
+                after_boundary.replace("\n", " "),
+                after_boundary.replace("\n", ""),
+            ]
+
+            for pattern in search_patterns:
+                if pattern in minutes_text:
+                    split_index = minutes_text.find(pattern)
+                    logger.info(
+                        f"Found boundary using after_text at index {split_index}"
+                    )
+                    break
+
+        # それでも見つからない場合、部分一致を試みる
+        if split_index == -1:
+            logger.warning("Could not find exact match, trying partial match")
+
+            # 境界後テキストの最初の10文字で検索
+            if after_boundary and len(after_boundary) > 10:
+                partial = after_boundary[:10]
+                if partial in minutes_text:
+                    split_index = minutes_text.find(partial)
+                    logger.info(
+                        f"Found boundary using partial text at index {split_index}"
+                    )
+
+            # それでも見つからない場合、発言パターンを探す
+            if split_index == -1:
+                # 一般的な発言開始パターンを探す
+                speech_patterns = [
+                    r"○.*?議長",
+                    r"◆.*?議員",
+                    r"［.*?開会］",
+                    r"【.*?】",
+                    r"○委員長",
+                    r"◆委員",
+                ]
+
+                import re
+
+                for pattern in speech_patterns:
+                    match = re.search(pattern, minutes_text)
+                    if match:
+                        split_index = match.start()
+                        logger.info(
+                            f"Found boundary using pattern '{pattern}' at {split_index}"
+                        )
+                        break
+
+        if split_index == -1:
+            # どうしても見つからない場合は全体を発言部分として扱う
+            logger.warning(
+                f"Could not locate boundary in original text. "
+                f"Tried multiple patterns from boundary_text: {boundary.boundary_text}"
+            )
+            # デバッグ用: 元テキストの先頭と末尾を表示
+            logger.info(
+                f"Original text preview (first 200 chars): {minutes_text[:200]}"
+            )
+            logger.info(
+                f"Original text preview (last 200 chars): {minutes_text[-200:]}"
+            )
             return "", minutes_text
 
         # テキストを分割
         attendee_part = minutes_text[:split_index].strip()
         speech_part = minutes_text[split_index:].strip()
+
+        logger.info(f"Split successful at index {split_index}")
+        logger.info(f"Attendee part length: {len(attendee_part)}")
+        logger.info(f"Speech part length: {len(speech_part)}")
+
+        # 出席者部分のプレビュー（デバッグ用）
+        if attendee_part:
+            preview_len = min(100, len(attendee_part))
+            logger.info(f"Attendee part preview: ...{attendee_part[-preview_len:]}")
+
+        # 発言部分のプレビュー（デバッグ用）
+        if speech_part:
+            preview_len = min(100, len(speech_part))
+            logger.info(f"Speech part preview: {speech_part[:preview_len]}...")
 
         return attendee_part, speech_part
 
@@ -400,6 +533,12 @@ class MinutesDivider:
             f"type={boundary.boundary_type}, confidence={boundary.confidence}"
         )
 
+        # 重要: boundary_textの内容も必ずログ出力
+        if boundary.boundary_text:
+            logger.info(f"Boundary text content: {repr(boundary.boundary_text)}")
+        else:
+            logger.warning("Boundary text is None or empty!")
+
         # 境界に基づいてテキストを分割
         logger.info("Calling split_minutes_by_boundary...")
         attendee_part, speech_part = self.split_minutes_by_boundary(
@@ -409,6 +548,12 @@ class MinutesDivider:
             f"Split result: attendee_part length={len(attendee_part)}, "
             f"speech_part length={len(speech_part)}"
         )
+
+        # デバッグ: 分割結果のプレビュー
+        if attendee_part:
+            logger.info(f"Attendee part last 100 chars: ...{attendee_part[-100:]}")
+        if speech_part:
+            logger.info(f"Speech part first 100 chars: {speech_part[:100]}...")
 
         # 発言部分がない場合はスキップ
         if not speech_part:

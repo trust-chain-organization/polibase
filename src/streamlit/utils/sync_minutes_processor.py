@@ -223,20 +223,10 @@ class SyncMinutesProcessor:
                         meeting_id=meeting.id,
                     )
 
-                    # メタデータを除去（==== で区切られている場合）
-                    if "============================" in text:
-                        parts = text.split("============================")
-                        if len(parts) > 1:
-                            # 最後の部分が実際の議事録
-                            cleaned_text = parts[-1].strip()
-                            logger.info(
-                                f"Removed metadata. Original: {len(text)} chars, "
-                                f"Cleaned: {len(cleaned_text)} chars",
-                                meeting_id=meeting.id,
-                            )
-                            return cleaned_text
-
+                    # メタデータ削除の処理を削除し、全テキストを返す
+                    # LLMベースの境界検出で適切に処理される
                     return text
+
             except Exception as e:
                 logger.warning(f"Failed to download from GCS: {e}")
 
