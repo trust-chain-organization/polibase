@@ -92,96 +92,108 @@ class MinutesDivider:
         else:
             section_info_list_data = section_info_list.section_info_list
 
+        # Unicode正規化（NFKC）と追加の正規化を適用
+        import unicodedata
+
+        def normalize_text(text: str) -> str:
+            """テキストを正規化する関数
+            1. NFKC正規化で全角英数字・記号を半角に
+            2. 議事録特有の記号を統一
+            3. タブ文字をスペースに変換
+            """
+            # NFKC正規化
+            normalized = unicodedata.normalize("NFKC", text)
+            # 議事録特有の記号の正規化
+            # ◯ (U+25EF) → ○ (U+25CB)
+            normalized = normalized.replace("◯", "○")
+            # ● (U+25CF) → ○ (U+25CB)
+            normalized = normalized.replace("●", "○")
+            # タブ文字をスペースに変換
+            normalized = normalized.replace("\t", " ")
+            # 連続するスペースを1つに統一
+            import re
+
+            normalized = re.sub(r" +", " ", normalized)
+            return normalized
+
+        # 議事録全体を正規化
+        normalized_minutes = normalize_text(processed_minutes)
+
         split_minutes_list: list[SectionString] = []
         start_index = 0
         skipped_keywords: list[str] = []
         i = 0
         output_order = 1  # 出現順を記録する変数
 
-        def find_keyword_flexible(text: str, keyword: str, start_pos: int = 0) -> int:
-            """キーワードを柔軟に検索する関数
-
-            1. 完全一致を試す
-            2. 全角・半角の○を正規化して検索
-            3. 最初の10文字で部分一致を試す
-            """
-            # 1. 完全一致を試す
-            pos = text.find(keyword, start_pos)
-            if pos != -1:
-                return pos
-
-            # 2. ○の正規化を試す
-            # 全角○と半角○を両方試す
-            normalized_keyword = keyword.replace("◯", "○").replace("●", "○")
-            pos = text.find(normalized_keyword, start_pos)
-            if pos != -1:
-                return pos
-
-            # 逆方向の正規化も試す
-            normalized_keyword = keyword.replace("○", "◯")
-            pos = text.find(normalized_keyword, start_pos)
-            if pos != -1:
-                return pos
-
-            # 3. キーワードが長い場合、最初の部分で検索
-            if len(keyword) > 10:
-                partial_keyword = keyword[:10]
-                # ○の正規化も含めて部分一致
-                for variant in [
-                    partial_keyword,
-                    partial_keyword.replace("◯", "○"),
-                    partial_keyword.replace("○", "◯"),
-                ]:
-                    pos = text.find(variant, start_pos)
-                    if pos != -1:
-                        logger.info(f"Found keyword using partial match: {variant}")
-                        return pos
-
-            return -1
-
         while i < len(section_info_list_data):
             section_info = section_info_list_data[i]
-            keyword = section_info.keyword
+            # キーワードも同様に正規化
+            keyword = normalize_text(section_info.keyword)
+
             # 最初のキーワードの場合、議事録の先頭から検索を開始
             if i == 0 and start_index == 0:
-                start_index = find_keyword_flexible(processed_minutes, keyword)
+                start_index = normalized_minutes.find(keyword)
                 if start_index == -1:
-                    start_index = 0
-                    print(
-                        f"最初のキーワード '{keyword}' が見つからないため、"
-                        + "議事録の先頭から開始します"
-                    )
+                    # 部分一致も試す（キーワードが長すぎる場合）
+                    if len(keyword) > 10:
+                        partial_keyword = keyword[:10]
+                        start_index = normalized_minutes.find(partial_keyword)
+                        if start_index != -1:
+                            logger.info(
+                                f"Found keyword using partial match: {partial_keyword}"
+                            )
+
+                    if start_index == -1:
+                        start_index = 0
+                        print(
+                            f"キーワード '{section_info.keyword}' が"
+                            + "見つからないため、先頭から開始します"
+                        )
             # キーワードが見つからない場合はスキップ
             if start_index == -1:
                 print(
-                    f"警告: キーワード '{keyword}' が議事録に見つかりません。"
-                    + "スキップします。"
+                    f"警告: キーワード '{section_info.keyword}' が"
+                    + "見つかりません。スキップします。"
                 )
-                skipped_keywords.append(keyword)
+                skipped_keywords.append(section_info.keyword)
                 i += 1
                 continue
             # 次のキーワードの開始位置を検索
             next_keyword_index = -1
             j = i + 1
             while j < len(section_info_list_data):
-                next_keyword = section_info_list_data[j].keyword
-                next_keyword_index = find_keyword_flexible(
-                    processed_minutes, next_keyword, start_index + 1
+                next_section = section_info_list_data[j]
+                # 次のキーワードも正規化
+                next_keyword = normalize_text(next_section.keyword)
+                next_keyword_index = normalized_minutes.find(
+                    next_keyword, start_index + 1
                 )
+                if next_keyword_index == -1 and len(next_keyword) > 10:
+                    # 部分一致も試す
+                    partial_next = next_keyword[:10]
+                    next_keyword_index = normalized_minutes.find(
+                        partial_next, start_index + 1
+                    )
+                    if next_keyword_index != -1:
+                        logger.info(
+                            f"Found next keyword using partial match: {partial_next}"
+                        )
+
                 if next_keyword_index != -1:
                     break
                 else:
                     print(
-                        f"警告: キーワード '{next_keyword}' が議事録に"
+                        f"警告: キーワード '{next_section.keyword}' が議事録に"
                         + "見つかりません。スキップします。"
                     )
-                    skipped_keywords.append(next_keyword)
+                    skipped_keywords.append(next_section.keyword)
                     j += 1
             if next_keyword_index == -1:
-                end_index = len(processed_minutes)
+                end_index = len(normalized_minutes)
             else:
                 end_index = next_keyword_index
-            # 分割された文字列を取得
+            # 分割された文字列を取得（元のテキストから取得）
+            # 正規化されたテキストでインデックスを見つけて、元のテキストから抽出
             split_text = processed_minutes[start_index:end_index].strip()
             # SectionStringインスタンスを作成してlistにappend
             split_minutes_list.append(
