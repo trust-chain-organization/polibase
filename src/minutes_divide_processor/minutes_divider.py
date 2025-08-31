@@ -97,12 +97,54 @@ class MinutesDivider:
         skipped_keywords: list[str] = []
         i = 0
         output_order = 1  # 出現順を記録する変数
+
+        def find_keyword_flexible(text: str, keyword: str, start_pos: int = 0) -> int:
+            """キーワードを柔軟に検索する関数
+
+            1. 完全一致を試す
+            2. 全角・半角の○を正規化して検索
+            3. 最初の10文字で部分一致を試す
+            """
+            # 1. 完全一致を試す
+            pos = text.find(keyword, start_pos)
+            if pos != -1:
+                return pos
+
+            # 2. ○の正規化を試す
+            # 全角○と半角○を両方試す
+            normalized_keyword = keyword.replace("◯", "○").replace("●", "○")
+            pos = text.find(normalized_keyword, start_pos)
+            if pos != -1:
+                return pos
+
+            # 逆方向の正規化も試す
+            normalized_keyword = keyword.replace("○", "◯")
+            pos = text.find(normalized_keyword, start_pos)
+            if pos != -1:
+                return pos
+
+            # 3. キーワードが長い場合、最初の部分で検索
+            if len(keyword) > 10:
+                partial_keyword = keyword[:10]
+                # ○の正規化も含めて部分一致
+                for variant in [
+                    partial_keyword,
+                    partial_keyword.replace("◯", "○"),
+                    partial_keyword.replace("○", "◯"),
+                ]:
+                    pos = text.find(variant, start_pos)
+                    if pos != -1:
+                        logger.info(f"Found keyword using partial match: {variant}")
+                        return pos
+
+            return -1
+
         while i < len(section_info_list_data):
             section_info = section_info_list_data[i]
             keyword = section_info.keyword
             # 最初のキーワードの場合、議事録の先頭から検索を開始
             if i == 0 and start_index == 0:
-                start_index = processed_minutes.find(keyword)
+                start_index = find_keyword_flexible(processed_minutes, keyword)
                 if start_index == -1:
                     start_index = 0
                     print(
@@ -123,8 +165,8 @@ class MinutesDivider:
             j = i + 1
             while j < len(section_info_list_data):
                 next_keyword = section_info_list_data[j].keyword
-                next_keyword_index = processed_minutes.find(
-                    next_keyword, start_index + len(keyword)
+                next_keyword_index = find_keyword_flexible(
+                    processed_minutes, next_keyword, start_index + 1
                 )
                 if next_keyword_index != -1:
                     break
