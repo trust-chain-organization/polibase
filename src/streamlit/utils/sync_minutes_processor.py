@@ -222,6 +222,20 @@ class SyncMinutesProcessor:
                         f"Downloaded text from GCS ({len(text)} characters)",
                         meeting_id=meeting.id,
                     )
+
+                    # メタデータを除去（==== で区切られている場合）
+                    if "============================" in text:
+                        parts = text.split("============================")
+                        if len(parts) > 1:
+                            # 最後の部分が実際の議事録
+                            cleaned_text = parts[-1].strip()
+                            logger.info(
+                                f"Removed metadata. Original: {len(text)} chars, "
+                                f"Cleaned: {len(cleaned_text)} chars",
+                                meeting_id=meeting.id,
+                            )
+                            return cleaned_text
+
                     return text
             except Exception as e:
                 logger.warning(f"Failed to download from GCS: {e}")
