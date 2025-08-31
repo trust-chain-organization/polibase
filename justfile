@@ -23,10 +23,19 @@ down: _setup_worktree
 up: _setup_worktree
 	#!/bin/bash
 	docker compose {{compose_cmd}} up -d
+	# Wait for containers to be healthy
+	echo "Waiting for containers to be ready..."
+	sleep 3
+	# Run test-setup.sh if it exists (for initial database setup)
+	if [ -f scripts/test-setup.sh ] && docker compose {{compose_cmd}} exec postgres psql -U polibase_user -d polibase_db -c "SELECT COUNT(*) FROM meetings;" 2>/dev/null | grep -q "0"; then
+		echo "Setting up test data..."
+		./scripts/test-setup.sh
+	fi
 	# Detect actual host port from docker-compose.override.yml if it exists
 	if [ -f docker/docker-compose.override.yml ]; then
 		HOST_PORT=$(grep ":8501" docker/docker-compose.override.yml | awk -F'"' '{print $2}' | cut -d: -f1)
 		if [ -n "$HOST_PORT" ]; then
+			echo "Starting Streamlit on port $HOST_PORT..."
 			docker compose {{compose_cmd}} exec -e STREAMLIT_HOST_PORT=$HOST_PORT polibase uv run polibase streamlit
 		else
 			docker compose {{compose_cmd}} exec polibase uv run polibase streamlit
