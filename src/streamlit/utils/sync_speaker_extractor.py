@@ -89,7 +89,41 @@ class SyncSpeakerExtractor:
             if not minutes or not minutes.id:
                 raise ValueError(f"No minutes found for meeting {self.meeting_id}")
 
-            # Conversationsを取得
+            # ステップ1: 出席者一覧をLLMで抽出
+            self.logger.add_log(
+                self.meeting_id, "📋 出席者一覧を抽出しています...", "info"
+            )
+            attendees_mapping = self._extract_and_save_attendees_mapping(
+                self.meeting_id, minutes
+            )
+            if attendees_mapping:
+                mapping_dict = attendees_mapping.get("attendees_mapping", {})
+                regular_list = attendees_mapping.get("regular_attendees", [])
+                
+                # 出席者の詳細を作成
+                details_lines = []
+                if mapping_dict:
+                    details_lines.append("【役職付き出席者】")
+                    for role, name in mapping_dict.items():
+                        if name:
+                            details_lines.append(f"  • {role}: {name}")
+                
+                if regular_list:
+                    details_lines.append("\n【一般出席者】")
+                    for name in regular_list[:10]:  # 最初の10人まで表示
+                        details_lines.append(f"  • {name}")
+                    if len(regular_list) > 10:
+                        details_lines.append(f"  ... 他{len(regular_list) - 10}人")
+                
+                self.logger.add_log(
+                    self.meeting_id,
+                    f"✅ 出席者情報を抽出しました "
+                    f"(役職付き: {len(mapping_dict)}人, 一般出席者: {len(regular_list)}人)",
+                    "success",
+                    details="\n".join(details_lines) if details_lines else None,
+                )
+
+            # ステップ2: Conversationsを取得
             conversations = conversation_repo.get_by_minutes(minutes.id)
             if not conversations:
                 raise ValueError(
@@ -113,40 +147,51 @@ class SyncSpeakerExtractor:
                     f"conversations with speakers linked"
                 )
 
-            # 発言者を抽出・作成
-            self.logger.add_log(self.meeting_id, "発言者を抽出しています...", "info")
+            # ステップ3: 発言者を抽出・作成
+            self.logger.add_log(
+                self.meeting_id, "🎤 発言者を抽出しています...", "info"
+            )
             extraction_result = self._extract_and_create_speakers(
                 conversations, speaker_repo, speaker_service
             )
 
-            # 結果をログに記録（詳細付き）
+            # ステップ4: 結果をログに記録（詳細付き）
             speaker_details = extraction_result.get("speaker_details", [])
+            role_conversions = extraction_result.get("role_conversions", [])
+            
             if speaker_details:
                 # 発言者リストを作成
                 speaker_summary = []
+                speaker_summary.append("【抽出された発言者】")
                 for i, (name, party, is_new) in enumerate(speaker_details[:10], 1):
                     status = "🆕 新規" if is_new else "📌 既存"
                     party_text = f" ({party})" if party else ""
-                    speaker_summary.append(f"{i}. {name}{party_text} - {status}")
+                    speaker_summary.append(f"  {i}. {name}{party_text} - {status}")
 
                 if len(speaker_details) > 10:
-                    speaker_summary.append(
-                        f"\n... 他{len(speaker_details) - 10}人の発言者"
-                    )
+                    speaker_summary.append(f"  ... 他{len(speaker_details) - 10}人の発言者")
+
+                # 役職名から人名への変換結果を追加
+                if role_conversions:
+                    speaker_summary.append("\n【役職名から人名への変換】")
+                    for role, name in role_conversions[:10]:
+                        speaker_summary.append(f"  • {role} → {name}")
+                    if len(role_conversions) > 10:
+                        speaker_summary.append(f"  ... 他{len(role_conversions) - 10}件の変換")
 
                 self.logger.add_log(
                     self.meeting_id,
-                    f"🔍 {len(conversations)}件の発言から"
-                    f"{extraction_result['unique_speakers']}人の発言者を検出しました",
-                    "info",
+                    f"✅ {len(conversations)}件の発言から"
+                    f"{extraction_result['unique_speakers']}人の発言者を抽出・変換しました",
+                    "success",
                     details="\n".join(speaker_summary),
                 )
             else:
                 self.logger.add_log(
                     self.meeting_id,
-                    f"🔍 {len(conversations)}件の発言から"
-                    f"{extraction_result['unique_speakers']}人の発言者を検出しました",
-                    "info",
+                    f"✅ {len(conversations)}件の発言から"
+                    f"{extraction_result['unique_speakers']}人の発言者を抽出しました",
+                    "success",
                 )
 
             self.logger.add_log(
@@ -226,6 +271,8 @@ class SyncSpeakerExtractor:
         from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
         speaker_names: set[tuple[str, str | None]] = set()
+        role_conversions: list[tuple[str, str]] = []  # 役職名から人名への変換記録
+        seen_conversions: set[str] = set()  # 重複を避けるため
 
         # 出席者マッピングを取得
         attendees_mapping = None
@@ -243,9 +290,15 @@ class SyncSpeakerExtractor:
                     continue
 
                 # 役職名を実際の人名に変換
+                original_name = conv.speaker_name
                 resolved_name = speaker_service.resolve_speaker_with_attendees(
-                    conv.speaker_name, attendees_mapping
+                    original_name, attendees_mapping
                 )
+                
+                # 変換が行われた場合は記録（重複を避ける）
+                if original_name != resolved_name and original_name not in seen_conversions:
+                    role_conversions.append((original_name, resolved_name))
+                    seen_conversions.add(original_name)
 
                 # 名前から政党情報を抽出
                 clean_name, party_info = speaker_service.extract_party_from_name(
@@ -290,4 +343,93 @@ class SyncSpeakerExtractor:
             "new_speakers": new_speakers,
             "existing_speakers": existing_speakers,
             "speaker_details": speaker_details,
+            "role_conversions": role_conversions,  # 役職名から人名への変換記録を追加
         }
+
+    def _extract_and_save_attendees_mapping(
+        self, meeting_id: int, minutes: Any
+    ) -> dict[str, Any] | None:
+        """議事録から出席者マッピングを抽出して保存する
+
+        Args:
+            meeting_id: 会議ID
+            minutes: 議事録エンティティ
+
+        Returns:
+            抽出された出席者マッピング、または既存のマッピング
+        """
+        from src.config.database import get_db_session_context
+        from src.infrastructure.persistence.meeting_repository_impl import (
+            MeetingRepositoryImpl,
+        )
+        from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+        from src.minutes_divide_processor.minutes_divider import MinutesDivider
+
+        # 既存のマッピングを確認
+        with get_db_session_context() as session:
+            meeting_repo = RepositoryAdapter(MeetingRepositoryImpl, session)
+            meeting = meeting_repo.get_by_id(meeting_id)
+            
+            # 既にマッピングがある場合はそれを返す
+            if meeting and meeting.attendees_mapping:
+                self.logger.add_log(
+                    meeting_id,
+                    "📌 既存の出席者マッピングを使用します",
+                    "info",
+                )
+                return meeting.attendees_mapping
+
+        # 議事録テキストを取得
+        if not minutes.content:
+            logger.warning(f"No content in minutes for meeting {meeting_id}")
+            return None
+
+        try:
+            # MinutesDividerを使って出席者情報を抽出
+            divider = MinutesDivider()
+            
+            # 出席者と議事の境界を検出
+            boundary_result = divider.detect_attendees_boundary(minutes.content)
+            
+            if boundary_result.boundary_found:
+                # 境界より前の部分（出席者情報）を抽出
+                parts = minutes.content.split("｜境界｜")
+                if len(parts) >= 2:
+                    attendees_text = parts[0]
+                    
+                    # 出席者マッピングを抽出
+                    attendees_mapping = divider.extract_attendees_mapping(attendees_text)
+                    
+                    # データベースに保存
+                    with get_db_session_context() as session:
+                        meeting_repo = RepositoryAdapter(MeetingRepositoryImpl, session)
+                        meeting = meeting_repo.get_by_id(meeting_id)
+                        if meeting:
+                            meeting.attendees_mapping = {
+                                "attendees_mapping": attendees_mapping.attendees_mapping,
+                                "regular_attendees": attendees_mapping.regular_attendees,
+                            }
+                            meeting_repo.update(meeting)
+                            
+                            self.logger.add_log(
+                                meeting_id,
+                                "💾 出席者マッピングを保存しました",
+                                "success",
+                            )
+                    
+                    return {
+                        "attendees_mapping": attendees_mapping.attendees_mapping,
+                        "regular_attendees": attendees_mapping.regular_attendees,
+                    }
+            
+            logger.warning(f"Could not find attendees boundary for meeting {meeting_id}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to extract attendees mapping: {e}")
+            self.logger.add_log(
+                meeting_id,
+                f"⚠️ 出席者マッピングの抽出に失敗しました: {str(e)}",
+                "warning",
+            )
+            return None
