@@ -409,17 +409,50 @@ class SyncSpeakerExtractor:
         # 議事録テキストを取得（GCSから）
         minutes_content = None
         if meeting and meeting.gcs_text_uri:
+            self.logger.add_log(
+                meeting_id,
+                f"📥 GCSから議事録を取得中... (URI: {meeting.gcs_text_uri})",
+                "info",
+            )
             try:
                 gcs_storage = GCSStorage(
                     bucket_name=config.GCS_BUCKET_NAME,
                     project_id=config.GCS_PROJECT_ID,
                 )
                 minutes_content = gcs_storage.download_text(meeting.gcs_text_uri)
+                self.logger.add_log(
+                    meeting_id,
+                    f"✅ GCSから議事録を取得しました (サイズ: {len(minutes_content)} 文字)",
+                    "success",
+                )
             except Exception as e:
                 logger.warning(f"Failed to download from GCS: {e}")
+                self.logger.add_log(
+                    meeting_id,
+                    f"❌ GCSからの取得に失敗: {str(e)}",
+                    "error",
+                )
+        else:
+            if not meeting:
+                self.logger.add_log(
+                    meeting_id,
+                    "⚠️ 会議情報が見つかりません",
+                    "warning",
+                )
+            elif not meeting.gcs_text_uri:
+                self.logger.add_log(
+                    meeting_id,
+                    "⚠️ GCS URIが設定されていません",
+                    "warning",
+                )
         
         if not minutes_content:
             logger.warning(f"No content available for meeting {meeting_id}")
+            self.logger.add_log(
+                meeting_id,
+                "⚠️ 議事録コンテンツが利用できません",
+                "warning",
+            )
             return None
 
         try:
@@ -427,13 +460,29 @@ class SyncSpeakerExtractor:
             divider = MinutesDivider()
             
             # 出席者と議事の境界を検出
+            self.logger.add_log(
+                meeting_id,
+                "🔍 議事録から出席者情報の境界を検出中...",
+                "info",
+            )
             boundary_result = divider.detect_attendees_boundary(minutes_content)
             
             if boundary_result.boundary_found:
+                self.logger.add_log(
+                    meeting_id,
+                    f"✅ 境界を検出しました (タイプ: {boundary_result.boundary_type})",
+                    "success",
+                )
                 # 境界より前の部分（出席者情報）を抽出
                 parts = minutes_content.split("｜境界｜")
                 if len(parts) >= 2:
                     attendees_text = parts[0]
+                    
+                    self.logger.add_log(
+                        meeting_id,
+                        f"📝 出席者情報を解析中... (テキストサイズ: {len(attendees_text)} 文字)",
+                        "info",
+                    )
                     
                     # 出席者マッピングを抽出
                     attendees_mapping = divider.extract_attendees_mapping(attendees_text)
@@ -459,6 +508,18 @@ class SyncSpeakerExtractor:
                         "attendees_mapping": attendees_mapping.attendees_mapping,
                         "regular_attendees": attendees_mapping.regular_attendees,
                     }
+                else:
+                    self.logger.add_log(
+                        meeting_id,
+                        "⚠️ 境界マーカーが正しく設定されていません",
+                        "warning",
+                    )
+            else:
+                self.logger.add_log(
+                    meeting_id,
+                    f"⚠️ 出席者情報の境界を検出できませんでした (理由: {boundary_result.reason})",
+                    "warning",
+                )
             
             logger.warning(f"Could not find attendees boundary for meeting {meeting_id}")
             return None
