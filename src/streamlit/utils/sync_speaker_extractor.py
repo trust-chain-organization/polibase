@@ -100,7 +100,26 @@ class SyncSpeakerExtractor:
                 mapping_dict = attendees_mapping.get("attendees_mapping", {})
                 regular_list = attendees_mapping.get("regular_attendees", [])
                 
-                # 出席者の詳細を作成
+                # すべての出席者を配列として集約
+                all_attendees = []
+                
+                # 役職付き出席者を追加
+                for role, name in mapping_dict.items():
+                    if name:
+                        all_attendees.append(f"{name} ({role})")
+                
+                # 一般出席者を追加
+                all_attendees.extend(regular_list)
+                
+                # 出席者一覧をログに出力
+                self.logger.add_log(
+                    self.meeting_id,
+                    f"✅ 出席者一覧を抽出しました (合計: {len(all_attendees)}人)",
+                    "success",
+                    details=str(all_attendees),  # 配列として表示
+                )
+                
+                # 詳細情報を作成（折りたたみ用）
                 details_lines = []
                 if mapping_dict:
                     details_lines.append("【役職付き出席者】")
@@ -117,10 +136,16 @@ class SyncSpeakerExtractor:
                 
                 self.logger.add_log(
                     self.meeting_id,
-                    f"✅ 出席者情報を抽出しました "
+                    f"📊 出席者の内訳 "
                     f"(役職付き: {len(mapping_dict)}人, 一般出席者: {len(regular_list)}人)",
-                    "success",
+                    "info",
                     details="\n".join(details_lines) if details_lines else None,
+                )
+            else:
+                self.logger.add_log(
+                    self.meeting_id,
+                    "⚠️ 出席者情報を抽出できませんでした",
+                    "warning",
                 )
 
             # ステップ2: Conversationsを取得
