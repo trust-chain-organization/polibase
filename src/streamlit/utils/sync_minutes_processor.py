@@ -347,8 +347,12 @@ class SyncMinutesProcessor:
 
         for conv in conversations:
             if conv.speaker_name:
-                clean_name, party_info = speaker_service.extract_party_from_name(
+                # まず役職名から実際の人名を抽出
+                actual_name = speaker_service.extract_person_name_from_title(
                     conv.speaker_name
+                )
+                clean_name, party_info = speaker_service.extract_party_from_name(
+                    actual_name
                 )
                 speaker_names.add((clean_name, party_info))
 

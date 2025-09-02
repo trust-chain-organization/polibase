@@ -224,9 +224,13 @@ class SyncSpeakerExtractor:
         # 全conversationsから発言者名を抽出
         for conv in conversations:
             if conv.speaker_name:
+                # まず役職名から実際の人名を抽出
+                actual_name = speaker_service.extract_person_name_from_title(
+                    conv.speaker_name
+                )
                 # 名前から政党情報を抽出
                 clean_name, party_info = speaker_service.extract_party_from_name(
-                    conv.speaker_name
+                    actual_name
                 )
                 speaker_names.add((clean_name, party_info))
 
