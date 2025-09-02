@@ -403,11 +403,11 @@ class SyncMinutesProcessor:
         self, conversations: list[Conversation], speaker_repo: Any
     ) -> int:
         """発言から一意な発言者を抽出し、発言者レコードを作成する"""
+        from src.config.database import get_db_session_context
         from src.domain.services.speaker_domain_service import SpeakerDomainService
         from src.infrastructure.persistence.meeting_repository_impl import (
             MeetingRepositoryImpl,
         )
-        from src.config.database import get_db_session_context
         from src.infrastructure.persistence.minutes_repository_impl import (
             MinutesRepositoryImpl,
         )

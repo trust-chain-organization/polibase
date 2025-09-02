@@ -426,7 +426,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             )
             VALUES (
                 :conference_id, :date, :url, :name,
-                :gcs_pdf_uri, :gcs_text_uri, :attendees_mapping, :created_at, :updated_at
+                :gcs_pdf_uri, :gcs_text_uri, :attendees_mapping,
+                :created_at, :updated_at
             )
             RETURNING *
             """
@@ -463,7 +464,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 )
                 VALUES (
                     :conference_id, :date, :url, :name,
-                    :gcs_pdf_uri, :gcs_text_uri, :attendees_mapping, :created_at, :updated_at
+                    :gcs_pdf_uri, :gcs_text_uri, :attendees_mapping,
+                    :created_at, :updated_at
                 )
                 RETURNING *
                 """

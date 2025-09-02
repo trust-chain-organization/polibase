@@ -608,12 +608,20 @@ class MinutesDivider:
 
             if isinstance(result, AttendeesMapping):
                 # attendees_mappingがNoneまたは文字列の場合は空dictに変換
-                if result.attendees_mapping is None or isinstance(result.attendees_mapping, str):
-                    logger.info(f"Setting attendees_mapping to empty dict (was: {type(result.attendees_mapping)})")
+                if result.attendees_mapping is None or isinstance(
+                    result.attendees_mapping, str
+                ):
+                    logger.info(
+                        f"Setting attendees_mapping to empty dict "
+                        f"(was: {type(result.attendees_mapping)})"
+                    )
                     result.attendees_mapping = {}
-                
+
                 logger.info("Attendees mapping extraction result:")
-                logger.info(f"  - Role mappings: {len(result.attendees_mapping) if result.attendees_mapping else 0}")
+                mapping_count = (
+                    len(result.attendees_mapping) if result.attendees_mapping else 0
+                )
+                logger.info(f"  - Role mappings: {mapping_count}")
                 logger.info(f"  - Regular attendees: {len(result.regular_attendees)}")
                 logger.info(f"  - Confidence: {result.confidence}")
 
@@ -621,7 +629,8 @@ class MinutesDivider:
                 for name in result.regular_attendees[:10]:
                     logger.info(f"    Attendee: {name}")
                 if len(result.regular_attendees) > 10:
-                    logger.info(f"    ... and {len(result.regular_attendees) - 10} more")
+                    more_count = len(result.regular_attendees) - 10
+                    logger.info(f"    ... and {more_count} more")
 
                 return result
             else:

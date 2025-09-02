@@ -1,5 +1,7 @@
 """Speaker domain service for handling speaker-related business logic."""
 
+from typing import Any
+
 from src.domain.entities.politician import Politician
 from src.domain.entities.speaker import Speaker
 
@@ -75,13 +77,14 @@ class SpeakerDomainService:
         return speaker_name
 
     def resolve_speaker_with_attendees(
-        self, speaker_name: str, attendees_mapping: dict | None
+        self, speaker_name: str, attendees_mapping: dict[str, Any] | None
     ) -> str:
         """Resolve speaker name using attendees list.
 
         Args:
             speaker_name: Original speaker name (may be a role like "議長")
-            attendees_mapping: Dictionary containing attendees list in 'regular_attendees'
+            attendees_mapping: Dictionary containing attendees list in
+                'regular_attendees'
 
         Returns:
             Resolved speaker name (actual person name if found, original otherwise)
@@ -96,7 +99,7 @@ class SpeakerDomainService:
 
         # まず括弧付きの名前を抽出
         extracted_name = self.extract_person_name_from_title(speaker_name)
-        
+
         # 出席者リストから最も類似した名前を探す
         for attendee in attendees_list:
             # 完全一致
@@ -106,7 +109,7 @@ class SpeakerDomainService:
             if extracted_name in attendee or attendee in extracted_name:
                 return attendee
             # 役職名だけの場合（議長、委員長など）は抽出した名前をそのまま使用
-        
+
         return extracted_name
 
     def is_non_person_speaker(self, speaker_name: str) -> bool:
