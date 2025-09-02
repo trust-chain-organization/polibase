@@ -373,30 +373,22 @@ class SyncSpeakerExtractor:
         from src.minutes_divide_processor.minutes_divider import MinutesDivider
         from src.utils.gcs_storage import GCSStorage
 
-        # 既存のマッピングを確認
+        # 既存のマッピングをクリア（常に再抽出）
         with get_db_session_context() as session:
             meeting_repo = RepositoryAdapter(MeetingRepositoryImpl, session)
             meeting = meeting_repo.get_by_id(meeting_id)
             
-            # 既にマッピングがある場合はそれを返す（ただし空でない場合のみ）
+            # 既存のマッピングがあれば削除を通知
             if meeting and meeting.attendees_mapping:
                 existing_mapping = meeting.attendees_mapping.get("attendees_mapping", {})
                 existing_regular = meeting.attendees_mapping.get("regular_attendees", [])
                 
-                # 既存のマッピングが空でない場合のみ使用
                 if existing_mapping or existing_regular:
                     self.logger.add_log(
                         meeting_id,
-                        f"📌 既存の出席者マッピングを使用します "
-                        f"(役職: {len(existing_mapping)}人, 一般: {len(existing_regular)}人)",
+                        f"🔄 既存の出席者マッピングをクリアして再抽出します "
+                        f"(既存: {len(existing_regular)}人)",
                         "info",
-                    )
-                    return meeting.attendees_mapping
-                else:
-                    self.logger.add_log(
-                        meeting_id,
-                        "⚠️ 既存のマッピングが空のため、再抽出します",
-                        "warning",
                     )
 
         # 議事録テキストを取得（GCSから）
