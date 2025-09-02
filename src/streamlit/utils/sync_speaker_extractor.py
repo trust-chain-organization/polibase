@@ -465,7 +465,7 @@ class SyncSpeakerExtractor:
                 "🔍 議事録から出席者情報の境界を検出中...",
                 "info",
             )
-            boundary_result = divider.detect_attendees_boundary(minutes_content)
+            boundary_result = divider.detect_attendee_boundary(minutes_content)
             
             if boundary_result.boundary_found:
                 self.logger.add_log(
@@ -473,11 +473,12 @@ class SyncSpeakerExtractor:
                     f"✅ 境界を検出しました (タイプ: {boundary_result.boundary_type})",
                     "success",
                 )
-                # 境界より前の部分（出席者情報）を抽出
-                parts = minutes_content.split("｜境界｜")
-                if len(parts) >= 2:
-                    attendees_text = parts[0]
-                    
+                # 境界に基づいて議事録を分割
+                attendees_text, speech_text = divider.split_minutes_by_boundary(
+                    minutes_content, boundary_result
+                )
+                
+                if attendees_text:
                     self.logger.add_log(
                         meeting_id,
                         f"📝 出席者情報を解析中... (テキストサイズ: {len(attendees_text)} 文字)",
@@ -511,7 +512,7 @@ class SyncSpeakerExtractor:
                 else:
                     self.logger.add_log(
                         meeting_id,
-                        "⚠️ 境界マーカーが正しく設定されていません",
+                        "⚠️ 出席者情報が空です",
                         "warning",
                     )
             else:
