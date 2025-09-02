@@ -97,6 +97,21 @@ class MinutesBoundary(BaseModel):
     reason: str = Field("", description="境界判定の理由")
 
 
+class AttendeesMapping(BaseModel):
+    """出席者の役職と名前のマッピング"""
+
+    attendees_mapping: dict[str, str | None] = Field(
+        default_factory=dict,
+        description="役職から人名へのマッピング（例: {'議長': '西村義直', '委員長': '田中太郎'}）",
+    )
+    regular_attendees: list[str] = Field(
+        default_factory=list, description="役職を持たない一般出席者のリスト"
+    )
+    confidence: float = Field(
+        0.0, description="抽出の信頼度（0.0-1.0）", ge=0.0, le=1.0
+    )
+
+
 class MinutesProcessState(BaseModel):
     original_minutes: str = Field(..., description="元の議事録全体")
     processed_minutes_memory_id: str = Field(

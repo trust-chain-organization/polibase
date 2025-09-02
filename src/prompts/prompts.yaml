@@ -90,6 +90,52 @@ prompts:
 
     description: "Detect boundary between attendee list and speech content"
 
+  extract_attendees_mapping:
+    template: |
+      以下の出席者情報から、役職と人名のマッピングを抽出してください。
+
+      出席者情報:
+      {attendees_text}
+
+      # 抽出方法
+      1. 議長、委員長、副議長、市長、委員などの役職とその担当者名を見つけてください
+      2. 「役職　氏名」または「役職（氏名）」のパターンを探してください
+      3. 肩書きと実際の人名を対応付けてください
+
+      # 抽出例
+      入力例:
+      ```
+      委員長　西村義直議員
+      副委員長　田中太郎議員
+      委員　山田花子議員
+      市長　鈴木一郎
+      ```
+
+      出力例:
+      {{
+        "attendees_mapping": {{
+          "委員長": "西村義直",
+          "副委員長": "田中太郎",
+          "市長": "鈴木一郎",
+          "議長": null
+        }},
+        "regular_attendees": [
+          "山田花子"
+        ],
+        "confidence": 0.95
+      }}
+
+      # 注意事項
+      - 役職のない出席者は regular_attendees に含めてください
+      - 敬称（議員、氏、様など）は除去してください
+      - 明確に役職が特定できない場合は、その役職をnullとしてください
+      - 同じ役職が複数ある場合は最初に出現したものを採用してください
+
+    variables:
+      - attendees_text
+
+    description: "Extract role-to-name mapping from attendees information"
+
   speech_divide_kokkai:
     template: |
       以下の議事録テキストから、すべての発言を抽出してください。

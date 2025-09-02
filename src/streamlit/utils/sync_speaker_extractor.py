@@ -219,18 +219,38 @@ class SyncSpeakerExtractor:
                 - existing_speakers: 既存の発言者数
                 - speaker_details: 発言者の詳細リスト [(名前, 政党, 新規フラグ), ...]
         """
+        from src.infrastructure.persistence.meeting_repository_impl import (
+            MeetingRepositoryImpl,
+        )
+        from src.infrastructure.persistence.sync_repository_adapter import (
+            get_sync_session,
+        )
+
         speaker_names: set[tuple[str, str | None]] = set()
+
+        # 出席者マッピングを取得
+        attendees_mapping = None
+        if self.meeting_id:
+            with get_sync_session() as session:
+                meeting_repo = MeetingRepositoryImpl(session)
+                meeting = meeting_repo.get_by_id_sync(self.meeting_id)
+                attendees_mapping = meeting.attendees_mapping if meeting else None
 
         # 全conversationsから発言者名を抽出
         for conv in conversations:
             if conv.speaker_name:
-                # まず役職名から実際の人名を抽出
-                actual_name = speaker_service.extract_person_name_from_title(
-                    conv.speaker_name
+                # 非人名の発言者を除外
+                if speaker_service.is_non_person_speaker(conv.speaker_name):
+                    continue
+
+                # 役職名を実際の人名に変換
+                resolved_name = speaker_service.resolve_speaker_with_attendees(
+                    conv.speaker_name, attendees_mapping
                 )
+
                 # 名前から政党情報を抽出
                 clean_name, party_info = speaker_service.extract_party_from_name(
-                    actual_name
+                    resolved_name
                 )
                 speaker_names.add((clean_name, party_info))
 

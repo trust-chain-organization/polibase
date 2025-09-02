@@ -16,6 +16,7 @@ class Meeting(BaseEntity):
         name: str | None = None,
         gcs_pdf_uri: str | None = None,
         gcs_text_uri: str | None = None,
+        attendees_mapping: dict[str, str | None] | None = None,
         id: int | None = None,
     ) -> None:
         super().__init__(id)
@@ -25,6 +26,7 @@ class Meeting(BaseEntity):
         self.name = name
         self.gcs_pdf_uri = gcs_pdf_uri
         self.gcs_text_uri = gcs_text_uri
+        self.attendees_mapping = attendees_mapping
 
     def __str__(self) -> str:
         if self.name:

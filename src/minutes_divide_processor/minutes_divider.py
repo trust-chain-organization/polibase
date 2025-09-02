@@ -13,6 +13,7 @@ from ..services.llm_factory import LLMServiceFactory
 
 # Use relative import for modules within the same package
 from .models import (
+    AttendeesMapping,
     MinutesBoundary,
     RedividedSectionInfoList,
     RedivideSectionString,
@@ -567,6 +568,66 @@ class MinutesDivider:
             logger.info(f"Speech part preview: {speech_part[:preview_len]}...")
 
         return attendee_part, speech_part
+
+    def extract_attendees_mapping(self, attendees_text: str) -> AttendeesMapping:
+        """出席者情報から役職と人名のマッピングを抽出する
+
+        Args:
+            attendees_text: 出席者情報のテキスト
+
+        Returns:
+            AttendeesMapping: 役職と人名のマッピング
+        """
+        logger.info("=== extract_attendees_mapping started ===")
+        logger.info(f"Attendees text length: {len(attendees_text)}")
+
+        if not attendees_text:
+            logger.warning("No attendees text provided")
+            return AttendeesMapping(
+                attendees_mapping={}, regular_attendees=[], confidence=0.0
+            )
+
+        try:
+            # プロンプトを取得
+            prompt_template = self.llm_service.get_prompt("extract_attendees_mapping")
+
+            # 構造化LLMを取得
+            structured_llm = self.llm_service.get_structured_llm(AttendeesMapping)
+
+            # チェーンを構築
+            chain = prompt_template | structured_llm
+
+            # LLMで出席者マッピングを抽出
+            logger.info("Invoking LLM for attendees mapping extraction...")
+            result = self.llm_service.invoke_with_retry(
+                chain, {"attendees_text": attendees_text}
+            )
+
+            if isinstance(result, AttendeesMapping):
+                logger.info("Attendees mapping extraction result:")
+                logger.info(f"  - Role mappings: {len(result.attendees_mapping)}")
+                logger.info(f"  - Regular attendees: {len(result.regular_attendees)}")
+                logger.info(f"  - Confidence: {result.confidence}")
+
+                # 役職マッピングの詳細をログ出力
+                for role, name in result.attendees_mapping.items():
+                    if name:
+                        logger.info(f"    {role} -> {name}")
+
+                return result
+            else:
+                logger.warning(
+                    "Unexpected result type from attendees mapping extraction"
+                )
+                return AttendeesMapping(
+                    attendees_mapping={}, regular_attendees=[], confidence=0.0
+                )
+
+        except Exception as e:
+            logger.error(f"Error in attendees mapping extraction: {e}")
+            return AttendeesMapping(
+                attendees_mapping={}, regular_attendees=[], confidence=0.0
+            )
 
     def speech_divide_run(
         self, section_string: SectionString

@@ -39,7 +39,7 @@ class SpeakerDomainService:
             "議長 (西村義直)" -> "西村義直"
             "委員長 (田中太郎)" -> "田中太郎"
             "議長" -> "議長" (no change if no name found)
-            "(「異議なし」と呼ぶ者あり)" -> "(「異議なし」と呼ぶ者あり)" (no change for non-person entries)
+            "(「異議なし」と呼ぶ者あり)" -> "(「異議なし」と呼ぶ者あり)" (non-person)
         """
         import re
 
@@ -73,6 +73,71 @@ class SpeakerDomainService:
 
         # 変更なし
         return speaker_name
+
+    def resolve_speaker_with_attendees(
+        self, speaker_name: str, attendees_mapping: dict[str, str | None] | None
+    ) -> str:
+        """Resolve speaker name using attendees mapping.
+
+        Args:
+            speaker_name: Original speaker name (may be a role like "議長")
+            attendees_mapping: Mapping from roles to actual names
+
+        Returns:
+            Resolved speaker name (actual person name if found, original otherwise)
+        """
+        import re
+
+        if not attendees_mapping:
+            return speaker_name
+
+        # まず括弧付きの名前を抽出
+        extracted_name = self.extract_person_name_from_title(speaker_name)
+        if extracted_name != speaker_name:
+            # 既に人名が抽出できた場合はそれを返す
+            return extracted_name
+
+        # 役職名のパターンをチェック
+        # 役職名だけの場合、マッピングから人名を取得
+        for role, name in attendees_mapping.items():
+            if name and speaker_name == role:
+                return name
+
+        # 役職名 + その他の文字列の場合も考慮
+        # 例: "議長（発言）" -> attendees_mapping["議長"] = "西村義直" -> "西村義直"
+        base_role = re.split(r"[（\(]", speaker_name)[0].strip()
+        if base_role in attendees_mapping:
+            name = attendees_mapping[base_role]
+            if name:
+                return name
+
+        return speaker_name
+
+    def is_non_person_speaker(self, speaker_name: str) -> bool:
+        """Check if the speaker name is not a person (e.g., audience reactions).
+
+        Args:
+            speaker_name: Speaker name to check
+
+        Returns:
+            True if the speaker is not a person, False otherwise
+        """
+        non_person_patterns = [
+            r".*「.*」.*と.*呼ぶ者あり",  # 「異議なし」と呼ぶ者あり
+            r".*「.*」.*と.*する者あり",  # 「賛成」とする者あり
+            r".*拍手.*",  # 拍手
+            r"^\(.*\)$",  # 括弧だけの場合
+            r".*発言する者あり.*",  # 発言する者あり
+            r".*異議なし.*",  # 異議なし（括弧なし）
+        ]
+
+        import re
+
+        for pattern in non_person_patterns:
+            if re.match(pattern, speaker_name):
+                return True
+
+        return False
 
     def is_likely_politician(self, speaker: Speaker) -> bool:
         """Determine if a speaker is likely a politician based on attributes."""
