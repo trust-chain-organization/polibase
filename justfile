@@ -26,6 +26,9 @@ up: _setup_worktree
 	# Wait for containers to be healthy
 	echo "Waiting for containers to be ready..."
 	sleep 3
+	# Install Playwright browsers
+	echo "Installing Playwright browsers..."
+	docker compose {{compose_cmd}} exec polibase uv run playwright install chromium
 	# Run test-setup.sh if it exists (for initial database setup)
 	if [ -f scripts/test-setup.sh ] && docker compose {{compose_cmd}} exec postgres psql -U polibase_user -d polibase_db -c "SELECT COUNT(*) FROM meetings;" 2>/dev/null | grep -q "0"; then
 		echo "Setting up test data..."
