@@ -419,7 +419,7 @@ class SyncSpeakerExtractor:
                     bucket_name=config.GCS_BUCKET_NAME,
                     project_id=config.GCS_PROJECT_ID,
                 )
-                minutes_content = gcs_storage.download_text(meeting.gcs_text_uri)
+                minutes_content = gcs_storage.download_content(meeting.gcs_text_uri)
                 self.logger.add_log(
                     meeting_id,
                     f"✅ GCSから議事録を取得しました (サイズ: {len(minutes_content)} 文字)",
