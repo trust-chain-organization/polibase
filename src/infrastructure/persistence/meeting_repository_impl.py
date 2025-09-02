@@ -1,5 +1,6 @@
 """Meeting repository implementation."""
 
+import json
 import logging
 from datetime import date
 from typing import Any
@@ -421,11 +422,12 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             sql = """
             INSERT INTO meetings (
                 conference_id, date, url, name,
-                gcs_pdf_uri, gcs_text_uri, created_at, updated_at
+                gcs_pdf_uri, gcs_text_uri, attendees_mapping, created_at, updated_at
             )
             VALUES (
                 :conference_id, :date, :url, :name,
-                :gcs_pdf_uri, :gcs_text_uri, :created_at, :updated_at
+                :gcs_pdf_uri, :gcs_text_uri, :attendees_mapping,
+                :created_at, :updated_at
             )
             RETURNING *
             """
@@ -436,6 +438,9 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 "name": entity.name,
                 "gcs_pdf_uri": entity.gcs_pdf_uri,
                 "gcs_text_uri": entity.gcs_text_uri,
+                "attendees_mapping": json.dumps(entity.attendees_mapping)
+                if entity.attendees_mapping
+                else None,
                 "created_at": datetime.now(),
                 "updated_at": datetime.now(),
             }
@@ -455,11 +460,12 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 sql = """
                 INSERT INTO meetings (
                     conference_id, date, url, name,
-                    gcs_pdf_uri, gcs_text_uri, created_at, updated_at
+                    gcs_pdf_uri, gcs_text_uri, attendees_mapping, created_at, updated_at
                 )
                 VALUES (
                     :conference_id, :date, :url, :name,
-                    :gcs_pdf_uri, :gcs_text_uri, :created_at, :updated_at
+                    :gcs_pdf_uri, :gcs_text_uri, :attendees_mapping,
+                    :created_at, :updated_at
                 )
                 RETURNING *
                 """
@@ -470,6 +476,9 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                     "name": entity.name,
                     "gcs_pdf_uri": entity.gcs_pdf_uri,
                     "gcs_text_uri": entity.gcs_text_uri,
+                    "attendees_mapping": json.dumps(entity.attendees_mapping)
+                    if entity.attendees_mapping
+                    else None,
                     "created_at": datetime.now(),
                     "updated_at": datetime.now(),
                 }
@@ -496,6 +505,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 name = :name,
                 gcs_pdf_uri = :gcs_pdf_uri,
                 gcs_text_uri = :gcs_text_uri,
+                attendees_mapping = :attendees_mapping,
                 updated_at = :updated_at
             WHERE id = :id
             RETURNING *
@@ -508,6 +518,9 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 "name": entity.name,
                 "gcs_pdf_uri": entity.gcs_pdf_uri,
                 "gcs_text_uri": entity.gcs_text_uri,
+                "attendees_mapping": json.dumps(entity.attendees_mapping)
+                if entity.attendees_mapping
+                else None,
                 "updated_at": datetime.now(),
             }
             result = await self.async_session.execute(text(sql), params)
@@ -531,6 +544,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                     name = :name,
                     gcs_pdf_uri = :gcs_pdf_uri,
                     gcs_text_uri = :gcs_text_uri,
+                    attendees_mapping = :attendees_mapping,
                     updated_at = :updated_at
                 WHERE id = :id
                 RETURNING *
@@ -543,6 +557,9 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                     "name": entity.name,
                     "gcs_pdf_uri": entity.gcs_pdf_uri,
                     "gcs_text_uri": entity.gcs_text_uri,
+                    "attendees_mapping": json.dumps(entity.attendees_mapping)
+                    if entity.attendees_mapping
+                    else None,
                     "updated_at": datetime.now(),
                 }
                 result = self.sync_session.execute(text(sql), params)
@@ -665,6 +682,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             name=getattr(model, "name", None),
             gcs_pdf_uri=getattr(model, "gcs_pdf_uri", None),
             gcs_text_uri=getattr(model, "gcs_text_uri", None),
+            attendees_mapping=getattr(model, "attendees_mapping", None),
         )
 
     def _to_model(self, entity: Meeting) -> Any:
@@ -677,6 +695,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             name=entity.name,
             gcs_pdf_uri=entity.gcs_pdf_uri,
             gcs_text_uri=entity.gcs_text_uri,
+            attendees_mapping=entity.attendees_mapping,
         )
 
     def _update_model(self, model: Any, entity: Meeting) -> None:
@@ -687,6 +706,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         model.name = entity.name
         model.gcs_pdf_uri = entity.gcs_pdf_uri
         model.gcs_text_uri = entity.gcs_text_uri
+        model.attendees_mapping = entity.attendees_mapping
 
     def _dict_to_entity(self, data: dict[str, Any]) -> Meeting:
         """Convert dictionary to domain entity."""
@@ -698,6 +718,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             name=data.get("name"),
             gcs_pdf_uri=data.get("gcs_pdf_uri"),
             gcs_text_uri=data.get("gcs_text_uri"),
+            attendees_mapping=data.get("attendees_mapping"),
         )
 
     def _pydantic_to_entity(self, model: Any) -> Meeting:
@@ -710,4 +731,5 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             name=model.name,
             gcs_pdf_uri=model.gcs_pdf_uri,
             gcs_text_uri=model.gcs_text_uri,
+            attendees_mapping=getattr(model, "attendees_mapping", None),
         )

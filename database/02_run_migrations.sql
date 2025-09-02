@@ -22,5 +22,6 @@
 \i /docker-entrypoint-initdb.d/02_migrations/017_add_process_id_to_minutes.sql
 \i /docker-entrypoint-initdb.d/02_migrations/018_add_matching_history_to_speakers.sql
 \i /docker-entrypoint-initdb.d/02_migrations/019_add_performance_indexes.sql
+\i /docker-entrypoint-initdb.d/02_migrations/020_add_attendees_mapping_to_meetings.sql
 
 \echo 'Migrations completed.'

@@ -261,7 +261,7 @@ def show_meetings_list():
 
         # 編集・削除・発言抽出ボタン用のカラム
         for _idx, row in df.iterrows():
-            col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
+            col1, col2, col3, col4, col5 = st.columns([4, 1, 1, 1, 1])
 
             with col1:
                 # URLを表示
@@ -379,6 +379,62 @@ def show_meetings_list():
                     )
 
             with col4:
+                # 発言者抽出ボタン（Conversationsが存在し、Speakersが存在しない場合）
+                row_dict = cast(dict[str, Any], row)
+                meeting_id = int(row["id"])  # type: ignore[arg-type,index]
+                has_conversations = row_dict.get("has_conversations", False)
+                has_speakers = row_dict.get("has_speakers", False)
+
+                # 処理中の状態を管理
+                speaker_processing_key = f"speaker_processing_{meeting_id}"
+                is_speaker_processing = st.session_state.get(
+                    speaker_processing_key, False
+                )
+
+                if is_speaker_processing:
+                    st.button(
+                        "処理中...",
+                        key=f"extract_speaker_{row['id']}",
+                        disabled=True,
+                        type="secondary",
+                    )
+                elif has_conversations and not has_speakers:
+                    if st.button(
+                        "発言者抽出",
+                        key=f"extract_speaker_{row['id']}",
+                        type="primary",
+                        help="発言から発言者を抽出します",
+                    ):
+                        # 処理中フラグを設定
+                        st.session_state[speaker_processing_key] = True
+                        # ログ表示用のコンテナを作成
+                        st.session_state[f"show_speaker_log_{meeting_id}"] = True
+                        # バックグラウンドで処理を実行
+                        execute_speaker_extraction(meeting_id)
+                        st.rerun()
+                elif has_speakers:
+                    st.button(
+                        "抽出済",
+                        key=f"extract_speaker_{row['id']}",
+                        disabled=True,
+                        help="既に発言者が抽出されています",
+                    )
+                elif not has_conversations:
+                    st.button(
+                        "発言者抽出",
+                        key=f"extract_speaker_{row['id']}",
+                        disabled=True,
+                        help="先に発言を抽出してください",
+                    )
+                else:
+                    st.button(
+                        "発言者抽出",
+                        key=f"extract_speaker_{row['id']}",
+                        disabled=True,
+                        help="発言者抽出が利用できません",
+                    )
+
+            with col5:
                 if st.button("削除", key=f"delete_{row['id']}"):
                     meeting_id = int(row["id"])  # type: ignore[arg-type,index]
                     if meeting_repo.delete(meeting_id):
@@ -434,6 +490,64 @@ def show_meetings_list():
                             # 処理中フラグもクリア
                             if f"processing_{meeting_id}" in st.session_state:
                                 del st.session_state[f"processing_{meeting_id}"]
+                            st.rerun()
+                    else:
+                        # 処理中は自動リロード
+                        st.caption("🔄 処理中... (自動的に更新されます)")
+                        import time
+
+                        time.sleep(2)
+                        st.rerun()
+
+            # 発言者抽出ログ表示エリア
+            if st.session_state.get(f"show_speaker_log_{meeting_id}", False):
+                from src.streamlit.utils.processing_logger import ProcessingLogger
+
+                proc_logger = ProcessingLogger()
+
+                with st.expander(
+                    f"発言者抽出ログ - 会議ID {meeting_id}", expanded=True
+                ):
+                    # ファイルからログを読み込む
+                    log_entries = proc_logger.get_logs(meeting_id)
+
+                    if log_entries:
+                        # ログコンテナを作成して全ログを表示
+                        log_container = st.container(height=400)
+                        with log_container:
+                            for log_entry in log_entries:
+                                formatted_msg = log_entry.get("formatted", "")
+                                level = log_entry.get("level", "INFO")
+                                details = log_entry.get("details", None)
+
+                                # 詳細データがある場合は折りたたみで表示
+                                if details:
+                                    with st.expander(formatted_msg, expanded=False):
+                                        # 詳細データをコードブロックで表示
+                                        st.code(details, language="text")
+                                else:
+                                    # 通常のログメッセージ
+                                    if level == "ERROR" or "❌" in formatted_msg:
+                                        st.error(formatted_msg)
+                                    elif level == "WARNING":
+                                        st.warning(formatted_msg)
+                                    elif level == "SUCCESS" or "✅" in formatted_msg:
+                                        st.success(formatted_msg)
+                                    else:
+                                        st.info(formatted_msg)
+                    else:
+                        st.info("処理を開始しています...")
+
+                    # 処理状態を確認
+                    is_processing = proc_logger.get_processing_status(meeting_id)
+                    if not is_processing:
+                        if st.button(
+                            "ログを閉じる", key=f"close_speaker_log_{meeting_id}"
+                        ):
+                            del st.session_state[f"show_speaker_log_{meeting_id}"]
+                            # 処理中フラグもクリア
+                            if f"speaker_processing_{meeting_id}" in st.session_state:
+                                del st.session_state[f"speaker_processing_{meeting_id}"]
                             st.rerun()
                     else:
                         # 処理中は自動リロード
@@ -917,3 +1031,58 @@ def execute_minutes_processing_old(meeting_id: int):
     # UIフィードバック用のメッセージ
     st.info(f"🔄 会議ID {meeting_id} の発言抽出処理を開始しました...")
     st.caption("処理には数分かかる場合があります。完了後、自動的に画面が更新されます。")
+
+
+def execute_speaker_extraction(meeting_id: int):
+    """発言者抽出処理をバックグラウンドで実行する
+
+    Args:
+        meeting_id: 処理対象の会議ID
+    """
+    from src.streamlit.utils.processing_logger import ProcessingLogger
+
+    # ロガーを初期化
+    proc_logger = ProcessingLogger()
+    proc_logger.clear_logs(meeting_id)  # 既存のログをクリア
+    proc_logger.set_processing_status(meeting_id, True)  # 処理中フラグを設定
+
+    # セッションステートにログ表示フラグを設定
+    st.session_state[f"show_speaker_log_{meeting_id}"] = True
+    st.session_state[f"speaker_processing_{meeting_id}"] = True
+
+    def run_sync_processing():
+        """同期処理を実行するラッパー関数"""
+        from src.streamlit.utils.processing_logger import ProcessingLogger
+        from src.streamlit.utils.sync_speaker_extractor import SyncSpeakerExtractor
+
+        proc_logger = ProcessingLogger()
+
+        try:
+            # 同期的なプロセッサを使用
+            extractor = SyncSpeakerExtractor(meeting_id)
+            result = extractor.process()
+
+            # 処理完了フラグを更新
+            proc_logger.set_processing_status(meeting_id, False)
+            return result
+
+        except Exception as e:
+            proc_logger.add_log(
+                meeting_id, f"❌ エラーが発生しました: {str(e)}", "error"
+            )
+            logger.error(
+                f"Failed to extract speakers for meeting {meeting_id}: {e}",
+                exc_info=True,
+            )
+
+            # 処理完了フラグを更新
+            proc_logger.set_processing_status(meeting_id, False)
+            raise
+
+    # バックグラウンドスレッドで処理を実行
+    thread = threading.Thread(target=run_sync_processing, daemon=True)
+    thread.start()
+
+    # UIフィードバック用のメッセージ
+    st.info(f"🔍 会議ID {meeting_id} の発言者抽出処理を開始しました...")
+    st.caption("処理には数秒かかる場合があります。完了後、自動的に画面が更新されます。")

@@ -133,6 +133,29 @@ class SyncMinutesProcessor:
             self.logger.add_log(self.meeting_id, "議事録を処理しています...", "info")
             results = self._process_minutes(extracted_text)
 
+            # 出席者マッピングを抽出して保存
+            self.logger.add_log(
+                self.meeting_id, "出席者情報を抽出しています...", "info"
+            )
+            attendees_mapping = self._extract_attendees_mapping(extracted_text)
+            if attendees_mapping and attendees_mapping.get("attendees_mapping"):
+                # meetingを更新
+                meeting.attendees_mapping = attendees_mapping["attendees_mapping"]
+                meeting_repo.update(meeting)
+
+                # ログに記録
+                mapping_details = []
+                for role, name in attendees_mapping["attendees_mapping"].items():
+                    if name:
+                        mapping_details.append(f"  {role}: {name}")
+                if mapping_details:
+                    self.logger.add_log(
+                        self.meeting_id,
+                        f"👥 {len(mapping_details)}件の役職マッピングを抽出しました",
+                        "info",
+                        details="\n".join(mapping_details),
+                    )
+
             # 抽出結果のサマリーをログに記録
             if results:
                 result_summary: list[str] = []
@@ -237,6 +260,46 @@ class SyncMinutesProcessor:
 
         raise ValueError(f"No valid source found for meeting {meeting.id}")
 
+    def _extract_attendees_mapping(self, text: str) -> dict[str, Any] | None:
+        """議事録テキストから出席者マッピングを抽出する"""
+        try:
+            from src.minutes_divide_processor.minutes_divider import MinutesDivider
+            from src.services.llm_factory import LLMServiceFactory
+
+            # LLMサービスを作成
+            llm_service = LLMServiceFactory.create_gemini_service(temperature=0.0)
+
+            # MinutesDividerを作成
+            divider = MinutesDivider(llm_service=llm_service)
+
+            # 出席者情報の境界を検出
+            boundary = divider.detect_attendee_boundary(text)
+
+            if boundary.boundary_found and boundary.boundary_text:
+                # 出席者部分と発言部分を分割
+                attendee_part, _ = divider.split_minutes_by_boundary(text, boundary)
+
+                if attendee_part:
+                    # 出席者マッピングを抽出
+                    mapping_result = divider.extract_attendees_mapping(attendee_part)
+
+                    if mapping_result:
+                        return {
+                            "attendees_mapping": mapping_result.attendees_mapping,
+                            "regular_attendees": mapping_result.regular_attendees,
+                            "confidence": mapping_result.confidence,
+                        }
+
+        except Exception as e:
+            logger.error(f"Failed to extract attendees mapping: {e}")
+            self.logger.add_log(
+                self.meeting_id,
+                f"⚠️ 出席者情報の抽出に失敗しました: {str(e)}",
+                "warning",
+            )
+
+        return None
+
     def _process_minutes(self, text: str) -> list[Any]:
         """議事録を処理して発言を抽出する"""
         if not text:
@@ -340,15 +403,45 @@ class SyncMinutesProcessor:
         self, conversations: list[Conversation], speaker_repo: Any
     ) -> int:
         """発言から一意な発言者を抽出し、発言者レコードを作成する"""
+        from src.config.database import get_db_session_context
         from src.domain.services.speaker_domain_service import SpeakerDomainService
+        from src.infrastructure.persistence.meeting_repository_impl import (
+            MeetingRepositoryImpl,
+        )
+        from src.infrastructure.persistence.minutes_repository_impl import (
+            MinutesRepositoryImpl,
+        )
+        from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
         speaker_service = SpeakerDomainService()
         speaker_names: set[tuple[str, str | None]] = set()
 
+        # 出席者マッピングを取得するため、meeting情報を取得
+        minutes_id = conversations[0].minutes_id if conversations else None
+        attendees_mapping = None
+        if minutes_id:
+            with get_db_session_context() as session:
+                minutes_repo = RepositoryAdapter(MinutesRepositoryImpl, session)
+                meeting_repo = RepositoryAdapter(MeetingRepositoryImpl, session)
+                minutes = minutes_repo.get_by_id(minutes_id)
+                if minutes and minutes.meeting_id:
+                    meeting = meeting_repo.get_by_id(minutes.meeting_id)
+                    attendees_mapping = meeting.attendees_mapping if meeting else None
+
         for conv in conversations:
             if conv.speaker_name:
+                # 非人名の発言者を除外
+                if speaker_service.is_non_person_speaker(conv.speaker_name):
+                    continue
+
+                # 役職名を実際の人名に変換
+                resolved_name = speaker_service.resolve_speaker_with_attendees(
+                    conv.speaker_name, attendees_mapping
+                )
+
+                # 政党情報を抽出
                 clean_name, party_info = speaker_service.extract_party_from_name(
-                    conv.speaker_name
+                    resolved_name
                 )
                 speaker_names.add((clean_name, party_info))
 
