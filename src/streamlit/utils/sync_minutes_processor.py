@@ -407,12 +407,11 @@ class SyncMinutesProcessor:
         from src.infrastructure.persistence.meeting_repository_impl import (
             MeetingRepositoryImpl,
         )
+        from src.config.database import get_db_session_context
         from src.infrastructure.persistence.minutes_repository_impl import (
             MinutesRepositoryImpl,
         )
-        from src.infrastructure.persistence.sync_repository_adapter import (
-            get_sync_session,
-        )
+        from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
         speaker_service = SpeakerDomainService()
         speaker_names: set[tuple[str, str | None]] = set()
@@ -421,12 +420,12 @@ class SyncMinutesProcessor:
         minutes_id = conversations[0].minutes_id if conversations else None
         attendees_mapping = None
         if minutes_id:
-            with get_sync_session() as session:
-                minutes_repo = MinutesRepositoryImpl(session)
-                meeting_repo = MeetingRepositoryImpl(session)
-                minutes = minutes_repo.get_by_id_sync(minutes_id)
+            with get_db_session_context() as session:
+                minutes_repo = RepositoryAdapter(MinutesRepositoryImpl, session)
+                meeting_repo = RepositoryAdapter(MeetingRepositoryImpl, session)
+                minutes = minutes_repo.get_by_id(minutes_id)
                 if minutes and minutes.meeting_id:
-                    meeting = meeting_repo.get_by_id_sync(minutes.meeting_id)
+                    meeting = meeting_repo.get_by_id(minutes.meeting_id)
                     attendees_mapping = meeting.attendees_mapping if meeting else None
 
         for conv in conversations:

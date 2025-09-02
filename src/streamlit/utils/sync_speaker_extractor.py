@@ -219,21 +219,20 @@ class SyncSpeakerExtractor:
                 - existing_speakers: 既存の発言者数
                 - speaker_details: 発言者の詳細リスト [(名前, 政党, 新規フラグ), ...]
         """
+        from src.config.database import get_db_session_context
         from src.infrastructure.persistence.meeting_repository_impl import (
             MeetingRepositoryImpl,
         )
-        from src.infrastructure.persistence.sync_repository_adapter import (
-            get_sync_session,
-        )
+        from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
         speaker_names: set[tuple[str, str | None]] = set()
 
         # 出席者マッピングを取得
         attendees_mapping = None
         if self.meeting_id:
-            with get_sync_session() as session:
-                meeting_repo = MeetingRepositoryImpl(session)
-                meeting = meeting_repo.get_by_id_sync(self.meeting_id)
+            with get_db_session_context() as session:
+                meeting_repo = RepositoryAdapter(MeetingRepositoryImpl, session)
+                meeting = meeting_repo.get_by_id(self.meeting_id)
                 attendees_mapping = meeting.attendees_mapping if meeting else None
 
         # 全conversationsから発言者名を抽出
