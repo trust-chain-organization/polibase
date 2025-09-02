@@ -607,15 +607,21 @@ class MinutesDivider:
             logger.info(f"LLM result: {result}")
 
             if isinstance(result, AttendeesMapping):
+                # attendees_mappingがNoneまたは文字列の場合は空dictに変換
+                if result.attendees_mapping is None or isinstance(result.attendees_mapping, str):
+                    logger.info(f"Setting attendees_mapping to empty dict (was: {type(result.attendees_mapping)})")
+                    result.attendees_mapping = {}
+                
                 logger.info("Attendees mapping extraction result:")
-                logger.info(f"  - Role mappings: {len(result.attendees_mapping)}")
+                logger.info(f"  - Role mappings: {len(result.attendees_mapping) if result.attendees_mapping else 0}")
                 logger.info(f"  - Regular attendees: {len(result.regular_attendees)}")
                 logger.info(f"  - Confidence: {result.confidence}")
 
-                # 役職マッピングの詳細をログ出力
-                for role, name in result.attendees_mapping.items():
-                    if name:
-                        logger.info(f"    {role} -> {name}")
+                # 人名リストをログ出力
+                for name in result.regular_attendees[:10]:
+                    logger.info(f"    Attendee: {name}")
+                if len(result.regular_attendees) > 10:
+                    logger.info(f"    ... and {len(result.regular_attendees) - 10} more")
 
                 return result
             else:

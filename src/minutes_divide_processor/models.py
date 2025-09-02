@@ -100,15 +100,15 @@ class MinutesBoundary(BaseModel):
 class AttendeesMapping(BaseModel):
     """出席者の役職と名前のマッピング"""
 
-    attendees_mapping: dict[str, str | None] = Field(
-        default_factory=dict,
-        description="役職から人名へのマッピング（例: {'議長': '西村義直', '委員長': '田中太郎'}）",
+    attendees_mapping: dict[str, str | None] | None = Field(
+        default=None,
+        description="役職から人名へのマッピング（使用しない場合はNone）",
     )
     regular_attendees: list[str] = Field(
-        default_factory=list, description="役職を持たない一般出席者のリスト"
+        default_factory=list, description="出席者の人名リスト"
     )
     confidence: float = Field(
-        0.0, description="抽出の信頼度（0.0-1.0）", ge=0.0, le=1.0
+        0.95, description="抽出の信頼度（0.0-1.0）", ge=0.0, le=1.0
     )
 
 
