@@ -97,19 +97,8 @@ class SyncSpeakerExtractor:
                 self.meeting_id, minutes
             )
             if attendees_mapping:
-                mapping_dict = attendees_mapping.get("attendees_mapping", {})
-                regular_list = attendees_mapping.get("regular_attendees", [])
-                
-                # すべての出席者を配列として集約
-                all_attendees = []
-                
-                # 役職付き出席者を追加
-                for role, name in mapping_dict.items():
-                    if name:
-                        all_attendees.append(f"{name} ({role})")
-                
-                # 一般出席者を追加
-                all_attendees.extend(regular_list)
+                # 全出席者のリストを取得（regular_attendeesに全員が入っている）
+                all_attendees = attendees_mapping.get("regular_attendees", [])
                 
                 # 出席者一覧をログに出力
                 self.logger.add_log(
@@ -120,27 +109,19 @@ class SyncSpeakerExtractor:
                 )
                 
                 # 詳細情報を作成（折りたたみ用）
-                details_lines = []
-                if mapping_dict:
-                    details_lines.append("【役職付き出席者】")
-                    for role, name in mapping_dict.items():
-                        if name:
-                            details_lines.append(f"  • {role}: {name}")
-                
-                if regular_list:
-                    details_lines.append("\n【一般出席者】")
-                    for name in regular_list[:10]:  # 最初の10人まで表示
+                if all_attendees:
+                    details_lines = ["【出席者一覧】"]
+                    for name in all_attendees[:20]:  # 最初の20人まで表示
                         details_lines.append(f"  • {name}")
-                    if len(regular_list) > 10:
-                        details_lines.append(f"  ... 他{len(regular_list) - 10}人")
-                
-                self.logger.add_log(
-                    self.meeting_id,
-                    f"📊 出席者の内訳 "
-                    f"(役職付き: {len(mapping_dict)}人, 一般出席者: {len(regular_list)}人)",
-                    "info",
-                    details="\n".join(details_lines) if details_lines else None,
-                )
+                    if len(all_attendees) > 20:
+                        details_lines.append(f"  ... 他{len(all_attendees) - 20}人")
+                    
+                    self.logger.add_log(
+                        self.meeting_id,
+                        f"📊 出席者詳細 ({len(all_attendees)}人)",
+                        "info",
+                        details="\n".join(details_lines),
+                    )
             else:
                 self.logger.add_log(
                     self.meeting_id,

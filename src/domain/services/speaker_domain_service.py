@@ -75,43 +75,39 @@ class SpeakerDomainService:
         return speaker_name
 
     def resolve_speaker_with_attendees(
-        self, speaker_name: str, attendees_mapping: dict[str, str | None] | None
+        self, speaker_name: str, attendees_mapping: dict | None
     ) -> str:
-        """Resolve speaker name using attendees mapping.
+        """Resolve speaker name using attendees list.
 
         Args:
             speaker_name: Original speaker name (may be a role like "議長")
-            attendees_mapping: Mapping from roles to actual names
+            attendees_mapping: Dictionary containing attendees list in 'regular_attendees'
 
         Returns:
             Resolved speaker name (actual person name if found, original otherwise)
         """
-        import re
-
         if not attendees_mapping:
-            return speaker_name
+            return self.extract_person_name_from_title(speaker_name)
+
+        # 出席者リストを取得
+        attendees_list = attendees_mapping.get("regular_attendees", [])
+        if not attendees_list:
+            return self.extract_person_name_from_title(speaker_name)
 
         # まず括弧付きの名前を抽出
         extracted_name = self.extract_person_name_from_title(speaker_name)
-        if extracted_name != speaker_name:
-            # 既に人名が抽出できた場合はそれを返す
-            return extracted_name
-
-        # 役職名のパターンをチェック
-        # 役職名だけの場合、マッピングから人名を取得
-        for role, name in attendees_mapping.items():
-            if name and speaker_name == role:
-                return name
-
-        # 役職名 + その他の文字列の場合も考慮
-        # 例: "議長（発言）" -> attendees_mapping["議長"] = "西村義直" -> "西村義直"
-        base_role = re.split(r"[（\(]", speaker_name)[0].strip()
-        if base_role in attendees_mapping:
-            name = attendees_mapping[base_role]
-            if name:
-                return name
-
-        return speaker_name
+        
+        # 出席者リストから最も類似した名前を探す
+        for attendee in attendees_list:
+            # 完全一致
+            if attendee == extracted_name:
+                return attendee
+            # 部分一致（姓または名が一致）
+            if extracted_name in attendee or attendee in extracted_name:
+                return attendee
+            # 役職名だけの場合（議長、委員長など）は抽出した名前をそのまま使用
+        
+        return extracted_name
 
     def is_non_person_speaker(self, speaker_name: str) -> bool:
         """Check if the speaker name is not a person (e.g., audience reactions).
