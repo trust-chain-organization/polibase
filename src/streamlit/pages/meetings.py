@@ -2,6 +2,7 @@
 
 import asyncio
 import threading
+import time  # noqa: F401
 from datetime import date
 from typing import Any, cast
 
@@ -661,9 +662,8 @@ def show_meetings_list():
                     else:
                         # 処理中は自動リロード
                         st.caption("🔄 処理中... (自動的に更新されます)")
-                        import time
 
-                        time.sleep(2)
+                        time.sleep(2)  # type: ignore[name-defined]
                         st.rerun()
 
             # スクレイピング完了チェックと自動リフレッシュ
@@ -678,7 +678,7 @@ def show_meetings_list():
                     if f"scraping_processing_{meeting_id}" in st.session_state:
                         del st.session_state[f"scraping_processing_{meeting_id}"]
                     # ページをリフレッシュ
-                    time.sleep(1)
+                    time.sleep(1)  # type: ignore[name-defined]
                     st.rerun()
                 elif st.session_state.get(f"scraping_error_{meeting_id}"):
                     # エラーフラグをクリア
@@ -687,7 +687,7 @@ def show_meetings_list():
                     if f"scraping_processing_{meeting_id}" in st.session_state:
                         del st.session_state[f"scraping_processing_{meeting_id}"]
                     st.error(
-                        f"会議ID {meeting_id} の"\
+                        f"会議ID {meeting_id} の"
                         f"スクレイピングでエラーが発生しました: {error_msg}"
                     )
 
@@ -1348,8 +1348,8 @@ def execute_minutes_scraping(meeting_id: int, url: str):
                 try:
                     from sqlalchemy import text
 
-                    update_parts = []
-                    params = {"meeting_id": meeting_id}
+                    update_parts: list[str] = []
+                    params: dict[str, Any] = {"meeting_id": meeting_id}
 
                     if gcs_pdf_uri:
                         update_parts.append("gcs_pdf_uri = :pdf_uri")
@@ -1359,14 +1359,14 @@ def execute_minutes_scraping(meeting_id: int, url: str):
                         params["text_uri"] = gcs_text_uri
 
                     if update_parts:
-                        sql = (\
-                            f"UPDATE meetings SET {', '.join(update_parts)} "\
-                            f"WHERE id = :meeting_id"\
+                        sql = (
+                            f"UPDATE meetings SET {', '.join(update_parts)} "
+                            f"WHERE id = :meeting_id"
                         )
                         result = session.execute(text(sql), params)
                         session.commit()
 
-                        if result.rowcount > 0:
+                        if result.rowcount > 0:  # type: ignore[attr-defined]
                             proc_logger.add_log(
                                 meeting_id,
                                 f"✅ 会議レコード {meeting_id} をGCS URIで更新しました",
