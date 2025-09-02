@@ -599,9 +599,12 @@ class MinutesDivider:
 
             # LLMで出席者マッピングを抽出
             logger.info("Invoking LLM for attendees mapping extraction...")
+            logger.info(f"Input text preview: {attendees_text[:200]}...")
             result = self.llm_service.invoke_with_retry(
                 chain, {"attendees_text": attendees_text}
             )
+            logger.info(f"LLM result type: {type(result)}")
+            logger.info(f"LLM result: {result}")
 
             if isinstance(result, AttendeesMapping):
                 logger.info("Attendees mapping extraction result:")
