@@ -358,12 +358,14 @@ class SyncSpeakerExtractor:
         Returns:
             抽出された出席者マッピング、または既存のマッピング
         """
+        from src.config import config
         from src.config.database import get_db_session_context
         from src.infrastructure.persistence.meeting_repository_impl import (
             MeetingRepositoryImpl,
         )
         from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
         from src.minutes_divide_processor.minutes_divider import MinutesDivider
+        from src.utils.gcs_storage import GCSStorage
 
         # 既存のマッピングを確認
         with get_db_session_context() as session:
@@ -379,9 +381,20 @@ class SyncSpeakerExtractor:
                 )
                 return meeting.attendees_mapping
 
-        # 議事録テキストを取得
-        if not minutes.content:
-            logger.warning(f"No content in minutes for meeting {meeting_id}")
+        # 議事録テキストを取得（GCSから）
+        minutes_content = None
+        if meeting and meeting.gcs_text_uri:
+            try:
+                gcs_storage = GCSStorage(
+                    bucket_name=config.GCS_BUCKET_NAME,
+                    project_id=config.GCS_PROJECT_ID,
+                )
+                minutes_content = gcs_storage.download_text(meeting.gcs_text_uri)
+            except Exception as e:
+                logger.warning(f"Failed to download from GCS: {e}")
+        
+        if not minutes_content:
+            logger.warning(f"No content available for meeting {meeting_id}")
             return None
 
         try:
@@ -389,11 +402,11 @@ class SyncSpeakerExtractor:
             divider = MinutesDivider()
             
             # 出席者と議事の境界を検出
-            boundary_result = divider.detect_attendees_boundary(minutes.content)
+            boundary_result = divider.detect_attendees_boundary(minutes_content)
             
             if boundary_result.boundary_found:
                 # 境界より前の部分（出席者情報）を抽出
-                parts = minutes.content.split("｜境界｜")
+                parts = minutes_content.split("｜境界｜")
                 if len(parts) >= 2:
                     attendees_text = parts[0]
                     
