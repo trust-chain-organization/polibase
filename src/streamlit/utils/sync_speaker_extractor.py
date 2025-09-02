@@ -485,8 +485,25 @@ class SyncSpeakerExtractor:
                         "info",
                     )
                     
+                    # 出席者テキストの先頭部分をデバッグログに出力
+                    preview = attendees_text[:500] if len(attendees_text) > 500 else attendees_text
+                    self.logger.add_log(
+                        meeting_id,
+                        "🔍 出席者テキストのプレビュー",
+                        "info",
+                        details=preview,
+                    )
+                    
                     # 出席者マッピングを抽出
                     attendees_mapping = divider.extract_attendees_mapping(attendees_text)
+                    
+                    # 抽出結果をデバッグログに出力
+                    self.logger.add_log(
+                        meeting_id,
+                        f"📊 抽出結果: 役職マッピング={len(attendees_mapping.attendees_mapping)}件, "
+                        f"一般出席者={len(attendees_mapping.regular_attendees)}人",
+                        "info",
+                    )
                     
                     # データベースに保存
                     with get_db_session_context() as session:
