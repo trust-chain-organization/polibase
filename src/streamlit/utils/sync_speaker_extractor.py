@@ -491,6 +491,18 @@ class SyncSpeakerExtractor:
                 )
                 
                 if attendees_text:
+                    # メタデータ部分を除去（「タイトル:」から「==」までを削除）
+                    if "タイトル:" in attendees_text and "===========" in attendees_text:
+                        separator_index = attendees_text.find("==================================================")
+                        if separator_index != -1:
+                            # セパレータ以降のテキストを使用
+                            attendees_text = attendees_text[separator_index + 50:].strip()
+                            self.logger.add_log(
+                                meeting_id,
+                                "📝 メタデータを除去しました",
+                                "info",
+                            )
+                    
                     self.logger.add_log(
                         meeting_id,
                         f"📝 出席者情報を解析中... (テキストサイズ: {len(attendees_text)} 文字)",
