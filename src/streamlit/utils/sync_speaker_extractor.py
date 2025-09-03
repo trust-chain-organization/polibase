@@ -318,6 +318,9 @@ class SyncSpeakerExtractor:
                 - speaker_details: 発言者の詳細リスト [(名前, 政党, 新規フラグ), ...]
         """
         from src.config.database import get_db_session_context
+        from src.infrastructure.persistence.conversation_repository_impl import (
+            ConversationRepositoryImpl as AsyncConversationRepo,
+        )
         from src.infrastructure.persistence.meeting_repository_impl import (
             MeetingRepositoryImpl,
         )
@@ -326,6 +329,10 @@ class SyncSpeakerExtractor:
         speaker_names: set[tuple[str, str | None]] = set()
         role_conversions: list[tuple[str, str]] = []  # 役職名から人名への変換記録
         seen_conversions: set[str] = set()  # 重複を避けるため
+        # 発言者名からspeaker_idへのマッピング
+        speaker_name_to_id: dict[tuple[str, str | None], int] = {}
+        # conversationとその解決済み発言者名のマッピング
+        conversation_speaker_mapping: dict[int, tuple[str, str | None]] = {}
 
         # 出席者マッピングを取得
         attendees_mapping = None
@@ -337,7 +344,7 @@ class SyncSpeakerExtractor:
 
         # 全conversationsから発言者名を抽出
         for conv in conversations:
-            if conv.speaker_name:
+            if conv.speaker_name and conv.id is not None:
                 # 非人名の発言者を除外
                 if speaker_service.is_non_person_speaker(conv.speaker_name):
                     continue
@@ -361,6 +368,8 @@ class SyncSpeakerExtractor:
                     resolved_name
                 )
                 speaker_names.add((clean_name, party_info))
+                # conversationと解決済み発言者名をマッピング
+                conversation_speaker_mapping[conv.id] = (clean_name, party_info)
 
         logger.info(f"Found {len(speaker_names)} unique speaker names")
 
@@ -380,19 +389,46 @@ class SyncSpeakerExtractor:
                     political_party_name=party_info,
                     is_politician=bool(party_info),  # 政党があれば政治家と仮定
                 )
-                speaker_repo.create(speaker)
+                created_speaker = speaker_repo.create(speaker)
                 new_speakers += 1
                 speaker_details.append((name, party_info, True))  # True = 新規
+                # 作成されたspeakerのIDを記録
+                if created_speaker and created_speaker.id:
+                    speaker_name_to_id[(name, party_info)] = created_speaker.id
                 logger.debug(f"Created new speaker: {name}")
             else:
                 existing_speakers += 1
                 speaker_details.append((name, party_info, False))  # False = 既存
+                # 既存のspeakerのIDを記録
+                if existing.id:
+                    speaker_name_to_id[(name, party_info)] = existing.id
                 logger.debug(f"Speaker already exists: {name}")
+
+        # conversationsのspeaker_idを更新
+        conversation_repo = RepositoryAdapter(AsyncConversationRepo)
+        updated_conversations = 0
+
+        for conv in conversations:
+            if conv.id and conv.id in conversation_speaker_mapping:
+                speaker_key = conversation_speaker_mapping[conv.id]
+                if speaker_key in speaker_name_to_id:
+                    speaker_id = speaker_name_to_id[speaker_key]
+                    # conversationのspeaker_idを更新
+                    conv.speaker_id = speaker_id
+                    conversation_repo.update(conv)
+                    updated_conversations += 1
+                    logger.debug(
+                        f"Updated conversation {conv.id} with speaker_id {speaker_id}"
+                    )
 
         logger.info(
             f"Speaker extraction complete - "
-            f"New: {new_speakers}, Existing: {existing_speakers}"
+            f"New: {new_speakers}, Existing: {existing_speakers}, "
+            f"Updated conversations: {updated_conversations}"
         )
+
+        # リポジトリを閉じる
+        conversation_repo.close()
 
         return {
             "unique_speakers": len(speaker_names),
