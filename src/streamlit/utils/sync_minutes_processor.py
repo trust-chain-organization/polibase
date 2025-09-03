@@ -10,7 +10,7 @@ from src.domain.entities.conversation import Conversation
 from src.domain.entities.minutes import Minutes
 from src.domain.entities.speaker import Speaker
 from src.exceptions import APIKeyError, ProcessingError
-from src.infrastructure.external.llm_service_factory import LLMServiceFactory
+from src.services.llm_factory import LLMServiceFactory
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl as AsyncConversationRepo,
 )
@@ -264,7 +264,6 @@ class SyncMinutesProcessor:
         """議事録テキストから出席者マッピングを抽出する"""
         try:
             from src.minutes_divide_processor.minutes_divider import MinutesDivider
-            from src.services.llm_factory import LLMServiceFactory
 
             # LLMサービスを作成
             factory = LLMServiceFactory()
