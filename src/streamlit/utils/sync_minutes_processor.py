@@ -10,7 +10,6 @@ from src.domain.entities.conversation import Conversation
 from src.domain.entities.minutes import Minutes
 from src.domain.entities.speaker import Speaker
 from src.exceptions import APIKeyError, ProcessingError
-from src.services.llm_factory import LLMServiceFactory
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl as AsyncConversationRepo,
 )
@@ -25,6 +24,7 @@ from src.infrastructure.persistence.speaker_repository_impl import (
     SpeakerRepositoryImpl as AsyncSpeakerRepo,
 )
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
+from src.services.llm_factory import LLMServiceFactory
 from src.streamlit.utils.processing_logger import ProcessingLogger
 from src.utils.gcs_storage import GCSStorage
 

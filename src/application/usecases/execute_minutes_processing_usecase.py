@@ -27,8 +27,8 @@ from src.exceptions import APIKeyError, ProcessingError
 from src.infrastructure.external.instrumented_llm_service import (
     InstrumentedLLMService,
 )
-from src.services.llm_factory import LLMServiceFactory
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
+from src.services.llm_factory import LLMServiceFactory
 from src.utils.gcs_storage import GCSStorage
 
 logger = get_logger(__name__)
