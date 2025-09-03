@@ -22,6 +22,12 @@ from src.config.sentry import (
 class TestSentryInitialization:
     """Test Sentry SDK initialization"""
 
+    def setup_method(self):
+        """Reset the global initialization flag before each test"""
+        import src.config.sentry
+
+        src.config.sentry.initialized = False
+
     @patch("src.config.sentry.sentry_sdk.init")
     @patch.dict(os.environ, {"SENTRY_DSN": "https://test@sentry.io/123"})
     def test_init_sentry_with_dsn(self, mock_init):
@@ -56,6 +62,32 @@ class TestSentryInitialization:
         init_sentry()
 
         mock_logger.error.assert_called_with("Failed to initialize Sentry: Init failed")
+
+    @patch("src.config.sentry.sentry_sdk.init")
+    @patch("src.config.sentry.logger")
+    @patch.dict(os.environ, {"SENTRY_DSN": "https://test@sentry.io/123"})
+    def test_init_sentry_called_multiple_times(self, mock_logger, mock_init):
+        """Test that Sentry is only initialized once even when called multiple times"""
+        # First call should initialize
+        init_sentry()
+        mock_init.assert_called_once()
+        mock_logger.info.assert_called_with(
+            "Sentry initialized successfully for environment: development"
+        )
+
+        # Second call should skip initialization
+        init_sentry()
+        # Still should be called only once
+        mock_init.assert_called_once()
+        # Debug log should be called for the second attempt
+        mock_logger.debug.assert_called_with(
+            "Sentry is already initialized, skipping..."
+        )
+
+        # Third call should also skip
+        init_sentry()
+        # Still only one init call
+        mock_init.assert_called_once()
 
 
 class TestSentryFilters:
