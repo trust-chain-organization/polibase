@@ -19,6 +19,8 @@ from .settings import get_settings
 F = TypeVar("F", bound=Callable[..., Any])
 
 logger = logging.getLogger(__name__)
+# Global flag to track if Sentry has been initialized
+initialized: bool = False
 
 
 def init_sentry() -> None:
@@ -30,7 +32,16 @@ def init_sentry() -> None:
     - SQLAlchemy integration
     - Logging integration
     - Environment-aware configuration
+
+    Note: This function ensures Sentry is only initialized once per process.
     """
+    global initialized
+
+    # Check if already initialized
+    if initialized:
+        logger.debug("Sentry is already initialized, skipping...")
+        return
+
     settings = get_settings()
 
     # Get Sentry DSN from environment
@@ -38,6 +49,7 @@ def init_sentry() -> None:
 
     if not dsn:
         logger.info("Sentry DSN not configured, skipping Sentry initialization")
+        initialized = True  # Mark as initialized even when skipped
         return
 
     # Determine environment
@@ -76,6 +88,7 @@ def init_sentry() -> None:
         )
 
         logger.info(f"Sentry initialized successfully for environment: {environment}")
+        initialized = True  # Mark as successfully initialized
 
         # Set user context if available
         if user_id := os.getenv("SENTRY_USER_ID"):
