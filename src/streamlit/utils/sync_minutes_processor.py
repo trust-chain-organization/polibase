@@ -267,7 +267,8 @@ class SyncMinutesProcessor:
             from src.services.llm_factory import LLMServiceFactory
 
             # LLMサービスを作成
-            llm_service = LLMServiceFactory.create_gemini_service(temperature=0.0)
+            factory = LLMServiceFactory()
+            llm_service = factory.create_fast(temperature=0.0)
 
             # MinutesDividerを作成
             divider = MinutesDivider(llm_service=llm_service)
@@ -313,7 +314,8 @@ class SyncMinutesProcessor:
             )
 
         # LLMサービスを作成
-        llm_service = LLMServiceFactory.create_gemini_service(temperature=0.0)
+        factory = LLMServiceFactory()
+        llm_service = factory.create_fast(temperature=0.0)
 
         # MinutesProcessAgentを使用して処理
         agent = MinutesProcessAgent(llm_service=llm_service)

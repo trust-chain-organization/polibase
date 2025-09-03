@@ -223,7 +223,8 @@ class ExecuteMinutesProcessingUseCase:
             )
 
         # LLMサービスを作成
-        llm_service = LLMServiceFactory.create_gemini_service(temperature=0.0)
+        factory = LLMServiceFactory()
+        llm_service = factory.create_fast(temperature=0.0)
 
         # InstrumentedLLMServiceの場合、履歴記録を設定
         # 注意: 現在、asyncpgの並行操作制限のため履歴記録を無効化
