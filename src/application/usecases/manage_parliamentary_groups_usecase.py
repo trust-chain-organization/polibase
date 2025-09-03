@@ -7,6 +7,9 @@ from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import ParliamentaryGroup
+from src.domain.entities.extracted_parliamentary_group_member import (
+    ExtractedParliamentaryGroupMember,
+)
 from src.parliamentary_group_member_extractor.extractor import (
     ParliamentaryGroupMemberExtractor,
 )
@@ -151,6 +154,7 @@ class ManageParliamentaryGroupsUseCase:
         politician_repository: Any | None = None,
         membership_repository: Any | None = None,
         llm_service: Any | None = None,
+        extracted_member_repository: Any | None = None,
     ):
         """Initialize the use case.
 
@@ -159,11 +163,13 @@ class ManageParliamentaryGroupsUseCase:
             politician_repository: Politician repository instance
             membership_repository: Membership repository instance
             llm_service: LLM service instance
+            extracted_member_repository: Extracted member repository instance
         """
         self.parliamentary_group_repository = parliamentary_group_repository
         self.politician_repository = politician_repository
         self.membership_repository = membership_repository
         self.llm_service = llm_service
+        self.extracted_member_repository = extracted_member_repository
 
         # Initialize extractor and service if all dependencies are available
         if llm_service:
@@ -335,6 +341,37 @@ class ManageParliamentaryGroupsUseCase:
                 )
                 for member in extraction_result.extracted_members
             ]
+
+            # Save extracted members to database if repository is available
+            if self.extracted_member_repository and not input_dto.dry_run:
+                # Create ExtractedParliamentaryGroupMember entities
+                entities_to_save = [
+                    ExtractedParliamentaryGroupMember(
+                        parliamentary_group_id=input_dto.parliamentary_group_id,
+                        extracted_name=member.name,
+                        source_url=input_dto.url,
+                        extracted_role=member.role,
+                        extracted_party_name=member.party_name,
+                        extracted_district=member.district,
+                        extracted_at=extraction_result.extraction_date,
+                        additional_info=member.additional_info,
+                    )
+                    for member in extraction_result.extracted_members
+                ]
+
+                # Bulk create in database
+                try:
+                    if hasattr(self.extracted_member_repository, "bulk_create"):
+                        asyncio.run(
+                            self.extracted_member_repository.bulk_create(
+                                entities_to_save
+                            )
+                        )
+                    logger.info(
+                        f"Saved {len(entities_to_save)} extracted members to database"
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to save extracted members to database: {e}")
 
             if input_dto.dry_run:
                 # Dry run mode - just return extracted members without saving
