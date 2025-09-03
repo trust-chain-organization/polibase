@@ -27,8 +27,8 @@ from src.exceptions import APIKeyError, ProcessingError
 from src.infrastructure.external.instrumented_llm_service import (
     InstrumentedLLMService,
 )
-from src.infrastructure.external.llm_service_factory import LLMServiceFactory
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
+from src.services.llm_factory import LLMServiceFactory
 from src.utils.gcs_storage import GCSStorage
 
 logger = get_logger(__name__)
@@ -223,7 +223,8 @@ class ExecuteMinutesProcessingUseCase:
             )
 
         # LLMサービスを作成
-        llm_service = LLMServiceFactory.create_gemini_service(temperature=0.0)
+        factory = LLMServiceFactory()
+        llm_service = factory.create_fast(temperature=0.0)
 
         # InstrumentedLLMServiceの場合、履歴記録を設定
         # 注意: 現在、asyncpgの並行操作制限のため履歴記録を無効化

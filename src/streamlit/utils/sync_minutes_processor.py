@@ -10,7 +10,6 @@ from src.domain.entities.conversation import Conversation
 from src.domain.entities.minutes import Minutes
 from src.domain.entities.speaker import Speaker
 from src.exceptions import APIKeyError, ProcessingError
-from src.infrastructure.external.llm_service_factory import LLMServiceFactory
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl as AsyncConversationRepo,
 )
@@ -25,6 +24,7 @@ from src.infrastructure.persistence.speaker_repository_impl import (
     SpeakerRepositoryImpl as AsyncSpeakerRepo,
 )
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
+from src.services.llm_factory import LLMServiceFactory
 from src.streamlit.utils.processing_logger import ProcessingLogger
 from src.utils.gcs_storage import GCSStorage
 
@@ -264,10 +264,10 @@ class SyncMinutesProcessor:
         """議事録テキストから出席者マッピングを抽出する"""
         try:
             from src.minutes_divide_processor.minutes_divider import MinutesDivider
-            from src.services.llm_factory import LLMServiceFactory
 
             # LLMサービスを作成
-            llm_service = LLMServiceFactory.create_gemini_service(temperature=0.0)
+            factory = LLMServiceFactory()
+            llm_service = factory.create_fast(temperature=0.0)
 
             # MinutesDividerを作成
             divider = MinutesDivider(llm_service=llm_service)
@@ -313,7 +313,8 @@ class SyncMinutesProcessor:
             )
 
         # LLMサービスを作成
-        llm_service = LLMServiceFactory.create_gemini_service(temperature=0.0)
+        factory = LLMServiceFactory()
+        llm_service = factory.create_fast(temperature=0.0)
 
         # MinutesProcessAgentを使用して処理
         agent = MinutesProcessAgent(llm_service=llm_service)
