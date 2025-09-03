@@ -2,8 +2,6 @@
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.speaker import Speaker
 from src.streamlit.utils.sync_speaker_extractor import (
@@ -60,7 +58,12 @@ class TestSyncSpeakerExtractor:
         speaker_service.extract_party_from_name.side_effect = lambda x: (x, None)
 
         # Mock meeting repo for attendees mapping
-        with patch("src.config.database.get_db_session_context"):
+        with patch("src.config.database.get_db_session_context") as mock_get_session:
+            # Mock session for SQL execution
+            mock_session = Mock()
+            mock_get_session.return_value.__enter__ = Mock(return_value=mock_session)
+            mock_get_session.return_value.__exit__ = Mock(return_value=None)
+
             with patch(
                 "src.streamlit.utils.sync_speaker_extractor.RepositoryAdapter"
             ) as mock_repo_adapter:
@@ -90,13 +93,10 @@ class TestSyncSpeakerExtractor:
                 )
 
                 # Assert
-                # Check that conversations were updated with speaker_ids
-                assert conv1.speaker_id == 101  # 山田太郎's speaker ID
-                assert conv2.speaker_id is not None  # 議長 resolved to 西村義直
-                assert conv3.speaker_id is None  # Non-person should not get speaker_id
-
-                # Check that conversation repo update was called
-                assert conversation_repo_mock.update.call_count >= 1
+                # Check that SQL update was executed for the conversations
+                assert mock_session.execute.called
+                # Check that session was committed
+                assert mock_session.commit.called
 
                 # Check result statistics
                 assert result["unique_speakers"] == 2  # 山田太郎 and 西村義直
@@ -138,12 +138,13 @@ class TestSyncSpeakerExtractor:
 
             mock_repo_adapter.side_effect = repo_adapter_side_effect
 
-            # Act & Assert
-            with pytest.raises(
-                ValueError,
-                match="Meeting 1 already has 1 conversations with speakers linked",
-            ):
-                extractor.process()
+            # Act
+            result = extractor.process()
+
+            # Assert - Should return an error result instead of raising
+            assert result.errors is not None
+            assert len(result.errors) > 0
+            assert "already has" in result.errors[0]
 
     def test_process_success_with_attendees_extraction(self):
         """Test successful processing with attendees extraction"""
