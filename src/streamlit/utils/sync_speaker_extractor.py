@@ -318,9 +318,6 @@ class SyncSpeakerExtractor:
                 - speaker_details: 発言者の詳細リスト [(名前, 政党, 新規フラグ), ...]
         """
         from src.config.database import get_db_session_context
-        from src.infrastructure.persistence.conversation_repository_impl import (
-            ConversationRepositoryImpl as AsyncConversationRepo,
-        )
         from src.infrastructure.persistence.meeting_repository_impl import (
             MeetingRepositoryImpl,
         )
@@ -405,30 +402,42 @@ class SyncSpeakerExtractor:
                 logger.debug(f"Speaker already exists: {name}")
 
         # conversationsのspeaker_idを更新
-        conversation_repo = RepositoryAdapter(AsyncConversationRepo)
+        # 直接SQLを実行してバルク更新する方法に変更
         updated_conversations = 0
 
-        for conv in conversations:
-            if conv.id and conv.id in conversation_speaker_mapping:
-                speaker_key = conversation_speaker_mapping[conv.id]
-                if speaker_key in speaker_name_to_id:
-                    speaker_id = speaker_name_to_id[speaker_key]
-                    # conversationのspeaker_idを更新
-                    conv.speaker_id = speaker_id
-                    conversation_repo.update(conv)
-                    updated_conversations += 1
-                    logger.debug(
-                        f"Updated conversation {conv.id} with speaker_id {speaker_id}"
-                    )
+        if conversation_speaker_mapping and speaker_name_to_id:
+            from src.config.database import get_db_session_context
+
+            with get_db_session_context() as session:
+                # 各conversationのspeaker_idを更新
+                for conv_id, speaker_key in conversation_speaker_mapping.items():
+                    if speaker_key in speaker_name_to_id:
+                        speaker_id = speaker_name_to_id[speaker_key]
+                        # 直接SQLで更新
+                        from sqlalchemy import text
+
+                        update_sql = text(
+                            "UPDATE conversations "
+                            "SET speaker_id = :speaker_id "
+                            "WHERE id = :conv_id"
+                        )
+                        session.execute(
+                            update_sql, {"speaker_id": speaker_id, "conv_id": conv_id}
+                        )
+                        updated_conversations += 1
+                        logger.debug(
+                            f"Updated conversation {conv_id} "
+                            f"with speaker_id {speaker_id}"
+                        )
+
+                # コミット
+                session.commit()
 
         logger.info(
             f"Speaker extraction complete - "
             f"New: {new_speakers}, Existing: {existing_speakers}, "
             f"Updated conversations: {updated_conversations}"
         )
-
-        # リポジトリを閉じる
-        conversation_repo.close()
 
         return {
             "unique_speakers": len(speaker_names),
