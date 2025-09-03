@@ -2,6 +2,7 @@
 
 import asyncio
 import threading
+import time  # noqa: F401
 from datetime import date
 from typing import Any, cast
 
@@ -261,7 +262,7 @@ def show_meetings_list():
 
         # 編集・削除・発言抽出ボタン用のカラム
         for _idx, row in df.iterrows():
-            col1, col2, col3, col4, col5 = st.columns([4, 1, 1, 1, 1])
+            col1, col2, col3, col4, col5, col6 = st.columns([3, 1, 1, 1, 1, 1])
 
             with col1:
                 # URLを表示
@@ -435,6 +436,55 @@ def show_meetings_list():
                     )
 
             with col5:
+                # 議事録スクレイピングボタン（URLがあり、GCSテキストURIがない場合）
+                row_dict = cast(dict[str, Any], row)
+                meeting_id = int(row["id"])  # type: ignore[arg-type,index]
+                url = row_dict.get("url", None)
+                gcs_text_uri_check = row_dict.get("gcs_text_uri", None)
+
+                # 処理中の状態を管理
+                scraping_processing_key = f"scraping_processing_{meeting_id}"
+                is_scraping_processing = st.session_state.get(
+                    scraping_processing_key, False
+                )
+
+                if is_scraping_processing:
+                    st.button(
+                        "処理中...",
+                        key=f"scrape_{row['id']}",
+                        disabled=True,
+                        type="secondary",
+                    )
+                elif url and not gcs_text_uri_check:
+                    if st.button(
+                        "スクレイピング",
+                        key=f"scrape_{row['id']}",
+                        type="primary",
+                        help="議事録をスクレイピングしてGCSにアップロードします",
+                    ):
+                        # 処理中フラグを設定
+                        st.session_state[scraping_processing_key] = True
+                        # ログ表示用のコンテナを作成
+                        st.session_state[f"show_scraping_log_{meeting_id}"] = True
+                        # バックグラウンドで処理を実行
+                        execute_minutes_scraping(meeting_id, url)
+                        st.rerun()
+                elif gcs_text_uri_check:
+                    st.button(
+                        "スクレイピング済",
+                        key=f"scrape_{row['id']}",
+                        disabled=True,
+                        help="既に議事録がスクレイピングされています",
+                    )
+                else:
+                    st.button(
+                        "スクレイピング",
+                        key=f"scrape_{row['id']}",
+                        disabled=True,
+                        help="URLが設定されていません",
+                    )
+
+            with col6:
                 if st.button("削除", key=f"delete_{row['id']}"):
                     meeting_id = int(row["id"])  # type: ignore[arg-type,index]
                     if meeting_repo.delete(meeting_id):
@@ -556,6 +606,90 @@ def show_meetings_list():
 
                         time.sleep(2)
                         st.rerun()
+
+            # 議事録スクレイピングログ表示エリア
+            if st.session_state.get(f"show_scraping_log_{meeting_id}", False):
+                from src.streamlit.utils.processing_logger import ProcessingLogger
+
+                proc_logger = ProcessingLogger()
+
+                with st.expander(
+                    f"スクレイピングログ - 会議ID {meeting_id}", expanded=True
+                ):
+                    # ファイルからログを読み込む
+                    log_entries = proc_logger.get_logs(meeting_id)
+
+                    if log_entries:
+                        # ログコンテナを作成して全ログを表示
+                        log_container = st.container(height=400)
+                        with log_container:
+                            for log_entry in log_entries:
+                                formatted_msg = log_entry.get("formatted", "")
+                                level = log_entry.get("level", "INFO")
+                                details = log_entry.get("details", None)
+
+                                # 詳細データがある場合は折りたたみで表示
+                                if details:
+                                    with st.expander(formatted_msg, expanded=False):
+                                        # 詳細データをコードブロックで表示
+                                        st.code(details, language="text")
+                                else:
+                                    # 通常のログメッセージ
+                                    if level == "ERROR" or "❌" in formatted_msg:
+                                        st.error(formatted_msg)
+                                    elif level == "WARNING":
+                                        st.warning(formatted_msg)
+                                    elif level == "SUCCESS" or "✅" in formatted_msg:
+                                        st.success(formatted_msg)
+                                    else:
+                                        st.info(formatted_msg)
+                    else:
+                        st.info("処理を開始しています...")
+
+                    # 処理状態を確認
+                    is_processing = proc_logger.get_processing_status(meeting_id)
+                    if not is_processing:
+                        if st.button(
+                            "ログを閉じる", key=f"close_scraping_log_{meeting_id}"
+                        ):
+                            del st.session_state[f"show_scraping_log_{meeting_id}"]
+                            # 処理中フラグもクリア
+                            if f"scraping_processing_{meeting_id}" in st.session_state:
+                                del st.session_state[
+                                    f"scraping_processing_{meeting_id}"
+                                ]
+                            st.rerun()
+                    else:
+                        # 処理中は自動リロード
+                        st.caption("🔄 処理中... (自動的に更新されます)")
+
+                        time.sleep(2)  # type: ignore[name-defined]
+                        st.rerun()
+
+            # スクレイピング完了チェックと自動リフレッシュ
+            for meeting_id in [
+                int(row["id"])  # type: ignore[arg-type,index]
+                for _, row in df.iterrows()
+                if st.session_state.get(f"scraping_processing_{meeting_id}", False)
+            ]:
+                if st.session_state.get(f"scraping_completed_{meeting_id}", False):
+                    # 完了フラグをクリア
+                    del st.session_state[f"scraping_completed_{meeting_id}"]
+                    if f"scraping_processing_{meeting_id}" in st.session_state:
+                        del st.session_state[f"scraping_processing_{meeting_id}"]
+                    # ページをリフレッシュ
+                    time.sleep(1)  # type: ignore[name-defined]
+                    st.rerun()
+                elif st.session_state.get(f"scraping_error_{meeting_id}"):
+                    # エラーフラグをクリア
+                    error_msg = st.session_state[f"scraping_error_{meeting_id}"]
+                    del st.session_state[f"scraping_error_{meeting_id}"]
+                    if f"scraping_processing_{meeting_id}" in st.session_state:
+                        del st.session_state[f"scraping_processing_{meeting_id}"]
+                    st.error(
+                        f"会議ID {meeting_id} の"
+                        f"スクレイピングでエラーが発生しました: {error_msg}"
+                    )
 
             st.divider()
     else:
@@ -1086,3 +1220,208 @@ def execute_speaker_extraction(meeting_id: int):
     # UIフィードバック用のメッセージ
     st.info(f"🔍 会議ID {meeting_id} の発言者抽出処理を開始しました...")
     st.caption("処理には数秒かかる場合があります。完了後、自動的に画面が更新されます。")
+
+
+def execute_minutes_scraping(meeting_id: int, url: str):
+    """議事録スクレイピング処理をバックグラウンドで実行する
+
+    Args:
+        meeting_id: 処理対象の会議ID
+        url: スクレイピング対象のURL
+    """
+    from src.streamlit.utils.processing_logger import ProcessingLogger
+
+    # ロガーを初期化
+    proc_logger = ProcessingLogger()
+    proc_logger.clear_logs(meeting_id)  # 既存のログをクリア
+    proc_logger.set_processing_status(meeting_id, True)  # 処理中フラグを設定
+
+    # セッションステートにログ表示フラグを設定
+    st.session_state[f"show_scraping_log_{meeting_id}"] = True
+    st.session_state[f"scraping_processing_{meeting_id}"] = True
+
+    def run_async_scraping():
+        """非同期処理を実行するラッパー関数"""
+        import asyncio
+        import os
+        from pathlib import Path
+
+        import nest_asyncio
+
+        from src.streamlit.utils.processing_logger import ProcessingLogger
+        from src.web_scraper.scraper_service import ScraperService
+
+        # nest_asyncioを適用
+        nest_asyncio.apply()
+
+        proc_logger = ProcessingLogger()
+
+        try:
+            # ログに処理開始を記録
+            proc_logger.add_log(
+                meeting_id, "🚀 議事録スクレイピングを開始します", "info"
+            )
+            proc_logger.add_log(meeting_id, f"URL: {url}", "info")
+
+            # GCS設定を取得（環境変数から）
+            gcs_enabled = os.getenv("GCS_UPLOAD_ENABLED", "false").lower() == "true"
+
+            # サービス初期化
+            proc_logger.add_log(
+                meeting_id, "スクレイピングサービスを初期化中...", "info"
+            )
+            service = ScraperService(enable_gcs=gcs_enabled)
+
+            # スクレイピング実行
+            proc_logger.add_log(meeting_id, f"議事録を取得中: {url}", "info")
+
+            # 非同期関数を同期的に実行
+            minutes = asyncio.run(service.fetch_from_url(url, use_cache=False))
+
+            if not minutes:
+                proc_logger.add_log(
+                    meeting_id, "❌ 議事録の取得に失敗しました", "error"
+                )
+                proc_logger.set_processing_status(meeting_id, False)
+                return False
+
+            proc_logger.add_log(meeting_id, "✅ 議事録を正常に取得しました", "success")
+
+            # 一時ディレクトリを作成
+            output_dir = Path("tmp") / f"scraping_{meeting_id}"
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            # ファイル名生成
+            base_name = f"{minutes.council_id}_{minutes.schedule_id}"
+
+            # GCS URIを保存するための変数
+            gcs_text_uri = None
+            gcs_pdf_uri = None
+
+            # テキスト形式で保存
+            txt_path = output_dir / f"{base_name}.txt"
+            proc_logger.add_log(meeting_id, "テキストファイルを保存中...", "info")
+            success, gcs_url = service.export_to_text(
+                minutes, str(txt_path), upload_to_gcs=gcs_enabled
+            )
+
+            if success:
+                proc_logger.add_log(
+                    meeting_id, f"✅ テキストファイルを保存: {txt_path}", "success"
+                )
+                if gcs_url:
+                    proc_logger.add_log(
+                        meeting_id, f"✅ GCSにアップロード: {gcs_url}", "success"
+                    )
+                    gcs_text_uri = gcs_url
+            else:
+                proc_logger.add_log(
+                    meeting_id, "❌ テキストファイルの保存に失敗しました", "error"
+                )
+
+            # PDFをGCSにアップロード（PDFがある場合）
+            if gcs_enabled and minutes.pdf_url:
+                pdf_path = output_dir / f"{base_name}.pdf"
+                if pdf_path.exists():
+                    proc_logger.add_log(
+                        meeting_id, "PDFをGCSにアップロード中...", "info"
+                    )
+                    gcs_url = service.upload_pdf_to_gcs(str(pdf_path), minutes)
+                    if gcs_url:
+                        proc_logger.add_log(
+                            meeting_id,
+                            f"✅ PDFをGCSにアップロード: {gcs_url}",
+                            "success",
+                        )
+                        gcs_pdf_uri = gcs_url
+
+            # meetingsテーブルのGCS URIを更新
+            if gcs_text_uri or gcs_pdf_uri:
+                proc_logger.add_log(
+                    meeting_id, "会議レコードをGCS URIで更新中...", "info"
+                )
+
+                # 直接SQLを実行してGCS URIを更新
+                from src.config.database import get_db_session
+
+                session = get_db_session()
+                try:
+                    from sqlalchemy import text
+
+                    update_parts: list[str] = []
+                    params: dict[str, Any] = {"meeting_id": meeting_id}
+
+                    if gcs_pdf_uri:
+                        update_parts.append("gcs_pdf_uri = :pdf_uri")
+                        params["pdf_uri"] = gcs_pdf_uri
+                    if gcs_text_uri:
+                        update_parts.append("gcs_text_uri = :text_uri")
+                        params["text_uri"] = gcs_text_uri
+
+                    if update_parts:
+                        sql = (
+                            f"UPDATE meetings SET {', '.join(update_parts)} "
+                            f"WHERE id = :meeting_id"
+                        )
+                        result = session.execute(text(sql), params)
+                        session.commit()
+
+                        if result.rowcount > 0:  # type: ignore[attr-defined]
+                            proc_logger.add_log(
+                                meeting_id,
+                                f"✅ 会議レコード {meeting_id} をGCS URIで更新しました",
+                                "success",
+                            )
+                        else:
+                            proc_logger.add_log(
+                                meeting_id,
+                                f"❌ 会議レコード {meeting_id} の更新に失敗しました",
+                                "error",
+                            )
+                finally:
+                    session.close()
+
+            # 基本情報をログに記録
+            proc_logger.add_log(meeting_id, "--- 議事録サマリー ---", "info")
+            proc_logger.add_log(meeting_id, f"タイトル: {minutes.title}", "info")
+            date_str = minutes.date.strftime("%Y年%m月%d日") if minutes.date else "不明"
+            proc_logger.add_log(meeting_id, f"日付: {date_str}", "info")
+            proc_logger.add_log(
+                meeting_id, f"発言者数: {len(minutes.speakers)}", "info"
+            )
+            proc_logger.add_log(
+                meeting_id, f"内容の長さ: {len(minutes.content)} 文字", "info"
+            )
+
+            proc_logger.add_log(
+                meeting_id, "✅ 議事録スクレイピングが完了しました", "success"
+            )
+
+            # 処理完了フラグを更新
+            proc_logger.set_processing_status(meeting_id, False)
+            # スクレイピング完了フラグを設定
+            st.session_state[f"scraping_completed_{meeting_id}"] = True
+            return True
+
+        except Exception as e:
+            proc_logger.add_log(
+                meeting_id, f"❌ エラーが発生しました: {str(e)}", "error"
+            )
+            logger.error(
+                f"Failed to scrape minutes for meeting {meeting_id}: {e}",
+                exc_info=True,
+            )
+
+            # 処理完了フラグを更新
+            proc_logger.set_processing_status(meeting_id, False)
+            # エラーフラグを設定
+            st.session_state[f"scraping_error_{meeting_id}"] = str(e)
+            raise
+
+    # バックグラウンドスレッドで処理を実行
+    thread = threading.Thread(target=run_async_scraping, daemon=True)
+    thread.start()
+
+    # UIフィードバック用のメッセージ
+    st.info(f"📥 会議ID {meeting_id} の議事録スクレイピングを開始しました...")
+    st.caption("処理には数分かかる場合があります。完了後、自動的に画面が更新されます。")
