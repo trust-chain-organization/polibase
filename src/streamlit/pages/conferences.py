@@ -236,9 +236,9 @@ def manage_conferences():
                                     st.markdown("---")
 
                                     # 開催主体の選択
-                                    governing_bodies = conf_repo.get_governing_bodies()
+                                    governing_bodies = gb_repo.get_all()
                                     gb_options = ["なし"] + [
-                                        f"{gb['name']} ({gb['type']})"
+                                        f"{gb.name} ({gb.type})"
                                         for gb in governing_bodies
                                     ]
 
@@ -246,7 +246,7 @@ def manage_conferences():
                                     current_gb_index = 0
                                     if conf.get("governing_body_id"):
                                         for i, gb in enumerate(governing_bodies):
-                                            if gb["id"] == conf["governing_body_id"]:
+                                            if gb.id == conf["governing_body_id"]:
                                                 current_gb_index = (
                                                     i + 1
                                                 )  # "なし"の分を加算
