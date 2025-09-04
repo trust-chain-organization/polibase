@@ -401,9 +401,9 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
         )
 
     dry_run = st.checkbox(
-        "ドライラン（実際にはメンバーシップを作成しない）",
-        value=True,
-        help="チェックすると、抽出結果の確認のみ行い、実際のメンバーシップは作成しません",
+        "ドライラン（データベースに保存しない）",
+        value=False,
+        help="チェックすると、抽出結果の確認のみ行い、データベースには保存しません",
     )
 
     # Execute extraction
