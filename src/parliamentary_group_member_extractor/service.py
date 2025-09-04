@@ -246,11 +246,13 @@ JSONで回答してください。
         )
 
         try:
-            # LLMのllmプロパティを使用
-            from langchain_core.messages import HumanMessage
-
-            message = HumanMessage(content=formatted_prompt)
-            response = self.llm_service.llm.invoke([message])
+            # Use invoke_with_retry method if available
+            if hasattr(self.llm_service, "invoke_with_retry"):
+                response = self.llm_service.invoke_with_retry(formatted_prompt)
+            else:
+                raise AttributeError(
+                    "LLM service does not have invoke_with_retry method"
+                )
 
             # レスポンスをパース
             if hasattr(response, "content"):
