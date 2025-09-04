@@ -344,12 +344,9 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
     def get_extracted_members(self, parliamentary_group_id: int) -> list[Any]:
         """Get extracted members for a parliamentary group from database."""
         try:
-            import asyncio
-
-            members = asyncio.run(
-                self.extracted_member_repo.get_by_parliamentary_group(
-                    parliamentary_group_id
-                )
+            # RepositoryAdapter handles async to sync conversion
+            members = self.extracted_member_repo.get_by_parliamentary_group(
+                parliamentary_group_id
             )
             return members
         except Exception as e:
@@ -359,12 +356,9 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
     def get_extraction_summary(self, parliamentary_group_id: int) -> dict[str, int]:
         """Get extraction summary for a parliamentary group."""
         try:
-            import asyncio
-
-            summary = asyncio.run(
-                self.extracted_member_repo.get_extraction_summary(
-                    parliamentary_group_id
-                )
+            # RepositoryAdapter handles async to sync conversion
+            summary = self.extracted_member_repo.get_extraction_summary(
+                parliamentary_group_id
             )
             return summary
         except Exception as e:

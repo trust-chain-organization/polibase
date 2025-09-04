@@ -362,11 +362,20 @@ class ManageParliamentaryGroupsUseCase:
                 # Bulk create in database
                 try:
                     if hasattr(self.extracted_member_repository, "bulk_create"):
-                        asyncio.run(
+                        # If it's a RepositoryAdapter, it will handle async conversion
+                        # If it's a direct async repository, we need asyncio.run
+                        if hasattr(self.extracted_member_repository, "_run_async"):
+                            # It's a RepositoryAdapter - call directly
                             self.extracted_member_repository.bulk_create(
                                 entities_to_save
                             )
-                        )
+                        else:
+                            # It's a direct async repository
+                            asyncio.run(
+                                self.extracted_member_repository.bulk_create(
+                                    entities_to_save
+                                )
+                            )
                     logger.info(
                         f"Saved {len(entities_to_save)} extracted members to database"
                     )
