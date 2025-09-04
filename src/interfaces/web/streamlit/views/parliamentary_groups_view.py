@@ -314,12 +314,70 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
     )
     selected_group = group_map[selected_group_display]
 
+    # Get extraction summary for selected group
+    extraction_summary = presenter.get_extraction_summary(selected_group.id)
+
     # Display current information
     col1, col2 = st.columns(2)
     with col1:
         st.info(f"**議員団URL:** {selected_group.url}")
     with col2:
-        st.info("**現在のメンバー数:** 0名")  # Placeholder
+        st.info(f"**抽出済みメンバー数:** {extraction_summary['total']}名")
+
+    # Display previously extracted members if they exist
+    if extraction_summary["total"] > 0:
+        st.markdown("### 抽出済みメンバー一覧")
+
+        # Show summary statistics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("合計", extraction_summary["total"])
+        with col2:
+            st.metric(
+                "マッチ済み",
+                extraction_summary["matched"],
+                help="政治家と正常にマッチングできた数",
+            )
+        with col3:
+            st.metric(
+                "未処理",
+                extraction_summary["pending"],
+                help="マッチング処理を待っている数",
+            )
+        with col4:
+            st.metric(
+                "要確認",
+                extraction_summary["needs_review"],
+                help="手動での確認が必要な数",
+            )
+
+        # Get and display extracted members
+        extracted_members = presenter.get_extracted_members(selected_group.id)
+        if extracted_members:
+            # Create DataFrame for display
+            members_data = []
+            for member in extracted_members:
+                members_data.append(
+                    {
+                        "名前": member.extracted_name,
+                        "役職": member.extracted_role or "-",
+                        "政党": member.extracted_party_name or "-",
+                        "選挙区": member.extracted_district or "-",
+                        "ステータス": member.matching_status,
+                        "信頼度": f"{member.matching_confidence:.2f}"
+                        if member.matching_confidence
+                        else "-",
+                        "抽出日時": member.extracted_at.strftime("%Y-%m-%d %H:%M")
+                        if member.extracted_at
+                        else "-",
+                    }
+                )
+
+            df_extracted = pd.DataFrame(members_data)
+            st.dataframe(df_extracted, use_container_width=True, height=300)
+
+        # Add separator
+        st.divider()
 
     # Extraction settings
     st.markdown("### 抽出設定")
@@ -343,9 +401,9 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
         )
 
     dry_run = st.checkbox(
-        "ドライラン（実際にはメンバーシップを作成しない）",
-        value=True,
-        help="チェックすると、抽出結果の確認のみ行い、実際のメンバーシップは作成しません",
+        "ドライラン（データベースに保存しない）",
+        value=False,
+        help="チェックすると、抽出結果の確認のみ行い、データベースには保存しません",
     )
 
     # Execute extraction

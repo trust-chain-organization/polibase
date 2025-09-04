@@ -20,6 +20,9 @@ from src.infrastructure.external.llm_service import GeminiLLMService
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
 )
+from src.infrastructure.persistence.extracted_parliamentary_group_member_repository_impl import (  # noqa: E501
+    ExtractedParliamentaryGroupMemberRepositoryImpl,
+)
 from src.infrastructure.persistence.parliamentary_group_membership_repository_impl import (  # noqa: E501
     ParliamentaryGroupMembershipRepositoryImpl,
 )
@@ -49,6 +52,9 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
         self.membership_repo = RepositoryAdapter(
             ParliamentaryGroupMembershipRepositoryImpl
         )
+        self.extracted_member_repo = RepositoryAdapter(
+            ExtractedParliamentaryGroupMemberRepositoryImpl
+        )
         self.llm_service = GeminiLLMService()
 
         # Initialize use case with all required dependencies
@@ -57,6 +63,7 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
             politician_repository=self.politician_repo,
             membership_repository=self.membership_repo,
             llm_service=self.llm_service,
+            extracted_member_repository=self.extracted_member_repo,
         )
         self.session = SessionManager()
         self.form_state = self._get_or_create_form_state()
@@ -333,3 +340,33 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
     def get_created_groups(self) -> list[dict[str, Any]]:
         """Get created groups from the session state."""
         return self.form_state.get("created_parliamentary_groups", [])
+
+    def get_extracted_members(self, parliamentary_group_id: int) -> list[Any]:
+        """Get extracted members for a parliamentary group from database."""
+        try:
+            # RepositoryAdapter handles async to sync conversion
+            members = self.extracted_member_repo.get_by_parliamentary_group(
+                parliamentary_group_id
+            )
+            return members
+        except Exception as e:
+            self.logger.error(f"Failed to get extracted members: {e}")
+            return []
+
+    def get_extraction_summary(self, parliamentary_group_id: int) -> dict[str, int]:
+        """Get extraction summary for a parliamentary group."""
+        try:
+            # RepositoryAdapter handles async to sync conversion
+            summary = self.extracted_member_repo.get_extraction_summary(
+                parliamentary_group_id
+            )
+            return summary
+        except Exception as e:
+            self.logger.error(f"Failed to get extraction summary: {e}")
+            return {
+                "total": 0,
+                "pending": 0,
+                "matched": 0,
+                "no_match": 0,
+                "needs_review": 0,
+            }
