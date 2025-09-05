@@ -159,11 +159,19 @@ class LLMServiceMock:
 
     def __enter__(self):
         """Enter context manager"""
-        # Patch LLMService creation
-        llm_service_patch = patch("src.services.llm_service.ChatGoogleGenerativeAI")
+        # Patch GeminiLLMService creation (new location)
+        llm_service_patch = patch(
+            "src.infrastructure.external.llm_service.ChatGoogleGenerativeAI"
+        )
         mock_class = llm_service_patch.start()
         mock_class.return_value = self.mock_llm
         self.patches.append(llm_service_patch)
+
+        # Also patch old location for backward compatibility
+        old_service_patch = patch("src.services.llm_service.ChatGoogleGenerativeAI")
+        old_mock_class = old_service_patch.start()
+        old_mock_class.return_value = self.mock_llm
+        self.patches.append(old_service_patch)
 
         # Also patch direct ChatGoogleGenerativeAI usage
         direct_patch = patch("langchain_google_genai.ChatGoogleGenerativeAI")

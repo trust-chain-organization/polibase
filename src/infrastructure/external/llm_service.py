@@ -61,6 +61,11 @@ class GeminiLLMService(ILLMService):
             convert_system_message_to_human=True,
         )
 
+    @property
+    def llm(self) -> ChatGoogleGenerativeAI:
+        """Get the underlying LLM instance."""
+        return self._llm
+
     async def set_history_repository(
         self, repository: LLMProcessingHistoryRepository | None
     ) -> None:
