@@ -109,8 +109,15 @@ class LLMServiceFactory:
             logger.debug(f"Returning cached LLMService instance: {cache_key}")
             return self._instances[cache_key]
 
+        # Filter config to only include parameters supported by GeminiLLMService
+        gemini_config = {
+            k: v
+            for k, v in config.items()
+            if k in {"api_key", "model_name", "temperature"}
+        }
+
         # Create new instance
-        instance = GeminiLLMService(**config)
+        instance = GeminiLLMService(**gemini_config)
 
         # Wrap with instrumentation if enabled
         if enable_metrics:

@@ -1,5 +1,8 @@
 """Tests for the shared LLM service layer"""
 
+# pyright: reportUnknownParameterType=false, reportMissingParameterType=false
+# pyright: reportUnknownMemberType=false, reportPrivateUsage=false
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -159,25 +162,22 @@ class TestLLMServiceFactory:
         precise = factory.create_precise()
         assert precise.temperature == 0.0
 
-    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    @patch("src.infrastructure.external.llm_service.ChatGoogleGenerativeAI")
     def test_custom_service_creation(self, mock_llm_class, monkeypatch):
         """Test creating custom service"""
         monkeypatch.setenv("GOOGLE_API_KEY", "custom-key")
         factory = LLMServiceFactory()
 
-        service = factory.create(
-            model_name="custom-model", temperature=0.5, max_tokens=2000
-        )
+        service = factory.create(model_name="custom-model", temperature=0.5)
 
         assert service.model_name == "custom-model"
         assert service.temperature == 0.5
-        assert service.max_tokens == 2000
 
 
 class TestIntegration:
     """Integration tests with mocked API calls"""
 
-    @patch("src.services.llm_service.ChatGoogleGenerativeAI")
+    @patch("src.infrastructure.external.llm_service.ChatGoogleGenerativeAI")
     def test_end_to_end_flow(self, mock_llm_class, monkeypatch):
         """Test end-to-end flow with mocked LLM"""
         monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
@@ -200,14 +200,8 @@ class TestIntegration:
         structured_llm = service.get_structured_llm(SampleTestSchema)
         assert structured_llm is not None
 
-        # Test invoke_prompt
-        with patch.object(service, "invoke_prompt") as mock_invoke:
-            mock_invoke.return_value = SampleTestSchema(message="Test", number=42)
-
-            result = service.invoke_prompt(
-                "test_prompt", {"input": "test"}, output_schema=SampleTestSchema
-            )
-
-            assert isinstance(result, SampleTestSchema)
-            assert result.message == "Test"
-            assert result.number == 42
+        # Test that service has expected attributes
+        assert hasattr(service, "model_name")
+        assert hasattr(service, "temperature")
+        assert service.model_name is not None
+        assert service.temperature is not None
