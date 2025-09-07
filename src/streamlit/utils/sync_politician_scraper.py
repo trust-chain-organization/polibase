@@ -114,52 +114,97 @@ class SyncPoliticianScraper:
 
             if result:
                 # 抽出された政治家を分類
-                all_names = []
-                new_names = []
-                updated_names = []
+                all_politicians = []
+                new_politicians_list = []
+                updated_politicians_list = []
 
                 for politician in result:
                     # IDが0の場合は新規とみなす
                     if politician.id == 0:
                         new_politicians += 1
-                        new_names.append(politician.name)
+                        new_politicians_list.append(politician)
                     else:
                         updated_politicians += 1
-                        updated_names.append(politician.name)
-                    all_names.append(politician.name)
+                        updated_politicians_list.append(politician)
+                    all_politicians.append(politician)
 
-                # 全体の抽出結果を表示（最初の10人）
-                if all_names:
-                    display_names = ", ".join(all_names[:10])
-                    if len(all_names) > 10:
-                        display_names += f" ... 他{len(all_names) - 10}人"
+                # 全体の抽出結果サマリーを表示
+                self.logger.add_log(
+                    self.log_key,
+                    f"✅ {self.party_name}から{total_scraped}人の政治家を抽出しました",
+                    "success",
+                )
+
+                # 詳細情報を折りたたみで表示（全政治家リスト）
+                if all_politicians:
+                    details_lines = ["【抽出された政治家一覧】"]
+                    for i, politician in enumerate(all_politicians[:30], 1):
+                        status = "🆕" if politician.id == 0 else "📌"
+                        district = (
+                            f" ({politician.district})" if politician.district else ""
+                        )
+                        position = (
+                            f" - {politician.position}" if politician.position else ""
+                        )
+                        details_lines.append(
+                            f"  {i}. {status} {politician.name}{district}{position}"
+                        )
+                    if len(all_politicians) > 30:
+                        details_lines.append(f"  ... 他{len(all_politicians) - 30}人")
 
                     self.logger.add_log(
                         self.log_key,
-                        f"📊 抽出された政治家 ({total_scraped}人): {display_names}",
-                        "info",
+                        f"📊 政治家詳細 ({total_scraped}人)",
+                        "details",
+                        details="\n".join(details_lines),
                     )
 
-                # 新規追加された政治家を表示
-                if new_names:
-                    display_new = ", ".join(new_names[:5])
-                    if len(new_names) > 5:
-                        display_new += f" ... 他{len(new_names) - 5}人"
+                # 新規追加された政治家の詳細（折りたたみ）
+                if new_politicians_list:
+                    new_details = ["【新規追加された政治家】"]
+                    for politician in new_politicians_list[:20]:
+                        district = (
+                            f" ({politician.district})" if politician.district else ""
+                        )
+                        position = (
+                            f" - {politician.position}" if politician.position else ""
+                        )
+                        new_details.append(f"  • {politician.name}{district}{position}")
+                    if len(new_politicians_list) > 20:
+                        new_details.append(
+                            f"  ... 他{len(new_politicians_list) - 20}人"
+                        )
+
                     self.logger.add_log(
                         self.log_key,
-                        f"🆕 新規追加: {display_new}",
-                        "success",
+                        f"🆕 新規追加 ({new_politicians}人)",
+                        "details",
+                        details="\n".join(new_details),
                     )
 
-                # 更新された政治家を表示
-                if updated_names:
-                    display_updated = ", ".join(updated_names[:5])
-                    if len(updated_names) > 5:
-                        display_updated += f" ... 他{len(updated_names) - 5}人"
+                # 更新された政治家の詳細（折りたたみ）
+                if updated_politicians_list:
+                    updated_details = ["【情報が更新された政治家】"]
+                    for politician in updated_politicians_list[:20]:
+                        district = (
+                            f" ({politician.district})" if politician.district else ""
+                        )
+                        position = (
+                            f" - {politician.position}" if politician.position else ""
+                        )
+                        updated_details.append(
+                            f"  • {politician.name}{district}{position}"
+                        )
+                    if len(updated_politicians_list) > 20:
+                        updated_details.append(
+                            f"  ... 他{len(updated_politicians_list) - 20}人"
+                        )
+
                     self.logger.add_log(
                         self.log_key,
-                        f"📌 情報更新: {display_updated}",
-                        "info",
+                        f"📌 情報更新 ({updated_politicians}人)",
+                        "details",
+                        details="\n".join(updated_details),
                     )
 
             # 処理完了時間を計算
@@ -173,30 +218,25 @@ class SyncPoliticianScraper:
                 "info",
             )
 
-            # サマリーをログに出力
+            # 処理完了メッセージ
             self.logger.add_log(
                 self.log_key,
-                f"🎉 【処理完了】 {self.party_name}の政治家抽出が正常に完了しました！",
+                f"🎉 【処理完了】 {self.party_name}の政治家抽出が完了しました",
                 "success",
             )
 
-            # 統計情報を表示
-            stats_msg = (
-                f"📈 統計情報:\n"
-                f"  • 総抽出数: {total_scraped}人\n"
-                f"  • 新規作成: {new_politicians}人\n"
-                f"  • 情報更新: {updated_politicians}人\n"
-                f"  • スキップ: {skipped_politicians}人"
+            # 統計情報のサマリー
+            stats_text = (
+                f"総数{total_scraped}人 "
+                f"(新規{new_politicians}人, 更新{updated_politicians}人)"
             )
-            if error_count > 0:
-                stats_msg += f"\n  • エラー: {error_count}件"
-
             self.logger.add_log(
                 self.log_key,
-                stats_msg,
+                f"📈 抽出結果: {stats_text}",
                 "info",
             )
 
+            # 処理時間
             self.logger.add_log(
                 self.log_key, f"⏱️ 処理時間: {processing_time:.2f}秒", "info"
             )
