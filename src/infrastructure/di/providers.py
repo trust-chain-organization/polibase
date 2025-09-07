@@ -162,7 +162,7 @@ class DatabaseContainer(containers.DeclarativeContainer):
     )
 
     session = providers.Factory(
-        session_factory,
+        lambda factory=session_factory: factory(),
     )
 
     async_session = providers.Factory(
