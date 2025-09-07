@@ -1,5 +1,8 @@
 """政党管理ページ"""
 
+import asyncio
+import threading
+
 import pandas as pd
 from sqlalchemy import text
 
@@ -117,8 +120,12 @@ def manage_political_parties():
         if filtered_parties:
             # 政党ごとにURL編集フォームを表示
             for idx, party in enumerate(filtered_parties):
+                # 処理中の状態を管理
+                scraping_processing_key = f"politician_scraping_{party.id}"
+                is_scraping = st.session_state.get(scraping_processing_key, False)
+
                 # 各政党を個別に表示
-                col1, col2, col3, col4 = st.columns([3, 2, 3, 1])
+                col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 1, 1])
 
                 with col1:
                     st.markdown(f"**{party.name}**")
@@ -138,13 +145,44 @@ def manage_political_parties():
                     # 現在のURLを表示（編集モードでない場合）
                     if not st.session_state[edit_key] and party.members_list_url:
                         url = party.members_list_url
-                        display_url = url[:30] + "..." if len(url) > 30 else url
+                        display_url = url[:25] + "..." if len(url) > 25 else url
                         st.caption(f"🔗 {display_url}")
 
                 with col4:
                     if st.button("✏️ 編集", key=f"edit_party_btn_{party.id}"):
                         st.session_state[edit_key] = not st.session_state[edit_key]
                         st.rerun()
+
+                with col5:
+                    # 政治家抽出ボタン
+                    if is_scraping:
+                        st.button(
+                            "処理中...",
+                            key=f"scrape_politicians_{party.id}",
+                            disabled=True,
+                            type="secondary",
+                        )
+                    elif party.members_list_url:
+                        if st.button(
+                            "🔍 抽出",
+                            key=f"scrape_politicians_{party.id}",
+                            type="primary",
+                            help="政治家情報を抽出します",
+                        ):
+                            # 処理中フラグを設定
+                            st.session_state[scraping_processing_key] = True
+                            # ログ表示用のコンテナを作成
+                            st.session_state[f"show_politician_log_{party.id}"] = True
+                            # バックグラウンドで処理を実行
+                            execute_politician_scraping(party.id, party.name)
+                            st.rerun()
+                    else:
+                        st.button(
+                            "🔍 抽出",
+                            key=f"scrape_politicians_{party.id}",
+                            disabled=True,
+                            help="議員一覧URLを設定してください",
+                        )
 
                 # 編集モード
                 if st.session_state[edit_key]:
@@ -190,6 +228,91 @@ def manage_political_parties():
                                 st.session_state[edit_key] = False
                                 st.rerun()
 
+                # ログ表示エリア
+                if st.session_state.get(f"show_politician_log_{party.id}", False):
+                    import json
+                    import time
+
+                    from src.streamlit.utils.processing_logger import ProcessingLogger
+
+                    proc_logger = ProcessingLogger()
+                    log_key = party.id
+
+                    # 処理完了をチェック
+                    status_file = proc_logger.base_dir / f"completed_{party.id}.json"
+                    if status_file.exists():
+                        with open(status_file) as f:
+                            status = json.load(f)
+                            if status.get("completed"):
+                                # 処理完了フラグを更新
+                                st.session_state[scraping_processing_key] = False
+                                # ファイルを削除
+                                status_file.unlink()
+                                # 自動リロード
+                                time.sleep(0.5)
+                                st.rerun()
+
+                    # 毎回最新のログを取得
+                    logs = proc_logger.get_logs(log_key)
+
+                    # 処理中かログがある場合は表示
+                    is_processing = st.session_state.get(scraping_processing_key, False)
+
+                    if logs or is_processing:
+                        with st.expander(f"📋 {party.name} - 処理ログ", expanded=True):
+                            # 処理中の場合は自動リロード
+                            if is_processing:
+                                # 0.5秒後に自動リロード（より頻繁に更新）
+                                time.sleep(0.5)
+                                st.rerun()
+
+                            if is_processing:
+                                col_status1, col_status2 = st.columns([1, 9])
+                                with col_status1:
+                                    st.spinner()
+                                with col_status2:
+                                    st.info("処理中...")
+
+                            # ログを時系列順に表示
+                            for log_entry in logs:
+                                level = log_entry.get("level", "info")
+                                message = log_entry.get("message", "")
+                                details = log_entry.get("details", None)
+
+                                # レベルに応じてアイコンとスタイルを設定
+                                if level == "error":
+                                    st.error(message)
+                                elif level == "warning":
+                                    st.warning(message)
+                                elif level == "success":
+                                    st.success(message)
+                                elif level == "details":
+                                    with st.expander(message, expanded=False):
+                                        if details:
+                                            st.text(details)
+                                        else:
+                                            st.text(message)
+                                else:
+                                    st.info(message)
+
+                                # 詳細情報がある場合は折りたたみで表示
+                                if details and level != "details":
+                                    with st.expander("詳細", expanded=False):
+                                        st.text(details)
+
+                            # 処理が完了している場合は、リロードボタンを表示
+                            if not is_processing:
+                                if st.button(
+                                    "🔄 ログをクリア",
+                                    key=f"clear_log_{party.id}",
+                                ):
+                                    proc_logger.clear_logs(log_key)
+                                    st.session_state[
+                                        f"show_politician_log_{party.id}"
+                                    ] = False
+                                    st.session_state[scraping_processing_key] = False
+                                    st.rerun()
+
                 # 区切り線（最後の項目以外）
                 if idx < len(filtered_parties) - 1:
                     st.markdown("---")
@@ -216,3 +339,107 @@ def manage_political_parties():
 
     finally:
         conn.close()
+
+
+def execute_politician_scraping(party_id: int, party_name: str):
+    """政治家抽出処理をバックグラウンドで実行する
+
+    Args:
+        party_id: 処理対象の政党ID
+        party_name: 政党名（ログ表示用）
+    """
+    from src.streamlit.utils.processing_logger import ProcessingLogger
+
+    # ロガーを初期化
+    proc_logger = ProcessingLogger()
+    log_key = party_id
+    proc_logger.clear_logs(log_key)  # 既存のログをクリア
+    proc_logger.set_processing_status(log_key, True)  # 処理中フラグを設定
+
+    # セッションステートにログ表示フラグを設定
+    st.session_state[f"show_politician_log_{party_id}"] = True
+    st.session_state[f"politician_scraping_{party_id}"] = True
+
+    def run_async_processing():
+        """非同期処理を実行するラッパー関数"""
+        import logging
+
+        from src.streamlit.utils.processing_logger import ProcessingLogger
+        from src.streamlit.utils.sync_politician_scraper import SyncPoliticianScraper
+
+        proc_logger = ProcessingLogger()
+        log_key = party_id
+        logger = logging.getLogger(__name__)
+
+        # 処理開始をログ
+        proc_logger.add_log(log_key, "🚀 バックグラウンド処理を開始", "info")
+
+        loop = None
+        try:
+            # 非同期処理を同期的に実行
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            # 同期的なプロセッサを使用
+            scraper = SyncPoliticianScraper(party_id, party_name)
+            result = loop.run_until_complete(scraper.process())
+
+            # 処理完了をログ
+            proc_logger.add_log(
+                log_key, "✅ バックグラウンド処理が完了しました", "success"
+            )
+
+            # ログが確実に書き込まれるまで少し待つ
+            import time
+
+            time.sleep(0.5)
+
+            # 処理完了フラグを更新
+            proc_logger.set_processing_status(log_key, False)
+
+            # セッションステートのフラグも更新
+            # （別スレッドからは直接できないので、ファイル経由で通知）
+            import json
+
+            status_file = proc_logger.base_dir / f"completed_{party_id}.json"
+            with open(status_file, "w") as f:
+                json.dump({"completed": True}, f)
+
+            return result
+
+        except Exception as e:
+            proc_logger.add_log(log_key, f"❌ エラーが発生しました: {str(e)}", "error")
+            logger.error(
+                f"Failed to scrape politicians for party {party_id}: {e}",
+                exc_info=True,
+            )
+
+            # 処理完了フラグを更新
+            proc_logger.set_processing_status(log_key, False)
+
+            # エラー状態を記録
+            import json
+
+            status_file = proc_logger.base_dir / f"completed_{party_id}.json"
+            with open(status_file, "w") as f:
+                json.dump({"completed": True, "error": str(e)}, f)
+        finally:
+            if loop:
+                # すべてのタスクが完了するまで待つ
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
+                loop.close()
+
+            logger.info(f"Background processing thread finished for party {party_id}")
+
+    # バックグラウンドスレッドで処理を実行
+    thread = threading.Thread(target=run_async_processing, daemon=True)
+    thread.start()
+
+    # UIフィードバック用のメッセージ
+    st.info(f"🔍 {party_name}の政治家抽出処理を開始しました...")
+    st.caption("処理には数分かかる場合があります。完了後、自動的に画面が更新されます。")

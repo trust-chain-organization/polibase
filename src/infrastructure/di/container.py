@@ -119,7 +119,19 @@ class ApplicationContainer(containers.DeclarativeContainer):
         container = cls()
 
         # Load settings based on environment
-        settings = get_settings()
+        try:
+            settings = get_settings()
+        except Exception:
+            # If settings failed to load, create a fresh instance
+            from src.config.settings import Settings
+
+            settings = Settings()
+
+        # Additional check for None settings
+        if settings is None:
+            from src.config.settings import Settings
+
+            settings = Settings()
 
         # Apply environment-specific configuration
         if environment == Environment.TESTING:
@@ -138,31 +150,93 @@ class ApplicationContainer(containers.DeclarativeContainer):
             )
         elif environment == Environment.PRODUCTION:
             # Use production settings (validate required configs)
-            settings.validate()
+            if settings:
+                settings.validate()
+                database_url = settings.get_database_url()
+                google_api_key = settings.get_required("google_api_key")
+                llm_model = settings.llm_model
+                llm_temperature = settings.llm_temperature
+                gcs_bucket_name = settings.gcs_bucket_name
+                gcs_project_id = settings.gcs_project_id
+                web_scraper_timeout = settings.web_scraper_timeout
+                page_load_timeout = settings.page_load_timeout
+            else:
+                # Production requires proper settings, fall back to defaults but warn
+                import logging
+
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    "Settings not initialized properly, using fallback values"
+                )
+                database_url = "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db"
+                google_api_key = ""  # Will need to be set
+                llm_model = "gemini-2.0-flash"
+                llm_temperature = 0.0
+                gcs_bucket_name = "polibase-scraped-minutes"
+                gcs_project_id = None
+                web_scraper_timeout = 60
+                page_load_timeout = 30
+
             container.config.from_dict(
                 {
-                    "database_url": settings.get_database_url(),
-                    "google_api_key": settings.get_required("google_api_key"),
-                    "llm_model": settings.llm_model,
-                    "llm_temperature": settings.llm_temperature,
-                    "gcs_bucket_name": settings.gcs_bucket_name,
-                    "gcs_project_id": settings.gcs_project_id,
-                    "web_scraper_timeout": settings.web_scraper_timeout,
-                    "page_load_timeout": settings.page_load_timeout,
+                    "database_url": database_url,
+                    "google_api_key": google_api_key,
+                    "llm_model": llm_model,
+                    "llm_temperature": llm_temperature,
+                    "gcs_bucket_name": gcs_bucket_name,
+                    "gcs_project_id": gcs_project_id,
+                    "web_scraper_timeout": web_scraper_timeout,
+                    "page_load_timeout": page_load_timeout,
                 }
             )
         else:  # DEVELOPMENT
             # Use development settings (more lenient)
+            import logging
+
+            logger = logging.getLogger(__name__)
+
+            if settings:
+                database_url = settings.get_database_url()
+                google_api_key = settings.google_api_key or "dev-api-key"
+                llm_model = settings.llm_model
+                llm_temperature = settings.llm_temperature
+                gcs_bucket_name = settings.gcs_bucket_name
+                gcs_project_id = settings.gcs_project_id
+                web_scraper_timeout = settings.web_scraper_timeout
+                page_load_timeout = settings.page_load_timeout
+            else:
+                # Fallback values if settings is None
+                logger.warning(
+                    "Settings is None, using fallback values for development env"
+                )
+                database_url = "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db"
+                google_api_key = "dev-api-key"
+                llm_model = "gemini-2.0-flash"
+                llm_temperature = 0.0
+                gcs_bucket_name = "polibase-scraped-minutes"
+                gcs_project_id = None
+                web_scraper_timeout = 60
+                page_load_timeout = 30
+
+            # Ensure database_url is never None
+            if database_url is None:
+                logger.warning("database_url is None after settings, using fallback")
+                database_url = "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db"
+
+            logger.info(
+                f"Setting database_url in container config: {database_url[:50]}..."
+            )
+
             container.config.from_dict(
                 {
-                    "database_url": settings.get_database_url(),
-                    "google_api_key": settings.google_api_key or "dev-api-key",
-                    "llm_model": settings.llm_model,
-                    "llm_temperature": settings.llm_temperature,
-                    "gcs_bucket_name": settings.gcs_bucket_name,
-                    "gcs_project_id": settings.gcs_project_id,
-                    "web_scraper_timeout": settings.web_scraper_timeout,
-                    "page_load_timeout": settings.page_load_timeout,
+                    "database_url": database_url,
+                    "google_api_key": google_api_key,
+                    "llm_model": llm_model,
+                    "llm_temperature": llm_temperature,
+                    "gcs_bucket_name": gcs_bucket_name,
+                    "gcs_project_id": gcs_project_id,
+                    "web_scraper_timeout": web_scraper_timeout,
+                    "page_load_timeout": page_load_timeout,
                 }
             )
 

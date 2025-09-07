@@ -3,22 +3,37 @@
 import asyncio
 import logging
 from types import TracebackType
+from typing import TYPE_CHECKING
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
+
+if TYPE_CHECKING:
+    from src.streamlit.utils.processing_logger import ProcessingLogger
 
 from ..config.settings import get_settings
 from .models import WebPageContent
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)  # Ensure INFO level logs are output
 
 
 class PartyMemberPageFetcher:
     """政党の議員一覧ページを取得（ページネーション対応）"""
 
-    def __init__(self):
+    def __init__(
+        self, party_id: int | None = None, proc_logger: "ProcessingLogger | None" = None
+    ):
         self.browser: Browser | None = None
         self.context: BrowserContext | None = None
         self.settings = get_settings()
+        self.party_id = party_id
+        self.proc_logger = proc_logger
+        if party_id is not None and proc_logger is None:
+            from src.streamlit.utils.processing_logger import ProcessingLogger
+
+            self.proc_logger = ProcessingLogger()
+        if party_id is not None:
+            self.log_key = party_id
 
     async def __aenter__(self):
         try:
@@ -78,15 +93,91 @@ class PartyMemberPageFetcher:
             raise RuntimeError("Browser context not initialized")
 
         page = await self.context.new_page()
+        if self.proc_logger:
+            self.proc_logger.add_log(self.log_key, "🎬 fetch_all_pages処理開始", "info")
         try:
             # 最初のページを取得
             logger.info(f"Fetching initial page: {start_url}")
-            await page.goto(
-                start_url,
-                wait_until="networkidle",
-                timeout=self.settings.page_load_timeout * 1000,
-            )
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, f"📖 最初のページを取得中: {start_url}", "info"
+                )
+            try:
+                # まずはdomcontentloadedで高速に読み込み
+                if self.proc_logger:
+                    timeout_sec = self.settings.page_load_timeout
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        f"⏳ page.goto開始 (timeout={timeout_sec}秒)",
+                        "info",
+                    )
+                await page.goto(
+                    start_url,
+                    wait_until="domcontentloaded",
+                    timeout=self.settings.page_load_timeout * 1000,
+                )
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key, "✅ page.goto完了 (domcontentloaded)", "success"
+                    )
+                # その後、networkidleを短いタイムアウトで試す
+                try:
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key, "⏳ networkidle待機中 (5秒)", "info"
+                        )
+                    await page.wait_for_load_state(
+                        "networkidle",
+                        timeout=5000,  # 5秒のみ待つ
+                    )
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key, "✅ networkidle完了", "success"
+                        )
+                except Exception:
+                    # networkidleがタイムアウトしても続行
+                    logger.debug("Network idle timeout, but continuing")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key,
+                            "ℹ️ networkidleタイムアウト (続行します)",
+                            "info",
+                        )
+            except Exception as e:
+                logger.warning(f"Initial page load with domcontentloaded failed: {e}")
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        f"⚠️ ページ読み込みエラー（リトライ中）: {str(e)[:100]}",
+                        "warning",
+                    )
+                # フォールバック: loadイベントまで待つ
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        "🔄 フォールバック: loadイベントで再試行",
+                        "warning",
+                    )
+                await page.goto(
+                    start_url,
+                    wait_until="load",
+                    timeout=self.settings.page_load_timeout * 1000,
+                )
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key, "✅ page.goto完了 (loadイベント)", "success"
+                    )
+
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, "⏳ 動的コンテンツの読み込み待機 (2秒)", "info"
+                )
             await asyncio.sleep(2)  # 動的コンテンツの読み込み待機
+
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, "✅ ページの初期読み込み完了", "success"
+                )
 
             current_page_num = 1
 
@@ -95,6 +186,12 @@ class PartyMemberPageFetcher:
                 current_url = page.url
                 if current_url in visited_urls:
                     logger.info("Already visited this URL, stopping pagination")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key,
+                            "ℹ️ 同じURLが検出されたため、ページネーションを終了",
+                            "info",
+                        )
                     break
 
                 visited_urls.add(current_url)
@@ -109,35 +206,91 @@ class PartyMemberPageFetcher:
                 )
 
                 logger.info(f"Fetched page {current_page_num}: {current_url}")
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        f"📄 ページ{current_page_num}を取得: {current_url}",
+                        "info",
+                    )
 
                 # 次のページへのリンクを探す
                 next_link = await self._find_next_page_link(page)
 
                 if not next_link:
                     logger.info("No more pages found")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key, "ℹ️ これ以上のページはありません", "info"
+                        )
                     break
 
                 # 次のページへ移動
                 try:
                     logger.info("Attempting to click next page link")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key,
+                            f"➡️ ページ{current_page_num + 1}へ移動中...",
+                            "info",
+                        )
                     await next_link.click()
+                    # domcontentloadedを待つ
                     await page.wait_for_load_state(
-                        "networkidle", timeout=self.settings.page_load_timeout * 1000
+                        "domcontentloaded",
+                        timeout=self.settings.page_load_timeout * 1000,
                     )
+                    # networkidleは短いタイムアウトで試す
+                    try:
+                        await page.wait_for_load_state("networkidle", timeout=3000)
+                    except Exception:
+                        logger.debug("Network idle timeout on pagination, continuing")
                     await asyncio.sleep(2)
                 except Exception as e:
                     logger.warning(f"Failed to navigate to next page: {e}")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key,
+                            f"⚠️ 次ページへの移動失敗: {str(e)[:100]}",
+                            "warning",
+                        )
                     break
 
                 current_page_num += 1
 
+            if self.proc_logger and pages_content:
+                self.proc_logger.add_log(
+                    self.log_key,
+                    f"✅ 全{len(pages_content)}ページの取得が完了しました",
+                    "success",
+                )
             return pages_content
 
         except Exception as e:
             logger.error(f"Error during page fetching from {start_url}: {e}")
             import traceback
 
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            traceback_str = traceback.format_exc()
+            logger.error(f"Traceback: {traceback_str}")
+
+            # Streamlitにエラーを表示
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, f"❌ ページ取得エラー: {str(e)}", "error"
+                )
+                # トレースバックの一部も表示
+                self.proc_logger.add_log(
+                    self.log_key,
+                    f"🔍 詳細: {traceback_str[:500]}",
+                    "error",
+                )
+                # タイムアウトエラーの場合は対処法も表示
+                if "Timeout" in str(e):
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        "💡 ヒント: サイトが遅いです。時間をおいて再試行してください。",
+                        "info",
+                    )
+
             # エラーが発生しても、取得済みのページは返す
             return pages_content if pages_content else []
         finally:
@@ -204,11 +357,26 @@ class PartyMemberPageFetcher:
         page = await self.context.new_page()
         try:
             logger.info(f"Fetching page: {url}")
-            await page.goto(
-                url,
-                wait_until="networkidle",
-                timeout=self.settings.page_load_timeout * 1000,
-            )
+            try:
+                # まずはdomcontentloadedで高速に読み込み
+                await page.goto(
+                    url,
+                    wait_until="domcontentloaded",
+                    timeout=self.settings.page_load_timeout * 1000,
+                )
+                # networkidleは短いタイムアウトで試す
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=5000)
+                except Exception:
+                    logger.debug("Network idle timeout, but continuing")
+            except Exception as e:
+                logger.warning(f"Page load with domcontentloaded failed: {e}")
+                # フォールバック: loadイベントまで待つ
+                await page.goto(
+                    url,
+                    wait_until="load",
+                    timeout=self.settings.page_load_timeout * 1000,
+                )
             await asyncio.sleep(2)
 
             content = await page.content()

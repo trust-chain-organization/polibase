@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from bs4 import BeautifulSoup, Tag
 
@@ -11,6 +11,9 @@ from ..infrastructure.persistence.llm_history_helper import SyncLLMHistoryHelper
 from ..services.llm_factory import LLMServiceFactory
 from .models import PartyMemberInfo, PartyMemberList, WebPageContent
 
+if TYPE_CHECKING:
+    from src.streamlit.utils.processing_logger import ProcessingLogger
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,7 +21,10 @@ class PartyMemberExtractor:
     """LLMを使用して政党議員情報を抽出"""
 
     def __init__(
-        self, llm_service: ILLMService | None = None, party_id: int | None = None
+        self,
+        llm_service: ILLMService | None = None,
+        party_id: int | None = None,
+        proc_logger: "ProcessingLogger | None" = None,
     ):
         """
         Initialize PartyMemberExtractor
@@ -26,6 +32,7 @@ class PartyMemberExtractor:
         Args:
             llm_service: LLMService instance (creates default if not provided)
             party_id: ID of the party being processed (for history tracking)
+            proc_logger: ProcessingLogger instance (optional)
         """
         if llm_service is None:
             factory = LLMServiceFactory()
@@ -35,6 +42,13 @@ class PartyMemberExtractor:
         self.extraction_llm = self.llm_service.get_structured_llm(PartyMemberList)
         self.party_id = party_id
         self.history_helper = SyncLLMHistoryHelper()
+        self.proc_logger = proc_logger
+        if party_id is not None and proc_logger is None:
+            from src.streamlit.utils.processing_logger import ProcessingLogger
+
+            self.proc_logger = ProcessingLogger()
+        if party_id is not None:
+            self.log_key = party_id
 
     def extract_from_pages(
         self, pages: list[WebPageContent], party_name: str
@@ -42,23 +56,46 @@ class PartyMemberExtractor:
         """複数ページから議員情報を抽出"""
         all_members: list[PartyMemberInfo] = []
 
+        logger.info(f"Starting extraction from {len(pages)} pages for {party_name}")
+
         for page in pages:
             logger.info(f"Extracting from page {page.page_number}: {page.url}")
             members = self._extract_from_single_page(page, party_name)
 
             if members and members.members:
+                member_count = len(members.members)
+                logger.info(
+                    f"Extracted {member_count} members from page {page.page_number}"
+                )
                 # 重複チェック
                 existing_names: set[str] = {m.name for m in all_members}
+                new_members_count = 0
                 for member in members.members:
                     if member.name not in existing_names:
                         all_members.append(member)
                         existing_names.add(member.name)
+                        new_members_count += 1
+                        logger.debug(f"Added member: {member.name}")
+                if new_members_count < member_count:
+                    skipped = member_count - new_members_count
+                    logger.info(f"Skipped {skipped} duplicate members")
+            else:
+                logger.warning(f"No members extracted from page {page.page_number}")
 
         result = PartyMemberList(
             members=all_members, total_count=len(all_members), party_name=party_name
         )
 
         logger.info(f"Total extracted members: {len(all_members)}")
+        if all_members:
+            logger.info(
+                f"Members: {', '.join([m.name for m in all_members[:10]])}"
+                + (
+                    f"... and {len(all_members) - 10} more"
+                    if len(all_members) > 10
+                    else ""
+                )
+            )
         return result
 
     def _extract_from_single_page(
@@ -122,11 +159,15 @@ class PartyMemberExtractor:
 
         except Exception as e:
             logger.error(f"Error extracting from page: {e}")
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, f"❌ LLM抽出エラー: {str(e)[:200]}", "error"
+                )
             return None
 
     def _extract_main_content(self, soup: BeautifulSoup) -> str:
         """メインコンテンツを抽出"""
-        # メインコンテンツの候補
+        # メインコンテンツの候補（より幅広いセレクタを追加）
         main_selectors = [
             "main",
             '[role="main"]',
@@ -138,23 +179,39 @@ class PartyMemberExtractor:
             ".member-list",
             ".members",
             "#members",
+            ".container",  # 一般的なコンテナ
+            ".wrapper",  # ラッパー要素
+            "#wrapper",
+            ".page-content",
+            ".site-content",
         ]
 
         for selector in main_selectors:
             main = soup.select_one(selector)
             if main:
-                return self._clean_text(main.get_text(separator="\n", strip=True))
+                content = self._clean_text(main.get_text(separator="\n", strip=True))
+                # コンテンツが短すぎる場合はスキップ
+                if len(content) > 500:  # 最低500文字以上
+                    content_len = len(content)
+                    logger.info(
+                        f"Found main content with '{selector}': {content_len} chars"
+                    )
+                    return content
 
         # 見つからない場合はbody全体
         body = soup.find("body")
         if body and isinstance(body, Tag):
             # ヘッダーとフッターを除外
-            for tag in body.find_all(["header", "footer", "nav"]):
+            for tag in body.find_all(["header", "footer", "nav", "aside"]):
                 if isinstance(tag, Tag):
                     tag.decompose()
-            return self._clean_text(body.get_text(separator="\n", strip=True))
+            content = self._clean_text(body.get_text(separator="\n", strip=True))
+            logger.info(f"Using entire body content, length: {len(content)}")
+            return content
 
-        return self._clean_text(soup.get_text(separator="\n", strip=True))
+        content = self._clean_text(soup.get_text(separator="\n", strip=True))
+        logger.info(f"Using full page content, length: {len(content)}")
+        return content
 
     def _clean_text(self, text: str) -> str:
         """テキストをクリーンアップ"""
