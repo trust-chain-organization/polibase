@@ -14,6 +14,7 @@ from src.application.usecases.manage_conference_members_usecase import (
 from src.application.usecases.match_speakers_usecase import MatchSpeakersUseCase
 from src.application.usecases.process_minutes_usecase import ProcessMinutesUseCase
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
+from src.domain.services.politician_domain_service import PoliticianDomainService
 from src.infrastructure.external.llm_service import GeminiLLMService
 from src.infrastructure.external.storage_service import (
     GCSStorageService,
@@ -275,6 +276,9 @@ class ServiceContainer(containers.DeclarativeContainer):
         headless=True,
     )
 
+    # Domain services
+    politician_domain_service = providers.Factory(PoliticianDomainService)
+
     # Mock services for testing (these may not have real implementations yet)
     minutes_domain_service = providers.Factory(lambda: MockDomainService("minutes"))
 
@@ -316,8 +320,9 @@ class UseCaseContainer(containers.DeclarativeContainer):
         ScrapePoliticiansUseCase,
         political_party_repository=repositories.political_party_repository,
         politician_repository=repositories.politician_repository,
+        speaker_repository=repositories.speaker_repository,
+        politician_domain_service=services.politician_domain_service,
         web_scraper_service=services.web_scraper_service,
-        llm_service=services.llm_service,
     )
 
     manage_conference_members_usecase = providers.Factory(
