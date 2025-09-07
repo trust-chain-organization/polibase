@@ -1,8 +1,10 @@
 """議事録処理のログ管理ユーティリティ"""
 
+import fcntl
 import json
 import os
 import tempfile
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -52,28 +54,56 @@ class ProcessingLogger:
             details: 詳細データ（長いテキストなど、折りたたみ表示する場合）
         """
         log_file = self.get_log_file(meeting_id)
+        max_retries = 5
+        retry_count = 0
 
-        # 既存のログを読み込む
-        logs = self.get_logs(meeting_id)
+        while retry_count < max_retries:
+            try:
+                # ファイルロックを使用して安全に読み書き
+                with open(log_file, "a+", encoding="utf-8") as f:
+                    # ファイルロックを取得
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                    try:
+                        # ファイルの先頭に移動して内容を読み込む
+                        f.seek(0)
+                        content = f.read()
+                        if content.strip():
+                            logs = json.loads(content)
+                        else:
+                            logs = []
 
-        # 新しいログエントリを追加
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        log_entry = {
-            "timestamp": timestamp,
-            "level": level.upper(),
-            "message": message,
-            "formatted": f"[{timestamp}] [{level.upper()}] {message}",
-        }
+                        # 新しいログエントリを追加
+                        timestamp = datetime.now().strftime("%H:%M:%S")
+                        log_entry = {
+                            "timestamp": timestamp,
+                            "level": level.upper(),
+                            "message": message,
+                            "formatted": f"[{timestamp}] [{level.upper()}] {message}",
+                        }
 
-        # 詳細データがある場合は追加
-        if details:
-            log_entry["details"] = details
+                        # 詳細データがある場合は追加
+                        if details:
+                            log_entry["details"] = details
 
-        logs.append(log_entry)
+                        logs.append(log_entry)
 
-        # ファイルに保存
-        with open(log_file, "w", encoding="utf-8") as f:
-            json.dump(logs, f, ensure_ascii=False, indent=2)
+                        # ファイルをクリアして新しい内容を書き込む
+                        f.seek(0)
+                        f.truncate()
+                        json.dump(logs, f, ensure_ascii=False, indent=2)
+                        f.flush()  # 確実にディスクに書き込む
+                    finally:
+                        # ファイルロックを解放
+                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                break  # 成功したらループを抜ける
+            except OSError:
+                retry_count += 1
+                if retry_count < max_retries:
+                    time.sleep(0.1 * retry_count)  # リトライ間隔を増やす
+                else:
+                    # 最大リトライ回数に達した場合はエラーを無視
+                    # （ログが失われるよりは処理を続行する方が良い）
+                    pass
 
     def get_logs(self, meeting_id: int) -> list[dict[str, str]]:
         """ログを取得
@@ -87,16 +117,31 @@ class ProcessingLogger:
         log_file = self.get_log_file(meeting_id)
 
         if log_file.exists():
-            try:
-                with open(log_file, encoding="utf-8") as f:
-                    content = f.read()
-                    if content.strip():  # Check if file has content
-                        return json.loads(content)
+            max_retries = 5
+            retry_count = 0
+
+            while retry_count < max_retries:
+                try:
+                    with open(log_file, encoding="utf-8") as f:
+                        # 共有ロックで読み込み
+                        fcntl.flock(f.fileno(), fcntl.LOCK_SH)
+                        try:
+                            content = f.read()
+                            if content.strip():  # Check if file has content
+                                return json.loads(content)
+                            else:
+                                return []  # Return empty list for empty file
+                        finally:
+                            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                except OSError:
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        time.sleep(0.1 * retry_count)
                     else:
-                        return []  # Return empty list for empty file
-            except (OSError, json.JSONDecodeError):
-                # If file is corrupted or can't be read, return empty list
-                return []
+                        return []  # リトライ失敗時は空リストを返す
+                except json.JSONDecodeError:
+                    # If file is corrupted, return empty list
+                    return []
         return []
 
     def clear_logs(self, meeting_id: int) -> None:
