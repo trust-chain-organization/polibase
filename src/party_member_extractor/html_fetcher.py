@@ -81,11 +81,31 @@ class PartyMemberPageFetcher:
         try:
             # 最初のページを取得
             logger.info(f"Fetching initial page: {start_url}")
-            await page.goto(
-                start_url,
-                wait_until="networkidle",
-                timeout=self.settings.page_load_timeout * 1000,
-            )
+            try:
+                # まずはdomcontentloadedで高速に読み込み
+                await page.goto(
+                    start_url,
+                    wait_until="domcontentloaded",
+                    timeout=self.settings.page_load_timeout * 1000,
+                )
+                # その後、networkidleを短いタイムアウトで試す
+                try:
+                    await page.wait_for_load_state(
+                        "networkidle",
+                        timeout=5000,  # 5秒のみ待つ
+                    )
+                except Exception:
+                    # networkidleがタイムアウトしても続行
+                    logger.debug("Network idle timeout, but continuing")
+            except Exception as e:
+                logger.warning(f"Initial page load with domcontentloaded failed: {e}")
+                # フォールバック: loadイベントまで待つ
+                await page.goto(
+                    start_url,
+                    wait_until="load",
+                    timeout=self.settings.page_load_timeout * 1000,
+                )
+
             await asyncio.sleep(2)  # 動的コンテンツの読み込み待機
 
             current_page_num = 1
@@ -121,9 +141,16 @@ class PartyMemberPageFetcher:
                 try:
                     logger.info("Attempting to click next page link")
                     await next_link.click()
+                    # domcontentloadedを待つ
                     await page.wait_for_load_state(
-                        "networkidle", timeout=self.settings.page_load_timeout * 1000
+                        "domcontentloaded",
+                        timeout=self.settings.page_load_timeout * 1000,
                     )
+                    # networkidleは短いタイムアウトで試す
+                    try:
+                        await page.wait_for_load_state("networkidle", timeout=3000)
+                    except Exception:
+                        logger.debug("Network idle timeout on pagination, continuing")
                     await asyncio.sleep(2)
                 except Exception as e:
                     logger.warning(f"Failed to navigate to next page: {e}")
@@ -204,11 +231,26 @@ class PartyMemberPageFetcher:
         page = await self.context.new_page()
         try:
             logger.info(f"Fetching page: {url}")
-            await page.goto(
-                url,
-                wait_until="networkidle",
-                timeout=self.settings.page_load_timeout * 1000,
-            )
+            try:
+                # まずはdomcontentloadedで高速に読み込み
+                await page.goto(
+                    url,
+                    wait_until="domcontentloaded",
+                    timeout=self.settings.page_load_timeout * 1000,
+                )
+                # networkidleは短いタイムアウトで試す
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=5000)
+                except Exception:
+                    logger.debug("Network idle timeout, but continuing")
+            except Exception as e:
+                logger.warning(f"Page load with domcontentloaded failed: {e}")
+                # フォールバック: loadイベントまで待つ
+                await page.goto(
+                    url,
+                    wait_until="load",
+                    timeout=self.settings.page_load_timeout * 1000,
+                )
             await asyncio.sleep(2)
 
             content = await page.content()
