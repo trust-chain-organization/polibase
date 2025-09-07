@@ -81,7 +81,7 @@ class TestPartyMemberPageFetcher:
 
         # ページ遷移の確認
         mock_page.goto.assert_called_once_with(
-            "https://example.com/members", wait_until="networkidle", timeout=30000
+            "https://example.com/members", wait_until="domcontentloaded", timeout=30000
         )
 
     @pytest.mark.asyncio

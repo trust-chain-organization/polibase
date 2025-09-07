@@ -128,7 +128,7 @@ class TestScrapePoliticiansUseCase:
         assert results[1].name == "鈴木花子"
 
         mock_scraper.scrape_party_members.assert_called_once_with(
-            "https://example.com/members", 1
+            "https://example.com/members", 1, "自民党"
         )
         assert mock_speaker_repo.upsert.call_count == 2
         assert mock_politician_repo.create.call_count == 2
