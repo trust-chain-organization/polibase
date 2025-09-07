@@ -3,8 +3,12 @@
 import asyncio
 import logging
 from types import TracebackType
+from typing import TYPE_CHECKING
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
+
+if TYPE_CHECKING:
+    from src.streamlit.utils.processing_logger import ProcessingLogger
 
 from ..config.settings import get_settings
 from .models import WebPageContent
@@ -15,16 +19,19 @@ logger = logging.getLogger(__name__)
 class PartyMemberPageFetcher:
     """政党の議員一覧ページを取得（ページネーション対応）"""
 
-    def __init__(self, party_id: int | None = None):
+    def __init__(
+        self, party_id: int | None = None, proc_logger: "ProcessingLogger | None" = None
+    ):
         self.browser: Browser | None = None
         self.context: BrowserContext | None = None
         self.settings = get_settings()
         self.party_id = party_id
-        self.proc_logger = None
-        if party_id is not None:
+        self.proc_logger = proc_logger
+        if party_id is not None and proc_logger is None:
             from src.streamlit.utils.processing_logger import ProcessingLogger
 
             self.proc_logger = ProcessingLogger()
+        if party_id is not None:
             self.log_key = party_id
 
     async def __aenter__(self):

@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from bs4 import BeautifulSoup, Tag
 
@@ -11,6 +11,9 @@ from ..infrastructure.persistence.llm_history_helper import SyncLLMHistoryHelper
 from ..services.llm_factory import LLMServiceFactory
 from .models import PartyMemberInfo, PartyMemberList, WebPageContent
 
+if TYPE_CHECKING:
+    from src.streamlit.utils.processing_logger import ProcessingLogger
+
 logger = logging.getLogger(__name__)
 
 
@@ -18,7 +21,10 @@ class PartyMemberExtractor:
     """LLMを使用して政党議員情報を抽出"""
 
     def __init__(
-        self, llm_service: ILLMService | None = None, party_id: int | None = None
+        self,
+        llm_service: ILLMService | None = None,
+        party_id: int | None = None,
+        proc_logger: "ProcessingLogger | None" = None,
     ):
         """
         Initialize PartyMemberExtractor
@@ -26,6 +32,7 @@ class PartyMemberExtractor:
         Args:
             llm_service: LLMService instance (creates default if not provided)
             party_id: ID of the party being processed (for history tracking)
+            proc_logger: ProcessingLogger instance (optional)
         """
         if llm_service is None:
             factory = LLMServiceFactory()
@@ -35,11 +42,12 @@ class PartyMemberExtractor:
         self.extraction_llm = self.llm_service.get_structured_llm(PartyMemberList)
         self.party_id = party_id
         self.history_helper = SyncLLMHistoryHelper()
-        self.proc_logger = None
-        if party_id is not None:
+        self.proc_logger = proc_logger
+        if party_id is not None and proc_logger is None:
             from src.streamlit.utils.processing_logger import ProcessingLogger
 
             self.proc_logger = ProcessingLogger()
+        if party_id is not None:
             self.log_key = party_id
 
     def extract_from_pages(

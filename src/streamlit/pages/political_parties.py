@@ -249,6 +249,8 @@ def manage_political_parties():
                                 st.session_state[scraping_processing_key] = False
                                 # ファイルを削除
                                 status_file.unlink()
+                                # 最新のログを確実に表示するため、もう一度ログを取得
+                                logs = proc_logger.get_logs(log_key)
                                 # 自動リロード
                                 time.sleep(0.5)
                                 st.rerun()
@@ -262,7 +264,8 @@ def manage_political_parties():
 
                             # 処理中の場合は自動リロード
                             if is_processing:
-                                # 1秒後に自動リロード
+                                # 最新のログを再取得してから1秒後に自動リロード
+                                logs = proc_logger.get_logs(log_key)
                                 time.sleep(1)
                                 st.rerun()
 
@@ -388,6 +391,11 @@ def execute_politician_scraping(party_id: int, party_name: str):
             proc_logger.add_log(
                 log_key, "✅ バックグラウンド処理が完了しました", "success"
             )
+
+            # ログが確実に書き込まれるまで少し待つ
+            import time
+
+            time.sleep(0.5)
 
             # 処理完了フラグを更新
             proc_logger.set_processing_status(log_key, False)

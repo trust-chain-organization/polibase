@@ -46,6 +46,7 @@ class PlaywrightScraperService(IWebScraperService):
         from src.streamlit.utils.processing_logger import ProcessingLogger
 
         logger = logging.getLogger(__name__)
+        # Use a single ProcessingLogger instance throughout the chain
         proc_logger = ProcessingLogger()
         log_key = party_id
 
@@ -84,7 +85,10 @@ class PlaywrightScraperService(IWebScraperService):
             # Fetch pages with JavaScript rendering support
             fetcher = None
             try:
-                fetcher = PartyMemberPageFetcher(party_id=party_id)
+                # Pass the ProcessingLogger instance to avoid multiple instances
+                fetcher = PartyMemberPageFetcher(
+                    party_id=party_id, proc_logger=proc_logger
+                )
                 await fetcher.__aenter__()
 
                 proc_logger.add_log(
@@ -111,7 +115,10 @@ class PlaywrightScraperService(IWebScraperService):
                 # Extract party members using LLM
                 proc_logger.add_log(log_key, "🤖 LLMで政治家情報を抽出中...", "info")
 
-                extractor = PartyMemberExtractor(party_id=party_id)
+                # Pass the ProcessingLogger instance to avoid multiple instances
+                extractor = PartyMemberExtractor(
+                    party_id=party_id, proc_logger=proc_logger
+                )
                 members_list = extractor.extract_from_pages(pages, party_name)
 
                 # Convert to expected format
