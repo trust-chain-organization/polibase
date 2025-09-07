@@ -104,6 +104,10 @@ class PlaywrightScraperService(IWebScraperService):
                     log_key, f"✅ {len(pages)}ページ取得完了", "success"
                 )
 
+                # Log page URLs for debugging
+                for i, page in enumerate(pages, 1):
+                    proc_logger.add_log(log_key, f"  ページ{i}: {page.url}", "info")
+
                 # Extract party members using LLM
                 proc_logger.add_log(log_key, "🤖 LLMで政治家情報を抽出中...", "info")
 
@@ -113,6 +117,7 @@ class PlaywrightScraperService(IWebScraperService):
                 # Convert to expected format
                 result = []
                 if members_list and members_list.members:
+                    member_names = []
                     for member in members_list.members:
                         result.append(
                             {
@@ -124,10 +129,20 @@ class PlaywrightScraperService(IWebScraperService):
                                 "profile_page_url": member.profile_url,
                             }
                         )
+                        member_names.append(member.name)
 
                     proc_logger.add_log(
                         log_key, f"✅ {len(result)}人の政治家情報を抽出", "success"
                     )
+
+                    # Log extracted member names for debugging
+                    if member_names:
+                        names_display = ", ".join(member_names[:10])
+                        if len(member_names) > 10:
+                            names_display += f" ... 他{len(member_names) - 10}人"
+                        proc_logger.add_log(
+                            log_key, f"抽出された議員: {names_display}", "info"
+                        )
 
                 return result
 
