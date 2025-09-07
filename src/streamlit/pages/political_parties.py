@@ -230,11 +230,28 @@ def manage_political_parties():
 
                 # ログ表示エリア
                 if st.session_state.get(f"show_politician_log_{party.id}", False):
+                    import json
+                    import time
+
                     from src.streamlit.utils.processing_logger import ProcessingLogger
 
                     proc_logger = ProcessingLogger()
                     log_key = party.id
                     logs = proc_logger.get_logs(log_key)
+
+                    # 処理完了をチェック
+                    status_file = proc_logger.base_dir / f"completed_{party.id}.json"
+                    if status_file.exists():
+                        with open(status_file) as f:
+                            status = json.load(f)
+                            if status.get("completed"):
+                                # 処理完了フラグを更新
+                                st.session_state[scraping_processing_key] = False
+                                # ファイルを削除
+                                status_file.unlink()
+                                # 自動リロード
+                                time.sleep(0.5)
+                                st.rerun()
 
                     if logs:
                         with st.expander(f"📋 {party.name} - 処理ログ", expanded=True):
@@ -242,6 +259,12 @@ def manage_political_parties():
                             is_processing = st.session_state.get(
                                 scraping_processing_key, False
                             )
+
+                            # 処理中の場合は自動リロード
+                            if is_processing:
+                                # 1秒後に自動リロード
+                                time.sleep(1)
+                                st.rerun()
 
                             if is_processing:
                                 col_status1, col_status2 = st.columns([1, 9])
@@ -339,12 +362,17 @@ def execute_politician_scraping(party_id: int, party_name: str):
 
     def run_async_processing():
         """非同期処理を実行するラッパー関数"""
+        import logging
 
         from src.streamlit.utils.processing_logger import ProcessingLogger
         from src.streamlit.utils.sync_politician_scraper import SyncPoliticianScraper
 
         proc_logger = ProcessingLogger()
         log_key = party_id
+        logger = logging.getLogger(__name__)
+
+        # 処理開始をログ
+        proc_logger.add_log(log_key, "🚀 バックグラウンド処理を開始", "info")
 
         loop = None
         try:
@@ -356,14 +384,25 @@ def execute_politician_scraping(party_id: int, party_name: str):
             scraper = SyncPoliticianScraper(party_id, party_name)
             result = loop.run_until_complete(scraper.process())
 
+            # 処理完了をログ
+            proc_logger.add_log(
+                log_key, "✅ バックグラウンド処理が完了しました", "success"
+            )
+
             # 処理完了フラグを更新
             proc_logger.set_processing_status(log_key, False)
+
+            # セッションステートのフラグも更新
+            # （別スレッドからは直接できないので、ファイル経由で通知）
+            import json
+
+            status_file = proc_logger.base_dir / f"completed_{party_id}.json"
+            with open(status_file, "w") as f:
+                json.dump({"completed": True}, f)
+
             return result
 
         except Exception as e:
-            import logging
-
-            logger = logging.getLogger(__name__)
             proc_logger.add_log(log_key, f"❌ エラーが発生しました: {str(e)}", "error")
             logger.error(
                 f"Failed to scrape politicians for party {party_id}: {e}",
@@ -372,10 +411,25 @@ def execute_politician_scraping(party_id: int, party_name: str):
 
             # 処理完了フラグを更新
             proc_logger.set_processing_status(log_key, False)
-            raise
+
+            # エラー状態を記録
+            import json
+
+            status_file = proc_logger.base_dir / f"completed_{party_id}.json"
+            with open(status_file, "w") as f:
+                json.dump({"completed": True, "error": str(e)}, f)
         finally:
             if loop:
+                # すべてのタスクが完了するまで待つ
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                loop.run_until_complete(
+                    asyncio.gather(*pending, return_exceptions=True)
+                )
                 loop.close()
+
+            logger.info(f"Background processing thread finished for party {party_id}")
 
     # バックグラウンドスレッドで処理を実行
     thread = threading.Thread(target=run_async_processing, daemon=True)

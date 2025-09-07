@@ -80,7 +80,18 @@ class SyncPoliticianScraper:
             )
 
             # UseCaseを実行
+            self.logger.add_log(
+                self.log_key,
+                "⚙️ UseCase実行中...",
+                "info",
+            )
             result = await scrape_politicians_usecase.execute(input_dto)
+
+            self.logger.add_log(
+                self.log_key,
+                f"✅ UseCase実行完了 - {len(result)}件の結果",
+                "success",
+            )
 
             # 結果を解析
             total_scraped = len(result)

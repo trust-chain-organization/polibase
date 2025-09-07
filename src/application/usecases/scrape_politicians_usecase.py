@@ -102,6 +102,10 @@ class ScrapePoliticiansUseCase:
         Raises:
             ValueError: party_idが無効、または必須パラメータが未指定の場合
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         # Get parties to scrape
         if request.party_id:
             party = await self.party_repo.get_by_id(request.party_id)
@@ -138,10 +142,17 @@ class ScrapePoliticiansUseCase:
                     )
             else:
                 # Save politicians
-                for data in extracted:
+                logger.info(f"Saving {len(extracted)} politicians to database")
+                for idx, data in enumerate(extracted, 1):
+                    logger.info(
+                        f"Processing politician {idx}/{len(extracted)}: {data.name}"
+                    )
                     politician_dto = await self._create_or_update_politician(data)
                     if politician_dto:
                         all_results.append(politician_dto)
+                        logger.info(
+                            f"Saved: {politician_dto.name} (ID: {politician_dto.id})"
+                        )
 
         return all_results
 
@@ -168,6 +179,12 @@ class ScrapePoliticiansUseCase:
         raw_data = await self.scraper.scrape_party_members(
             party.members_list_url, party.id, party.name
         )
+
+        # Log raw data count
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info(f"Raw data received: {len(raw_data)} items")
 
         # Convert to DTOs
         extracted: list[ExtractedPoliticianDTO] = []
