@@ -38,8 +38,16 @@ class PlaywrightScraperService(IWebScraperService):
         self, url: str, party_id: int, party_name: str | None = None
     ) -> list[dict[str, Any]]:
         """Scrape party members using Playwright with actual implementation."""
+        import asyncio
+        import logging
+
         from src.party_member_extractor.extractor import PartyMemberExtractor
         from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
+        from src.streamlit.utils.processing_logger import ProcessingLogger
+
+        logger = logging.getLogger(__name__)
+        proc_logger = ProcessingLogger()
+        log_key = party_id
 
         # Get party name if not provided
         if party_name is None:
@@ -70,18 +78,35 @@ class PlaywrightScraperService(IWebScraperService):
                 session.close()
 
         try:
+            # Log the start of web scraping
+            proc_logger.add_log(log_key, f"🌐 Webページを取得中: {url}", "info")
+
             # Fetch pages with JavaScript rendering support
-            async with PartyMemberPageFetcher() as fetcher:
+            fetcher = None
+            try:
+                fetcher = PartyMemberPageFetcher()
+                await fetcher.__aenter__()
+
+                proc_logger.add_log(
+                    log_key, "📄 JavaScriptレンダリング後のページを取得中...", "info"
+                )
+
                 pages = await fetcher.fetch_all_pages(url, max_pages=10)
 
                 if not pages:
-                    import logging
-
-                    logger = logging.getLogger(__name__)
                     logger.warning(f"No pages fetched from {url}")
+                    proc_logger.add_log(
+                        log_key, "⚠️ ページが取得できませんでした", "warning"
+                    )
                     return []
 
+                proc_logger.add_log(
+                    log_key, f"✅ {len(pages)}ページ取得完了", "success"
+                )
+
                 # Extract party members using LLM
+                proc_logger.add_log(log_key, "🤖 LLMで政治家情報を抽出中...", "info")
+
                 extractor = PartyMemberExtractor(party_id=party_id)
                 members_list = extractor.extract_from_pages(pages, party_name)
 
@@ -100,13 +125,22 @@ class PlaywrightScraperService(IWebScraperService):
                             }
                         )
 
+                    proc_logger.add_log(
+                        log_key, f"✅ {len(result)}人の政治家情報を抽出", "success"
+                    )
+
                 return result
 
-        except Exception as e:
-            import logging
+            finally:
+                # Ensure proper cleanup
+                if fetcher:
+                    await fetcher.__aexit__(None, None, None)
+                    # Give asyncio time to clean up
+                    await asyncio.sleep(0.1)
 
-            logger = logging.getLogger(__name__)
+        except Exception as e:
             logger.error(f"Failed to scrape party members from {url}: {e}")
+            proc_logger.add_log(log_key, f"❌ エラー: {str(e)}", "error")
             # Return empty list on error instead of dummy data
             return []
 
