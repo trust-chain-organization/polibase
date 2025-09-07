@@ -272,8 +272,7 @@ class ServiceContainer(containers.DeclarativeContainer):
 
     web_scraper_service: providers.Provider[IWebScraperService] = providers.Factory(
         PlaywrightScraperService,
-        timeout=config.web_scraper_timeout,
-        page_load_timeout=config.page_load_timeout,
+        headless=True,
     )
 
     # Mock services for testing (these may not have real implementations yet)
