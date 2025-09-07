@@ -83,7 +83,7 @@ class PlaywrightScraperService(IWebScraperService):
 
                 # Extract party members using LLM
                 extractor = PartyMemberExtractor(party_id=party_id)
-                members_list = await extractor.extract_from_pages(pages, party_name)
+                members_list = extractor.extract_from_pages(pages, party_name)
 
                 # Convert to expected format
                 result = []
@@ -92,11 +92,11 @@ class PlaywrightScraperService(IWebScraperService):
                         result.append(
                             {
                                 "name": member.name,
-                                "furigana": member.furigana,
+                                "furigana": None,  # Not available in PartyMemberInfo
                                 "position": member.position,
                                 "district": member.electoral_district,
-                                "profile_image_url": member.profile_image_url,
-                                "profile_page_url": member.profile_page_url,
+                                "profile_image_url": None,  # Not in PartyMemberInfo
+                                "profile_page_url": member.profile_url,
                             }
                         )
 
