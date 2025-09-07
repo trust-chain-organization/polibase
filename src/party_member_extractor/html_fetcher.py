@@ -93,6 +93,8 @@ class PartyMemberPageFetcher:
             raise RuntimeError("Browser context not initialized")
 
         page = await self.context.new_page()
+        if self.proc_logger:
+            self.proc_logger.add_log(self.log_key, "🎬 fetch_all_pages処理開始", "info")
         try:
             # 最初のページを取得
             logger.info(f"Fetching initial page: {start_url}")
@@ -102,20 +104,45 @@ class PartyMemberPageFetcher:
                 )
             try:
                 # まずはdomcontentloadedで高速に読み込み
+                if self.proc_logger:
+                    timeout_sec = self.settings.page_load_timeout
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        f"⏳ page.goto開始 (timeout={timeout_sec}秒)",
+                        "info",
+                    )
                 await page.goto(
                     start_url,
                     wait_until="domcontentloaded",
                     timeout=self.settings.page_load_timeout * 1000,
                 )
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key, "✅ page.goto完了 (domcontentloaded)", "success"
+                    )
                 # その後、networkidleを短いタイムアウトで試す
                 try:
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key, "⏳ networkidle待機中 (5秒)", "info"
+                        )
                     await page.wait_for_load_state(
                         "networkidle",
                         timeout=5000,  # 5秒のみ待つ
                     )
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key, "✅ networkidle完了", "success"
+                        )
                 except Exception:
                     # networkidleがタイムアウトしても続行
                     logger.debug("Network idle timeout, but continuing")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key,
+                            "ℹ️ networkidleタイムアウト (続行します)",
+                            "info",
+                        )
             except Exception as e:
                 logger.warning(f"Initial page load with domcontentloaded failed: {e}")
                 if self.proc_logger:
@@ -125,12 +152,26 @@ class PartyMemberPageFetcher:
                         "warning",
                     )
                 # フォールバック: loadイベントまで待つ
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        "🔄 フォールバック: loadイベントで再試行",
+                        "warning",
+                    )
                 await page.goto(
                     start_url,
                     wait_until="load",
                     timeout=self.settings.page_load_timeout * 1000,
                 )
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key, "✅ page.goto完了 (loadイベント)", "success"
+                    )
 
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, "⏳ 動的コンテンツの読み込み待機 (2秒)", "info"
+                )
             await asyncio.sleep(2)  # 動的コンテンツの読み込み待機
 
             if self.proc_logger:
@@ -228,12 +269,19 @@ class PartyMemberPageFetcher:
             logger.error(f"Error during page fetching from {start_url}: {e}")
             import traceback
 
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            traceback_str = traceback.format_exc()
+            logger.error(f"Traceback: {traceback_str}")
 
             # Streamlitにエラーを表示
             if self.proc_logger:
                 self.proc_logger.add_log(
                     self.log_key, f"❌ ページ取得エラー: {str(e)}", "error"
+                )
+                # トレースバックの一部も表示
+                self.proc_logger.add_log(
+                    self.log_key,
+                    f"🔍 詳細: {traceback_str[:500]}",
+                    "error",
                 )
                 # タイムアウトエラーの場合は対処法も表示
                 if "Timeout" in str(e):
