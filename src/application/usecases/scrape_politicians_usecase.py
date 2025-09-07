@@ -166,7 +166,7 @@ class ScrapePoliticiansUseCase:
         if party.id is None:
             raise ValueError("Party must have an ID")
         raw_data = await self.scraper.scrape_party_members(
-            party.members_list_url, party.id
+            party.members_list_url, party.id, party.name
         )
 
         # Convert to DTOs

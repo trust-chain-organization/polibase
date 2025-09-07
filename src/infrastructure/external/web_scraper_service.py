@@ -9,7 +9,7 @@ class IWebScraperService(ABC):
 
     @abstractmethod
     async def scrape_party_members(
-        self, url: str, party_id: int
+        self, url: str, party_id: int, party_name: str | None = None
     ) -> list[dict[str, Any]]:
         """Scrape party members from website."""
         pass
@@ -35,11 +35,39 @@ class PlaywrightScraperService(IWebScraperService):
         # Initialize Playwright here
 
     async def scrape_party_members(
-        self, url: str, party_id: int
+        self, url: str, party_id: int, party_name: str | None = None
     ) -> list[dict[str, Any]]:
         """Scrape party members using Playwright with actual implementation."""
         from src.party_member_extractor.extractor import PartyMemberExtractor
         from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
+
+        # Get party name if not provided
+        if party_name is None:
+            # Try to get party name from database
+            from sqlalchemy.orm import sessionmaker
+
+            from src.config.database import get_db_engine
+            from src.infrastructure.persistence.async_session_adapter import (
+                AsyncSessionAdapter,
+            )
+            from src.infrastructure.persistence.political_party_repository_impl import (
+                PoliticalPartyRepositoryImpl,
+            )
+
+            engine = get_db_engine()
+            session_local = sessionmaker(bind=engine)
+            session = session_local()
+            async_session = AsyncSessionAdapter(session)
+            party_repo = PoliticalPartyRepositoryImpl(async_session)
+
+            try:
+                party = await party_repo.get_by_id(party_id)
+                if party:
+                    party_name = party.name
+                else:
+                    party_name = "Unknown Party"
+            finally:
+                session.close()
 
         try:
             # Fetch pages with JavaScript rendering support
@@ -55,7 +83,7 @@ class PlaywrightScraperService(IWebScraperService):
 
                 # Extract party members using LLM
                 extractor = PartyMemberExtractor(party_id=party_id)
-                members_list = await extractor.extract_from_pages(pages)
+                members_list = await extractor.extract_from_pages(pages, party_name)
 
                 # Convert to expected format
                 result = []
