@@ -237,7 +237,6 @@ def manage_political_parties():
 
                     proc_logger = ProcessingLogger()
                     log_key = party.id
-                    logs = proc_logger.get_logs(log_key)
 
                     # 処理完了をチェック
                     status_file = proc_logger.base_dir / f"completed_{party.id}.json"
@@ -249,24 +248,22 @@ def manage_political_parties():
                                 st.session_state[scraping_processing_key] = False
                                 # ファイルを削除
                                 status_file.unlink()
-                                # 最新のログを確実に表示するため、もう一度ログを取得
-                                logs = proc_logger.get_logs(log_key)
                                 # 自動リロード
                                 time.sleep(0.5)
                                 st.rerun()
 
-                    if logs:
-                        with st.expander(f"📋 {party.name} - 処理ログ", expanded=True):
-                            # 処理ステータスの表示
-                            is_processing = st.session_state.get(
-                                scraping_processing_key, False
-                            )
+                    # 毎回最新のログを取得
+                    logs = proc_logger.get_logs(log_key)
 
+                    # 処理中かログがある場合は表示
+                    is_processing = st.session_state.get(scraping_processing_key, False)
+
+                    if logs or is_processing:
+                        with st.expander(f"📋 {party.name} - 処理ログ", expanded=True):
                             # 処理中の場合は自動リロード
                             if is_processing:
-                                # 最新のログを再取得してから1秒後に自動リロード
-                                logs = proc_logger.get_logs(log_key)
-                                time.sleep(1)
+                                # 0.5秒後に自動リロード（より頻繁に更新）
+                                time.sleep(0.5)
                                 st.rerun()
 
                             if is_processing:
