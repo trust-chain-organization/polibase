@@ -14,6 +14,7 @@ from ..config.settings import get_settings
 from .models import WebPageContent
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)  # Ensure INFO level logs are output
 
 
 class PartyMemberPageFetcher:
@@ -95,6 +96,10 @@ class PartyMemberPageFetcher:
         try:
             # 最初のページを取得
             logger.info(f"Fetching initial page: {start_url}")
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, f"📖 最初のページを取得中: {start_url}", "info"
+                )
             try:
                 # まずはdomcontentloadedで高速に読み込み
                 await page.goto(
@@ -128,6 +133,11 @@ class PartyMemberPageFetcher:
 
             await asyncio.sleep(2)  # 動的コンテンツの読み込み待機
 
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, "✅ ページの初期読み込み完了", "success"
+                )
+
             current_page_num = 1
 
             while current_page_num <= max_pages:
@@ -135,6 +145,12 @@ class PartyMemberPageFetcher:
                 current_url = page.url
                 if current_url in visited_urls:
                     logger.info("Already visited this URL, stopping pagination")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key,
+                            "ℹ️ 同じURLが検出されたため、ページネーションを終了",
+                            "info",
+                        )
                     break
 
                 visited_urls.add(current_url)
@@ -149,17 +165,33 @@ class PartyMemberPageFetcher:
                 )
 
                 logger.info(f"Fetched page {current_page_num}: {current_url}")
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        f"📄 ページ{current_page_num}を取得: {current_url}",
+                        "info",
+                    )
 
                 # 次のページへのリンクを探す
                 next_link = await self._find_next_page_link(page)
 
                 if not next_link:
                     logger.info("No more pages found")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key, "ℹ️ これ以上のページはありません", "info"
+                        )
                     break
 
                 # 次のページへ移動
                 try:
                     logger.info("Attempting to click next page link")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key,
+                            f"➡️ ページ{current_page_num + 1}へ移動中...",
+                            "info",
+                        )
                     await next_link.click()
                     # domcontentloadedを待つ
                     await page.wait_for_load_state(
@@ -174,10 +206,22 @@ class PartyMemberPageFetcher:
                     await asyncio.sleep(2)
                 except Exception as e:
                     logger.warning(f"Failed to navigate to next page: {e}")
+                    if self.proc_logger:
+                        self.proc_logger.add_log(
+                            self.log_key,
+                            f"⚠️ 次ページへの移動失敗: {str(e)[:100]}",
+                            "warning",
+                        )
                     break
 
                 current_page_num += 1
 
+            if self.proc_logger and pages_content:
+                self.proc_logger.add_log(
+                    self.log_key,
+                    f"✅ 全{len(pages_content)}ページの取得が完了しました",
+                    "success",
+                )
             return pages_content
 
         except Exception as e:

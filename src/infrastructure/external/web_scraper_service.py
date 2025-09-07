@@ -95,7 +95,15 @@ class PlaywrightScraperService(IWebScraperService):
                     log_key, "📄 JavaScriptレンダリング後のページを取得中...", "info"
                 )
 
+                proc_logger.add_log(
+                    log_key, f"🎯 URL: {url}からページを取得開始", "info"
+                )
+
                 pages = await fetcher.fetch_all_pages(url, max_pages=10)
+
+                proc_logger.add_log(
+                    log_key, f"🎬 fetch_all_pages完了 - {len(pages)}ページ取得", "info"
+                )
 
                 if not pages:
                     logger.warning(f"No pages fetched from {url}")
