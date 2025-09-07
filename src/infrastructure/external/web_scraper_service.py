@@ -37,19 +37,50 @@ class PlaywrightScraperService(IWebScraperService):
     async def scrape_party_members(
         self, url: str, party_id: int
     ) -> list[dict[str, Any]]:
-        """Scrape party members using Playwright."""
-        # Implementation would use Playwright to navigate and extract data
-        # This is a placeholder
-        return [
-            {
-                "name": "山田太郎",
-                "furigana": "ヤマダ タロウ",
-                "position": "衆議院議員",
-                "district": "東京1区",
-                "profile_image_url": "https://example.com/image.jpg",
-                "profile_page_url": "https://example.com/profile",
-            }
-        ]
+        """Scrape party members using Playwright with actual implementation."""
+        from src.party_member_extractor.extractor import PartyMemberExtractor
+        from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
+
+        try:
+            # Fetch pages with JavaScript rendering support
+            async with PartyMemberPageFetcher() as fetcher:
+                pages = await fetcher.fetch_all_pages(url, max_pages=10)
+
+                if not pages:
+                    import logging
+
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"No pages fetched from {url}")
+                    return []
+
+                # Extract party members using LLM
+                extractor = PartyMemberExtractor(party_id=party_id)
+                members_list = await extractor.extract_from_pages(pages)
+
+                # Convert to expected format
+                result = []
+                if members_list and members_list.members:
+                    for member in members_list.members:
+                        result.append(
+                            {
+                                "name": member.name,
+                                "furigana": member.furigana,
+                                "position": member.position,
+                                "district": member.electoral_district,
+                                "profile_image_url": member.profile_image_url,
+                                "profile_page_url": member.profile_page_url,
+                            }
+                        )
+
+                return result
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to scrape party members from {url}: {e}")
+            # Return empty list on error instead of dummy data
+            return []
 
     async def scrape_conference_members(self, url: str) -> list[dict[str, Any]]:
         """Scrape conference members using Playwright."""
