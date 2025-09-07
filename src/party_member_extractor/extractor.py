@@ -35,6 +35,12 @@ class PartyMemberExtractor:
         self.extraction_llm = self.llm_service.get_structured_llm(PartyMemberList)
         self.party_id = party_id
         self.history_helper = SyncLLMHistoryHelper()
+        self.proc_logger = None
+        if party_id is not None:
+            from src.streamlit.utils.processing_logger import ProcessingLogger
+
+            self.proc_logger = ProcessingLogger()
+            self.log_key = party_id
 
     def extract_from_pages(
         self, pages: list[WebPageContent], party_name: str
@@ -145,6 +151,10 @@ class PartyMemberExtractor:
 
         except Exception as e:
             logger.error(f"Error extracting from page: {e}")
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, f"❌ LLM抽出エラー: {str(e)[:200]}", "error"
+                )
             return None
 
     def _extract_main_content(self, soup: BeautifulSoup) -> str:

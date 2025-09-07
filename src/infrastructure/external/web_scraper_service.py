@@ -84,7 +84,7 @@ class PlaywrightScraperService(IWebScraperService):
             # Fetch pages with JavaScript rendering support
             fetcher = None
             try:
-                fetcher = PartyMemberPageFetcher()
+                fetcher = PartyMemberPageFetcher(party_id=party_id)
                 await fetcher.__aenter__()
 
                 proc_logger.add_log(
@@ -155,7 +155,31 @@ class PlaywrightScraperService(IWebScraperService):
 
         except Exception as e:
             logger.error(f"Failed to scrape party members from {url}: {e}")
-            proc_logger.add_log(log_key, f"❌ エラー: {str(e)}", "error")
+            proc_logger.add_log(
+                log_key, "❌ 政治家抽出処理でエラーが発生しました", "error"
+            )
+            proc_logger.add_log(log_key, f"エラー詳細: {str(e)}", "error")
+
+            # エラーの種類に応じたヒントを表示
+            if "Timeout" in str(e):
+                proc_logger.add_log(
+                    log_key,
+                    "💡 対処法: タイムアウト。サイトが混雑している可能性があります。",
+                    "info",
+                )
+            elif "Failed to initialize" in str(e):
+                proc_logger.add_log(
+                    log_key,
+                    "💡 対処法: ブラウザ初期化失敗。リソースを確認してください。",
+                    "info",
+                )
+            elif "LLM" in str(e) or "Gemini" in str(e):
+                proc_logger.add_log(
+                    log_key,
+                    "💡 対処法: AI処理エラー。APIキーやクォータを確認してください。",
+                    "info",
+                )
+
             # Return empty list on error instead of dummy data
             return []
 

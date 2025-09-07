@@ -15,10 +15,17 @@ logger = logging.getLogger(__name__)
 class PartyMemberPageFetcher:
     """政党の議員一覧ページを取得（ページネーション対応）"""
 
-    def __init__(self):
+    def __init__(self, party_id: int | None = None):
         self.browser: Browser | None = None
         self.context: BrowserContext | None = None
         self.settings = get_settings()
+        self.party_id = party_id
+        self.proc_logger = None
+        if party_id is not None:
+            from src.streamlit.utils.processing_logger import ProcessingLogger
+
+            self.proc_logger = ProcessingLogger()
+            self.log_key = party_id
 
     async def __aenter__(self):
         try:
@@ -99,6 +106,12 @@ class PartyMemberPageFetcher:
                     logger.debug("Network idle timeout, but continuing")
             except Exception as e:
                 logger.warning(f"Initial page load with domcontentloaded failed: {e}")
+                if self.proc_logger:
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        f"⚠️ ページ読み込みエラー（リトライ中）: {str(e)[:100]}",
+                        "warning",
+                    )
                 # フォールバック: loadイベントまで待つ
                 await page.goto(
                     start_url,
@@ -165,6 +178,20 @@ class PartyMemberPageFetcher:
             import traceback
 
             logger.error(f"Traceback: {traceback.format_exc()}")
+
+            # Streamlitにエラーを表示
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key, f"❌ ページ取得エラー: {str(e)}", "error"
+                )
+                # タイムアウトエラーの場合は対処法も表示
+                if "Timeout" in str(e):
+                    self.proc_logger.add_log(
+                        self.log_key,
+                        "💡 ヒント: サイトが遅いです。時間をおいて再試行してください。",
+                        "info",
+                    )
+
             # エラーが発生しても、取得済みのページは返す
             return pages_content if pages_content else []
         finally:
