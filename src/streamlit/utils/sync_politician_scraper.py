@@ -61,7 +61,7 @@ class SyncPoliticianScraper:
             )
 
             # DIコンテナを使用してUseCaseを取得
-            container = init_container(environment="production")
+            container = init_container()
             scrape_politicians_usecase = (
                 container.use_cases.scrape_politicians_usecase()
             )

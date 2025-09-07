@@ -124,8 +124,24 @@ class MockRepository:
         self.repository_type = repository_type
 
 
-def create_engine_with_config(database_url: str):
+def create_engine_with_config(database_url: str | None):
     """Create SQLAlchemy engine with appropriate configuration for database type."""
+    # Handle None database_url with a default
+    if database_url is None:
+        import logging
+        import os
+
+        logger = logging.getLogger(__name__)
+        logger.warning("database_url is None, using default value")
+
+        # Check if running in Docker
+        if os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER"):
+            database_url = (
+                "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db"
+            )
+        else:
+            database_url = "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db"
+
     engine_kwargs = {
         "url": database_url,
         "pool_pre_ping": True,
@@ -162,7 +178,8 @@ class DatabaseContainer(containers.DeclarativeContainer):
     )
 
     session = providers.Factory(
-        lambda factory=session_factory: factory(),
+        lambda factory: factory(),
+        factory=session_factory,
     )
 
     async_session = providers.Factory(

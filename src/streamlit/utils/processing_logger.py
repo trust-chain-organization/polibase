@@ -87,8 +87,16 @@ class ProcessingLogger:
         log_file = self.get_log_file(meeting_id)
 
         if log_file.exists():
-            with open(log_file, encoding="utf-8") as f:
-                return json.load(f)
+            try:
+                with open(log_file, encoding="utf-8") as f:
+                    content = f.read()
+                    if content.strip():  # Check if file has content
+                        return json.loads(content)
+                    else:
+                        return []  # Return empty list for empty file
+            except (OSError, json.JSONDecodeError):
+                # If file is corrupted or can't be read, return empty list
+                return []
         return []
 
     def clear_logs(self, meeting_id: int) -> None:

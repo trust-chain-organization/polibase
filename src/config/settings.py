@@ -139,6 +139,11 @@ class Settings:
         Returns:
             Database connection URL
         """
+        # Ensure database_url is not None
+        if not self.database_url:
+            # Use default PostgreSQL URL
+            self.database_url = "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db"
+
         # Check if running in Docker
         if os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER"):
             # Use Docker service name for host
