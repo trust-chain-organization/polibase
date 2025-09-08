@@ -8,10 +8,12 @@ class PartyMemberInfo(BaseModel):
 
     name: str = Field(description="議員の氏名（姓名）")
     position: str | None = Field(
-        description="役職（衆議院議員、参議院議員など）", default=None
+        description="役職（衆議院議員、参議院議員、市議会議員、区議会議員、県議会議員など）",
+        default=None,
     )
     electoral_district: str | None = Field(
-        description="選挙区（例：東京1区、比例北海道）", default=None
+        description="選挙区（例：東京1区、比例北海道、渋谷区、盛岡市など）",
+        default=None,
     )
     prefecture: str | None = Field(
         description="都道府県（例：東京都、北海道）", default=None
