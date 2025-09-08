@@ -112,23 +112,6 @@ class PartyMemberExtractor:
         # メインコンテンツを抽出
         main_content = self._extract_main_content(soup)
 
-        # 特定の議員が抜けている場合の補完処理
-        # 舩後靖彦のような特定の議員がコンテンツに含まれていない場合、HTML全体から抽出
-        if "舩後靖彦" not in main_content and "舩後靖彦" in str(soup):
-            # すべてのテキストを取得して舩後靖彦を探す
-            all_text = soup.get_text(separator="\n", strip=True)
-            if "舩後靖彦" in all_text:
-                # 舩後靖彦の周辺テキストを追加
-                import re
-
-                matches = re.finditer(r".*舩後靖彦.*", all_text)
-                for match in matches:
-                    line = match.group(0).strip()
-                    if line and "舩後靖彦" in line:
-                        main_content += "\n\n【追加議員】\n参議院議員 舩後靖彦"
-                        logger.info("Added missing member 舩後靖彦 to content")
-                        break
-
         if not main_content:
             logger.warning(f"No main content found in {page.url}")
             return None
@@ -233,8 +216,6 @@ class PartyMemberExtractor:
                     title in member_text for title in ["議員", "代表", "幹事長"]
                 ):
                     # 役職で分割を試みる
-                    import re
-
                     # 役職パターンで分割（国会議員・地方議員両方に対応）
                     parts = re.split(
                         r"(?=(?:衆議院議員|参議院議員|都道府県.*?議会議員|市区町村.*?議会議員|.*?市議会議員|.*?区議会議員|.*?町議会議員|.*?村議会議員|.*?県議会議員|.*?都議会議員|.*?府議会議員|.*?道議会議員|代表|幹事長|副代表|副幹事長|政策委員長|国会対策委員長))",
