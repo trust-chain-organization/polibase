@@ -174,6 +174,21 @@ class PartyMemberPageFetcher:
                 )
             await asyncio.sleep(2)  # 動的コンテンツの読み込み待機
 
+            # スクロールして遅延読み込みコンテンツをロード
+            if self.proc_logger:
+                self.proc_logger.add_log(
+                    self.log_key,
+                    "📜 ページをスクロールして全コンテンツを読み込み中...",
+                    "info",
+                )
+            for i in range(3):
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await asyncio.sleep(1)
+                if self.proc_logger and i == 2:
+                    self.proc_logger.add_log(
+                        self.log_key, "✅ スクロール完了", "success"
+                    )
+
             if self.proc_logger:
                 self.proc_logger.add_log(
                     self.log_key, "✅ ページの初期読み込み完了", "success"
@@ -378,6 +393,11 @@ class PartyMemberPageFetcher:
                     timeout=self.settings.page_load_timeout * 1000,
                 )
             await asyncio.sleep(2)
+
+            # スクロールして遅延読み込みコンテンツをロード
+            for _ in range(3):
+                await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await asyncio.sleep(1)
 
             content = await page.content()
             return WebPageContent(url=url, html_content=content, page_number=1)

@@ -167,7 +167,7 @@ class PartyMemberExtractor:
 
     def _extract_main_content(self, soup: BeautifulSoup) -> str:
         """メインコンテンツを抽出"""
-        # メインコンテンツの候補（より幅広いセレクタを追加）
+        # メインコンテンツの候補セレクタ
         main_selectors = [
             "main",
             '[role="main"]',
@@ -176,14 +176,8 @@ class PartyMemberExtractor:
             ".main-content",
             ".content",
             "article",
-            ".member-list",
-            ".members",
-            "#members",
-            ".container",  # 一般的なコンテナ
-            ".wrapper",  # ラッパー要素
-            "#wrapper",
-            ".page-content",
-            ".site-content",
+            ".container",
+            ".wrapper",
         ]
 
         for selector in main_selectors:
@@ -192,9 +186,8 @@ class PartyMemberExtractor:
                 content = self._clean_text(main.get_text(separator="\n", strip=True))
                 # コンテンツが短すぎる場合はスキップ
                 if len(content) > 500:  # 最低500文字以上
-                    content_len = len(content)
                     logger.info(
-                        f"Found main content with '{selector}': {content_len} chars"
+                        f"Found main content with '{selector}': {len(content)} chars"
                     )
                     return content
 
@@ -205,12 +198,14 @@ class PartyMemberExtractor:
             for tag in body.find_all(["header", "footer", "nav", "aside"]):
                 if isinstance(tag, Tag):
                     tag.decompose()
+
             content = self._clean_text(body.get_text(separator="\n", strip=True))
-            logger.info(f"Using entire body content, length: {len(content)}")
+            logger.info(f"Using body content: {len(content)} chars")
             return content
 
+        # bodyタグも見つからない場合は全体
         content = self._clean_text(soup.get_text(separator="\n", strip=True))
-        logger.info(f"Using full page content, length: {len(content)}")
+        logger.info(f"Using full page content: {len(content)} chars")
         return content
 
     def _clean_text(self, text: str) -> str:
