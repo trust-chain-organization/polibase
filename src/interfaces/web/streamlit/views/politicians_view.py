@@ -4,6 +4,7 @@ import streamlit as st
 from src.interfaces.web.streamlit.presenters.politician_presenter import (
     PoliticianPresenter,
 )
+from src.seed_generator import SeedGenerator
 
 
 def render_politicians_page():
@@ -32,6 +33,40 @@ def render_politicians_page():
 def render_politicians_list_tab(presenter: PoliticianPresenter):
     """Render the politicians list tab."""
     st.subheader("政治家一覧")
+
+    # SEEDファイル生成セクション（一番上に配置）
+    with st.container():
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown("### SEEDファイル生成")
+            st.markdown("現在登録されている政治家データからSEEDファイルを生成します")
+        with col2:
+            if st.button(
+                "SEEDファイル生成",
+                key="generate_politicians_seed",
+                type="primary",
+            ):
+                with st.spinner("SEEDファイルを生成中..."):
+                    try:
+                        generator = SeedGenerator()
+                        seed_content = generator.generate_politicians_seed()
+
+                        # ファイルを保存
+                        output_path = "database/seed_politicians_generated.sql"
+                        with open(output_path, "w", encoding="utf-8") as f:
+                            f.write(seed_content)
+
+                        st.success(f"✅ SEEDファイルを生成しました: {output_path}")
+
+                        # 生成内容をプレビュー表示
+                        with st.expander("生成内容をプレビュー", expanded=False):
+                            st.code(seed_content[:5000], language="sql")
+                    except Exception as e:
+                        st.error(
+                            f"❌ SEEDファイル生成中にエラーが発生しました: {str(e)}"
+                        )
+
+    st.divider()
 
     # Get parties for filter
     parties = presenter.get_all_parties()
