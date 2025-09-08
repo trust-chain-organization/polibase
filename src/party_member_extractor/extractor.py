@@ -166,97 +166,8 @@ class PartyMemberExtractor:
             return None
 
     def _extract_main_content(self, soup: BeautifulSoup) -> str:
-        """メインコンテンツを抽出（構造を保持）"""
-        # メンバー要素を優先的に探す
-        member_selectors = [
-            '[class*="member"]',
-            'div[class*="member"]',
-            'article[class*="member"]',
-            'section[class*="member"]',
-            ".wp-block-group",
-            'li[class*="member"]',
-        ]
-
-        member_elements = []
-        # すべてのメンバー要素を収集（最初の一致だけでなく）
-        for selector in member_selectors:
-            elements = soup.select(selector)
-            if elements:
-                # 重複を避けるため、まだ追加されていない要素のみ追加
-                for elem in elements:
-                    if elem not in member_elements:
-                        member_elements.append(elem)
-
-        if member_elements:
-            logger.info(f"Found total {len(member_elements)} member elements")
-
-            # メンバー要素が見つかった場合、それぞれを個別に処理
-            content_parts = []
-            processed_texts = set()  # 重複テキストを避ける
-
-            for elem in member_elements:
-                # 親要素がすでに処理されている場合はスキップ
-                if any(parent in member_elements for parent in elem.parents):
-                    continue
-
-                member_text = elem.get_text(separator=" ", strip=True)
-
-                # 重複や短すぎるテキストをスキップ
-                if (
-                    not member_text
-                    or len(member_text) < 10
-                    or member_text in processed_texts
-                ):
-                    continue
-
-                processed_texts.add(member_text)
-
-                # 長いテキストは複数の議員が含まれている可能性があるので分割
-                if len(member_text) > 200 and any(
-                    title in member_text for title in ["議員", "代表", "幹事長"]
-                ):
-                    # 役職で分割を試みる
-                    # 役職パターンで分割（国会議員・地方議員両方に対応）
-                    parts = re.split(
-                        r"(?=(?:衆議院議員|参議院議員|都道府県.*?議会議員|市区町村.*?議会議員|.*?市議会議員|.*?区議会議員|.*?町議会議員|.*?村議会議員|.*?県議会議員|.*?都議会議員|.*?府議会議員|.*?道議会議員|代表|幹事長|副代表|副幹事長|政策委員長|国会対策委員長))",
-                        member_text,
-                    )
-                    for part in parts:
-                        part = part.strip()
-                        if part and part not in processed_texts:
-                            content_parts.append(
-                                f"【議員{len(content_parts) + 1}】\n{part}"
-                            )
-                            processed_texts.add(part)
-                else:
-                    content_parts.append(
-                        f"【議員{len(content_parts) + 1}】\n{member_text}"
-                    )
-
-            if content_parts:
-                # 複数の議員が一つのテキストに含まれている場合の処理
-                final_content_parts = []
-                for part in content_parts:
-                    # 長い部分テキストで複数の名前が含まれる場合、
-                    # 個別のセクションとして扱う
-                    if "舩後靖彦" in part or "木村英子" in part or len(part) > 200:
-                        # まずは現状のまま追加
-                        final_content_parts.append(
-                            f"【議員セクション {len(final_content_parts) + 1}】\n{part}"
-                        )
-                    else:
-                        final_content_parts.append(
-                            f"【議員 {len(final_content_parts) + 1}】\n{part}"
-                        )
-
-                content = "\n\n".join(final_content_parts)
-                logger.info(
-                    f"Extracted {len(final_content_parts)} member sections, "
-                    f"total: {len(content)} chars"
-                )
-                return content
-
-        # メインコンテンツの候補（より幅広いセレクタを追加）
+        """メインコンテンツを抽出"""
+        # メインコンテンツの候補セレクタ
         main_selectors = [
             "main",
             '[role="main"]',
@@ -265,41 +176,18 @@ class PartyMemberExtractor:
             ".main-content",
             ".content",
             "article",
-            ".member-list",
-            ".members",
-            "#members",
-            ".container",  # 一般的なコンテナ
-            ".wrapper",  # ラッパー要素
-            "#wrapper",
-            ".page-content",
-            ".site-content",
+            ".container",
+            ".wrapper",
         ]
 
         for selector in main_selectors:
             main = soup.select_one(selector)
             if main:
-                # 特別処理: メンバーリストを含む要素の場合、構造を保持
-                member_items = main.select('[class*="member"]') or main.select("li")
-                if member_items and len(member_items) > 5:
-                    content_parts = []
-                    for item in member_items:
-                        item_text = item.get_text(separator=" ", strip=True)
-                        if item_text and len(item_text) > 5:
-                            content_parts.append(item_text)
-                    if content_parts:
-                        content = "\n\n".join(content_parts)
-                        logger.info(
-                            f"Found {len(content_parts)} items in '{selector}': "
-                            f"{len(content)} chars"
-                        )
-                        return content
-
                 content = self._clean_text(main.get_text(separator="\n", strip=True))
                 # コンテンツが短すぎる場合はスキップ
                 if len(content) > 500:  # 最低500文字以上
-                    content_len = len(content)
                     logger.info(
-                        f"Found main content with '{selector}': {content_len} chars"
+                        f"Found main content with '{selector}': {len(content)} chars"
                     )
                     return content
 
@@ -311,37 +199,13 @@ class PartyMemberExtractor:
                 if isinstance(tag, Tag):
                     tag.decompose()
 
-            # 特別処理: 地方議員セクションを明示的に含める
-            content = body.get_text(separator="\n", strip=True)
-
-            # 地方議員セクションを強調
-            if "自治体議員" in content or any(
-                title in content
-                for title in ["市議会議員", "区議会議員", "町議会議員", "県議会議員"]
-            ):
-                lines = content.split("\n")
-                enhanced_lines = []
-                for line in lines:
-                    if (
-                        line.strip()
-                        and "議会議員" in line
-                        and not any(skip in line for skip in ["衆議院", "参議院"])
-                    ):
-                        # 地方議員の行を明示的にマーク
-                        enhanced_lines.append(f"【地方議員】{line}")
-                    else:
-                        enhanced_lines.append(line)
-                content = "\n".join(enhanced_lines)
-
-            content = self._clean_text(content)
-            logger.info(
-                f"Using entire body content with local politicians marked, "
-                f"length: {len(content)}"
-            )
+            content = self._clean_text(body.get_text(separator="\n", strip=True))
+            logger.info(f"Using body content: {len(content)} chars")
             return content
 
+        # bodyタグも見つからない場合は全体
         content = self._clean_text(soup.get_text(separator="\n", strip=True))
-        logger.info(f"Using full page content, length: {len(content)}")
+        logger.info(f"Using full page content: {len(content)} chars")
         return content
 
     def _clean_text(self, text: str) -> str:
