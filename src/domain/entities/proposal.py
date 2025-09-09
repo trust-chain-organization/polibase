@@ -10,11 +10,24 @@ class Proposal(BaseEntity):
         self,
         content: str,
         status: str | None = None,
+        url: str | None = None,
+        submission_date: str | None = None,  # ISO形式の日付文字列
+        submitter: str | None = None,
+        proposal_number: str | None = None,
+        meeting_id: int | None = None,
+        summary: str | None = None,
         id: int | None = None,
     ) -> None:
         super().__init__(id)
         self.content = content
         self.status = status
+        self.url = url
+        self.submission_date = submission_date
+        self.submitter = submitter
+        self.proposal_number = proposal_number
+        self.meeting_id = meeting_id
+        self.summary = summary
 
     def __str__(self) -> str:
-        return f"Proposal {self.id}: {self.content[:50]}..."
+        identifier = self.proposal_number or f"ID:{self.id}"
+        return f"Proposal {identifier}: {self.content[:50]}..."
