@@ -44,6 +44,12 @@ class TestProposalRepositoryImpl:
             "id": 1,
             "content": "令和6年度予算案の承認について",
             "status": "審議中",
+            "url": "https://example.com/proposal/001",
+            "submission_date": "2024-01-15",
+            "submitter": "財務委員会",
+            "proposal_number": "議案第1号",
+            "meeting_id": 100,
+            "summary": "令和6年度の一般会計予算を承認する議案",
             "created_at": None,
             "updated_at": None,
         }
@@ -55,6 +61,12 @@ class TestProposalRepositoryImpl:
             id=1,
             content="令和6年度予算案の承認について",
             status="審議中",
+            url="https://example.com/proposal/001",
+            submission_date="2024-01-15",
+            submitter="財務委員会",
+            proposal_number="議案第1号",
+            meeting_id=100,
+            summary="令和6年度の一般会計予算を承認する議案",
         )
 
     @pytest.mark.asyncio
@@ -294,6 +306,12 @@ class TestProposalRepositoryImpl:
             id=1,
             content="Test content",
             status="審議中",
+            url="https://test.url",
+            submission_date="2024-01-15",
+            submitter="テスト提出者",
+            proposal_number="テスト番号",
+            meeting_id=42,
+            summary="テスト概要",
         )
 
         entity = repository._to_entity(model)
@@ -301,6 +319,12 @@ class TestProposalRepositoryImpl:
         assert entity.id == 1
         assert entity.content == "Test content"
         assert entity.status == "審議中"
+        assert entity.url == "https://test.url"
+        assert entity.submission_date == "2024-01-15"
+        assert entity.submitter == "テスト提出者"
+        assert entity.proposal_number == "テスト番号"
+        assert entity.meeting_id == 42
+        assert entity.summary == "テスト概要"
 
     def test_to_model(self, repository: ProposalRepositoryImpl) -> None:
         """Test _to_model conversion."""
@@ -308,6 +332,12 @@ class TestProposalRepositoryImpl:
             id=1,
             content="Test content",
             status="審議中",
+            url="https://test.url",
+            submission_date="2024-01-15",
+            submitter="テスト提出者",
+            proposal_number="テスト番号",
+            meeting_id=42,
+            summary="テスト概要",
         )
 
         model = repository._to_model(entity)
@@ -315,6 +345,12 @@ class TestProposalRepositoryImpl:
         assert model.id == 1
         assert model.content == "Test content"
         assert model.status == "審議中"
+        assert model.url == "https://test.url"
+        assert model.submission_date == "2024-01-15"
+        assert model.submitter == "テスト提出者"
+        assert model.proposal_number == "テスト番号"
+        assert model.meeting_id == 42
+        assert model.summary == "テスト概要"
 
     def test_update_model(self, repository: ProposalRepositoryImpl) -> None:
         """Test _update_model."""
@@ -322,14 +358,158 @@ class TestProposalRepositoryImpl:
             id=1,
             content="Old content",
             status="審議中",
+            url="https://old.url",
+            submission_date="2023-01-01",
+            submitter="旧提出者",
+            proposal_number="旧番号",
+            meeting_id=1,
+            summary="旧概要",
         )
         entity = Proposal(
             id=1,
             content="New content",
             status="可決",
+            url="https://new.url",
+            submission_date="2024-01-01",
+            submitter="新提出者",
+            proposal_number="新番号",
+            meeting_id=2,
+            summary="新概要",
         )
 
         repository._update_model(model, entity)
 
         assert model.content == "New content"
         assert model.status == "可決"
+        assert model.url == "https://new.url"
+        assert model.submission_date == "2024-01-01"
+        assert model.submitter == "新提出者"
+        assert model.proposal_number == "新番号"
+        assert model.meeting_id == 2
+        assert model.summary == "新概要"
+
+    @pytest.mark.asyncio
+    async def test_get_by_meeting_id(
+        self,
+        repository: ProposalRepositoryImpl,
+        mock_session: MagicMock,
+        sample_proposal_dict: dict[str, Any],
+    ) -> None:
+        """Test get_by_meeting_id returns list of proposals."""
+        # Setup mock result
+        mock_row = MagicMock()
+        mock_row._mapping = sample_proposal_dict
+        mock_row._asdict = MagicMock(return_value=sample_proposal_dict)
+        mock_result = MagicMock()
+        mock_result.fetchall = MagicMock(return_value=[mock_row])
+        mock_session.execute.return_value = mock_result
+
+        # Execute
+        result = await repository.get_by_meeting_id(100)
+
+        # Assert
+        assert len(result) == 1
+        assert result[0].id == 1
+        assert result[0].meeting_id == 100
+        assert result[0].proposal_number == "議案第1号"
+        mock_session.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_by_proposal_number_found(
+        self,
+        repository: ProposalRepositoryImpl,
+        mock_session: MagicMock,
+        sample_proposal_dict: dict[str, Any],
+    ) -> None:
+        """Test get_by_proposal_number when proposal is found."""
+        # Setup mock result
+        mock_row = MagicMock()
+        mock_row._mapping = sample_proposal_dict
+        mock_row._asdict = MagicMock(return_value=sample_proposal_dict)
+        mock_result = MagicMock()
+        mock_result.fetchone = MagicMock(return_value=mock_row)
+        mock_session.execute.return_value = mock_result
+
+        # Execute
+        result = await repository.get_by_proposal_number("議案第1号")
+
+        # Assert
+        assert result is not None
+        assert result.id == 1
+        assert result.proposal_number == "議案第1号"
+        assert result.content == "令和6年度予算案の承認について"
+        mock_session.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_by_proposal_number_not_found(
+        self, repository: ProposalRepositoryImpl, mock_session: MagicMock
+    ) -> None:
+        """Test get_by_proposal_number when proposal is not found."""
+        # Setup mock result
+        mock_result = MagicMock()
+        mock_result.fetchone = MagicMock(return_value=None)
+        mock_session.execute.return_value = mock_result
+
+        # Execute
+        result = await repository.get_by_proposal_number("議案第999号")
+
+        # Assert
+        assert result is None
+        mock_session.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_by_submission_date_range(
+        self,
+        repository: ProposalRepositoryImpl,
+        mock_session: MagicMock,
+        sample_proposal_dict: dict[str, Any],
+    ) -> None:
+        """Test get_by_submission_date_range returns list of proposals."""
+        # Setup mock result
+        mock_row = MagicMock()
+        mock_row._mapping = sample_proposal_dict
+        mock_row._asdict = MagicMock(return_value=sample_proposal_dict)
+        mock_result = MagicMock()
+        mock_result.fetchall = MagicMock(return_value=[mock_row])
+        mock_session.execute.return_value = mock_result
+
+        # Execute
+        result = await repository.get_by_submission_date_range(
+            "2024-01-01", "2024-12-31"
+        )
+
+        # Assert
+        assert len(result) == 1
+        assert result[0].id == 1
+        assert result[0].submission_date == "2024-01-15"
+        assert result[0].submitter == "財務委員会"
+        mock_session.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_new_method_database_errors(
+        self, repository: ProposalRepositoryImpl, mock_session: MagicMock
+    ) -> None:
+        """Test database error handling in new methods."""
+        # Setup mock to raise exception
+        mock_session.execute.side_effect = SQLAlchemyError("Database error")
+
+        # Test get_by_meeting_id
+        with pytest.raises(DatabaseError) as exc_info:
+            await repository.get_by_meeting_id(100)
+        assert "Failed to get proposals by meeting ID" in str(exc_info.value)
+
+        # Reset side effect
+        mock_session.execute.side_effect = SQLAlchemyError("Database error")
+
+        # Test get_by_proposal_number
+        with pytest.raises(DatabaseError) as exc_info:
+            await repository.get_by_proposal_number("議案第1号")
+        assert "Failed to get proposal by proposal number" in str(exc_info.value)
+
+        # Reset side effect
+        mock_session.execute.side_effect = SQLAlchemyError("Database error")
+
+        # Test get_by_submission_date_range
+        with pytest.raises(DatabaseError) as exc_info:
+            await repository.get_by_submission_date_range("2024-01-01", "2024-12-31")
+        assert "Failed to get proposals by submission date range" in str(exc_info.value)

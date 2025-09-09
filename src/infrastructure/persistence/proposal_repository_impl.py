@@ -23,6 +23,12 @@ class ProposalModel(PydanticBaseModel):
     id: int | None = None
     content: str
     status: str | None = None
+    url: str | None = None
+    submission_date: str | None = None
+    submitter: str | None = None
+    proposal_number: str | None = None
+    meeting_id: int | None = None
+    summary: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -60,6 +66,12 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
+                    url,
+                    submission_date,
+                    submitter,
+                    proposal_number,
+                    meeting_id,
+                    summary,
                     created_at,
                     updated_at
                 FROM proposals
@@ -106,6 +118,12 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
+                    url,
+                    submission_date,
+                    submitter,
+                    proposal_number,
+                    meeting_id,
+                    summary,
                     created_at,
                     updated_at
                 FROM proposals
@@ -150,6 +168,12 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
+                    url,
+                    submission_date,
+                    submitter,
+                    proposal_number,
+                    meeting_id,
+                    summary,
                     created_at,
                     updated_at
                 FROM proposals
@@ -187,9 +211,16 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
         """
         try:
             query = text("""
-                INSERT INTO proposals (content, status)
-                VALUES (:content, :status)
-                RETURNING id, content, status, created_at, updated_at
+                INSERT INTO proposals (
+                    content, status, url, submission_date, submitter,
+                    proposal_number, meeting_id, summary
+                )
+                VALUES (
+                    :content, :status, :url, :submission_date, :submitter,
+                    :proposal_number, :meeting_id, :summary
+                )
+                RETURNING id, content, status, url, submission_date, submitter,
+                          proposal_number, meeting_id, summary, created_at, updated_at
             """)
 
             result = await self.session.execute(
@@ -197,6 +228,12 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                 {
                     "content": entity.content,
                     "status": entity.status,
+                    "url": entity.url,
+                    "submission_date": entity.submission_date,
+                    "submitter": entity.submitter,
+                    "proposal_number": entity.proposal_number,
+                    "meeting_id": entity.meeting_id,
+                    "summary": entity.summary,
                 },
             )
             row = result.fetchone()
@@ -237,9 +274,16 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                 UPDATE proposals
                 SET content = :content,
                     status = :status,
+                    url = :url,
+                    submission_date = :submission_date,
+                    submitter = :submitter,
+                    proposal_number = :proposal_number,
+                    meeting_id = :meeting_id,
+                    summary = :summary,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = :id
-                RETURNING id, content, status, created_at, updated_at
+                RETURNING id, content, status, url, submission_date, submitter,
+                          proposal_number, meeting_id, summary, created_at, updated_at
             """)
 
             result = await self.session.execute(
@@ -248,6 +292,12 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     "id": entity.id,
                     "content": entity.content,
                     "status": entity.status,
+                    "url": entity.url,
+                    "submission_date": entity.submission_date,
+                    "submitter": entity.submitter,
+                    "proposal_number": entity.proposal_number,
+                    "meeting_id": entity.meeting_id,
+                    "summary": entity.summary,
                 },
             )
             row = result.fetchone()
@@ -319,6 +369,12 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
             id=model.id,
             content=model.content,
             status=model.status,
+            url=model.url,
+            submission_date=model.submission_date,
+            submitter=model.submitter,
+            proposal_number=model.proposal_number,
+            meeting_id=model.meeting_id,
+            summary=model.summary,
         )
 
     def _to_model(self, entity: Proposal) -> ProposalModel:
@@ -334,6 +390,12 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
             id=entity.id,
             content=entity.content,
             status=entity.status,
+            url=entity.url,
+            submission_date=entity.submission_date,
+            submitter=entity.submitter,
+            proposal_number=entity.proposal_number,
+            meeting_id=entity.meeting_id,
+            summary=entity.summary,
         )
 
     def _update_model(self, model: ProposalModel, entity: Proposal) -> None:
@@ -345,6 +407,12 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
         """
         model.content = entity.content
         model.status = entity.status
+        model.url = entity.url
+        model.submission_date = entity.submission_date
+        model.submitter = entity.submitter
+        model.proposal_number = entity.proposal_number
+        model.meeting_id = entity.meeting_id
+        model.summary = entity.summary
 
     def _dict_to_entity(self, data: dict[str, Any]) -> Proposal:
         """Convert dictionary to entity.
@@ -359,4 +427,165 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
             id=data.get("id"),
             content=data["content"],
             status=data.get("status"),
+            url=data.get("url"),
+            submission_date=data.get("submission_date"),
+            submitter=data.get("submitter"),
+            proposal_number=data.get("proposal_number"),
+            meeting_id=data.get("meeting_id"),
+            summary=data.get("summary"),
         )
+
+    async def get_by_meeting_id(self, meeting_id: int) -> list[Proposal]:
+        """Get proposals by meeting ID.
+
+        Args:
+            meeting_id: Meeting ID to filter by
+
+        Returns:
+            List of proposals associated with the specified meeting
+        """
+        try:
+            query = text("""
+                SELECT
+                    id,
+                    content,
+                    status,
+                    url,
+                    submission_date,
+                    submitter,
+                    proposal_number,
+                    meeting_id,
+                    summary,
+                    created_at,
+                    updated_at
+                FROM proposals
+                WHERE meeting_id = :meeting_id
+                ORDER BY proposal_number, created_at DESC
+            """)
+
+            result = await self.session.execute(query, {"meeting_id": meeting_id})
+            rows = result.fetchall()
+
+            results = []
+            for row in rows:
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                results.append(self._dict_to_entity(row_dict))
+            return results
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting proposals by meeting ID: {e}")
+            raise DatabaseError(
+                "Failed to get proposals by meeting ID",
+                {"meeting_id": meeting_id, "error": str(e)},
+            ) from e
+
+    async def get_by_proposal_number(self, proposal_number: str) -> Proposal | None:
+        """Get proposal by proposal number.
+
+        Args:
+            proposal_number: Proposal number (e.g., "議案第1号")
+
+        Returns:
+            Proposal if found, None otherwise
+        """
+        try:
+            query = text("""
+                SELECT
+                    id,
+                    content,
+                    status,
+                    url,
+                    submission_date,
+                    submitter,
+                    proposal_number,
+                    meeting_id,
+                    summary,
+                    created_at,
+                    updated_at
+                FROM proposals
+                WHERE proposal_number = :proposal_number
+            """)
+
+            result = await self.session.execute(
+                query, {"proposal_number": proposal_number}
+            )
+            row = result.fetchone()
+
+            if row:
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                return self._dict_to_entity(row_dict)
+            return None
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error getting proposal by proposal number: {e}")
+            raise DatabaseError(
+                "Failed to get proposal by proposal number",
+                {"proposal_number": proposal_number, "error": str(e)},
+            ) from e
+
+    async def get_by_submission_date_range(
+        self, start_date: str, end_date: str
+    ) -> list[Proposal]:
+        """Get proposals submitted within a date range.
+
+        Args:
+            start_date: Start date in ISO format (YYYY-MM-DD)
+            end_date: End date in ISO format (YYYY-MM-DD)
+
+        Returns:
+            List of proposals submitted within the date range
+        """
+        try:
+            query = text("""
+                SELECT
+                    id,
+                    content,
+                    status,
+                    url,
+                    submission_date,
+                    submitter,
+                    proposal_number,
+                    meeting_id,
+                    summary,
+                    created_at,
+                    updated_at
+                FROM proposals
+                WHERE submission_date >= :start_date
+                  AND submission_date <= :end_date
+                ORDER BY submission_date DESC, created_at DESC
+            """)
+
+            result = await self.session.execute(
+                query, {"start_date": start_date, "end_date": end_date}
+            )
+            rows = result.fetchall()
+
+            results = []
+            for row in rows:
+                if hasattr(row, "_asdict"):
+                    row_dict = row._asdict()  # type: ignore[attr-defined]
+                elif hasattr(row, "_mapping"):
+                    row_dict = dict(row._mapping)  # type: ignore[attr-defined]
+                else:
+                    row_dict = dict(row)
+                results.append(self._dict_to_entity(row_dict))
+            return results
+
+        except SQLAlchemyError as e:
+            logger.error(
+                f"Database error getting proposals by submission date range: {e}"
+            )
+            raise DatabaseError(
+                "Failed to get proposals by submission date range",
+                {"start_date": start_date, "end_date": end_date, "error": str(e)},
+            ) from e
