@@ -1,7 +1,6 @@
 """DTOs for proposal use cases."""
 
 from dataclasses import dataclass
-from typing import Any
 
 
 @dataclass
@@ -20,11 +19,8 @@ class ScrapeProposalOutputDTO:
     url: str
     proposal_number: str | None = None
     submission_date: str | None = None  # ISO format date
-    submitter: str | None = None
-    status: str | None = None
     summary: str | None = None
     meeting_id: int | None = None
-    additional_info: dict[str, Any] | None = None
 
 
 @dataclass
@@ -32,10 +28,8 @@ class CreateProposalDTO:
     """DTO for creating a new proposal."""
 
     content: str
-    status: str | None = None
     url: str | None = None
     submission_date: str | None = None
-    submitter: str | None = None
     proposal_number: str | None = None
     meeting_id: int | None = None
     summary: str | None = None
@@ -47,10 +41,8 @@ class UpdateProposalDTO:
 
     id: int
     content: str | None = None
-    status: str | None = None
     url: str | None = None
     submission_date: str | None = None
-    submitter: str | None = None
     proposal_number: str | None = None
     meeting_id: int | None = None
     summary: str | None = None
@@ -62,10 +54,8 @@ class ProposalDTO:
 
     id: int
     content: str
-    status: str | None = None
     url: str | None = None
     submission_date: str | None = None
-    submitter: str | None = None
     proposal_number: str | None = None
     meeting_id: int | None = None
     summary: str | None = None

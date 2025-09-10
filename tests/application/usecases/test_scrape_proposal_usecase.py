@@ -48,11 +48,8 @@ class TestScrapeProposalUseCase:
             "content": "環境基本法改正案",
             "proposal_number": "第210回国会 第1号",
             "submission_date": "2023-12-01",
-            "submitter": "山田太郎",
-            "status": "審議中",
             "summary": "環境保護強化法案",
             "url": input_dto.url,
-            "additional_info": {"table_count": 2},
         }
 
         # Execute
@@ -63,12 +60,9 @@ class TestScrapeProposalUseCase:
         assert result.content == "環境基本法改正案"
         assert result.proposal_number == "第210回国会 第1号"
         assert result.submission_date == "2023-12-01"
-        assert result.submitter == "山田太郎"
-        assert result.status == "審議中"
         assert result.summary == "環境保護強化法案"
         assert result.url == input_dto.url
         assert result.meeting_id == 123
-        assert result.additional_info["table_count"] == 2
 
     @pytest.mark.asyncio
     async def test_execute_unsupported_url(self, use_case, mock_scraper_service):
@@ -108,8 +102,6 @@ class TestScrapeProposalUseCase:
             "content": "環境基本法改正案",
             "proposal_number": "第210回国会 第1号",
             "submission_date": "2023-12-01",
-            "submitter": "山田太郎",
-            "status": "審議中",
             "summary": "環境保護強化法案",
             "url": input_dto.url,
         }
@@ -124,8 +116,6 @@ class TestScrapeProposalUseCase:
             content="環境基本法改正案",
             proposal_number="第210回国会 第1号",
             submission_date="2023-12-01",
-            submitter="山田太郎",
-            status="審議中",
             summary="環境保護強化法案",
             url=input_dto.url,
             meeting_id=123,
@@ -229,7 +219,6 @@ class TestScrapeProposalUseCase:
         existing_proposal = Proposal(
             id=proposal_id,
             content="旧法案",
-            status="審議中",
             meeting_id=123,
         )
         mock_proposal_repo.get_by_id.return_value = existing_proposal
@@ -240,8 +229,6 @@ class TestScrapeProposalUseCase:
             "content": "新環境基本法改正案",
             "proposal_number": "第210回国会 第1号",
             "submission_date": "2023-12-01",
-            "submitter": "山田太郎",
-            "status": "可決",
             "summary": "環境保護強化法案",
             "url": new_url,
         }
@@ -252,8 +239,6 @@ class TestScrapeProposalUseCase:
             content="新環境基本法改正案",
             proposal_number="第210回国会 第1号",
             submission_date="2023-12-01",
-            submitter="山田太郎",
-            status="可決",
             summary="環境保護強化法案",
             url=new_url,
             meeting_id=123,
@@ -266,7 +251,6 @@ class TestScrapeProposalUseCase:
         # Assert
         assert result.id == proposal_id
         assert result.content == "新環境基本法改正案"
-        assert result.status == "可決"
         assert result.url == new_url
         assert result.meeting_id == 123
 
@@ -294,10 +278,8 @@ class TestScrapeProposalUseCase:
         proposal = Proposal(
             id=1,
             content="法案内容",
-            status="審議中",
             url="https://example.com",
             submission_date="2023-12-01",
-            submitter="提出者",
             proposal_number="第1号",
             meeting_id=123,
             summary="概要",
@@ -310,10 +292,8 @@ class TestScrapeProposalUseCase:
         assert isinstance(dto, ProposalDTO)
         assert dto.id == 1
         assert dto.content == "法案内容"
-        assert dto.status == "審議中"
         assert dto.url == "https://example.com"
         assert dto.submission_date == "2023-12-01"
-        assert dto.submitter == "提出者"
         assert dto.proposal_number == "第1号"
         assert dto.meeting_id == 123
         assert dto.summary == "概要"

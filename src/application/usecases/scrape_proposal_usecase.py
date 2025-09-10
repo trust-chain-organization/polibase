@@ -66,12 +66,9 @@ class ScrapeProposalUseCase:
             content=scraped_data.get("content", ""),
             proposal_number=scraped_data.get("proposal_number"),
             submission_date=scraped_data.get("submission_date"),
-            submitter=scraped_data.get("submitter"),
-            status=scraped_data.get("status"),
             summary=scraped_data.get("summary"),
             url=input_dto.url,
             meeting_id=input_dto.meeting_id,
-            additional_info=scraped_data.get("additional_info"),
         )
 
         proposal_num = output_dto.proposal_number or "No number"
@@ -112,10 +109,8 @@ class ScrapeProposalUseCase:
         # Create new proposal entity
         proposal = Proposal(
             content=scraped_dto.content,
-            status=scraped_dto.status,
             url=scraped_dto.url,
             submission_date=scraped_dto.submission_date,
-            submitter=scraped_dto.submitter,
             proposal_number=scraped_dto.proposal_number,
             meeting_id=scraped_dto.meeting_id,
             summary=scraped_dto.summary,
@@ -152,12 +147,10 @@ class ScrapeProposalUseCase:
 
         # Update the existing proposal
         existing.content = scraped_dto.content or existing.content
-        existing.status = scraped_dto.status or existing.status
         existing.url = scraped_dto.url
         existing.submission_date = (
             scraped_dto.submission_date or existing.submission_date
         )
-        existing.submitter = scraped_dto.submitter or existing.submitter
         existing.proposal_number = (
             scraped_dto.proposal_number or existing.proposal_number
         )
@@ -183,10 +176,8 @@ class ScrapeProposalUseCase:
         return ProposalDTO(
             id=proposal.id,
             content=proposal.content,
-            status=proposal.status,
             url=proposal.url,
             submission_date=proposal.submission_date,
-            submitter=proposal.submitter,
             proposal_number=proposal.proposal_number,
             meeting_id=proposal.meeting_id,
             summary=proposal.summary,

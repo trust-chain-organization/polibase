@@ -17,11 +17,8 @@ class IProposalScraperService(Protocol):
                 - content: 議案名/内容
                 - proposal_number: 議案番号
                 - submission_date: 提出日 (ISO format)
-                - submitter: 提出者
-                - status: 議案の状態
                 - summary: 概要（あれば）
                 - url: 元のURL
-                - additional_info: その他の詳細情報（dict形式）
 
         Raises:
             ValueError: If the URL format is not supported

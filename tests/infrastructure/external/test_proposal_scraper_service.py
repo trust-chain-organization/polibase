@@ -63,8 +63,6 @@ class TestProposalScraperService:
             <body>
                 <h1>第210回国会 第1号 環境基本法改正案</h1>
                 <div>提出日：2023年12月1日</div>
-                <div>提出者：山田太郎</div>
-                <div>審議状況：審議中</div>
                 <div class="summary">この法案は環境保護を強化するものです。</div>
             </body>
         </html>
@@ -95,8 +93,6 @@ class TestProposalScraperService:
         assert result["content"] == "環境基本法改正案"
         assert result["proposal_number"] == "第210回国会 第1号"
         assert result["submission_date"] == "2023-12-01"
-        assert result["submitter"] == "山田太郎"
-        assert result["status"] == "審議中"
         assert result["summary"] == "この法案は環境保護を強化するものです。"
 
     @pytest.mark.asyncio
@@ -111,8 +107,6 @@ class TestProposalScraperService:
                 <h1>京都市観光振興条例の改正について</h1>
                 <div>議第15号</div>
                 <div>令和5年12月15日</div>
-                <div>提出者：市長</div>
-                <div>結果：可決</div>
                 <div class="概要">観光振興のための条例改正案です。</div>
             </body>
         </html>
@@ -143,8 +137,6 @@ class TestProposalScraperService:
         assert result["content"] == "京都市観光振興条例の改正について"
         assert result["proposal_number"] == "議第15号"
         assert result["submission_date"] == "2023-12-15"
-        assert result["submitter"] == "市長"
-        assert result["status"] == "可決"
         assert "観光振興" in result["summary"]
 
     def test_convert_japanese_date_to_iso(self, scraper):

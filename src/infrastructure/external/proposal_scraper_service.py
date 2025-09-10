@@ -89,10 +89,7 @@ class ProposalScraperService(IProposalScraperService):
                     "content": "",
                     "proposal_number": "",
                     "submission_date": None,
-                    "submitter": "",
-                    "status": "",
                     "summary": "",
-                    "additional_info": {},
                 }
 
                 # Extract proposal number and title
@@ -131,58 +128,12 @@ class ProposalScraperService(IProposalScraperService):
                         )
                         break
 
-                # Extract submitter
-                submitter_patterns = [
-                    r"提出者[:：]\s*([^<、。\n]+)",
-                    r"発議者[:：]\s*([^<、。\n]+)",
-                ]
-                for pattern in submitter_patterns:
-                    submitter_match = re.search(pattern, content)
-                    if submitter_match:
-                        proposal_data["submitter"] = submitter_match.group(1).strip()
-                        break
-
-                # Extract status
-                status_patterns = [
-                    r"審議状況[:：]\s*([^<、。\n]+)",
-                    r"状態[:：]\s*([^<、。\n]+)",
-                    r"結果[:：]\s*([^<、。\n]+)",
-                ]
-                for pattern in status_patterns:
-                    status_match = re.search(pattern, content)
-                    if status_match:
-                        proposal_data["status"] = status_match.group(1).strip()
-                        break
-
                 # Extract summary if available
                 summary_element = soup.find("div", class_="summary") or soup.find(
                     "div", id="summary"
                 )
                 if summary_element:
                     proposal_data["summary"] = summary_element.get_text(strip=True)
-
-                # Store any additional tables or important sections
-                tables = soup.find_all("table")
-                if tables:
-                    proposal_data["additional_info"]["table_count"] = len(tables)
-                    # Extract first table's data as sample
-                    first_table = tables[0]
-                    if first_table and hasattr(first_table, "find_all"):
-                        rows = first_table.find_all("tr")
-                        table_data = []
-                        for row in rows[:5]:  # Limit to first 5 rows
-                            if hasattr(row, "find_all"):
-                                cells = row.find_all(["td", "th"])
-                                table_data.append(
-                                    [
-                                        cell.get_text(strip=True)
-                                        for cell in cells
-                                        if hasattr(cell, "get_text")
-                                    ]
-                                )
-                        proposal_data["additional_info"]["sample_table_data"] = (
-                            table_data
-                        )
 
                 return proposal_data
 
@@ -220,10 +171,7 @@ class ProposalScraperService(IProposalScraperService):
                     "content": "",
                     "proposal_number": "",
                     "submission_date": None,
-                    "submitter": "",
-                    "status": "",
                     "summary": "",
-                    "additional_info": {},
                 }
 
                 # Kyoto city council specific extraction logic
@@ -274,32 +222,6 @@ class ProposalScraperService(IProposalScraperService):
                             proposal_data["submission_date"] = f"{year}-{month}-{day}"
                         break
 
-                # Extract submitter (京都市議会の提出者情報)
-                submitter_patterns = [
-                    r"提出者[:：]\s*([^<、。\n]+)",
-                    r"提案者[:：]\s*([^<、。\n]+)",
-                    r"発議者[:：]\s*([^<、。\n]+)",
-                ]
-                for pattern in submitter_patterns:
-                    submitter_match = re.search(pattern, content)
-                    if submitter_match:
-                        proposal_data["submitter"] = submitter_match.group(1).strip()
-                        break
-
-                # Extract status
-                status_keywords = [
-                    "可決",
-                    "否決",
-                    "継続審査",
-                    "審議中",
-                    "採択",
-                    "不採択",
-                ]
-                for keyword in status_keywords:
-                    if keyword in content:
-                        proposal_data["status"] = keyword
-                        break
-
                 # Look for summary or description sections
                 summary_sections = soup.find_all(
                     ["div", "section"], class_=re.compile(r"(summary|description|概要)")
@@ -308,15 +230,6 @@ class ProposalScraperService(IProposalScraperService):
                     proposal_data["summary"] = summary_sections[0].get_text(strip=True)[
                         :500
                     ]  # Limit to 500 chars
-
-                # Extract any PDF links or attachments
-                pdf_links = soup.find_all("a", href=re.compile(r"\.pdf$", re.I))
-                if pdf_links:
-                    proposal_data["additional_info"]["pdf_links"] = [
-                        link.get("href")
-                        for link in pdf_links[:3]
-                        if hasattr(link, "get")
-                    ]  # Limit to 3 links
 
                 return proposal_data
 
