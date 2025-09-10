@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel as PydanticBaseModel
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -588,4 +588,33 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
             raise DatabaseError(
                 "Failed to get proposals by submission date range",
                 {"start_date": start_date, "end_date": end_date, "error": str(e)},
+            ) from e
+
+    async def find_by_url(self, url: str) -> Proposal | None:
+        """Find proposal by URL.
+
+        Args:
+            url: URL of the proposal
+
+        Returns:
+            Proposal if found, None otherwise
+
+        Raises:
+            DatabaseError: If database operation fails
+        """
+        try:
+            async with self.async_session() as session:
+                query = select(ProposalModel).where(ProposalModel.url == url)
+                result = await session.execute(query)
+                proposal_model = result.scalar_one_or_none()
+
+                if proposal_model:
+                    return self._to_entity(proposal_model)
+                return None
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error finding proposal by URL: {e}")
+            raise DatabaseError(
+                "Failed to find proposal by URL",
+                {"url": url, "error": str(e)},
             ) from e
