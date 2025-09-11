@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel as PydanticBaseModel
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -603,14 +603,41 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
             DatabaseError: If database operation fails
         """
         try:
-            async with self.async_session() as session:
-                query = select(ProposalModel).where(ProposalModel.url == url)
-                result = await session.execute(query)
-                proposal_model = result.scalar_one_or_none()
+            query = text("""
+                SELECT
+                    id,
+                    content,
+                    status,
+                    url,
+                    submission_date,
+                    submitter,
+                    proposal_number,
+                    meeting_id,
+                    summary,
+                    created_at,
+                    updated_at
+                FROM proposals
+                WHERE url = :url
+            """)
+            result = await self.session.execute(query, {"url": url})
+            row = result.fetchone()
 
-                if proposal_model:
-                    return self._to_entity(proposal_model)
-                return None
+            if row:
+                proposal_model = ProposalModel(
+                    id=row.id,
+                    content=row.content,
+                    status=row.status,
+                    url=row.url,
+                    submission_date=row.submission_date,
+                    submitter=row.submitter,
+                    proposal_number=row.proposal_number,
+                    meeting_id=row.meeting_id,
+                    summary=row.summary,
+                    created_at=row.created_at,
+                    updated_at=row.updated_at,
+                )
+                return self._to_entity(proposal_model)
+            return None
 
         except SQLAlchemyError as e:
             logger.error(f"Database error finding proposal by URL: {e}")
