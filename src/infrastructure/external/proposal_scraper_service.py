@@ -33,23 +33,10 @@ class ProposalScraperService(IProposalScraperService):
             url: URL to check
 
         Returns:
-            True if the URL appears to be a government/council website
+            True if the URL is valid (always returns True for any URL)
         """
-        # Support any government or council domain
-        gov_indicators = [
-            ".go.jp",  # 国の機関
-            ".lg.jp",  # 地方自治体
-            "city.",  # 市議会
-            "pref.",  # 都道府県
-            "town.",  # 町議会
-            "vill.",  # 村議会
-            "metro.",  # 都議会
-            "assembly.",  # 議会
-            "council.",  # 議会
-            "shugiin",  # 衆議院
-            "sangiin",  # 参議院
-        ]
-        return any(indicator in url.lower() for indicator in gov_indicators)
+        # Accept any URL since users will input specific URLs they want to scrape
+        return bool(url and url.startswith(("http://", "https://")))
 
     async def scrape_proposal(self, url: str) -> dict[str, Any]:
         """Scrape proposal details from a given URL using LLM extraction.
@@ -64,8 +51,8 @@ class ProposalScraperService(IProposalScraperService):
             ValueError: If the URL format is not supported
             RuntimeError: If scraping fails
         """
-        if not self.is_supported_url(url):
-            raise ValueError(f"Unsupported URL: {url}")
+        if not url or not url.startswith(("http://", "https://")):
+            raise ValueError(f"Invalid URL format: {url}")
 
         return await self._scrape_with_llm(url)
 

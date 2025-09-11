@@ -24,37 +24,34 @@ class TestProposalScraperService:
         """Create a ProposalScraperService instance."""
         return ProposalScraperService(llm_service=mock_llm_service, headless=True)
 
-    def test_is_supported_url_government_domains(self, scraper):
-        """Test that government/council URLs are recognized as supported."""
+    def test_is_supported_url_valid_urls(self, scraper):
+        """Test that any valid HTTP/HTTPS URLs are supported."""
         urls = [
             "https://www.shugiin.go.jp/internet/itdb_gian.nsf/html/gian/honbun/houan/g21009001.htm",
-            "http://shugiin.go.jp/some/page",
+            "http://example.com/some/page",
             "https://www.city.kyoto.lg.jp/shikai/page/0000123456.html",
-            "https://www.city.kyoto.jp/shikai/proposal.html",
-            "https://www.pref.osaka.lg.jp/gikai/",
-            "https://www.metro.tokyo.lg.jp/assembly/",
-            "https://www.town.hayama.lg.jp/council/",
-            "https://www.vill.totsukawa.lg.jp/",
-            "https://www.sangiin.go.jp/",
+            "https://www.google.com",
+            "https://www.any-website.com/page",
         ]
         for url in urls:
             assert scraper.is_supported_url(url) is True
 
-    def test_is_supported_url_unsupported(self, scraper):
-        """Test that unsupported URLs are not recognized."""
+    def test_is_supported_url_invalid_urls(self, scraper):
+        """Test that invalid URLs are not supported."""
         urls = [
-            "https://www.google.com",
-            "https://www.example.com/proposal",
-            "https://www.private-company.jp/news",  # .jp alone is not enough
+            "not-a-url",
+            "ftp://example.com",
+            "",
+            None,
         ]
         for url in urls:
             assert scraper.is_supported_url(url) is False
 
     @pytest.mark.asyncio
-    async def test_scrape_proposal_unsupported_url(self, scraper):
-        """Test that scraping unsupported URLs raises ValueError."""
-        url = "https://www.google.com"
-        with pytest.raises(ValueError, match="Unsupported URL"):
+    async def test_scrape_proposal_invalid_url(self, scraper):
+        """Test that scraping invalid URLs raises ValueError."""
+        url = "not-a-valid-url"
+        with pytest.raises(ValueError, match="Invalid URL format"):
             await scraper.scrape_proposal(url)
 
     @pytest.mark.asyncio

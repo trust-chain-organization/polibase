@@ -68,7 +68,7 @@ class TestScrapeProposalUseCase:
     async def test_execute_unsupported_url(self, use_case, mock_scraper_service):
         """Test that unsupported URLs raise ValueError."""
         # Setup
-        input_dto = ScrapeProposalInputDTO(url="https://www.google.com")
+        input_dto = ScrapeProposalInputDTO(url="not-a-valid-url")
         mock_scraper_service.is_supported_url.return_value = False
 
         # Execute and assert
