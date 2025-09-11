@@ -63,11 +63,11 @@ class ScrapeProposalUseCase:
 
         # Create output DTO with scraped data
         output_dto = ScrapeProposalOutputDTO(
-            content=scraped_data.get("content", ""),
-            proposal_number=scraped_data.get("proposal_number"),
-            submission_date=scraped_data.get("submission_date"),
-            summary=scraped_data.get("summary"),
-            url=input_dto.url,
+            content=scraped_data.content,
+            proposal_number=scraped_data.proposal_number,
+            submission_date=scraped_data.submission_date,
+            summary=scraped_data.summary,
+            url=scraped_data.url,
             meeting_id=input_dto.meeting_id,
         )
 

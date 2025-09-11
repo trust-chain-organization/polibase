@@ -2,15 +2,19 @@
 
 import asyncio
 import json
-from typing import Any
 
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
+from src.infrastructure.constants.scraper_prompts import (
+    PROPOSAL_EXTRACTION_PROMPT,
+    PROPOSAL_EXTRACTION_SYSTEM_PROMPT,
+)
 from src.infrastructure.interfaces.llm_service import ILLMService
 from src.infrastructure.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
+from src.infrastructure.types.scraper_types import ScrapedProposal
 
 
 class ProposalScraperService(IProposalScraperService):
@@ -38,25 +42,25 @@ class ProposalScraperService(IProposalScraperService):
         # Accept any URL since users will input specific URLs they want to scrape
         return bool(url and url.startswith(("http://", "https://")))
 
-    async def scrape_proposal(self, url: str) -> dict[str, Any]:
+    async def scrape_proposal(self, url: str) -> ScrapedProposal:
         """Scrape proposal details from a given URL using LLM extraction.
 
         Args:
             url: URL of the proposal page
 
         Returns:
-            Dictionary containing scraped proposal information
+            ScrapedProposal object containing scraped information
 
         Raises:
             ValueError: If the URL format is not supported
             RuntimeError: If scraping fails
         """
-        if not url or not url.startswith(("http://", "https://")):
+        if not self.is_supported_url(url):
             raise ValueError(f"Invalid URL format: {url}")
 
         return await self._scrape_with_llm(url)
 
-    async def _scrape_with_llm(self, url: str) -> dict[str, Any]:
+    async def _scrape_with_llm(self, url: str) -> ScrapedProposal:
         """Scrape proposal from any government website using LLM.
 
         Args:
@@ -91,32 +95,13 @@ class ProposalScraperService(IProposalScraperService):
                     text_content = text_content[:max_chars] + "..."
 
                 # Use LLM to extract proposal information
-                extraction_prompt = f"""以下の政府・議会のウェブページから議案情報を抽出してください。
-
-URL: {url}
-
-ページ内容:
-{text_content}
-
-以下の情報を抽出してください（見つからない場合は空文字列または null を返してください）：
-1. content: 議案名・法案名（タイトル）
-2. proposal_number: 議案番号（例：第210回国会第1号、議第15号など）
-3. submission_date: 提出日・上程日・議決日など
-   （日付として認識できるもの、例：2023年12月1日、令和5年12月1日）
-4. summary: 議案の概要・説明（あれば最初の200文字程度）
-
-JSON形式で返してください。日付はそのまま抽出された文字列で返してください（変換不要）。
-"""
+                extraction_prompt = PROPOSAL_EXTRACTION_PROMPT.format(
+                    url=url, text_content=text_content
+                )
 
                 # Call LLM to extract information
                 messages = [
-                    {
-                        "role": "system",
-                        "content": (
-                            "あなたは日本の政府・議会ウェブサイトから"
-                            "情報を抽出する専門家です。"
-                        ),
-                    },
+                    {"role": "system", "content": PROPOSAL_EXTRACTION_SYSTEM_PROMPT},
                     {"role": "user", "content": extraction_prompt},
                 ]
 
@@ -142,15 +127,13 @@ JSON形式で返してください。日付はそのまま抽出された文字�
                         extracted_data["content"] = content_match.strip('"').strip()
 
                 # Build the proposal data
-                proposal_data = {
-                    "url": url,
-                    "content": extracted_data.get("content", ""),
-                    "proposal_number": extracted_data.get("proposal_number"),
-                    "submission_date": extracted_data.get("submission_date"),
-                    "summary": extracted_data.get("summary"),
-                }
-
-                return proposal_data
+                return ScrapedProposal(
+                    url=url,
+                    content=extracted_data.get("content", ""),
+                    proposal_number=extracted_data.get("proposal_number"),
+                    submission_date=extracted_data.get("submission_date"),
+                    summary=extracted_data.get("summary"),
+                )
 
             except Exception as e:
                 raise RuntimeError(

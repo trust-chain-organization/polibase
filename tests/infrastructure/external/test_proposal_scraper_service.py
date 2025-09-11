@@ -9,6 +9,7 @@ from src.infrastructure.external.proposal_scraper_service import (
     ProposalScraperService,
 )
 from src.infrastructure.interfaces.llm_service import ILLMService
+from src.infrastructure.types.scraper_types import ScrapedProposal
 
 
 class TestProposalScraperService:
@@ -104,11 +105,12 @@ class TestProposalScraperService:
         result = await scraper.scrape_proposal(url)
 
         # Assert
-        assert result["url"] == url
-        assert result["content"] == "環境基本法改正案"
-        assert result["proposal_number"] == "第210回国会 第1号"
-        assert result["submission_date"] == "2023年12月1日"
-        assert result["summary"] == "この法案は環境保護を強化するものです。"
+        assert isinstance(result, ScrapedProposal)
+        assert result.url == url
+        assert result.content == "環境基本法改正案"
+        assert result.proposal_number == "第210回国会 第1号"
+        assert result.submission_date == "2023年12月1日"
+        assert result.summary == "この法案は環境保護を強化するものです。"
 
         # Verify LLM was called
         mock_llm_service.invoke_llm.assert_called_once()
@@ -166,13 +168,12 @@ class TestProposalScraperService:
         result = await scraper.scrape_proposal(url)
 
         # Assert - dates are kept as extracted, no conversion
-        assert result["url"] == url
-        assert result["content"] == "大阪府デジタル化推進条例案"
-        assert result["proposal_number"] == "第25号"
-        assert result["submission_date"] == "令和5年12月20日"  # Not converted to ISO
-        assert (
-            result["summary"] == "デジタル技術を活用した行政サービスの向上を図る条例案"
-        )
+        assert isinstance(result, ScrapedProposal)
+        assert result.url == url
+        assert result.content == "大阪府デジタル化推進条例案"
+        assert result.proposal_number == "第25号"
+        assert result.submission_date == "令和5年12月20日"  # Not converted to ISO
+        assert result.summary == "デジタル技術を活用した行政サービスの向上を図る条例案"
 
     @pytest.mark.asyncio
     @patch("src.infrastructure.external.proposal_scraper_service.async_playwright")
@@ -232,8 +233,9 @@ class TestProposalScraperService:
         result = await scraper.scrape_proposal(url)
 
         # Assert - should handle gracefully and return empty fields
-        assert result["url"] == url
-        assert result["content"] == ""
-        assert result["proposal_number"] is None
-        assert result["submission_date"] is None
-        assert result["summary"] is None
+        assert isinstance(result, ScrapedProposal)
+        assert result.url == url
+        assert result.content == ""
+        assert result.proposal_number is None
+        assert result.submission_date is None
+        assert result.summary is None

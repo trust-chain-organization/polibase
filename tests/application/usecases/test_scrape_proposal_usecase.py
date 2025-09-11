@@ -15,6 +15,7 @@ from src.domain.repositories.proposal_repository import ProposalRepository
 from src.infrastructure.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
+from src.infrastructure.types.scraper_types import ScrapedProposal
 
 
 class TestScrapeProposalUseCase:
@@ -44,13 +45,13 @@ class TestScrapeProposalUseCase:
         )
 
         mock_scraper_service.is_supported_url.return_value = True
-        mock_scraper_service.scrape_proposal.return_value = {
-            "content": "環境基本法改正案",
-            "proposal_number": "第210回国会 第1号",
-            "submission_date": "2023年12月1日",  # Keep original date format
-            "summary": "環境保護強化法案",
-            "url": input_dto.url,
-        }
+        mock_scraper_service.scrape_proposal.return_value = ScrapedProposal(
+            content="環境基本法改正案",
+            proposal_number="第210回国会 第1号",
+            submission_date="2023年12月1日",  # Keep original date format
+            summary="環境保護強化法案",
+            url=input_dto.url,
+        )
 
         # Execute
         result = await use_case.execute(input_dto)
@@ -98,13 +99,13 @@ class TestScrapeProposalUseCase:
         )
 
         mock_scraper_service.is_supported_url.return_value = True
-        mock_scraper_service.scrape_proposal.return_value = {
-            "content": "環境基本法改正案",
-            "proposal_number": "第210回国会 第1号",
-            "submission_date": "2023年12月1日",
-            "summary": "環境保護強化法案",
-            "url": input_dto.url,
-        }
+        mock_scraper_service.scrape_proposal.return_value = ScrapedProposal(
+            content="環境基本法改正案",
+            proposal_number="第210回国会 第1号",
+            submission_date="2023年12月1日",
+            summary="環境保護強化法案",
+            url=input_dto.url,
+        )
 
         # No existing proposal
         mock_proposal_repo.get_by_proposal_number.return_value = None
@@ -148,11 +149,11 @@ class TestScrapeProposalUseCase:
         input_dto = ScrapeProposalInputDTO(url="https://www.shugiin.go.jp/test")
 
         mock_scraper_service.is_supported_url.return_value = True
-        mock_scraper_service.scrape_proposal.return_value = {
-            "content": "環境基本法改正案",
-            "proposal_number": "第210回国会 第1号",
-            "url": input_dto.url,
-        }
+        mock_scraper_service.scrape_proposal.return_value = ScrapedProposal(
+            content="環境基本法改正案",
+            proposal_number="第210回国会 第1号",
+            url=input_dto.url,
+        )
 
         # Existing proposal found by number
         existing_proposal = Proposal(
@@ -182,10 +183,10 @@ class TestScrapeProposalUseCase:
         input_dto = ScrapeProposalInputDTO(url="https://www.shugiin.go.jp/test")
 
         mock_scraper_service.is_supported_url.return_value = True
-        mock_scraper_service.scrape_proposal.return_value = {
-            "content": "環境基本法改正案",
-            "url": input_dto.url,
-        }
+        mock_scraper_service.scrape_proposal.return_value = ScrapedProposal(
+            content="環境基本法改正案",
+            url=input_dto.url,
+        )
 
         # No existing proposal by number, but found by URL
         mock_proposal_repo.get_by_proposal_number.return_value = None
@@ -225,13 +226,13 @@ class TestScrapeProposalUseCase:
 
         # Scraped data
         mock_scraper_service.is_supported_url.return_value = True
-        mock_scraper_service.scrape_proposal.return_value = {
-            "content": "新環境基本法改正案",
-            "proposal_number": "第210回国会 第1号",
-            "submission_date": "2023年12月1日",
-            "summary": "環境保護強化法案",
-            "url": new_url,
-        }
+        mock_scraper_service.scrape_proposal.return_value = ScrapedProposal(
+            content="新環境基本法改正案",
+            proposal_number="第210回国会 第1号",
+            submission_date="2023年12月1日",
+            summary="環境保護強化法案",
+            url=new_url,
+        )
 
         # Updated proposal
         updated_proposal = Proposal(
