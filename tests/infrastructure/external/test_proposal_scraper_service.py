@@ -1,7 +1,8 @@
 """Unit tests for ProposalScraperService."""
 
 import json
-from unittest.mock import AsyncMock, create_autospec, patch
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
@@ -16,16 +17,16 @@ class TestProposalScraperService:
     """Test suite for ProposalScraperService."""
 
     @pytest.fixture
-    def mock_llm_service(self):
+    def mock_llm_service(self) -> MagicMock:
         """Create a mock LLM service."""
         return create_autospec(ILLMService, spec_set=True)
 
     @pytest.fixture
-    def scraper(self, mock_llm_service):
+    def scraper(self, mock_llm_service: MagicMock) -> ProposalScraperService:
         """Create a ProposalScraperService instance."""
         return ProposalScraperService(llm_service=mock_llm_service, headless=True)
 
-    def test_is_supported_url_valid_urls(self, scraper):
+    def test_is_supported_url_valid_urls(self, scraper: ProposalScraperService) -> None:
         """Test that any valid HTTP/HTTPS URLs are supported."""
         urls = [
             "https://www.shugiin.go.jp/internet/itdb_gian.nsf/html/gian/honbun/houan/g21009001.htm",
@@ -37,9 +38,11 @@ class TestProposalScraperService:
         for url in urls:
             assert scraper.is_supported_url(url) is True
 
-    def test_is_supported_url_invalid_urls(self, scraper):
+    def test_is_supported_url_invalid_urls(
+        self, scraper: ProposalScraperService
+    ) -> None:
         """Test that invalid URLs are not supported."""
-        urls = [
+        urls: list[Any] = [
             "not-a-url",
             "ftp://example.com",
             "",
@@ -49,7 +52,9 @@ class TestProposalScraperService:
             assert scraper.is_supported_url(url) is False
 
     @pytest.mark.asyncio
-    async def test_scrape_proposal_invalid_url(self, scraper):
+    async def test_scrape_proposal_invalid_url(
+        self, scraper: ProposalScraperService
+    ) -> None:
         """Test that scraping invalid URLs raises ValueError."""
         url = "not-a-valid-url"
         with pytest.raises(ValueError, match="Invalid URL format"):
@@ -58,8 +63,11 @@ class TestProposalScraperService:
     @pytest.mark.asyncio
     @patch("src.infrastructure.external.proposal_scraper_service.async_playwright")
     async def test_scrape_proposal_with_llm(
-        self, mock_playwright, scraper, mock_llm_service
-    ):
+        self,
+        mock_playwright: MagicMock,
+        scraper: ProposalScraperService,
+        mock_llm_service: MagicMock,
+    ) -> None:
         """Test scraping a proposal using LLM extraction."""
         # Mock the HTML content
         html_content = """
@@ -118,8 +126,11 @@ class TestProposalScraperService:
     @pytest.mark.asyncio
     @patch("src.infrastructure.external.proposal_scraper_service.async_playwright")
     async def test_scrape_different_council_proposal(
-        self, mock_playwright, scraper, mock_llm_service
-    ):
+        self,
+        mock_playwright: MagicMock,
+        scraper: ProposalScraperService,
+        mock_llm_service: MagicMock,
+    ) -> None:
         """Test scraping any council proposal with flexible LLM extraction."""
         # Mock the HTML content (could be from any council)
         html_content = """
@@ -177,7 +188,9 @@ class TestProposalScraperService:
 
     @pytest.mark.asyncio
     @patch("src.infrastructure.external.proposal_scraper_service.async_playwright")
-    async def test_scrape_proposal_runtime_error(self, mock_playwright, scraper):
+    async def test_scrape_proposal_runtime_error(
+        self, mock_playwright: MagicMock, scraper: ProposalScraperService
+    ) -> None:
         """Test that scraping errors are properly handled."""
         # Set up mocks to raise an exception
         mock_browser = AsyncMock()
@@ -203,8 +216,11 @@ class TestProposalScraperService:
     @pytest.mark.asyncio
     @patch("src.infrastructure.external.proposal_scraper_service.async_playwright")
     async def test_scrape_proposal_with_invalid_json_response(
-        self, mock_playwright, scraper, mock_llm_service
-    ):
+        self,
+        mock_playwright: MagicMock,
+        scraper: ProposalScraperService,
+        mock_llm_service: MagicMock,
+    ) -> None:
         """Test handling of invalid JSON response from LLM."""
         # Mock the HTML content
         html_content = "<html><body><h1>Test</h1></body></html>"

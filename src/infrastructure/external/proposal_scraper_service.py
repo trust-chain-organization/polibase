@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from typing import Any
 
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
@@ -108,6 +109,7 @@ class ProposalScraperService(IProposalScraperService):
                 llm_response = self.llm_service.invoke_llm(messages)
 
                 # Parse the LLM response
+                extracted_data: dict[str, Any]
                 try:
                     # Try to parse as JSON
                     extracted_data = json.loads(llm_response)
@@ -129,10 +131,16 @@ class ProposalScraperService(IProposalScraperService):
                 # Build the proposal data
                 return ScrapedProposal(
                     url=url,
-                    content=extracted_data.get("content", ""),
-                    proposal_number=extracted_data.get("proposal_number"),
-                    submission_date=extracted_data.get("submission_date"),
-                    summary=extracted_data.get("summary"),
+                    content=str(extracted_data.get("content", "")),
+                    proposal_number=extracted_data.get("proposal_number")
+                    if extracted_data.get("proposal_number")
+                    else None,
+                    submission_date=extracted_data.get("submission_date")
+                    if extracted_data.get("submission_date")
+                    else None,
+                    summary=extracted_data.get("summary")
+                    if extracted_data.get("summary")
+                    else None,
                 )
 
             except Exception as e:

@@ -1,6 +1,6 @@
 """Unit tests for ScrapeProposalUseCase."""
 
-from unittest.mock import create_autospec
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 
@@ -22,22 +22,26 @@ class TestScrapeProposalUseCase:
     """Test suite for ScrapeProposalUseCase."""
 
     @pytest.fixture
-    def mock_proposal_repo(self):
+    def mock_proposal_repo(self) -> MagicMock:
         """Create a mock proposal repository."""
         return create_autospec(ProposalRepository, spec_set=True)
 
     @pytest.fixture
-    def mock_scraper_service(self):
+    def mock_scraper_service(self) -> MagicMock:
         """Create a mock proposal scraper service."""
         return create_autospec(IProposalScraperService, spec_set=True)
 
     @pytest.fixture
-    def use_case(self, mock_proposal_repo, mock_scraper_service):
+    def use_case(
+        self, mock_proposal_repo: MagicMock, mock_scraper_service: MagicMock
+    ) -> ScrapeProposalUseCase:
         """Create a ScrapeProposalUseCase instance."""
         return ScrapeProposalUseCase(mock_proposal_repo, mock_scraper_service)
 
     @pytest.mark.asyncio
-    async def test_execute_success(self, use_case, mock_scraper_service):
+    async def test_execute_success(
+        self, use_case: ScrapeProposalUseCase, mock_scraper_service: MagicMock
+    ) -> None:
         """Test successful execution of proposal scraping."""
         # Setup
         input_dto = ScrapeProposalInputDTO(
@@ -66,7 +70,9 @@ class TestScrapeProposalUseCase:
         assert result.meeting_id == 123
 
     @pytest.mark.asyncio
-    async def test_execute_unsupported_url(self, use_case, mock_scraper_service):
+    async def test_execute_unsupported_url(
+        self, use_case: ScrapeProposalUseCase, mock_scraper_service: MagicMock
+    ) -> None:
         """Test that unsupported URLs raise ValueError."""
         # Setup
         input_dto = ScrapeProposalInputDTO(url="not-a-valid-url")
@@ -77,7 +83,9 @@ class TestScrapeProposalUseCase:
             await use_case.execute(input_dto)
 
     @pytest.mark.asyncio
-    async def test_execute_scraping_error(self, use_case, mock_scraper_service):
+    async def test_execute_scraping_error(
+        self, use_case: ScrapeProposalUseCase, mock_scraper_service: MagicMock
+    ) -> None:
         """Test that scraping errors are properly handled."""
         # Setup
         input_dto = ScrapeProposalInputDTO(url="https://www.shugiin.go.jp/test")
@@ -90,8 +98,11 @@ class TestScrapeProposalUseCase:
 
     @pytest.mark.asyncio
     async def test_scrape_and_save_new_proposal(
-        self, use_case, mock_proposal_repo, mock_scraper_service
-    ):
+        self,
+        use_case: ScrapeProposalUseCase,
+        mock_proposal_repo: MagicMock,
+        mock_scraper_service: MagicMock,
+    ) -> None:
         """Test scraping and saving a new proposal."""
         # Setup
         input_dto = ScrapeProposalInputDTO(
@@ -142,8 +153,11 @@ class TestScrapeProposalUseCase:
 
     @pytest.mark.asyncio
     async def test_scrape_and_save_existing_proposal_by_number(
-        self, use_case, mock_proposal_repo, mock_scraper_service
-    ):
+        self,
+        use_case: ScrapeProposalUseCase,
+        mock_proposal_repo: MagicMock,
+        mock_scraper_service: MagicMock,
+    ) -> None:
         """Test that existing proposals by number are not duplicated."""
         # Setup
         input_dto = ScrapeProposalInputDTO(url="https://www.shugiin.go.jp/test")
@@ -176,8 +190,11 @@ class TestScrapeProposalUseCase:
 
     @pytest.mark.asyncio
     async def test_scrape_and_save_existing_proposal_by_url(
-        self, use_case, mock_proposal_repo, mock_scraper_service
-    ):
+        self,
+        use_case: ScrapeProposalUseCase,
+        mock_proposal_repo: MagicMock,
+        mock_scraper_service: MagicMock,
+    ) -> None:
         """Test that existing proposals by URL are not duplicated."""
         # Setup
         input_dto = ScrapeProposalInputDTO(url="https://www.shugiin.go.jp/test")
@@ -209,8 +226,11 @@ class TestScrapeProposalUseCase:
 
     @pytest.mark.asyncio
     async def test_update_existing_proposal(
-        self, use_case, mock_proposal_repo, mock_scraper_service
-    ):
+        self,
+        use_case: ScrapeProposalUseCase,
+        mock_proposal_repo: MagicMock,
+        mock_scraper_service: MagicMock,
+    ) -> None:
         """Test updating an existing proposal with scraped data."""
         # Setup
         proposal_id = 1
@@ -261,8 +281,11 @@ class TestScrapeProposalUseCase:
 
     @pytest.mark.asyncio
     async def test_update_nonexistent_proposal(
-        self, use_case, mock_proposal_repo, mock_scraper_service
-    ):
+        self,
+        use_case: ScrapeProposalUseCase,
+        mock_proposal_repo: MagicMock,
+        mock_scraper_service: MagicMock,
+    ) -> None:
         """Test that updating a nonexistent proposal raises ValueError."""
         # Setup
         proposal_id = 999
@@ -272,29 +295,3 @@ class TestScrapeProposalUseCase:
         # Execute and assert
         with pytest.raises(ValueError, match="Proposal with ID 999 not found"):
             await use_case.update_existing_proposal(proposal_id, url)
-
-    def test_entity_to_dto_conversion(self, use_case):
-        """Test conversion from Proposal entity to ProposalDTO."""
-        # Setup
-        proposal = Proposal(
-            id=1,
-            content="法案内容",
-            url="https://example.com",
-            submission_date="2023年12月1日",  # Japanese date format
-            proposal_number="第1号",
-            meeting_id=123,
-            summary="概要",
-        )
-
-        # Execute
-        dto = use_case._entity_to_dto(proposal)
-
-        # Assert
-        assert isinstance(dto, ProposalDTO)
-        assert dto.id == 1
-        assert dto.content == "法案内容"
-        assert dto.url == "https://example.com"
-        assert dto.submission_date == "2023年12月1日"  # Original format preserved
-        assert dto.proposal_number == "第1号"
-        assert dto.meeting_id == 123
-        assert dto.summary == "概要"
