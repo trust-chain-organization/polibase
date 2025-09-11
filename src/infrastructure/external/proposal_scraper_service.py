@@ -1,26 +1,29 @@
-"""Implementation of proposal scraping service."""
+"""Implementation of proposal scraping service using LLM for flexible extraction."""
 
 import asyncio
-import re
+import json
 from typing import Any
 
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
+from src.infrastructure.interfaces.llm_service import ILLMService
 from src.infrastructure.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
 
 
 class ProposalScraperService(IProposalScraperService):
-    """Service for scraping proposal from Japanese government websites."""
+    """Service for scraping proposal from Japanese government websites using LLM."""
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, llm_service: ILLMService, headless: bool = True):
         """Initialize the scraper service.
 
         Args:
+            llm_service: LLM service for content extraction
             headless: Whether to run browser in headless mode
         """
+        self.llm_service = llm_service
         self.headless = headless
 
     def is_supported_url(self, url: str) -> bool:
@@ -30,17 +33,26 @@ class ProposalScraperService(IProposalScraperService):
             url: URL to check
 
         Returns:
-            True if the URL is supported, False otherwise
+            True if the URL appears to be a government/council website
         """
-        supported_domains = [
-            "shugiin.go.jp",  # 衆議院
-            "city.kyoto.lg.jp",  # 京都市議会
-            "city.kyoto.jp",  # 京都市議会（別ドメイン）
+        # Support any government or council domain
+        gov_indicators = [
+            ".go.jp",  # 国の機関
+            ".lg.jp",  # 地方自治体
+            "city.",  # 市議会
+            "pref.",  # 都道府県
+            "town.",  # 町議会
+            "vill.",  # 村議会
+            "metro.",  # 都議会
+            "assembly.",  # 議会
+            "council.",  # 議会
+            "shugiin",  # 衆議院
+            "sangiin",  # 参議院
         ]
-        return any(domain in url for domain in supported_domains)
+        return any(indicator in url.lower() for indicator in gov_indicators)
 
     async def scrape_proposal(self, url: str) -> dict[str, Any]:
-        """Scrape proposal details from a given URL.
+        """Scrape proposal details from a given URL using LLM extraction.
 
         Args:
             url: URL of the proposal page
@@ -55,15 +67,10 @@ class ProposalScraperService(IProposalScraperService):
         if not self.is_supported_url(url):
             raise ValueError(f"Unsupported URL: {url}")
 
-        if "shugiin.go.jp" in url:
-            return await self._scrape_shugiin_proposal(url)
-        elif "city.kyoto" in url:
-            return await self._scrape_kyoto_proposal(url)
-        else:
-            raise ValueError(f"No scraper implementation for URL: {url}")
+        return await self._scrape_with_llm(url)
 
-    async def _scrape_shugiin_proposal(self, url: str) -> dict[str, Any]:
-        """Scrape proposal from the House of Representatives website.
+    async def _scrape_with_llm(self, url: str) -> dict[str, Any]:
+        """Scrape proposal from any government website using LLM.
 
         Args:
             url: URL of the proposal page
@@ -83,213 +90,84 @@ class ProposalScraperService(IProposalScraperService):
                 content = await page.content()
                 soup = BeautifulSoup(content, "html.parser")
 
-                # Extract proposal information
+                # Get text content from the page
+                # Remove script and style elements
+                for script in soup(["script", "style"]):
+                    script.decompose()
+
+                # Get text content
+                text_content = soup.get_text(separator="\n", strip=True)
+
+                # Limit text content to avoid token limits
+                max_chars = 10000
+                if len(text_content) > max_chars:
+                    text_content = text_content[:max_chars] + "..."
+
+                # Use LLM to extract proposal information
+                extraction_prompt = f"""以下の政府・議会のウェブページから議案情報を抽出してください。
+
+URL: {url}
+
+ページ内容:
+{text_content}
+
+以下の情報を抽出してください（見つからない場合は空文字列または null を返してください）：
+1. content: 議案名・法案名（タイトル）
+2. proposal_number: 議案番号（例：第210回国会第1号、議第15号など）
+3. submission_date: 提出日・上程日・議決日など
+   （日付として認識できるもの、例：2023年12月1日、令和5年12月1日）
+4. summary: 議案の概要・説明（あれば最初の200文字程度）
+
+JSON形式で返してください。日付はそのまま抽出された文字列で返してください（変換不要）。
+"""
+
+                # Call LLM to extract information
+                messages = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "あなたは日本の政府・議会ウェブサイトから"
+                            "情報を抽出する専門家です。"
+                        ),
+                    },
+                    {"role": "user", "content": extraction_prompt},
+                ]
+
+                llm_response = self.llm_service.invoke_llm(messages)
+
+                # Parse the LLM response
+                try:
+                    # Try to parse as JSON
+                    extracted_data = json.loads(llm_response)
+                except json.JSONDecodeError:
+                    # If not valid JSON, try to extract from the text response
+                    extracted_data = {
+                        "content": "",
+                        "proposal_number": None,
+                        "submission_date": None,
+                        "summary": None,
+                    }
+                    # Simple fallback extraction from LLM text response
+                    if "content:" in llm_response:
+                        content_match = (
+                            llm_response.split("content:")[1].split("\n")[0].strip()
+                        )
+                        extracted_data["content"] = content_match.strip('"').strip()
+
+                # Build the proposal data
                 proposal_data = {
                     "url": url,
-                    "content": "",
-                    "proposal_number": "",
-                    "submission_date": None,
-                    "summary": "",
+                    "content": extracted_data.get("content", ""),
+                    "proposal_number": extracted_data.get("proposal_number"),
+                    "submission_date": extracted_data.get("submission_date"),
+                    "summary": extracted_data.get("summary"),
                 }
-
-                # Extract proposal number and title
-                # 衆議院のページでは通常、議案番号と議案名が一緒に表示される
-                title_element = soup.find("h1") or soup.find("h2")
-                if title_element:
-                    title_text = title_element.get_text(strip=True)
-                    # 議案番号を抽出（例: 第210回国会 第1号）
-                    number_match = re.search(r"第?\d+回?国会\s*第?\d+号?", title_text)
-                    if number_match:
-                        proposal_data["proposal_number"] = number_match.group()
-                        # 議案番号を除いた部分を議案名とする
-                        proposal_data["content"] = title_text.replace(
-                            number_match.group(), ""
-                        ).strip()
-                    else:
-                        proposal_data["content"] = title_text
-
-                # Extract submission date
-                date_patterns = [
-                    r"提出日[:：]\s*(\d{4}年\d{1,2}月\d{1,2}日)",
-                    r"(\d{4}年\d{1,2}月\d{1,2}日)\s*提出",
-                    r"令和(\d+)年(\d{1,2})月(\d{1,2})日",
-                ]
-                for pattern in date_patterns:
-                    date_match = re.search(pattern, content)
-                    if date_match:
-                        # Convert Japanese date to ISO format
-                        date_str = (
-                            date_match.group(1)
-                            if "令和" not in pattern
-                            else date_match.group(0)
-                        )
-                        proposal_data["submission_date"] = (
-                            self._convert_japanese_date_to_iso(date_str)
-                        )
-                        break
-
-                # Extract summary if available
-                summary_element = soup.find("div", class_="summary") or soup.find(
-                    "div", id="summary"
-                )
-                if summary_element:
-                    proposal_data["summary"] = summary_element.get_text(strip=True)
 
                 return proposal_data
 
             except Exception as e:
                 raise RuntimeError(
-                    f"Failed to scrape Shugiin proposal: {str(e)}"
+                    f"Failed to scrape proposal from {url}: {str(e)}"
                 ) from e
             finally:
                 await browser.close()
-
-    async def _scrape_kyoto_proposal(self, url: str) -> dict[str, Any]:
-        """Scrape proposal from Kyoto City Council website.
-
-        Args:
-            url: URL of the proposal page
-
-        Returns:
-            Dictionary containing scraped proposal information
-        """
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=self.headless)
-            page = await browser.new_page()
-
-            try:
-                await page.goto(url, wait_until="networkidle")
-                await asyncio.sleep(1)  # Wait for dynamic content
-
-                # Get the page content
-                content = await page.content()
-                soup = BeautifulSoup(content, "html.parser")
-
-                # Extract proposal information
-                proposal_data = {
-                    "url": url,
-                    "content": "",
-                    "proposal_number": "",
-                    "submission_date": None,
-                    "summary": "",
-                }
-
-                # Kyoto city council specific extraction logic
-                # Look for proposal title
-                title_element = (
-                    soup.find("h1")
-                    or soup.find("h2")
-                    or soup.find("div", class_="title")
-                )
-                if title_element:
-                    proposal_data["content"] = title_element.get_text(strip=True)
-
-                # Extract proposal number (京都市議会では議案番号の形式が異なる)
-                number_patterns = [
-                    r"議第(\d+)号",
-                    r"市会議案第(\d+)号",
-                    r"(\d+)号議案",
-                ]
-                for pattern in number_patterns:
-                    number_match = re.search(pattern, content)
-                    if number_match:
-                        proposal_data["proposal_number"] = number_match.group()
-                        break
-
-                # Extract date (京都市議会の日付形式)
-                date_patterns = [
-                    r"(\d{4})年(\d{1,2})月(\d{1,2})日",
-                    r"令和(\d+)年(\d{1,2})月(\d{1,2})日",
-                    r"平成(\d+)年(\d{1,2})月(\d{1,2})日",
-                ]
-                for pattern in date_patterns:
-                    date_match = re.search(pattern, content)
-                    if date_match:
-                        if "令和" in pattern:
-                            year = 2018 + int(date_match.group(1))
-                            month = date_match.group(2).zfill(2)
-                            day = date_match.group(3).zfill(2)
-                            proposal_data["submission_date"] = f"{year}-{month}-{day}"
-                        elif "平成" in pattern:
-                            year = 1988 + int(date_match.group(1))
-                            month = date_match.group(2).zfill(2)
-                            day = date_match.group(3).zfill(2)
-                            proposal_data["submission_date"] = f"{year}-{month}-{day}"
-                        else:
-                            year = date_match.group(1)
-                            month = date_match.group(2).zfill(2)
-                            day = date_match.group(3).zfill(2)
-                            proposal_data["submission_date"] = f"{year}-{month}-{day}"
-                        break
-
-                # Look for summary or description sections
-                summary_sections = soup.find_all(
-                    ["div", "section"], class_=re.compile(r"(summary|description|概要)")
-                )
-                if summary_sections:
-                    proposal_data["summary"] = summary_sections[0].get_text(strip=True)[
-                        :500
-                    ]  # Limit to 500 chars
-
-                return proposal_data
-
-            except Exception as e:
-                raise RuntimeError(f"Failed to scrape Kyoto proposal: {str(e)}") from e
-            finally:
-                await browser.close()
-
-    def _convert_japanese_date_to_iso(self, date_str: str) -> str:
-        """Convert Japanese date format to ISO format.
-
-        Args:
-            date_str: Japanese date string (e.g., "2023年12月1日")
-
-        Returns:
-            ISO format date string (e.g., "2023-12-01")
-        """
-        try:
-            # Handle different Japanese date formats
-            if "令和" in date_str:
-                # Handle 令和元年 (Reiwa 1st year)
-                if "令和元年" in date_str:
-                    match = re.search(r"令和元年(\d{1,2})月(\d{1,2})日", date_str)
-                    if match:
-                        year = 2019
-                        month = match.group(1).zfill(2)
-                        day = match.group(2).zfill(2)
-                        return f"{year}-{month}-{day}"
-                else:
-                    match = re.search(r"令和(\d+)年(\d{1,2})月(\d{1,2})日", date_str)
-                    if match:
-                        year = 2018 + int(match.group(1))
-                        month = match.group(2).zfill(2)
-                        day = match.group(3).zfill(2)
-                        return f"{year}-{month}-{day}"
-            elif "平成" in date_str:
-                # Handle 平成元年 (Heisei 1st year)
-                if "平成元年" in date_str:
-                    match = re.search(r"平成元年(\d{1,2})月(\d{1,2})日", date_str)
-                    if match:
-                        year = 1989
-                        month = match.group(1).zfill(2)
-                        day = match.group(2).zfill(2)
-                        return f"{year}-{month}-{day}"
-                else:
-                    match = re.search(r"平成(\d+)年(\d{1,2})月(\d{1,2})日", date_str)
-                    if match:
-                        year = 1988 + int(match.group(1))
-                        month = match.group(2).zfill(2)
-                        day = match.group(3).zfill(2)
-                        return f"{year}-{month}-{day}"
-            else:
-                # Standard format: 2023年12月1日
-                match = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", date_str)
-                if match:
-                    year = match.group(1)
-                    month = match.group(2).zfill(2)
-                    day = match.group(3).zfill(2)
-                    return f"{year}-{month}-{day}"
-        except Exception:
-            pass
-
-        return date_str  # Return original if conversion fails

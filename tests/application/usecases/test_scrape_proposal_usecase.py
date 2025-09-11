@@ -47,7 +47,7 @@ class TestScrapeProposalUseCase:
         mock_scraper_service.scrape_proposal.return_value = {
             "content": "環境基本法改正案",
             "proposal_number": "第210回国会 第1号",
-            "submission_date": "2023-12-01",
+            "submission_date": "2023年12月1日",  # Keep original date format
             "summary": "環境保護強化法案",
             "url": input_dto.url,
         }
@@ -59,7 +59,7 @@ class TestScrapeProposalUseCase:
         assert isinstance(result, ScrapeProposalOutputDTO)
         assert result.content == "環境基本法改正案"
         assert result.proposal_number == "第210回国会 第1号"
-        assert result.submission_date == "2023-12-01"
+        assert result.submission_date == "2023年12月1日"  # Original format preserved
         assert result.summary == "環境保護強化法案"
         assert result.url == input_dto.url
         assert result.meeting_id == 123
@@ -101,7 +101,7 @@ class TestScrapeProposalUseCase:
         mock_scraper_service.scrape_proposal.return_value = {
             "content": "環境基本法改正案",
             "proposal_number": "第210回国会 第1号",
-            "submission_date": "2023-12-01",
+            "submission_date": "2023年12月1日",
             "summary": "環境保護強化法案",
             "url": input_dto.url,
         }
@@ -115,7 +115,7 @@ class TestScrapeProposalUseCase:
             id=1,
             content="環境基本法改正案",
             proposal_number="第210回国会 第1号",
-            submission_date="2023-12-01",
+            submission_date="2023年12月1日",
             summary="環境保護強化法案",
             url=input_dto.url,
             meeting_id=123,
@@ -228,7 +228,7 @@ class TestScrapeProposalUseCase:
         mock_scraper_service.scrape_proposal.return_value = {
             "content": "新環境基本法改正案",
             "proposal_number": "第210回国会 第1号",
-            "submission_date": "2023-12-01",
+            "submission_date": "2023年12月1日",
             "summary": "環境保護強化法案",
             "url": new_url,
         }
@@ -238,7 +238,7 @@ class TestScrapeProposalUseCase:
             id=proposal_id,
             content="新環境基本法改正案",
             proposal_number="第210回国会 第1号",
-            submission_date="2023-12-01",
+            submission_date="2023年12月1日",
             summary="環境保護強化法案",
             url=new_url,
             meeting_id=123,
@@ -279,7 +279,7 @@ class TestScrapeProposalUseCase:
             id=1,
             content="法案内容",
             url="https://example.com",
-            submission_date="2023-12-01",
+            submission_date="2023年12月1日",  # Japanese date format
             proposal_number="第1号",
             meeting_id=123,
             summary="概要",
@@ -293,7 +293,7 @@ class TestScrapeProposalUseCase:
         assert dto.id == 1
         assert dto.content == "法案内容"
         assert dto.url == "https://example.com"
-        assert dto.submission_date == "2023-12-01"
+        assert dto.submission_date == "2023年12月1日"  # Original format preserved
         assert dto.proposal_number == "第1号"
         assert dto.meeting_id == 123
         assert dto.summary == "概要"
