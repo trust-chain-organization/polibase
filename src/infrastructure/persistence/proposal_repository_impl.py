@@ -589,3 +589,59 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                 "Failed to get proposals by submission date range",
                 {"start_date": start_date, "end_date": end_date, "error": str(e)},
             ) from e
+
+    async def find_by_url(self, url: str) -> Proposal | None:
+        """Find proposal by URL.
+
+        Args:
+            url: URL of the proposal
+
+        Returns:
+            Proposal if found, None otherwise
+
+        Raises:
+            DatabaseError: If database operation fails
+        """
+        try:
+            query = text("""
+                SELECT
+                    id,
+                    content,
+                    status,
+                    url,
+                    submission_date,
+                    submitter,
+                    proposal_number,
+                    meeting_id,
+                    summary,
+                    created_at,
+                    updated_at
+                FROM proposals
+                WHERE url = :url
+            """)
+            result = await self.session.execute(query, {"url": url})
+            row = result.fetchone()
+
+            if row:
+                proposal_model = ProposalModel(
+                    id=row.id,
+                    content=row.content,
+                    status=row.status,
+                    url=row.url,
+                    submission_date=row.submission_date,
+                    submitter=row.submitter,
+                    proposal_number=row.proposal_number,
+                    meeting_id=row.meeting_id,
+                    summary=row.summary,
+                    created_at=row.created_at,
+                    updated_at=row.updated_at,
+                )
+                return self._to_entity(proposal_model)
+            return None
+
+        except SQLAlchemyError as e:
+            logger.error(f"Database error finding proposal by URL: {e}")
+            raise DatabaseError(
+                "Failed to find proposal by URL",
+                {"url": url, "error": str(e)},
+            ) from e

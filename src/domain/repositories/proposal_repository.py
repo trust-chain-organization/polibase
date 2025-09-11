@@ -59,3 +59,15 @@ class ProposalRepository(BaseRepository[Proposal]):
             List of proposals submitted within the date range
         """
         pass
+
+    @abstractmethod
+    async def find_by_url(self, url: str) -> Proposal | None:
+        """Find proposal by URL.
+
+        Args:
+            url: URL of the proposal
+
+        Returns:
+            Proposal if found, None otherwise
+        """
+        pass
