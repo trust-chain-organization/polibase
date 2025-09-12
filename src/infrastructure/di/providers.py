@@ -35,6 +35,9 @@ from src.infrastructure.persistence.conversation_repository_impl import (
 from src.infrastructure.persistence.extracted_conference_member_repository_impl import (
     ExtractedConferenceMemberRepositoryImpl,
 )
+from src.infrastructure.persistence.extracted_proposal_judge_repository_impl import (
+    ExtractedProposalJudgeRepositoryImpl,
+)
 from src.infrastructure.persistence.governing_body_repository_impl import (
     GoverningBodyRepositoryImpl,
 )
@@ -240,6 +243,11 @@ class RepositoryContainer(containers.DeclarativeContainer):
 
     extracted_conference_member_repository = providers.Factory(
         ExtractedConferenceMemberRepositoryImpl,
+        session=database.async_session,
+    )
+
+    extracted_proposal_judge_repository = providers.Factory(
+        ExtractedProposalJudgeRepositoryImpl,
         session=database.async_session,
     )
 
