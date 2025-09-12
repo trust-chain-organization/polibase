@@ -346,7 +346,7 @@ class TestExtractProposalJudgesUseCase:
         matched_judges = [
             ExtractedProposalJudge(
                 id=1,
-                proposal_id=None,  # No proposal ID
+                proposal_id=0,  # No proposal ID - use 0 instead of None
                 extracted_politician_name="山田太郎",
                 extracted_judgment="賛成",
                 source_url="http://example.com",

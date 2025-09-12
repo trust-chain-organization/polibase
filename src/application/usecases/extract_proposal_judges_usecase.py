@@ -136,7 +136,7 @@ class ExtractProposalJudgesUseCase:
             judgment = judge_data.get("judgment", "APPROVE")
 
             judge = ExtractedProposalJudge(
-                proposal_id=request.proposal_id,
+                proposal_id=request.proposal_id or 0,  # Default to 0 if None
                 extracted_politician_name=judge_data["name"],
                 extracted_party_name=judge_data.get("party"),
                 extracted_judgment=judgment,
@@ -336,9 +336,9 @@ class ExtractProposalJudgesUseCase:
             judge.matching_confidence = 0.0
             await self.extracted_repo.update_matching_result(
                 judge.id or 0,
-                None,
-                0.0,
-                "no_match",
+                politician_id=None,
+                confidence=0.0,
+                status="no_match",
             )
 
             return JudgeMatchResultDTO(
@@ -369,9 +369,9 @@ class ExtractProposalJudgesUseCase:
             judge.matching_confidence = 0.0
             await self.extracted_repo.update_matching_result(
                 judge.id or 0,
-                None,
-                0.0,
-                "no_match",
+                politician_id=None,
+                confidence=0.0,
+                status="no_match",
             )
 
             return JudgeMatchResultDTO(
@@ -436,9 +436,9 @@ class ExtractProposalJudgesUseCase:
                 judge.matching_status = status
                 await self.extracted_repo.update_matching_result(
                     judge.id or 0,
-                    judge.matched_politician_id,
-                    judge.matching_confidence,
-                    judge.matching_status,
+                    politician_id=judge.matched_politician_id,
+                    confidence=judge.matching_confidence,
+                    status=judge.matching_status,
                 )
 
                 return JudgeMatchResultDTO(
@@ -457,9 +457,9 @@ class ExtractProposalJudgesUseCase:
         judge.matching_confidence = 0.0
         await self.extracted_repo.update_matching_result(
             judge.id or 0,
-            None,
-            0.0,
-            "no_match",
+            politician_id=None,
+            confidence=0.0,
+            status="no_match",
         )
 
         return JudgeMatchResultDTO(
