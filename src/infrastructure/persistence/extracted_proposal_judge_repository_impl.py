@@ -336,3 +336,33 @@ class ExtractedProposalJudgeRepositoryImpl(
 
         if hasattr(entity, "additional_data") and entity.additional_data is not None:
             model.additional_data = entity.additional_data
+
+    async def get_pending_by_proposal(
+        self, proposal_id: int
+    ) -> list[ExtractedProposalJudge]:
+        """Get pending judges for a specific proposal."""
+        return await self.get_pending_judges(proposal_id)
+
+    async def get_all_pending(self) -> list[ExtractedProposalJudge]:
+        """Get all pending judges."""
+        return await self.get_pending_judges()
+
+    async def get_matched_by_proposal(
+        self, proposal_id: int
+    ) -> list[ExtractedProposalJudge]:
+        """Get matched judges for a specific proposal."""
+        return await self.get_matched_judges(proposal_id)
+
+    async def get_all_matched(self) -> list[ExtractedProposalJudge]:
+        """Get all matched judges."""
+        return await self.get_matched_judges()
+
+    async def mark_processed(self, judge_id: int) -> None:
+        """Mark a judge as processed."""
+        query = text("""
+            UPDATE extracted_proposal_judges
+            SET matching_status = 'processed',
+                matched_at = CURRENT_TIMESTAMP
+            WHERE id = :judge_id
+        """)
+        await self.session.execute(query, {"judge_id": judge_id})

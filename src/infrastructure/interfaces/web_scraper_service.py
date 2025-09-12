@@ -6,6 +6,17 @@ from typing import Any, Protocol
 class IWebScraperService(Protocol):
     """Interface for web scraping services."""
 
+    def is_supported_url(self, url: str) -> bool:
+        """Check if the URL is supported for scraping.
+
+        Args:
+            url: URL to check
+
+        Returns:
+            True if the URL is supported, False otherwise
+        """
+        ...
+
     async def scrape_party_members(
         self, url: str, party_id: int
     ) -> list[dict[str, Any]]:
@@ -39,5 +50,16 @@ class IWebScraperService(Protocol):
 
         Returns:
             Scraped meeting minutes data
+        """
+        ...
+
+    async def scrape_proposal_judges(self, url: str) -> list[dict[str, Any]]:
+        """Scrape proposal voting information from website.
+
+        Args:
+            url: URL of the proposal voting results page
+
+        Returns:
+            List of voting information with name, party, and judgment
         """
         ...

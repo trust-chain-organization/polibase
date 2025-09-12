@@ -8,6 +8,11 @@ class IWebScraperService(ABC):
     """Interface for web scraping service."""
 
     @abstractmethod
+    def is_supported_url(self, url: str) -> bool:
+        """Check if the URL is supported for scraping."""
+        pass
+
+    @abstractmethod
     async def scrape_party_members(
         self, url: str, party_id: int, party_name: str | None = None
     ) -> list[dict[str, Any]]:
@@ -26,13 +31,49 @@ class IWebScraperService(ABC):
         """Scrape meeting minutes from website."""
         pass
 
+    @abstractmethod
+    async def scrape_proposal_judges(self, url: str) -> list[dict[str, Any]]:
+        """Scrape proposal voting information from website."""
+        pass
+
 
 class PlaywrightScraperService(IWebScraperService):
     """Playwright-based implementation of web scraper."""
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, headless: bool = True, llm_service: Any | None = None):
+        """Initialize the PlaywrightScraperService.
+
+        Args:
+            headless: Whether to run the browser in headless mode
+            llm_service: Optional LLM service for content extraction.
+                        If not provided, a default GeminiLLMService will be created.
+        """
         self.headless = headless
+        self._llm_service = llm_service
         # Initialize Playwright here
+
+    def is_supported_url(self, url: str) -> bool:
+        """Check if the URL is supported for scraping.
+
+        Args:
+            url: URL to check
+
+        Returns:
+            True if the URL is supported, False otherwise
+        """
+        # Support common Japanese government and council websites
+        supported_domains = [
+            "kaigiroku.net",
+            "metro.tokyo.lg.jp",
+            "pref.kyoto.lg.jp",
+            "pref.osaka.lg.jp",
+            "city.kyoto.lg.jp",
+            "city.osaka.lg.jp",
+            "shugiin.go.jp",
+            "sangiin.go.jp",
+        ]
+
+        return any(domain in url for domain in supported_domains)
 
     async def scrape_party_members(
         self, url: str, party_id: int, party_name: str | None = None
@@ -225,3 +266,106 @@ class PlaywrightScraperService(IWebScraperService):
             "gcs_pdf_uri": "gs://bucket/minutes.pdf" if upload_to_gcs else None,
             "gcs_text_uri": "gs://bucket/minutes.txt" if upload_to_gcs else None,
         }
+
+    async def scrape_proposal_judges(self, url: str) -> list[dict[str, Any]]:
+        """Scrape proposal voting information from website.
+
+        Args:
+            url: URL of the proposal voting results page
+
+        Returns:
+            List of voting information with name, party, and judgment
+        """
+        import logging
+
+        from playwright.async_api import async_playwright
+
+        from src.domain.services.proposal_judge_extraction_service import (
+            ProposalJudgeExtractionService,
+        )
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=self.headless)
+                page = await browser.new_page()
+
+                # Navigate to the URL
+                await page.goto(url, wait_until="networkidle")
+
+                # Wait for content to load
+                await page.wait_for_load_state("domcontentloaded")
+
+                # Get the page content
+                text_content = await page.inner_text("body")
+
+                await browser.close()
+
+                # Use LLM to extract voting information
+                # Use injected service or create default
+                if self._llm_service:
+                    llm_service = self._llm_service
+                else:
+                    from src.infrastructure.external.llm_service import GeminiLLMService
+
+                    llm_service = GeminiLLMService()
+
+                # Use extract_speeches_from_text which handles JSON extraction
+                # We'll format our prompt to work with this method
+                formatted_text = f"""
+以下のウェブページから議案賛否情報を抽出してください。
+
+ページの内容:
+{text_content[:5000]}
+
+各議員について以下の形式で返してください：
+- name: 議員名（敬称除去）
+- party: 所属政党
+- judgment: 賛成/反対/棄権/欠席
+"""
+                # The method returns a list, so we can use it directly
+                judges_data = await llm_service.extract_speeches_from_text(
+                    formatted_text
+                )
+
+                # The result should already be a list
+                if isinstance(judges_data, list):
+                    # Normalize the data using domain service
+                    normalized_judges = []
+                    for judge in judges_data:
+                        judgment_text = judge.get("judgment", "")
+                        normalized_judgment, is_known = (
+                            ProposalJudgeExtractionService.normalize_judgment_type(
+                                judgment_text
+                            )
+                        )
+
+                        # Log unknown judgment types
+                        if not is_known:
+                            logger.warning(
+                                f"Unknown judgment type: {judgment_text}, "
+                                f"defaulting to APPROVE"
+                            )
+
+                        normalized_judges.append(
+                            {
+                                "name": (
+                                    ProposalJudgeExtractionService.normalize_politician_name(
+                                        judge.get("name", "")
+                                    )
+                                ),
+                                "party": judge.get("party"),
+                                "judgment": normalized_judgment,
+                            }
+                        )
+                    return normalized_judges
+
+                # If not a list, try text parsing
+                return ProposalJudgeExtractionService.parse_voting_result_text(
+                    text_content
+                )
+
+        except Exception as e:
+            logger.error(f"Failed to scrape proposal judges from {url}: {e}")
+            return []

@@ -75,3 +75,32 @@ class ExtractedProposalJudgeRepository(BaseRepository[ExtractedProposalJudge]):
     ) -> list[ProposalJudge]:
         """Convert all matched judges for a proposal to ProposalJudge entities."""
         pass
+
+    @abstractmethod
+    async def get_pending_by_proposal(
+        self, proposal_id: int
+    ) -> list[ExtractedProposalJudge]:
+        """Get pending judges for a specific proposal."""
+        pass
+
+    @abstractmethod
+    async def get_all_pending(self) -> list[ExtractedProposalJudge]:
+        """Get all pending judges."""
+        pass
+
+    @abstractmethod
+    async def get_matched_by_proposal(
+        self, proposal_id: int
+    ) -> list[ExtractedProposalJudge]:
+        """Get matched judges for a specific proposal."""
+        pass
+
+    @abstractmethod
+    async def get_all_matched(self) -> list[ExtractedProposalJudge]:
+        """Get all matched judges."""
+        pass
+
+    @abstractmethod
+    async def mark_processed(self, judge_id: int) -> None:
+        """Mark a judge as processed."""
+        pass
