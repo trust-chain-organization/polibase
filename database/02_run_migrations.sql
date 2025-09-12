@@ -25,5 +25,6 @@
 \i /docker-entrypoint-initdb.d/02_migrations/020_add_attendees_mapping_to_meetings.sql
 \i /docker-entrypoint-initdb.d/02_migrations/021_create_extracted_parliamentary_group_members_table.sql
 \i /docker-entrypoint-initdb.d/02_migrations/022_add_proposal_metadata.sql
+\i /docker-entrypoint-initdb.d/02_migrations/023_create_extracted_proposal_judges.sql
 
 \echo 'Migrations completed.'

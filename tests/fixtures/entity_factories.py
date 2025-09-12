@@ -6,6 +6,7 @@ from typing import Any
 from src.domain.entities.conference import Conference
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.extracted_conference_member import ExtractedConferenceMember
+from src.domain.entities.extracted_proposal_judge import ExtractedProposalJudge
 from src.domain.entities.governing_body import GoverningBody
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
@@ -174,3 +175,25 @@ def create_politician_affiliation(**kwargs: Any) -> PoliticianAffiliation:
     }
     defaults.update(kwargs)
     return PoliticianAffiliation(**defaults)
+
+
+def create_extracted_proposal_judge(**kwargs: Any) -> ExtractedProposalJudge:
+    """Create a test extracted proposal judge."""
+    defaults = {
+        "id": 1,
+        "proposal_id": 1,
+        "extracted_politician_name": "山田太郎",
+        "extracted_party_name": "自由民主党",
+        "extracted_parliamentary_group_name": None,
+        "extracted_judgment": "賛成",
+        "source_url": "https://example.com/proposal/1",
+        "extracted_at": datetime.now(),
+        "matched_politician_id": None,
+        "matched_parliamentary_group_id": None,
+        "matching_confidence": None,
+        "matching_status": "pending",
+        "matched_at": None,
+        "additional_data": None,
+    }
+    defaults.update(kwargs)
+    return ExtractedProposalJudge(**defaults)
