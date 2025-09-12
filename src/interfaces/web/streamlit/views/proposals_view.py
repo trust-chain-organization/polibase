@@ -47,9 +47,9 @@ def render_proposals_list_tab(presenter: ProposalPresenter):
     with col1:
         # Filter by meeting
         meeting_options = ["すべて"] + [
-            f"{m.meeting_name} ({m.meeting_date})" for m in meetings
+            f"{m.name} ({m.date})" for m in meetings
         ]
-        meeting_map = {f"{m.meeting_name} ({m.meeting_date})": m.id for m in meetings}
+        meeting_map = {f"{m.name} ({m.date})": m.id for m in meetings}
         selected_meeting = st.selectbox("会議でフィルタ", meeting_options)
 
     with col2:
@@ -155,10 +155,10 @@ def render_new_proposal_tab(presenter: ProposalPresenter):
 
         with col2:
             meeting_options = ["なし"] + [
-                f"{m.meeting_name} ({m.meeting_date})" for m in meetings
+                f"{m.name} ({m.date})" for m in meetings
             ]
             meeting_map = {
-                f"{m.meeting_name} ({m.meeting_date})": m.id for m in meetings
+                f"{m.name} ({m.date})": m.id for m in meetings
             }
             selected_meeting = st.selectbox("関連会議", meeting_options)
 
@@ -221,9 +221,9 @@ def render_scrape_proposal_tab(presenter: ProposalPresenter):
         )
 
         meeting_options = ["なし"] + [
-            f"{m.meeting_name} ({m.meeting_date})" for m in meetings
+            f"{m.name} ({m.date})" for m in meetings
         ]
-        meeting_map = {f"{m.meeting_name} ({m.meeting_date})": m.id for m in meetings}
+        meeting_map = {f"{m.name} ({m.date})": m.id for m in meetings}
         selected_meeting = st.selectbox(
             "関連会議（任意）",
             meeting_options,
@@ -307,10 +307,10 @@ def render_edit_delete_tab(presenter: ProposalPresenter):
 
             with col2_inner:
                 meeting_options = ["なし"] + [
-                    f"{m.meeting_name} ({m.meeting_date})" for m in meetings
+                    f"{m.name} ({m.date})" for m in meetings
                 ]
                 meeting_map = {
-                    f"{m.meeting_name} ({m.meeting_date})": m.id for m in meetings
+                    f"{m.name} ({m.date})": m.id for m in meetings
                 }
                 current_meeting_idx = 0
                 if selected_proposal.meeting_id:

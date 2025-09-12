@@ -94,7 +94,7 @@ class ProposalPresenter:
                 try:
                     meeting = self.meeting_repo.get_by_id(p.meeting_id)
                     if meeting:
-                        meeting_name = meeting.meeting_name
+                        meeting_name = meeting.name
                 except Exception:
                     pass
 

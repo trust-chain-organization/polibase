@@ -266,7 +266,7 @@ def render_conference_summary_tab(presenter: ProposalPresenter):
         return
 
     # Select meeting
-    meeting_options = [f"{m.meeting_name} ({m.meeting_date})" for m in meetings]
+    meeting_options = [f"{m.name} ({m.date})" for m in meetings]
     selected_meeting_str = st.selectbox("会議を選択", meeting_options)
 
     # Get selected meeting
@@ -277,10 +277,10 @@ def render_conference_summary_tab(presenter: ProposalPresenter):
     proposals = presenter.load_proposals_by_meeting(selected_meeting.id)
 
     if not proposals:
-        st.info(f"{selected_meeting.meeting_name}に議案がありません")
+        st.info(f"{selected_meeting.name}に議案がありません")
         return
 
-    st.markdown(f"**{selected_meeting.meeting_name}の議案 ({len(proposals)}件)**")
+    st.markdown(f"**{selected_meeting.name}の議案 ({len(proposals)}件)**")
 
     # Show each proposal with voting summary
     for proposal in proposals:
