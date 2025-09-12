@@ -17,6 +17,7 @@ from src.cli_package.commands.parliamentary_group_commands import (
 )
 from src.cli_package.commands.politician_commands import get_politician_commands
 from src.cli_package.commands.prompt_commands import get_prompt_commands
+from src.cli_package.commands.proposal_commands import get_proposal_commands
 from src.cli_package.commands.seed_commands import get_seed_commands
 from src.common.logging import setup_logging
 from src.config.sentry import init_sentry
@@ -94,6 +95,7 @@ def register_legacy_commands(cli_group: click.Group) -> None:
         get_politician_commands,
         get_conference_member_commands,
         get_parliamentary_group_commands,
+        get_proposal_commands,
         get_seed_commands,
         get_coverage_commands,
         get_evaluation_commands,
