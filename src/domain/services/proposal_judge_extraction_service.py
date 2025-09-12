@@ -1,10 +1,7 @@
 """Domain service for proposal judge extraction and matching."""
 
-import logging
 import re
 from typing import Any
-
-logger = logging.getLogger(__name__)
 
 
 class ProposalJudgeExtractionService:
@@ -15,31 +12,29 @@ class ProposalJudgeExtractionService:
     """
 
     @staticmethod
-    def normalize_judgment_type(judgment_text: str) -> str:
+    def normalize_judgment_type(judgment_text: str) -> tuple[str, bool]:
         """判定タイプテキストを正規化する
 
         Args:
             judgment_text: 判定テキスト（賛成、反対、棄権、欠席など）
 
         Returns:
-            正規化された判定タイプ（APPROVE, OPPOSE, ABSTAIN, ABSENT）
+            タプル（正規化された判定タイプ, 既知の判定タイプかどうか）
         """
         text = judgment_text.strip().upper()
 
         # Map Japanese and English variations to standard types
         if text in ["賛成", "APPROVE", "YES", "FOR", "賛", "○"]:
-            return "APPROVE"
+            return ("APPROVE", True)
         elif text in ["反対", "OPPOSE", "NO", "AGAINST", "反", "×", "✕"]:
-            return "OPPOSE"
+            return ("OPPOSE", True)
         elif text in ["棄権", "ABSTAIN", "ABSTENTION", "棄"]:
-            return "ABSTAIN"
+            return ("ABSTAIN", True)
         elif text in ["欠席", "ABSENT", "ABSENCE", "欠", "－"]:
-            return "ABSENT"
+            return ("ABSENT", True)
         else:
-            logger.warning(
-                f"Unknown judgment type: {judgment_text}, defaulting to APPROVE"
-            )
-            return "APPROVE"
+            # Return APPROVE as default but indicate it was unknown
+            return ("APPROVE", False)
 
     @staticmethod
     def normalize_politician_name(name: str) -> str:

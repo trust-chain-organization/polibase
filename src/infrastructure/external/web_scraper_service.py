@@ -40,8 +40,16 @@ class IWebScraperService(ABC):
 class PlaywrightScraperService(IWebScraperService):
     """Playwright-based implementation of web scraper."""
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, headless: bool = True, llm_service: Any | None = None):
+        """Initialize the PlaywrightScraperService.
+
+        Args:
+            headless: Whether to run the browser in headless mode
+            llm_service: Optional LLM service for content extraction.
+                        If not provided, a default GeminiLLMService will be created.
+        """
         self.headless = headless
+        self._llm_service = llm_service
         # Initialize Playwright here
 
     def is_supported_url(self, url: str) -> bool:
@@ -275,7 +283,6 @@ class PlaywrightScraperService(IWebScraperService):
         from src.domain.services.proposal_judge_extraction_service import (
             ProposalJudgeExtractionService,
         )
-        from src.infrastructure.external.llm_service import GeminiLLMService
 
         logger = logging.getLogger(__name__)
 
@@ -296,7 +303,13 @@ class PlaywrightScraperService(IWebScraperService):
                 await browser.close()
 
                 # Use LLM to extract voting information
-                llm_service = GeminiLLMService()
+                # Use injected service or create default
+                if self._llm_service:
+                    llm_service = self._llm_service
+                else:
+                    from src.infrastructure.external.llm_service import GeminiLLMService
+
+                    llm_service = GeminiLLMService()
 
                 # Use extract_speeches_from_text which handles JSON extraction
                 # We'll format our prompt to work with this method
@@ -321,6 +334,20 @@ class PlaywrightScraperService(IWebScraperService):
                     # Normalize the data using domain service
                     normalized_judges = []
                     for judge in judges_data:
+                        judgment_text = judge.get("judgment", "")
+                        normalized_judgment, is_known = (
+                            ProposalJudgeExtractionService.normalize_judgment_type(
+                                judgment_text
+                            )
+                        )
+
+                        # Log unknown judgment types
+                        if not is_known:
+                            logger.warning(
+                                f"Unknown judgment type: {judgment_text}, "
+                                f"defaulting to APPROVE"
+                            )
+
                         normalized_judges.append(
                             {
                                 "name": (
@@ -329,11 +356,7 @@ class PlaywrightScraperService(IWebScraperService):
                                     )
                                 ),
                                 "party": judge.get("party"),
-                                "judgment": (
-                                    ProposalJudgeExtractionService.normalize_judgment_type(
-                                        judge.get("judgment", "")
-                                    )
-                                ),
+                                "judgment": normalized_judgment,
                             }
                         )
                     return normalized_judges

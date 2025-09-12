@@ -12,44 +12,44 @@ class TestProposalJudgeExtractionService:
         """Test normalizing Japanese judgment types"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("賛成") == "APPROVE"
-        assert service.normalize_judgment_type("反対") == "OPPOSE"
-        assert service.normalize_judgment_type("棄権") == "ABSTAIN"
-        assert service.normalize_judgment_type("欠席") == "ABSENT"
+        assert service.normalize_judgment_type("賛成") == ("APPROVE", True)
+        assert service.normalize_judgment_type("反対") == ("OPPOSE", True)
+        assert service.normalize_judgment_type("棄権") == ("ABSTAIN", True)
+        assert service.normalize_judgment_type("欠席") == ("ABSENT", True)
 
     def test_normalize_judgment_type_english(self):
         """Test normalizing English judgment types"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("APPROVE") == "APPROVE"
-        assert service.normalize_judgment_type("OPPOSE") == "OPPOSE"
-        assert service.normalize_judgment_type("ABSTAIN") == "ABSTAIN"
-        assert service.normalize_judgment_type("ABSENT") == "ABSENT"
+        assert service.normalize_judgment_type("APPROVE") == ("APPROVE", True)
+        assert service.normalize_judgment_type("OPPOSE") == ("OPPOSE", True)
+        assert service.normalize_judgment_type("ABSTAIN") == ("ABSTAIN", True)
+        assert service.normalize_judgment_type("ABSENT") == ("ABSENT", True)
 
     def test_normalize_judgment_type_symbols(self):
         """Test normalizing symbol judgment types"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("○") == "APPROVE"
-        assert service.normalize_judgment_type("×") == "OPPOSE"
-        assert service.normalize_judgment_type("－") == "ABSENT"
+        assert service.normalize_judgment_type("○") == ("APPROVE", True)
+        assert service.normalize_judgment_type("×") == ("OPPOSE", True)
+        assert service.normalize_judgment_type("－") == ("ABSENT", True)
 
     def test_normalize_judgment_type_variations(self):
         """Test normalizing various judgment type variations"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("YES") == "APPROVE"
-        assert service.normalize_judgment_type("NO") == "OPPOSE"
-        assert service.normalize_judgment_type("FOR") == "APPROVE"
-        assert service.normalize_judgment_type("AGAINST") == "OPPOSE"
+        assert service.normalize_judgment_type("YES") == ("APPROVE", True)
+        assert service.normalize_judgment_type("NO") == ("OPPOSE", True)
+        assert service.normalize_judgment_type("FOR") == ("APPROVE", True)
+        assert service.normalize_judgment_type("AGAINST") == ("OPPOSE", True)
 
     def test_normalize_judgment_type_unknown(self):
         """Test normalizing unknown judgment type defaults to APPROVE"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("不明") == "APPROVE"
-        assert service.normalize_judgment_type("その他") == "APPROVE"
-        assert service.normalize_judgment_type("") == "APPROVE"
+        assert service.normalize_judgment_type("不明") == ("APPROVE", False)
+        assert service.normalize_judgment_type("その他") == ("APPROVE", False)
+        assert service.normalize_judgment_type("") == ("APPROVE", False)
 
     def test_normalize_politician_name(self):
         """Test normalizing politician names"""

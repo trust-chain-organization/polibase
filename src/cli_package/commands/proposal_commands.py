@@ -5,6 +5,7 @@ import logging
 
 import click
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from src.application.dtos.proposal_judge_dto import (
     CreateProposalJudgesInputDTO,
@@ -36,6 +37,38 @@ logger = logging.getLogger(__name__)
 
 class ProposalCommands(BaseCommand):
     """Commands for proposal judge extraction and matching"""
+
+    @staticmethod
+    def _create_use_case(session: Session) -> ExtractProposalJudgesUseCase:
+        """Create and initialize the ExtractProposalJudgesUseCase with all dependencies.
+
+        Args:
+            session: Database session
+
+        Returns:
+            Configured ExtractProposalJudgesUseCase instance
+        """
+        async_session = AsyncSessionAdapter(session)
+
+        # Initialize repositories
+        proposal_repo = ProposalRepositoryImpl(async_session)
+        politician_repo = PoliticianRepositoryImpl(async_session)
+        extracted_repo = ExtractedProposalJudgeRepositoryImpl(async_session)
+        judge_repo = ProposalJudgeRepositoryImpl(async_session)
+
+        # Initialize services
+        llm_service = GeminiLLMService()
+        scraper_service = PlaywrightScraperService(llm_service=llm_service)
+
+        # Create use case
+        return ExtractProposalJudgesUseCase(
+            proposal_repository=proposal_repo,
+            politician_repository=politician_repo,
+            extracted_proposal_judge_repository=extracted_repo,
+            proposal_judge_repository=judge_repo,
+            web_scraper_service=scraper_service,
+            llm_service=llm_service,
+        )
 
     @staticmethod
     def echo_info(message: str):
@@ -102,7 +135,7 @@ class ProposalCommands(BaseCommand):
         click.echo("📋 議案賛否情報の抽出を開始します（ステップ1/3）")
 
         async def run_extract():
-            # Initialize repositories and services
+            # Initialize database session
             from sqlalchemy.orm import sessionmaker
 
             from src.config.database import get_db_engine
@@ -110,28 +143,10 @@ class ProposalCommands(BaseCommand):
             engine = get_db_engine()
             session_local = sessionmaker(bind=engine)
             session = session_local()
-            async_session = AsyncSessionAdapter(session)
 
             try:
-                # Initialize repositories
-                proposal_repo = ProposalRepositoryImpl(async_session)
-                politician_repo = PoliticianRepositoryImpl(async_session)
-                extracted_repo = ExtractedProposalJudgeRepositoryImpl(async_session)
-                judge_repo = ProposalJudgeRepositoryImpl(async_session)
-
-                # Initialize services
-                scraper_service = PlaywrightScraperService()
-                llm_service = GeminiLLMService()
-
-                # Create use case
-                use_case = ExtractProposalJudgesUseCase(
-                    proposal_repository=proposal_repo,
-                    politician_repository=politician_repo,
-                    extracted_proposal_judge_repository=extracted_repo,
-                    proposal_judge_repository=judge_repo,
-                    web_scraper_service=scraper_service,
-                    llm_service=llm_service,
-                )
+                # Create use case with common initialization
+                use_case = ProposalCommands._create_use_case(session)
 
                 # Execute extraction
                 input_dto = ExtractProposalJudgesInputDTO(
@@ -191,7 +206,7 @@ class ProposalCommands(BaseCommand):
         click.echo("🔍 議案賛否情報と政治家のマッチングを開始します（ステップ2/3）")
 
         async def run_match():
-            # Initialize repositories and services
+            # Initialize database session
             from sqlalchemy.orm import sessionmaker
 
             from src.config.database import get_db_engine
@@ -199,28 +214,10 @@ class ProposalCommands(BaseCommand):
             engine = get_db_engine()
             session_local = sessionmaker(bind=engine)
             session = session_local()
-            async_session = AsyncSessionAdapter(session)
 
             try:
-                # Initialize repositories
-                proposal_repo = ProposalRepositoryImpl(async_session)
-                politician_repo = PoliticianRepositoryImpl(async_session)
-                extracted_repo = ExtractedProposalJudgeRepositoryImpl(async_session)
-                judge_repo = ProposalJudgeRepositoryImpl(async_session)
-
-                # Initialize services
-                scraper_service = PlaywrightScraperService()
-                llm_service = GeminiLLMService()
-
-                # Create use case
-                use_case = ExtractProposalJudgesUseCase(
-                    proposal_repository=proposal_repo,
-                    politician_repository=politician_repo,
-                    extracted_proposal_judge_repository=extracted_repo,
-                    proposal_judge_repository=judge_repo,
-                    web_scraper_service=scraper_service,
-                    llm_service=llm_service,
-                )
+                # Create use case with common initialization
+                use_case = ProposalCommands._create_use_case(session)
 
                 # Execute matching
                 input_dto = MatchProposalJudgesInputDTO(
@@ -299,7 +296,7 @@ class ProposalCommands(BaseCommand):
         click.echo("✍️ 議案賛否レコードの作成を開始します（ステップ3/3）")
 
         async def run_create():
-            # Initialize repositories and services
+            # Initialize database session
             from sqlalchemy.orm import sessionmaker
 
             from src.config.database import get_db_engine
@@ -307,28 +304,10 @@ class ProposalCommands(BaseCommand):
             engine = get_db_engine()
             session_local = sessionmaker(bind=engine)
             session = session_local()
-            async_session = AsyncSessionAdapter(session)
 
             try:
-                # Initialize repositories
-                proposal_repo = ProposalRepositoryImpl(async_session)
-                politician_repo = PoliticianRepositoryImpl(async_session)
-                extracted_repo = ExtractedProposalJudgeRepositoryImpl(async_session)
-                judge_repo = ProposalJudgeRepositoryImpl(async_session)
-
-                # Initialize services
-                scraper_service = PlaywrightScraperService()
-                llm_service = GeminiLLMService()
-
-                # Create use case
-                use_case = ExtractProposalJudgesUseCase(
-                    proposal_repository=proposal_repo,
-                    politician_repository=politician_repo,
-                    extracted_proposal_judge_repository=extracted_repo,
-                    proposal_judge_repository=judge_repo,
-                    web_scraper_service=scraper_service,
-                    llm_service=llm_service,
-                )
+                # Create use case with common initialization
+                use_case = ProposalCommands._create_use_case(session)
 
                 # Execute creation
                 input_dto = CreateProposalJudgesInputDTO(
