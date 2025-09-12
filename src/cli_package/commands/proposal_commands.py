@@ -4,6 +4,7 @@ import asyncio
 import logging
 
 import click
+from sqlalchemy import text
 
 from src.application.dtos.proposal_judge_dto import (
     CreateProposalJudgesInputDTO,
@@ -384,24 +385,26 @@ class ProposalCommands(BaseCommand):
             # Get statistics from database
             if proposal_id:
                 # Query for specific proposal
-                extracted_query = """
+                extracted_query = text("""
                     SELECT
                         matching_status,
                         COUNT(*) as count
                     FROM extracted_proposal_judges
-                    WHERE proposal_id = %s
+                    WHERE proposal_id = :proposal_id
                     GROUP BY matching_status
-                """
-                extracted_result = session.execute(extracted_query, (proposal_id,))
+                """)
+                extracted_result = session.execute(
+                    extracted_query, {"proposal_id": proposal_id}
+                )
             else:
                 # Query for all proposals
-                extracted_query = """
+                extracted_query = text("""
                     SELECT
                         matching_status,
                         COUNT(*) as count
                     FROM extracted_proposal_judges
                     GROUP BY matching_status
-                """
+                """)
                 extracted_result = session.execute(extracted_query)
 
             # Process results
@@ -426,16 +429,19 @@ class ProposalCommands(BaseCommand):
 
             # Get created judges count
             if proposal_id:
-                judges_query = """
+                judges_query = text("""
                     SELECT COUNT(*) FROM proposal_judges
-                    WHERE proposal_id = %s
-                """
-                judges_result = session.execute(judges_query, (proposal_id,))
+                    WHERE proposal_id = :proposal_id
+                """)
+                judges_result = session.execute(
+                    judges_query, {"proposal_id": proposal_id}
+                )
             else:
-                judges_query = "SELECT COUNT(*) FROM proposal_judges"
+                judges_query = text("SELECT COUNT(*) FROM proposal_judges")
                 judges_result = session.execute(judges_query)
 
-            judges_count = judges_result.fetchone()[0]
+            row = judges_result.fetchone()
+            judges_count = row[0] if row else 0
 
             ProposalCommands.echo_info(f"\n✅ 作成済み賛否レコード: {judges_count}件")
 

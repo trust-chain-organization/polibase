@@ -298,72 +298,47 @@ class PlaywrightScraperService(IWebScraperService):
                 # Use LLM to extract voting information
                 llm_service = GeminiLLMService()
 
-                instruction = (
-                    "以下のウェブページの内容から、"
-                    "議案に対する賛否情報を抽出してください。"
-                )
-                prompt = f"""{instruction}
+                # Use extract_speeches_from_text which handles JSON extraction
+                # We'll format our prompt to work with this method
+                formatted_text = f"""
+以下のウェブページから議案賛否情報を抽出してください。
 
 ページの内容:
 {text_content[:5000]}
 
-以下のJSON形式で各議員の賛否情報を返してください：
-[
-    {{
-        "name": "議員名",
-        "party": "所属政党（わかる場合）",
-        "judgment": "賛成｜反対｜棄権｜欠席"
-    }},
-    ...
-]
-
-注意事項：
-- 議員名から敬称（議員、氏、さん等）は除去してください
-- judgmentは「賛成」「反対」「棄権」「欠席」のいずれかにしてください
-- 議員団・会派名が含まれる場合は、個別議員として扱わないでください
+各議員について以下の形式で返してください：
+- name: 議員名（敬称除去）
+- party: 所属政党
+- judgment: 賛成/反対/棄権/欠席
 """
+                # The method returns a list, so we can use it directly
+                judges_data = await llm_service.extract_speeches_from_text(
+                    formatted_text
+                )
 
-                result = await llm_service.generate_response(prompt)
-
-                # Parse the LLM response
-                import json
-                import re
-
-                # Extract JSON from the response
-                json_match = re.search(r"\[.*?\]", result, re.DOTALL)
-                if json_match:
-                    try:
-                        judges_data = json.loads(json_match.group())
-
-                        # Normalize the data using domain service
-                        normalized_judges = []
-                        for judge in judges_data:
-                            normalized_judges.append(
-                                {
-                                    "name": (
-                                        ProposalJudgeExtractionService.normalize_politician_name(
-                                            judge.get("name", "")
-                                        )
-                                    ),
-                                    "party": judge.get("party"),
-                                    "judgment": (
-                                        ProposalJudgeExtractionService.normalize_judgment_type(
-                                            judge.get("judgment", "")
-                                        )
-                                    ),
-                                }
-                            )
-
-                        return normalized_judges
-                    except json.JSONDecodeError:
-                        logger.error("Failed to parse JSON from LLM response")
-
-                        # Fallback: try to extract from text
-                        return ProposalJudgeExtractionService.parse_voting_result_text(
-                            text_content
+                # The result should already be a list
+                if isinstance(judges_data, list):
+                    # Normalize the data using domain service
+                    normalized_judges = []
+                    for judge in judges_data:
+                        normalized_judges.append(
+                            {
+                                "name": (
+                                    ProposalJudgeExtractionService.normalize_politician_name(
+                                        judge.get("name", "")
+                                    )
+                                ),
+                                "party": judge.get("party"),
+                                "judgment": (
+                                    ProposalJudgeExtractionService.normalize_judgment_type(
+                                        judge.get("judgment", "")
+                                    )
+                                ),
+                            }
                         )
+                    return normalized_judges
 
-                # If no JSON found, try text parsing
+                # If not a list, try text parsing
                 return ProposalJudgeExtractionService.parse_voting_result_text(
                     text_content
                 )
