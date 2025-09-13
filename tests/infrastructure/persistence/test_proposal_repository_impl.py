@@ -44,7 +44,8 @@ class TestProposalRepositoryImpl:
             "id": 1,
             "content": "令和6年度予算案の承認について",
             "status": "審議中",
-            "url": "https://example.com/proposal/001",
+            "detail_url": "https://example.com/proposal/001",
+            "status_url": "https://example.com/proposal/status/001",
             "submission_date": "2024-01-15",
             "submitter": "財務委員会",
             "proposal_number": "議案第1号",
@@ -306,7 +307,8 @@ class TestProposalRepositoryImpl:
             id=1,
             content="Test content",
             status="審議中",
-            url="https://test.url",
+            detail_url="https://test.detail.url",
+            status_url="https://test.status.url",
             submission_date="2024-01-15",
             submitter="テスト提出者",
             proposal_number="テスト番号",
@@ -319,7 +321,8 @@ class TestProposalRepositoryImpl:
         assert entity.id == 1
         assert entity.content == "Test content"
         assert entity.status == "審議中"
-        assert entity.url == "https://test.url"
+        assert entity.detail_url == "https://test.detail.url"
+        assert entity.status_url == "https://test.status.url"
         assert entity.submission_date == "2024-01-15"
         assert entity.submitter == "テスト提出者"
         assert entity.proposal_number == "テスト番号"
@@ -332,7 +335,8 @@ class TestProposalRepositoryImpl:
             id=1,
             content="Test content",
             status="審議中",
-            url="https://test.url",
+            detail_url="https://test.detail.url",
+            status_url="https://test.status.url",
             submission_date="2024-01-15",
             submitter="テスト提出者",
             proposal_number="テスト番号",
@@ -345,7 +349,8 @@ class TestProposalRepositoryImpl:
         assert model.id == 1
         assert model.content == "Test content"
         assert model.status == "審議中"
-        assert model.url == "https://test.url"
+        assert model.detail_url == "https://test.detail.url"
+        assert model.status_url == "https://test.status.url"
         assert model.submission_date == "2024-01-15"
         assert model.submitter == "テスト提出者"
         assert model.proposal_number == "テスト番号"
@@ -358,7 +363,8 @@ class TestProposalRepositoryImpl:
             id=1,
             content="Old content",
             status="審議中",
-            url="https://old.url",
+            detail_url="https://old.detail.url",
+            status_url="https://old.status.url",
             submission_date="2023-01-01",
             submitter="旧提出者",
             proposal_number="旧番号",
@@ -369,7 +375,8 @@ class TestProposalRepositoryImpl:
             id=1,
             content="New content",
             status="可決",
-            url="https://new.url",
+            detail_url="https://new.detail.url",
+            status_url="https://new.status.url",
             submission_date="2024-01-01",
             submitter="新提出者",
             proposal_number="新番号",
@@ -381,7 +388,8 @@ class TestProposalRepositoryImpl:
 
         assert model.content == "New content"
         assert model.status == "可決"
-        assert model.url == "https://new.url"
+        assert model.detail_url == "https://new.detail.url"
+        assert model.status_url == "https://new.status.url"
         assert model.submission_date == "2024-01-01"
         assert model.submitter == "新提出者"
         assert model.proposal_number == "新番号"

@@ -23,7 +23,8 @@ class ProposalModel(PydanticBaseModel):
     id: int | None = None
     content: str
     status: str | None = None
-    url: str | None = None
+    detail_url: str | None = None
+    status_url: str | None = None
     submission_date: str | None = None
     submitter: str | None = None
     proposal_number: str | None = None
@@ -66,7 +67,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
-                    url,
+                    detail_url,
+                    status_url,
                     submission_date,
                     submitter,
                     proposal_number,
@@ -118,7 +120,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
-                    url,
+                    detail_url,
+                    status_url,
                     submission_date,
                     submitter,
                     proposal_number,
@@ -168,7 +171,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
-                    url,
+                    detail_url,
+                    status_url,
                     submission_date,
                     submitter,
                     proposal_number,
@@ -212,15 +216,17 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
         try:
             query = text("""
                 INSERT INTO proposals (
-                    content, status, url, submission_date, submitter,
-                    proposal_number, meeting_id, summary
+                    content, status, detail_url, status_url, submission_date,
+                    submitter, proposal_number, meeting_id, summary
                 )
                 VALUES (
-                    :content, :status, :url, :submission_date, :submitter,
-                    :proposal_number, :meeting_id, :summary
+                    :content, :status, :detail_url, :status_url,
+                    :submission_date, :submitter, :proposal_number, :meeting_id,
+                    :summary
                 )
-                RETURNING id, content, status, url, submission_date, submitter,
-                          proposal_number, meeting_id, summary, created_at, updated_at
+                RETURNING id, content, status, detail_url, status_url,
+                          submission_date, submitter, proposal_number,
+                          meeting_id, summary, created_at, updated_at
             """)
 
             result = await self.session.execute(
@@ -228,7 +234,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                 {
                     "content": entity.content,
                     "status": entity.status,
-                    "url": entity.url,
+                    "detail_url": entity.detail_url,
+                    "status_url": entity.status_url,
                     "submission_date": entity.submission_date,
                     "submitter": entity.submitter,
                     "proposal_number": entity.proposal_number,
@@ -274,7 +281,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                 UPDATE proposals
                 SET content = :content,
                     status = :status,
-                    url = :url,
+                    detail_url = :detail_url,
+                    status_url = :status_url,
                     submission_date = :submission_date,
                     submitter = :submitter,
                     proposal_number = :proposal_number,
@@ -282,8 +290,9 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     summary = :summary,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = :id
-                RETURNING id, content, status, url, submission_date, submitter,
-                          proposal_number, meeting_id, summary, created_at, updated_at
+                RETURNING id, content, status, detail_url, status_url,
+                          submission_date, submitter, proposal_number,
+                          meeting_id, summary, created_at, updated_at
             """)
 
             result = await self.session.execute(
@@ -292,7 +301,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     "id": entity.id,
                     "content": entity.content,
                     "status": entity.status,
-                    "url": entity.url,
+                    "detail_url": entity.detail_url,
+                    "status_url": entity.status_url,
                     "submission_date": entity.submission_date,
                     "submitter": entity.submitter,
                     "proposal_number": entity.proposal_number,
@@ -369,7 +379,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
             id=model.id,
             content=model.content,
             status=model.status,
-            url=model.url,
+            detail_url=model.detail_url,
+            status_url=model.status_url,
             submission_date=model.submission_date,
             submitter=model.submitter,
             proposal_number=model.proposal_number,
@@ -390,7 +401,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
             id=entity.id,
             content=entity.content,
             status=entity.status,
-            url=entity.url,
+            detail_url=entity.detail_url,
+            status_url=entity.status_url,
             submission_date=entity.submission_date,
             submitter=entity.submitter,
             proposal_number=entity.proposal_number,
@@ -407,7 +419,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
         """
         model.content = entity.content
         model.status = entity.status
-        model.url = entity.url
+        model.detail_url = entity.detail_url
+        model.status_url = entity.status_url
         model.submission_date = entity.submission_date
         model.submitter = entity.submitter
         model.proposal_number = entity.proposal_number
@@ -427,7 +440,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
             id=data.get("id"),
             content=data["content"],
             status=data.get("status"),
-            url=data.get("url"),
+            detail_url=data.get("detail_url"),
+            status_url=data.get("status_url"),
             submission_date=data.get("submission_date"),
             submitter=data.get("submitter"),
             proposal_number=data.get("proposal_number"),
@@ -450,7 +464,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
-                    url,
+                    detail_url,
+                    status_url,
                     submission_date,
                     submitter,
                     proposal_number,
@@ -499,7 +514,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
-                    url,
+                    detail_url,
+                    status_url,
                     submission_date,
                     submitter,
                     proposal_number,
@@ -551,7 +567,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
-                    url,
+                    detail_url,
+                    status_url,
                     submission_date,
                     submitter,
                     proposal_number,
@@ -591,7 +608,7 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
             ) from e
 
     async def find_by_url(self, url: str) -> Proposal | None:
-        """Find proposal by URL.
+        """Find proposal by URL (either detail_url or status_url).
 
         Args:
             url: URL of the proposal
@@ -608,7 +625,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id,
                     content,
                     status,
-                    url,
+                    detail_url,
+                    status_url,
                     submission_date,
                     submitter,
                     proposal_number,
@@ -617,7 +635,7 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     created_at,
                     updated_at
                 FROM proposals
-                WHERE url = :url
+                WHERE detail_url = :url OR status_url = :url
             """)
             result = await self.session.execute(query, {"url": url})
             row = result.fetchone()
@@ -627,7 +645,8 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     id=row.id,
                     content=row.content,
                     status=row.status,
-                    url=row.url,
+                    detail_url=row.detail_url,
+                    status_url=row.status_url,
                     submission_date=row.submission_date,
                     submitter=row.submitter,
                     proposal_number=row.proposal_number,

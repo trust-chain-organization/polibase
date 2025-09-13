@@ -66,7 +66,7 @@ class TestScrapeProposalUseCase:
         assert result.proposal_number == "第210回国会 第1号"
         assert result.submission_date == "2023年12月1日"  # Original format preserved
         assert result.summary == "環境保護強化法案"
-        assert result.url == input_dto.url
+        assert result.detail_url == input_dto.url
         assert result.meeting_id == 123
 
     @pytest.mark.asyncio
@@ -129,7 +129,7 @@ class TestScrapeProposalUseCase:
             proposal_number="第210回国会 第1号",
             submission_date="2023年12月1日",
             summary="環境保護強化法案",
-            url=input_dto.url,
+            detail_url=input_dto.url,
             meeting_id=123,
         )
         mock_proposal_repo.create.return_value = saved_proposal
@@ -174,7 +174,7 @@ class TestScrapeProposalUseCase:
             id=1,
             content="環境基本法改正案",
             proposal_number="第210回国会 第1号",
-            url="https://old-url.com",
+            detail_url="https://old-url.com",
         )
         mock_proposal_repo.get_by_proposal_number.return_value = existing_proposal
 
@@ -210,7 +210,7 @@ class TestScrapeProposalUseCase:
         existing_proposal = Proposal(
             id=2,
             content="環境基本法改正案",
-            url=input_dto.url,
+            detail_url=input_dto.url,
         )
         mock_proposal_repo.find_by_url.return_value = existing_proposal
 
@@ -219,7 +219,7 @@ class TestScrapeProposalUseCase:
 
         # Assert
         assert result.id == 2
-        assert result.url == input_dto.url
+        assert result.detail_url == input_dto.url
 
         # Verify save was not called
         mock_proposal_repo.create.assert_not_called()
@@ -261,7 +261,7 @@ class TestScrapeProposalUseCase:
             proposal_number="第210回国会 第1号",
             submission_date="2023年12月1日",
             summary="環境保護強化法案",
-            url=new_url,
+            detail_url=new_url,
             meeting_id=123,
         )
         mock_proposal_repo.update.return_value = updated_proposal
@@ -272,7 +272,7 @@ class TestScrapeProposalUseCase:
         # Assert
         assert result.id == proposal_id
         assert result.content == "新環境基本法改正案"
-        assert result.url == new_url
+        assert result.detail_url == new_url
         assert result.meeting_id == 123
 
         # Verify repository calls
