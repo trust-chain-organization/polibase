@@ -31,6 +31,8 @@ from src.streamlit.pages import (  # noqa: E402
     manage_parliamentary_groups,
     manage_political_parties,
     manage_politicians,
+    manage_proposal_judges,
+    manage_proposals,
 )
 from src.streamlit.utils import init_session_state  # noqa: E402
 
@@ -69,6 +71,12 @@ def home_page():
 
         ### 👤 [政治家管理](/politicians)
         政治家情報の検索・編集・管理
+
+        ### 📋 [議案管理](/proposals)
+        議案情報の登録・編集・スクレイピング
+
+        ### 🗳️ [賛否情報管理](/proposal-judges)
+        議案に対する議員の賛否情報管理
 
         ### 💬 [発言・発言者管理](/conversations-speakers)
         議事録処理で生成された発言と発言者データの閲覧
@@ -114,6 +122,13 @@ def main():
         st.Page(execute_processes, title="処理実行", url_path="processes", icon="⚙️"),
         st.Page(
             manage_politicians, title="政治家管理", url_path="politicians", icon="👤"
+        ),
+        st.Page(manage_proposals, title="議案管理", url_path="proposals", icon="📋"),
+        st.Page(
+            manage_proposal_judges,
+            title="賛否情報管理",
+            url_path="proposal-judges",
+            icon="🗳️",
         ),
         st.Page(
             manage_conversations_speakers,
