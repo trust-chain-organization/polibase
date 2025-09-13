@@ -10,7 +10,8 @@ class Proposal(BaseEntity):
         self,
         content: str,
         status: str | None = None,
-        url: str | None = None,
+        detail_url: str | None = None,
+        status_url: str | None = None,
         submission_date: str | None = None,  # ISO形式の日付文字列
         submitter: str | None = None,
         proposal_number: str | None = None,
@@ -21,7 +22,8 @@ class Proposal(BaseEntity):
         super().__init__(id)
         self.content = content
         self.status = status
-        self.url = url
+        self.detail_url = detail_url
+        self.status_url = status_url
         self.submission_date = submission_date
         self.submitter = submitter
         self.proposal_number = proposal_number

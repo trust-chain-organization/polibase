@@ -67,7 +67,8 @@ class ScrapeProposalUseCase:
             proposal_number=scraped_data.proposal_number,
             submission_date=scraped_data.submission_date,
             summary=scraped_data.summary,
-            url=scraped_data.url,
+            detail_url=scraped_data.url,  # Default to detail_url for scraped content
+            status_url=None,  # Status URL can be set separately
             meeting_id=input_dto.meeting_id,
         )
 
@@ -100,16 +101,22 @@ class ScrapeProposalUseCase:
                 logger.warning(f"Proposal {scraped_dto.proposal_number} already exists")
                 return self._entity_to_dto(existing)
 
-        # Check by URL
-        existing_by_url = await self.proposal_repo.find_by_url(scraped_dto.url)
-        if existing_by_url:
-            logger.warning(f"Proposal with URL {scraped_dto.url} already exists")
-            return self._entity_to_dto(existing_by_url)
+        # Check by URL (detail_url)
+        if scraped_dto.detail_url:
+            existing_by_url = await self.proposal_repo.find_by_url(
+                scraped_dto.detail_url
+            )
+            if existing_by_url:
+                logger.warning(
+                    f"Proposal with URL {scraped_dto.detail_url} already exists"
+                )
+                return self._entity_to_dto(existing_by_url)
 
         # Create new proposal entity
         proposal = Proposal(
             content=scraped_dto.content,
-            url=scraped_dto.url,
+            detail_url=scraped_dto.detail_url,
+            status_url=scraped_dto.status_url,
             submission_date=scraped_dto.submission_date,
             proposal_number=scraped_dto.proposal_number,
             meeting_id=scraped_dto.meeting_id,
@@ -147,7 +154,8 @@ class ScrapeProposalUseCase:
 
         # Update the existing proposal
         existing.content = scraped_dto.content or existing.content
-        existing.url = scraped_dto.url
+        existing.detail_url = scraped_dto.detail_url or existing.detail_url
+        existing.status_url = scraped_dto.status_url or existing.status_url
         existing.submission_date = (
             scraped_dto.submission_date or existing.submission_date
         )
@@ -176,7 +184,8 @@ class ScrapeProposalUseCase:
         return ProposalDTO(
             id=proposal.id,
             content=proposal.content,
-            url=proposal.url,
+            detail_url=proposal.detail_url,
+            status_url=proposal.status_url,
             submission_date=proposal.submission_date,
             proposal_number=proposal.proposal_number,
             meeting_id=proposal.meeting_id,

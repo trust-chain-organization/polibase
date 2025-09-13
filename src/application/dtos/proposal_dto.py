@@ -16,7 +16,8 @@ class ScrapeProposalOutputDTO:
     """Output DTO for scraped proposal information."""
 
     content: str
-    url: str
+    detail_url: str | None = None
+    status_url: str | None = None
     proposal_number: str | None = None
     submission_date: str | None = None  # ISO format date
     summary: str | None = None
@@ -28,7 +29,8 @@ class CreateProposalDTO:
     """DTO for creating a new proposal."""
 
     content: str
-    url: str | None = None
+    detail_url: str | None = None
+    status_url: str | None = None
     submission_date: str | None = None
     proposal_number: str | None = None
     meeting_id: int | None = None
@@ -41,7 +43,8 @@ class UpdateProposalDTO:
 
     id: int
     content: str | None = None
-    url: str | None = None
+    detail_url: str | None = None
+    status_url: str | None = None
     submission_date: str | None = None
     proposal_number: str | None = None
     meeting_id: int | None = None
@@ -54,7 +57,8 @@ class ProposalDTO:
 
     id: int
     content: str
-    url: str | None = None
+    detail_url: str | None = None
+    status_url: str | None = None
     submission_date: str | None = None
     proposal_number: str | None = None
     meeting_id: int | None = None

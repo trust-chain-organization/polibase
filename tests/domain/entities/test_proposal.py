@@ -26,7 +26,8 @@ class TestProposal:
         assert proposal.content == "令和6年度予算案の承認について"
         assert proposal.status == "審議中"
         # New fields should be None by default
-        assert proposal.url is None
+        assert proposal.detail_url is None
+        assert proposal.status_url is None
         assert proposal.submission_date is None
         assert proposal.submitter is None
         assert proposal.proposal_number is None
@@ -39,7 +40,8 @@ class TestProposal:
             id=1,
             content="令和6年度予算案の承認について",
             status="審議中",
-            url="https://example.com/proposal/001",
+            detail_url="https://example.com/proposal/001",
+            status_url="https://example.com/proposal/status/001",
             submission_date="2024-01-15",
             submitter="財務委員会",
             proposal_number="議案第1号",
@@ -50,7 +52,8 @@ class TestProposal:
         assert proposal.id == 1
         assert proposal.content == "令和6年度予算案の承認について"
         assert proposal.status == "審議中"
-        assert proposal.url == "https://example.com/proposal/001"
+        assert proposal.detail_url == "https://example.com/proposal/001"
+        assert proposal.status_url == "https://example.com/proposal/status/001"
         assert proposal.submission_date == "2024-01-15"
         assert proposal.submitter == "財務委員会"
         assert proposal.proposal_number == "議案第1号"
@@ -113,12 +116,25 @@ class TestProposal:
 
     def test_metadata_fields(self) -> None:
         """Test metadata fields with various values."""
-        # Test with URL
-        proposal_with_url = Proposal(
+        # Test with detail URL
+        proposal_with_detail_url = Proposal(
             content="議案内容",
-            url="https://council.example.com/proposals/2024/001",
+            detail_url="https://council.example.com/proposals/2024/001",
         )
-        assert proposal_with_url.url == "https://council.example.com/proposals/2024/001"
+        assert (
+            proposal_with_detail_url.detail_url
+            == "https://council.example.com/proposals/2024/001"
+        )
+
+        # Test with status URL
+        proposal_with_status_url = Proposal(
+            content="議案内容",
+            status_url="https://council.example.com/proposals/status/001",
+        )
+        assert (
+            proposal_with_status_url.status_url
+            == "https://council.example.com/proposals/status/001"
+        )
 
         # Test with submission date
         proposal_with_date = Proposal(
