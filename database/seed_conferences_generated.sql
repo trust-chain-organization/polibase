@@ -1,4 +1,4 @@
--- Generated from database on 2025-07-27 09:34:29
+-- Generated from database on 2025-09-13 01:38:32
 -- conferences seed data
 
 INSERT INTO conferences (name, type, governing_body_id, members_introduction_url) VALUES
