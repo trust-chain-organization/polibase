@@ -31,6 +31,7 @@ from src.streamlit.pages import (  # noqa: E402
     manage_parliamentary_groups,
     manage_political_parties,
     manage_politicians,
+    manage_proposals,
 )
 from src.streamlit.utils import init_session_state  # noqa: E402
 
@@ -78,6 +79,9 @@ def home_page():
 
         ### 💬 [発言レコード一覧](/conversations)
         議事録分割で生成された発言レコード一覧
+
+        ### 📋 [議案管理](/proposals)
+        議案と賛否情報の3段階管理
         """)
 
 
@@ -127,6 +131,12 @@ def main():
             title="発言レコード一覧",
             url_path="conversations",
             icon="💬",
+        ),
+        st.Page(
+            manage_proposals,
+            title="議案管理",
+            url_path="proposals",
+            icon="📋",
         ),
     ]
 
