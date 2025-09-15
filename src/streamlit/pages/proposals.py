@@ -497,11 +497,7 @@ def manage_proposal_judges_tab():
                     "政治家",
                     options=[p.id for p in politicians],
                     format_func=lambda x: next(
-                        (
-                            f"{p.name} ({p.party or '無所属'})"
-                            for p in politicians
-                            if p.id == x
-                        ),
+                        (f"{p.name}" for p in politicians if p.id == x),
                         "",
                     ),
                     key="new_judge_politician",
