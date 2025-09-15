@@ -71,50 +71,43 @@ def manage_proposals_tab():
 
     # 新規議案登録フォーム
     with st.expander("新規議案登録", expanded=False):
+        st.info(
+            "詳細URLと状態URLを登録してください。議案情報は後でLLMで自動抽出されます。"
+        )
         with st.form(key="new_proposal_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                content = st.text_area("議案内容", key="new_proposal_content")
-                proposal_number = st.text_input("議案番号", key="new_proposal_number")
-                submitter = st.text_input("提出者", key="new_proposal_submitter")
-
-            with col2:
-                meeting_id = st.selectbox(
-                    "会議",
-                    options=[None] + [m.id for m in meetings],
-                    format_func=lambda x: "未選択" if x is None else f"ID: {x}",
-                    key="new_proposal_meeting_id",
-                )
-                detail_url = st.text_input("詳細URL", key="new_proposal_detail_url")
-                status_url = st.text_input("状態URL", key="new_proposal_status_url")
-
-            summary = st.text_area("概要", key="new_proposal_summary")
+            detail_url = st.text_input(
+                "詳細URL",
+                key="new_proposal_detail_url",
+                help="議案の詳細情報が記載されているページのURL",
+            )
+            status_url = st.text_input(
+                "状態URL",
+                key="new_proposal_status_url",
+                help="議案の審議状態や賛否結果が記載されているページのURL（オプション）",
+            )
 
             if st.form_submit_button("登録"):
-                if content:
+                if detail_url:
                     try:
+                        # 暫定的な内容を設定（後でLLMで抽出される）
                         new_proposal = Proposal(
-                            content=content,
-                            proposal_number=proposal_number
-                            if proposal_number
-                            else None,
-                            submitter=submitter if submitter else None,
-                            meeting_id=meeting_id,
-                            detail_url=detail_url if detail_url else None,
+                            content=f"新規議案（URL: {detail_url[:50]}...）",
+                            detail_url=detail_url,
                             status_url=status_url if status_url else None,
-                            summary=summary if summary else None,
                             submission_date=datetime.now().isoformat(),
                         )
                         created = proposal_repo.create(new_proposal)
                         if created:
-                            st.success("議案を登録しました")
+                            st.success(
+                                "議案URLを登録しました。「スクレイピング」ボタンで情報を抽出してください。"
+                            )
                             st.rerun()
                         else:
                             st.error("議案の登録に失敗しました")
                     except Exception as e:
                         st.error(f"エラーが発生しました: {str(e)}")
                 else:
-                    st.error("議案内容は必須です")
+                    st.error("詳細URLは必須です")
 
     # 議案一覧取得
     proposals = proposal_repo.get_all()
@@ -163,9 +156,9 @@ def manage_proposals_tab():
                 # スクレイピング実行ボタン
                 detail_url = cast(str, row["detail_url"])
                 status_url = cast(str | None, row["status_url"])
-                if detail_url and not status_url:
-                    if st.button("スクレイピング", key=f"scrape_proposal_{row['id']}"):
-                        with st.spinner("スクレイピング中..."):
+                if detail_url:
+                    if st.button("情報抽出", key=f"scrape_proposal_{row['id']}"):
+                        with st.spinner("URLから情報を抽出中..."):
                             try:
                                 # スクレイピング実行
                                 scraper_service = ProposalScraperService()
