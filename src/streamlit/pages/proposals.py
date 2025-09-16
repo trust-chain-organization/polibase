@@ -13,6 +13,9 @@ from src.application.usecases.scrape_proposal_usecase import ScrapeProposalUseCa
 from src.domain.entities.proposal import Proposal
 from src.domain.entities.proposal_judge import ProposalJudge
 from src.infrastructure.external.proposal_scraper_service import ProposalScraperService
+from src.infrastructure.persistence.conference_repository_impl import (
+    ConferenceRepositoryImpl,
+)
 from src.infrastructure.persistence.extracted_proposal_judge_repository_impl import (
     ExtractedProposalJudgeRepositoryImpl,
 )
@@ -61,6 +64,7 @@ def manage_proposals_tab():
     # リポジトリ初期化
     proposal_repo = RepositoryAdapter(ProposalRepositoryImpl)
     meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
+    conference_repo = RepositoryAdapter(ConferenceRepositoryImpl)
 
     # フィルター
     meetings = meeting_repo.get_all()
@@ -72,9 +76,47 @@ def manage_proposals_tab():
     # 新規議案登録フォーム
     with st.expander("新規議案登録", expanded=False):
         st.info(
-            "詳細URLと状態URLを登録してください。議案情報は後でLLMで自動抽出されます。"
+            "会議体を選択し、議案URLを登録してください。議案情報は後でLLMで自動抽出されます。"
         )
         with st.form(key="new_proposal_form"):
+            # 会議体選択
+            conferences = conference_repo.get_all()
+            conference_id = st.selectbox(
+                "会議体",
+                options=[c.id for c in conferences],
+                format_func=lambda x: next(
+                    (f"{c.name}" for c in conferences if c.id == x),
+                    "不明",
+                ),
+                key="new_proposal_conference",
+                help="この議案を審議する会議体を選択してください",
+            )
+
+            # 会議体に関連する会議を取得して選択
+            selected_conference_meetings = [
+                m for m in meetings if m.conference_id == conference_id
+            ]
+            if selected_conference_meetings:
+                meeting_id = st.selectbox(
+                    "会議（オプション）",
+                    options=[None] + [m.id for m in selected_conference_meetings],
+                    format_func=lambda x: "未選択"
+                    if x is None
+                    else next(
+                        (
+                            f"{m.date} - {m.name if m.name else 'ID:' + str(m.id)}"
+                            for m in selected_conference_meetings
+                            if m.id == x
+                        ),
+                        "不明",
+                    ),
+                    key="new_proposal_meeting",
+                    help="特定の会議に紐付ける場合は選択してください",
+                )
+            else:
+                meeting_id = None
+                st.info("選択した会議体には会議が登録されていません")
+
             detail_url = st.text_input(
                 "詳細URL",
                 key="new_proposal_detail_url",
@@ -87,19 +129,20 @@ def manage_proposals_tab():
             )
 
             if st.form_submit_button("登録"):
-                if detail_url:
+                if detail_url and conference_id:
                     try:
                         # 暫定的な内容を設定（後でLLMで抽出される）
                         new_proposal = Proposal(
                             content=f"新規議案（URL: {detail_url[:50]}...）",
                             detail_url=detail_url,
                             status_url=status_url if status_url else None,
+                            meeting_id=meeting_id,
                             submission_date=datetime.now().isoformat(),
                         )
                         created = proposal_repo.create(new_proposal)
                         if created:
                             st.success(
-                                "議案URLを登録しました。「スクレイピング」ボタンで情報を抽出してください。"
+                                "議案URLを登録しました。「情報抽出」ボタンで情報を抽出してください。"
                             )
                             st.rerun()
                         else:
@@ -107,7 +150,7 @@ def manage_proposals_tab():
                     except Exception as e:
                         st.error(f"エラーが発生しました: {str(e)}")
                 else:
-                    st.error("詳細URLは必須です")
+                    st.error("会議体と詳細URLは必須です")
 
     # 議案一覧取得
     proposals = proposal_repo.get_all()
@@ -143,6 +186,20 @@ def manage_proposals_tab():
 
             with col1:
                 st.markdown(f"**{row['proposal_number']}**: {row['content']}")
+                # 会議体と会議情報を表示
+                if row["meeting_id"]:
+                    meeting = next(
+                        (m for m in meetings if m.id == row["meeting_id"]), None
+                    )
+                    if meeting:
+                        conference = next(
+                            (c for c in conferences if c.id == meeting.conference_id),
+                            None,
+                        )
+                        if conference:
+                            st.caption(
+                                f"会議体: {conference.name} | 会議: {meeting.date}"
+                            )
                 st.caption(f"提出者: {row['submitter']} | 状態: {row['status']}")
                 if row["detail_url"]:
                     st.caption(f"詳細URL: {row['detail_url']}")
