@@ -78,24 +78,27 @@ def manage_proposals_tab():
         st.info(
             "会議体を選択し、議案URLを登録してください。議案情報は後でLLMで自動抽出されます。"
         )
-        with st.form(key="new_proposal_form"):
-            # 会議体選択
-            conferences = conference_repo.get_all()
-            conference_id = st.selectbox(
-                "会議体",
-                options=[c.id for c in conferences],
-                format_func=lambda x: next(
-                    (f"{c.name}" for c in conferences if c.id == x),
-                    "不明",
-                ),
-                key="new_proposal_conference",
-                help="この議案を審議する会議体を選択してください",
-            )
 
-            # 会議体に関連する会議を取得して選択
-            selected_conference_meetings = [
-                m for m in meetings if m.conference_id == conference_id
-            ]
+        # 会議体選択（フォームの外）
+        conferences = conference_repo.get_all()
+        conference_id = st.selectbox(
+            "会議体",
+            options=[c.id for c in conferences],
+            format_func=lambda x: next(
+                (f"{c.name}" for c in conferences if c.id == x),
+                "不明",
+            ),
+            key="new_proposal_conference",
+            help="この議案を審議する会議体を選択してください",
+        )
+
+        # 選択された会議体に関連する会議を取得
+        selected_conference_meetings = [
+            m for m in meetings if m.conference_id == conference_id
+        ]
+
+        with st.form(key="new_proposal_form"):
+            # 会議選択（フィルタリングされた会議）
             if selected_conference_meetings:
                 meeting_id = st.selectbox(
                     "会議（オプション）",
