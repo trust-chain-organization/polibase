@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-from datetime import datetime
 from typing import cast
 
 import pandas as pd
@@ -140,7 +139,7 @@ def manage_proposals_tab():
                             detail_url=detail_url,
                             status_url=status_url if status_url else None,
                             meeting_id=meeting_id,
-                            submission_date=datetime.now().isoformat(),
+                            submission_date=None,  # LLMで後から抽出される
                         )
                         created = proposal_repo.create(new_proposal)
                         if created:
