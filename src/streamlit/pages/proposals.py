@@ -8,10 +8,16 @@ import pandas as pd
 
 import streamlit as st
 from src.application.dtos.proposal_dto import ScrapeProposalInputDTO
+from src.application.dtos.proposal_judge_dto import ExtractProposalJudgesInputDTO
+from src.application.usecases.extract_proposal_judges_usecase import (
+    ExtractProposalJudgesUseCase,
+)
 from src.application.usecases.scrape_proposal_usecase import ScrapeProposalUseCase
 from src.domain.entities.proposal import Proposal
 from src.domain.entities.proposal_judge import ProposalJudge
+from src.infrastructure.external.llm_service import GeminiLLMService
 from src.infrastructure.external.proposal_scraper_service import ProposalScraperService
+from src.infrastructure.external.web_scraper_service import PlaywrightScraperService
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
 )
@@ -184,7 +190,7 @@ def manage_proposals_tab():
 
         # 各レコードの表示と操作ボタン
         for _idx, row in df.iterrows():
-            col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
+            col1, col2, col3, col4, col5 = st.columns([3.5, 1, 1, 1, 1])
 
             with col1:
                 st.markdown(f"**{row['proposal_number']}**: {row['content']}")
@@ -266,6 +272,113 @@ def manage_proposals_tab():
                     )
 
             with col4:
+                # 賛否抽出ボタン
+                status_url = cast(str | None, row["status_url"])
+                if status_url:
+                    if st.button("賛否抽出", key=f"extract_judges_{row['id']}"):
+                        with st.spinner("賛否情報を抽出中..."):
+                            try:
+                                # ExtractProposalJudgesUseCaseの初期化
+                                from src.config.database import get_db_session
+                                from src.infrastructure.persistence import (
+                                    async_session_adapter as asa,
+                                )
+                                from src.infrastructure.persistence import (
+                                    extracted_proposal_judge_repository_impl as epjr,
+                                )
+                                from src.infrastructure.persistence import (
+                                    politician_repository_impl as pr,
+                                )
+                                from src.infrastructure.persistence import (
+                                    proposal_judge_repository_impl as pjr,
+                                )
+
+                                sync_session = get_db_session()
+                                async_session = asa.AsyncSessionAdapter(sync_session)
+
+                                # リポジトリの初期化
+                                proposal_repo_async = ProposalRepositoryImpl(
+                                    async_session
+                                )
+                                politician_repo = pr.PoliticianRepositoryImpl(
+                                    async_session
+                                )
+                                extracted_repo = (
+                                    epjr.ExtractedProposalJudgeRepositoryImpl(
+                                        async_session
+                                    )
+                                )
+                                judge_repo_async = pjr.ProposalJudgeRepositoryImpl(
+                                    async_session
+                                )
+
+                                # サービスの初期化
+                                llm_service = GeminiLLMService()
+                                scraper_service = PlaywrightScraperService(
+                                    llm_service=llm_service
+                                )
+
+                                # ユースケースの作成
+                                use_case = ExtractProposalJudgesUseCase(
+                                    proposal_repository=proposal_repo_async,
+                                    politician_repository=politician_repo,
+                                    extracted_proposal_judge_repository=extracted_repo,
+                                    proposal_judge_repository=judge_repo_async,
+                                    web_scraper_service=scraper_service,
+                                    llm_service=llm_service,
+                                )
+
+                                # 既存データのチェック（簡易的なチェック）
+                                # 注: 既存データの確認は非同期処理内で行う
+
+                                # 入力DTOを作成
+                                input_dto = ExtractProposalJudgesInputDTO(
+                                    url=status_url,
+                                    proposal_id=int(row["id"]),
+                                    force=False,  # 既存データの確認はUseCaseで行う
+                                )
+
+                                # 非同期処理を同期的に実行
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                                result = loop.run_until_complete(
+                                    use_case.extract_judges(input_dto)
+                                )
+
+                                if result and result.extracted_count > 0:
+                                    st.success(
+                                        f"賛否情報を{result.extracted_count}件抽出しました"
+                                    )
+                                    st.rerun()
+                                else:
+                                    st.warning("賛否情報が見つかりませんでした")
+                            except TimeoutError:
+                                st.error(
+                                    "処理がタイムアウトしました。しばらく待ってから再度お試しください。"
+                                )
+                            except Exception as e:
+                                error_msg = str(e)
+                                if "GOOGLE_API_KEY" in error_msg:
+                                    st.error(
+                                        "Google Gemini APIキーが設定されていません。"
+                                        "環境変数GOOGLE_API_KEYを設定してください。"
+                                    )
+                                elif "API" in error_msg.upper():
+                                    st.error(
+                                        "LLM APIでエラーが発生しました。"
+                                        "しばらく待ってから再度お試しください。"
+                                    )
+                                else:
+                                    st.error(f"エラーが発生しました: {error_msg}")
+                else:
+                    st.button(
+                        "賛否抽出",
+                        key=f"extract_judges_{row['id']}",
+                        disabled=True,
+                        help="status_urlが設定されていません",
+                    )
+
+            with col5:
                 if st.button("削除", key=f"delete_proposal_{row['id']}"):
                     if proposal_repo.delete(row["id"]):
                         st.success("議案を削除しました")
