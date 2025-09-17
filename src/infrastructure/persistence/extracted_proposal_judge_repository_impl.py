@@ -45,6 +45,26 @@ class ExtractedProposalJudgeRepositoryImpl(
     def __init__(self, session: AsyncSession):
         super().__init__(session, ExtractedProposalJudge, ExtractedProposalJudgeModel)
 
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = None
+    ) -> list[ExtractedProposalJudge]:
+        """Get all extracted proposal judges with optional pagination."""
+        query_str = "SELECT * FROM extracted_proposal_judges ORDER BY id"
+        params: dict[str, Any] = {}
+
+        if limit:
+            query_str += " LIMIT :limit"
+            params["limit"] = limit
+        if offset:
+            query_str += " OFFSET :offset"
+            params["offset"] = offset
+
+        query = text(query_str)
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
     async def get_pending_judges(
         self, proposal_id: int | None = None
     ) -> list[ExtractedProposalJudge]:

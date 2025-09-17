@@ -10,6 +10,7 @@ from .parliamentary_groups import manage_parliamentary_groups
 from .political_parties import manage_political_parties
 from .politicians import manage_politicians
 from .processes import execute_processes
+from .proposals import manage_proposals
 
 __all__ = [
     "manage_conferences",
@@ -21,5 +22,6 @@ __all__ = [
     "manage_parliamentary_groups",
     "manage_politicians",
     "manage_political_parties",
+    "manage_proposals",
     "execute_processes",
 ]

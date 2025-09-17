@@ -229,6 +229,16 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                           meeting_id, summary, created_at, updated_at
             """)
 
+            # Convert submission_date from ISO string to datetime if needed
+            submission_date_value = None
+            if entity.submission_date:
+                if isinstance(entity.submission_date, str):
+                    submission_date_value = datetime.fromisoformat(
+                        entity.submission_date
+                    )
+                else:
+                    submission_date_value = entity.submission_date
+
             result = await self.session.execute(
                 query,
                 {
@@ -236,7 +246,7 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     "status": entity.status,
                     "detail_url": entity.detail_url,
                     "status_url": entity.status_url,
-                    "submission_date": entity.submission_date,
+                    "submission_date": submission_date_value,
                     "submitter": entity.submitter,
                     "proposal_number": entity.proposal_number,
                     "meeting_id": entity.meeting_id,
@@ -295,6 +305,16 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                           meeting_id, summary, created_at, updated_at
             """)
 
+            # Convert submission_date from ISO string to datetime if needed
+            submission_date_value = None
+            if entity.submission_date:
+                if isinstance(entity.submission_date, str):
+                    submission_date_value = datetime.fromisoformat(
+                        entity.submission_date
+                    )
+                else:
+                    submission_date_value = entity.submission_date
+
             result = await self.session.execute(
                 query,
                 {
@@ -303,7 +323,7 @@ class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
                     "status": entity.status,
                     "detail_url": entity.detail_url,
                     "status_url": entity.status_url,
-                    "submission_date": entity.submission_date,
+                    "submission_date": submission_date_value,
                     "submitter": entity.submitter,
                     "proposal_number": entity.proposal_number,
                     "meeting_id": entity.meeting_id,
