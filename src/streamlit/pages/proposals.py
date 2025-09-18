@@ -279,6 +279,7 @@ def manage_proposals_tab():
                 if status_url:
                     if st.button("賛否抽出", key=f"extract_judges_{row['id']}"):
                         with st.spinner("賛否情報を抽出中..."):
+                            sync_session = None
                             try:
                                 # ExtractProposalJudgesUseCaseの初期化
                                 from src.config.database import get_db_session
@@ -341,11 +342,8 @@ def manage_proposals_tab():
                                 )
 
                                 # 非同期処理を同期的に実行
-                                loop = asyncio.new_event_loop()
-                                asyncio.set_event_loop(loop)
-                                result = loop.run_until_complete(
-                                    use_case.extract_judges(input_dto)
-                                )
+                                # Streamlitでは asyncio.run() を使用する
+                                result = asyncio.run(use_case.extract_judges(input_dto))
 
                                 if result and result.extracted_count > 0:
                                     st.success(
@@ -372,6 +370,10 @@ def manage_proposals_tab():
                                     )
                                 else:
                                     st.error(f"エラーが発生しました: {error_msg}")
+                            finally:
+                                # セッションを確実にクローズ
+                                if sync_session:
+                                    sync_session.close()
                 else:
                     st.button(
                         "賛否抽出",
