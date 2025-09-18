@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import Any
 
+from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,27 +15,26 @@ from src.domain.repositories.extracted_proposal_judge_repository import (
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
-class ExtractedProposalJudgeModel:
-    """Extracted proposal judge database model (dynamic)."""
+class ExtractedProposalJudgeModel(PydanticBaseModel):
+    """Extracted proposal judge database model."""
 
-    id: int | None
+    id: int | None = None
     proposal_id: int
-    extracted_politician_name: str | None
-    extracted_party_name: str | None
-    extracted_parliamentary_group_name: str | None
-    extracted_judgment: str | None
-    source_url: str | None
+    extracted_politician_name: str | None = None
+    extracted_party_name: str | None = None
+    extracted_parliamentary_group_name: str | None = None
+    extracted_judgment: str | None = None
+    source_url: str | None = None
     extracted_at: datetime
-    matched_politician_id: int | None
-    matched_parliamentary_group_id: int | None
-    matching_confidence: float | None
-    matching_status: str
-    matched_at: datetime | None
-    additional_data: str | None
+    matched_politician_id: int | None = None
+    matched_parliamentary_group_id: int | None = None
+    matching_confidence: float | None = None
+    matching_status: str = "pending"
+    matched_at: datetime | None = None
+    additional_data: str | None = None
 
-    def __init__(self, **kwargs: Any):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ExtractedProposalJudgeRepositoryImpl(
