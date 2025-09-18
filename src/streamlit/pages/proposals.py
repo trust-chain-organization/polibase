@@ -211,6 +211,8 @@ def manage_proposals_tab():
                 st.caption(f"提出者: {row['submitter']} | 状態: {row['status']}")
                 if row["detail_url"]:
                     st.caption(f"詳細URL: {row['detail_url']}")
+                if row["status_url"]:
+                    st.caption(f"状態URL: {row['status_url']}")
 
             with col2:
                 if st.button("編集", key=f"edit_proposal_{row['id']}"):
