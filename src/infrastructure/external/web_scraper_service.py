@@ -311,25 +311,85 @@ class PlaywrightScraperService(IWebScraperService):
 
                     llm_service = GeminiLLMService()
 
-                # Use extract_speeches_from_text which handles JSON extraction
-                # We'll format our prompt to work with this method
-                formatted_text = f"""
-以下のウェブページから議案賛否情報を抽出してください。
+                # Extract voting information using LLM
+                import json
 
+                from langchain_core.prompts import ChatPromptTemplate
+
+                prompt = f"""
+以下のウェブページから議案の賛否情報を抽出してください。
+
+ページのURL: {url}
 ページの内容:
-{text_content[:5000]}
+{text_content[:8000]}
 
-各議員について以下の形式で返してください：
-- name: 議員名（敬称除去）
-- party: 所属政党
-- judgment: 賛成/反対/棄権/欠席
+以下の形式のJSON配列として返してください。会派名や議員団名が記載されている場合は、その単位で抽出してください：
+[
+    {{"name": "会派名または議員名", "party": "所属政党（わかる場合）",
+      "judgment": "賛成または反対または棄権または欠席"}},
+    ...
+]
+
+注意事項:
+- 会派名（例：自由民主党議員団など）で賛否が記載されている場合は会派名をnameに記載
+- 個別の議員名が記載されている場合は、議員名をnameに記載
+- 賛成は「賛成」、反対は「反対」、棄権は「棄権」、欠席は「欠席」と記載
+- 敬称（議員、君、さん等）は除去
+- JSONのみを返し、他の説明文は含めない
 """
-                # The method returns a list, so we can use it directly
-                judges_data = await llm_service.extract_speeches_from_text(
-                    formatted_text
-                )
 
-                # The result should already be a list
+                try:
+                    # Use the LLM directly for extraction
+                    if hasattr(llm_service, "get_llm"):
+                        llm = llm_service.get_llm()  # type: ignore
+                    elif hasattr(llm_service, "_llm"):
+                        llm = llm_service._llm  # type: ignore
+                    else:
+                        llm = llm_service.get_structured_llm(dict)
+
+                    # Create prompt template
+                    prompt_template = ChatPromptTemplate.from_template("{text}")
+                    chain = prompt_template | llm
+
+                    # Get response
+                    response = await chain.ainvoke({"text": prompt})
+
+                    # Parse response
+                    if hasattr(response, "content"):
+                        response_text = response.content
+                    else:
+                        response_text = str(response)
+
+                    # Try to extract JSON from the response
+                    # Remove markdown code blocks if present
+                    response_text = response_text.strip()
+                    if response_text.startswith("```json"):
+                        response_text = response_text[7:]
+                    if response_text.startswith("```"):
+                        response_text = response_text[3:]
+                    if response_text.endswith("```"):
+                        response_text = response_text[:-3]
+
+                    response_text = response_text.strip()
+
+                    # Parse JSON
+                    judges_data = json.loads(response_text)
+
+                    count = len(judges_data) if isinstance(judges_data, list) else 0
+                    logger.info(f"Successfully extracted {count} judges from {url}")
+
+                except Exception as parse_error:
+                    logger.warning(
+                        f"Failed to parse LLM response as JSON: {parse_error}"
+                    )
+                    # Fallback: try to parse text content
+                    judges_data = (
+                        ProposalJudgeExtractionService.parse_voting_result_text(
+                            text_content
+                        )
+                    )
+
+                # Process the extracted data
                 if isinstance(judges_data, list):
                     # Normalize the data using domain service
                     normalized_judges = []

@@ -65,6 +65,24 @@ class ExtractedProposalJudge(BaseEntity):
             "approve": self.extracted_judgment,
         }
 
+    def convert_to_parliamentary_group_judge_params(self) -> dict[str, Any]:
+        """Convert to ProposalParliamentaryGroupJudge creation parameters."""
+        if not self.is_matched():
+            raise ValueError(
+                f"Cannot convert unmatched extracted judge "
+                f"(status: {self.matching_status})"
+            )
+        if not self.matched_parliamentary_group_id:
+            raise ValueError(
+                "Matched parliamentary group ID is required for conversion"
+            )
+
+        return {
+            "proposal_id": self.proposal_id,
+            "parliamentary_group_id": self.matched_parliamentary_group_id,
+            "judgment": self.extracted_judgment,
+        }
+
     def __str__(self) -> str:
         identifier = (
             self.extracted_politician_name
