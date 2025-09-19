@@ -15,9 +15,15 @@ from src.application.usecases.extract_proposal_judges_usecase import (
 from src.application.usecases.scrape_proposal_usecase import ScrapeProposalUseCase
 from src.domain.entities.proposal import Proposal
 from src.domain.entities.proposal_judge import ProposalJudge
+from src.domain.entities.proposal_parliamentary_group_judge import (
+    ProposalParliamentaryGroupJudge,
+)
 from src.infrastructure.external.llm_service import GeminiLLMService
 from src.infrastructure.external.proposal_scraper_service import ProposalScraperService
 from src.infrastructure.external.web_scraper_service import PlaywrightScraperService
+from src.infrastructure.persistence import (
+    proposal_parliamentary_group_judge_repository_impl as ppgjr,
+)
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
 )
@@ -596,30 +602,53 @@ def manage_extracted_judges_tab():
                             )
 
                     with col4:
-                        # ProposalJudgeへの変換ボタン
-                        if (
-                            judge.matching_status == "matched"
-                            and judge.matched_politician_id
-                        ):
+                        # 会派または政治家の賛否を確定するボタン
+                        can_confirm = judge.matching_status == "matched" and (
+                            judge.matched_parliamentary_group_id
+                            or judge.matched_politician_id
+                        )
+
+                        if can_confirm:
                             if st.button("確定", key=f"confirm_extracted_{judge.id}"):
                                 try:
-                                    # ProposalJudgeに変換
-                                    proposal_judge_repo = RepositoryAdapter(
-                                        ProposalJudgeRepositoryImpl
-                                    )
-                                    new_judge = ProposalJudge(
-                                        proposal_id=judge.proposal_id,
-                                        politician_id=judge.matched_politician_id,
-                                        approve=judge.extracted_judgment,
-                                    )
-                                    if proposal_judge_repo.create(new_judge):
-                                        # 変換済みのExtractedJudgeを削除
-                                        extracted_repo.delete(judge.id)
-                                        st.success("賛否情報を確定しました")
-                                        st.rerun()
-                                    else:
-                                        st.error("確定に失敗しました")
-                                    proposal_judge_repo.close()
+                                    # 会派の賛否として確定する場合
+                                    if judge.matched_parliamentary_group_id:
+                                        group_judge_repo = RepositoryAdapter(
+                                            ppgjr.ProposalParliamentaryGroupJudgeRepositoryImpl
+                                        )
+                                        new_judge = ProposalParliamentaryGroupJudge(
+                                            proposal_id=judge.proposal_id,
+                                            parliamentary_group_id=judge.matched_parliamentary_group_id,
+                                            judgment=judge.extracted_judgment,
+                                        )
+                                        if group_judge_repo.create(new_judge):
+                                            # 変換済みのExtractedJudgeを削除
+                                            extracted_repo.delete(judge.id)
+                                            st.success("会派の賛否情報を確定しました")
+                                            st.rerun()
+                                        else:
+                                            st.error("確定に失敗しました")
+                                        group_judge_repo.close()
+
+                                    # 政治家個人の賛否として確定する場合
+                                    elif judge.matched_politician_id:
+                                        proposal_judge_repo = RepositoryAdapter(
+                                            ProposalJudgeRepositoryImpl
+                                        )
+                                        new_judge = ProposalJudge(
+                                            proposal_id=judge.proposal_id,
+                                            politician_id=judge.matched_politician_id,
+                                            approve=judge.extracted_judgment,
+                                        )
+                                        if proposal_judge_repo.create(new_judge):
+                                            # 変換済みのExtractedJudgeを削除
+                                            extracted_repo.delete(judge.id)
+                                            st.success("政治家の賛否情報を確定しました")
+                                            st.rerun()
+                                        else:
+                                            st.error("確定に失敗しました")
+                                        proposal_judge_repo.close()
+
                                 except Exception as e:
                                     st.error(f"エラー: {str(e)}")
                         else:
