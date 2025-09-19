@@ -487,80 +487,157 @@ def manage_extracted_judges_tab():
         ]
 
     if extracted_judges:
-        # 各レコードの表示と操作ボタン
+        # 議案情報を取得してマッピング
+        proposal_dict = {}
+        for proposal in proposals:
+            proposal_dict[proposal.id] = proposal
+
+        # 議案ごとにグループ化
+        judges_by_proposal = {}
         for judge in extracted_judges:
-            col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 1, 1])
+            if judge.proposal_id not in judges_by_proposal:
+                judges_by_proposal[judge.proposal_id] = []
+            judges_by_proposal[judge.proposal_id].append(judge)
 
-            with col1:
-                # 政治家名または議員団名を表示
-                name = (
-                    judge.extracted_politician_name
-                    or judge.extracted_parliamentary_group_name
-                    or "不明"
+        # 議案ごとに表示
+        for proposal_id, judges in judges_by_proposal.items():
+            proposal = proposal_dict.get(proposal_id)
+
+            # 議案情報のヘッダー
+            proposal_title = (
+                f"{proposal.proposal_number or f'ID:{proposal_id}'}"
+                if proposal
+                else f"ID:{proposal_id}"
+            )
+            proposal_content = proposal.content[:60] if proposal else "不明"
+
+            with st.expander(
+                f"📋 議案: {proposal_title} - {proposal_content}... "
+                f"(抽出件数: {len(judges)}件)",
+                expanded=True,
+            ):
+                if proposal and proposal.status_url:
+                    st.caption(f"🔗 [賛否情報ソース]({proposal.status_url})")
+
+                # 賛否の集計を表示
+                approve_count = len(
+                    [j for j in judges if j.extracted_judgment == "賛成"]
                 )
-                st.markdown(f"**{name}**")
-                judgment = judge.extracted_judgment or "不明"
-                st.caption(f"賛否: {judgment} | 状態: {judge.matching_status}")
-                if judge.matching_confidence:
-                    st.caption(f"信頼度: {judge.matching_confidence:.2%}")
-                if judge.extracted_party_name:
-                    st.caption(f"政党: {judge.extracted_party_name}")
+                oppose_count = len(
+                    [j for j in judges if j.extracted_judgment == "反対"]
+                )
+                abstain_count = len(
+                    [j for j in judges if j.extracted_judgment == "棄権"]
+                )
+                absent_count = len(
+                    [j for j in judges if j.extracted_judgment == "欠席"]
+                )
 
-            with col2:
-                if st.button("編集", key=f"edit_extracted_{judge.id}"):
-                    st.session_state.edit_extracted_id = judge.id
-                    st.rerun()
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("賛成", approve_count)
+                with col2:
+                    st.metric("反対", oppose_count)
+                with col3:
+                    st.metric("棄権", abstain_count)
+                with col4:
+                    st.metric("欠席", absent_count)
 
-            with col3:
-                # マッチング実行ボタン
-                if judge.matching_status == "pending":
-                    if st.button("マッチング", key=f"match_extracted_{judge.id}"):
-                        with st.spinner("マッチング中..."):
-                            # TODO: マッチング処理の実装
-                            st.info("マッチング機能は開発中です")
-                else:
-                    st.button(
-                        "マッチング済", key=f"match_extracted_{judge.id}", disabled=True
-                    )
+                st.divider()
 
-            with col4:
-                # ProposalJudgeへの変換ボタン
-                if judge.matching_status == "matched" and judge.matched_politician_id:
-                    if st.button("確定", key=f"confirm_extracted_{judge.id}"):
-                        try:
-                            # ProposalJudgeに変換
-                            proposal_judge_repo = RepositoryAdapter(
-                                ProposalJudgeRepositoryImpl
+                # 各抽出結果の表示
+                for judge in judges:
+                    col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 1, 1])
+
+                    with col1:
+                        # 政治家名または議員団名を表示
+                        name = (
+                            judge.extracted_politician_name
+                            or judge.extracted_parliamentary_group_name
+                            or "不明"
+                        )
+                        st.markdown(f"**{name}**")
+                        judgment = judge.extracted_judgment or "不明"
+
+                        # 賛否に応じて色付きバッジで表示
+                        judgment_color = {
+                            "賛成": "🟢",
+                            "反対": "🔴",
+                            "棄権": "🟡",
+                            "欠席": "⚫",
+                        }.get(judgment, "⚪")
+
+                        status_text = judge.matching_status
+                        st.caption(f"{judgment_color} {judgment} | 状態: {status_text}")
+                        if judge.matching_confidence:
+                            st.caption(f"信頼度: {judge.matching_confidence:.2%}")
+                        if judge.extracted_party_name:
+                            st.caption(f"政党: {judge.extracted_party_name}")
+
+                    with col2:
+                        if st.button("編集", key=f"edit_extracted_{judge.id}"):
+                            st.session_state.edit_extracted_id = judge.id
+                            st.rerun()
+
+                    with col3:
+                        # マッチング実行ボタン
+                        if judge.matching_status == "pending":
+                            if st.button(
+                                "マッチング", key=f"match_extracted_{judge.id}"
+                            ):
+                                with st.spinner("マッチング中..."):
+                                    # TODO: マッチング処理の実装
+                                    st.info("マッチング機能は開発中です")
+                        else:
+                            st.button(
+                                "マッチング済",
+                                key=f"match_extracted_{judge.id}",
+                                disabled=True,
                             )
-                            new_judge = ProposalJudge(
-                                proposal_id=judge.proposal_id,
-                                politician_id=judge.matched_politician_id,
-                                approve=judge.extracted_judgment,
+
+                    with col4:
+                        # ProposalJudgeへの変換ボタン
+                        if (
+                            judge.matching_status == "matched"
+                            and judge.matched_politician_id
+                        ):
+                            if st.button("確定", key=f"confirm_extracted_{judge.id}"):
+                                try:
+                                    # ProposalJudgeに変換
+                                    proposal_judge_repo = RepositoryAdapter(
+                                        ProposalJudgeRepositoryImpl
+                                    )
+                                    new_judge = ProposalJudge(
+                                        proposal_id=judge.proposal_id,
+                                        politician_id=judge.matched_politician_id,
+                                        approve=judge.extracted_judgment,
+                                    )
+                                    if proposal_judge_repo.create(new_judge):
+                                        # 変換済みのExtractedJudgeを削除
+                                        extracted_repo.delete(judge.id)
+                                        st.success("賛否情報を確定しました")
+                                        st.rerun()
+                                    else:
+                                        st.error("確定に失敗しました")
+                                    proposal_judge_repo.close()
+                                except Exception as e:
+                                    st.error(f"エラー: {str(e)}")
+                        else:
+                            st.button(
+                                "確定",
+                                key=f"confirm_extracted_{judge.id}",
+                                disabled=True,
                             )
-                            if proposal_judge_repo.create(new_judge):
-                                # 変換済みのExtractedJudgeを削除
-                                extracted_repo.delete(judge.id)
-                                st.success("賛否情報を確定しました")
+
+                    with col5:
+                        if st.button("削除", key=f"delete_extracted_{judge.id}"):
+                            if extracted_repo.delete(judge.id):
+                                st.success("抽出結果を削除しました")
                                 st.rerun()
                             else:
-                                st.error("確定に失敗しました")
-                            proposal_judge_repo.close()
-                        except Exception as e:
-                            st.error(f"エラー: {str(e)}")
-                else:
-                    st.button(
-                        "確定", key=f"confirm_extracted_{judge.id}", disabled=True
-                    )
+                                st.error("削除に失敗しました")
 
-            with col5:
-                if st.button("削除", key=f"delete_extracted_{judge.id}"):
-                    if extracted_repo.delete(judge.id):
-                        st.success("抽出結果を削除しました")
-                        st.rerun()
-                    else:
-                        st.error("削除に失敗しました")
-
-            st.divider()
+                    st.divider()
 
         # 編集モード
         if "edit_extracted_id" in st.session_state:
