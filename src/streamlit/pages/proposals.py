@@ -618,7 +618,7 @@ def manage_extracted_judges_tab():
 
                 # 各抽出結果の表示
                 for judge in judges:
-                    col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
+                    col1, col2, col3, col4 = st.columns([4, 1.5, 1.5, 1])
 
                     with col1:
                         # 政治家名または議員団名を表示
@@ -680,14 +680,12 @@ def manage_extracted_judges_tab():
                             "edit_extracted_id" in st.session_state
                             and st.session_state.edit_extracted_id == judge.id
                         )
-                        button_label = "✏️" if not is_editing else "取消"
+                        button_label = "編集" if not is_editing else "取消"
 
                         if st.button(
                             button_label,
                             key=f"edit_extracted_{judge.id}",
-                            help="編集・紐付け"
-                            if not is_editing
-                            else "編集をキャンセル",
+                            use_container_width=False,
                         ):
                             if is_editing:
                                 # 編集をキャンセル
@@ -706,9 +704,9 @@ def manage_extracted_judges_tab():
 
                         if can_confirm:
                             if st.button(
-                                "✅",
+                                "確定",
                                 key=f"confirm_extracted_{judge.id}",
-                                help="賛否情報を確定",
+                                use_container_width=False,
                             ):
                                 try:
                                     # 会派の賛否として確定する場合
@@ -753,15 +751,18 @@ def manage_extracted_judges_tab():
                                     st.error(f"エラー: {str(e)}")
                         else:
                             st.button(
-                                "✅",
+                                "確定",
                                 key=f"confirm_extracted_{judge.id}",
                                 disabled=True,
                                 help="紐付けが必要です",
+                                use_container_width=False,
                             )
 
                     with col4:
                         if st.button(
-                            "🗑️", key=f"delete_extracted_{judge.id}", help="削除"
+                            "削除",
+                            key=f"delete_extracted_{judge.id}",
+                            use_container_width=False,
                         ):
                             if extracted_repo.delete(judge.id):
                                 st.success("抽出結果を削除しました")
