@@ -402,11 +402,17 @@ def manage_proposals_tab():
                     else:
                         st.error("議案の削除に失敗しました")
 
-            st.divider()
-
-        # 編集モード
-        if "edit_proposal_id" in st.session_state:
-            edit_proposal(st.session_state.edit_proposal_id)
+            # 編集モードの場合、このレコードの直下に編集フォームを表示
+            if (
+                "edit_proposal_id" in st.session_state
+                and st.session_state.edit_proposal_id == row["id"]
+            ):
+                with st.container():
+                    st.divider()
+                    edit_proposal(int(row["id"]))
+                    st.divider()
+            else:
+                st.divider()
 
     else:
         st.info("議案が登録されていません")
@@ -417,7 +423,7 @@ def manage_proposals_tab():
 
 def edit_proposal(proposal_id: int):
     """議案編集フォーム."""
-    st.subheader("議案編集")
+    st.markdown("#### 議案編集")
 
     proposal_repo = RepositoryAdapter(ProposalRepositoryImpl)
     proposal = proposal_repo.get_by_id(proposal_id)
@@ -430,6 +436,16 @@ def edit_proposal(proposal_id: int):
             )
             submitter = st.text_input("提出者", value=proposal.submitter or "")
             status = st.text_input("状態", value=proposal.status or "")
+            detail_url = st.text_input(
+                "詳細URL",
+                value=proposal.detail_url or "",
+                help="議案の詳細情報が記載されているページのURL",
+            )
+            status_url = st.text_input(
+                "状態URL",
+                value=proposal.status_url or "",
+                help="議案の審議状態や賛否結果が記載されているページのURL",
+            )
             summary = st.text_area("概要", value=proposal.summary or "")
 
             col1, col2 = st.columns(2)
@@ -441,6 +457,8 @@ def edit_proposal(proposal_id: int):
                     )
                     proposal.submitter = submitter if submitter else None
                     proposal.status = status if status else None
+                    proposal.detail_url = detail_url if detail_url else None
+                    proposal.status_url = status_url if status_url else None
                     proposal.summary = summary if summary else None
 
                     if proposal_repo.update(proposal):
@@ -600,7 +618,7 @@ def manage_extracted_judges_tab():
 
                 # 各抽出結果の表示
                 for judge in judges:
-                    col1, col2, col3, col4 = st.columns([3.5, 1.5, 1, 1])
+                    col1, col2, col3, col4 = st.columns([5, 1, 1, 1])
 
                     with col1:
                         # 政治家名または議員団名を表示
@@ -616,15 +634,14 @@ def manage_extracted_judges_tab():
                                 judge.matched_politician_id
                             )
                             if politician:
-                                name = f"{name} → 🔗 {politician.name}"
+                                name = f"{name} → {politician.name}"
                         elif judge.matched_parliamentary_group_id:
                             group = parliamentary_group_repo.get_by_id(
                                 judge.matched_parliamentary_group_id
                             )
                             if group:
-                                name = f"{name} → 🔗 {group.name}"
+                                name = f"{name} → {group.name}"
 
-                        st.markdown(f"**{name}**")
                         judgment = judge.extracted_judgment or "不明"
 
                         # 賛否に応じて色付きバッジで表示
@@ -634,17 +651,28 @@ def manage_extracted_judges_tab():
                         }.get(judgment, "⚪")
 
                         status_text = {
-                            "pending": "未紐付け",
-                            "matched": "紐付け済",
-                            "no_match": "マッチなし",
+                            "pending": "未紐付",
+                            "matched": "紐付済",
+                            "no_match": "なし",
                             "needs_review": "要確認",
                         }.get(judge.matching_status, judge.matching_status)
 
-                        st.caption(f"{judgment_color} {judgment} | 状態: {status_text}")
+                        # 追加情報をツールチップに
+                        tooltip = []
                         if judge.matching_confidence:
-                            st.caption(f"信頼度: {judge.matching_confidence:.2%}")
+                            tooltip.append(f"信頼度: {judge.matching_confidence:.0%}")
                         if judge.extracted_party_name:
-                            st.caption(f"政党: {judge.extracted_party_name}")
+                            tooltip.append(f"政党: {judge.extracted_party_name}")
+                        tooltip_text = " | ".join(tooltip) if tooltip else None
+
+                        # 1行にまとめて表示
+                        display_text = (
+                            f"{judgment_color} **{name}** - {judgment} ({status_text})"
+                        )
+                        if tooltip_text:
+                            st.markdown(display_text, help=tooltip_text)
+                        else:
+                            st.markdown(display_text)
 
                     with col2:
                         # 編集中の場合はキャンセルボタン、そうでない場合は編集ボタン
@@ -652,13 +680,14 @@ def manage_extracted_judges_tab():
                             "edit_extracted_id" in st.session_state
                             and st.session_state.edit_extracted_id == judge.id
                         )
-                        button_label = "キャンセル" if is_editing else "編集・紐付け"
-                        button_type = "secondary" if is_editing else "primary"
+                        button_label = "✏️" if not is_editing else "取消"
 
                         if st.button(
                             button_label,
                             key=f"edit_extracted_{judge.id}",
-                            type=button_type,
+                            help="編集・紐付け"
+                            if not is_editing
+                            else "編集をキャンセル",
                         ):
                             if is_editing:
                                 # 編集をキャンセル
@@ -677,9 +706,9 @@ def manage_extracted_judges_tab():
 
                         if can_confirm:
                             if st.button(
-                                "確定",
+                                "✅",
                                 key=f"confirm_extracted_{judge.id}",
-                                type="secondary",
+                                help="賛否情報を確定",
                             ):
                                 try:
                                     # 会派の賛否として確定する場合
@@ -724,14 +753,16 @@ def manage_extracted_judges_tab():
                                     st.error(f"エラー: {str(e)}")
                         else:
                             st.button(
-                                "確定",
+                                "✅",
                                 key=f"confirm_extracted_{judge.id}",
                                 disabled=True,
                                 help="紐付けが必要です",
                             )
 
                     with col4:
-                        if st.button("削除", key=f"delete_extracted_{judge.id}"):
+                        if st.button(
+                            "🗑️", key=f"delete_extracted_{judge.id}", help="削除"
+                        ):
                             if extracted_repo.delete(judge.id):
                                 st.success("抽出結果を削除しました")
                                 st.rerun()
@@ -743,12 +774,13 @@ def manage_extracted_judges_tab():
                         "edit_extracted_id" in st.session_state
                         and st.session_state.edit_extracted_id == judge.id
                     ):
+                        st.divider()
                         with st.container():
-                            st.divider()
                             edit_extracted_judge(judge.id)
-                            st.divider()
-
-                    st.divider()
+                        st.divider()
+                    else:
+                        # 編集モードでない場合のみdividerを表示（コンパクトに）
+                        st.markdown("---")
 
     else:
         st.info("抽出結果がありません")
