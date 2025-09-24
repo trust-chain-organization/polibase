@@ -738,15 +738,15 @@ def manage_extracted_judges_tab():
                             else:
                                 st.error("削除に失敗しました")
 
-                # 編集モードの場合、このレコードの直下に編集フォームを表示
-                if (
-                    "edit_extracted_id" in st.session_state
-                    and st.session_state.edit_extracted_id == judge.id
-                ):
-                    with st.container():
-                        st.divider()
-                        edit_extracted_judge(judge.id)
-                        st.divider()
+                    # 編集モードの場合、このレコードの直下に編集フォームを表示
+                    if (
+                        "edit_extracted_id" in st.session_state
+                        and st.session_state.edit_extracted_id == judge.id
+                    ):
+                        with st.container():
+                            st.divider()
+                            edit_extracted_judge(judge.id)
+                            st.divider()
 
                     st.divider()
 
