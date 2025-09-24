@@ -56,6 +56,75 @@ class ExtractedProposalJudgeRepositoryImpl(
             return self._row_to_entity(row)
         return None
 
+    async def delete(self, entity_id: int) -> bool:
+        """Delete an entity by ID."""
+        query = text("""
+            DELETE FROM extracted_proposal_judges WHERE id = :id
+        """)
+
+        await self.session.execute(query, {"id": entity_id})
+        await self.session.commit()
+
+        # rowcountは削除された行数を返す
+        return True  # SQLAlchemy AsyncSessionではrowcountが使えないため、常にTrueを返す
+
+    async def update(self, entity: ExtractedProposalJudge) -> ExtractedProposalJudge:
+        """Update an existing entity."""
+        if not entity.id:
+            raise ValueError("Entity must have an ID to update")
+
+        query = text("""
+            UPDATE extracted_proposal_judges SET
+                proposal_id = :proposal_id,
+                extracted_politician_name = :extracted_politician_name,
+                extracted_party_name = :extracted_party_name,
+                extracted_parliamentary_group_name =
+                    :extracted_parliamentary_group_name,
+                extracted_judgment = :extracted_judgment,
+                source_url = :source_url,
+                matched_politician_id = :matched_politician_id,
+                matched_parliamentary_group_id = :matched_parliamentary_group_id,
+                matching_confidence = :matching_confidence,
+                matching_status = :matching_status,
+                matched_at = :matched_at,
+                additional_data = :additional_data
+            WHERE id = :id
+            RETURNING id, proposal_id, extracted_politician_name,
+                      extracted_party_name, extracted_parliamentary_group_name,
+                      extracted_judgment, source_url, extracted_at,
+                      matched_politician_id, matched_parliamentary_group_id,
+                      matching_confidence, matching_status, matched_at,
+                      additional_data
+        """)
+
+        params: dict[str, Any] = {
+            "id": entity.id,
+            "proposal_id": entity.proposal_id,
+            "extracted_politician_name": entity.extracted_politician_name,
+            "extracted_party_name": entity.extracted_party_name,
+            "extracted_parliamentary_group_name": (
+                entity.extracted_parliamentary_group_name
+            ),
+            "extracted_judgment": entity.extracted_judgment,
+            "source_url": entity.source_url,
+            "matched_politician_id": entity.matched_politician_id,
+            "matched_parliamentary_group_id": entity.matched_parliamentary_group_id,
+            "matching_confidence": entity.matching_confidence,
+            "matching_status": entity.matching_status,
+            "matched_at": entity.matched_at,
+            "additional_data": (
+                entity.additional_data if hasattr(entity, "additional_data") else None
+            ),
+        }
+
+        result = await self.session.execute(query, params)
+        row = result.fetchone()
+        await self.session.commit()
+
+        if row:
+            return self._row_to_entity(row)
+        raise RuntimeError("Failed to update extracted proposal judge")
+
     async def create(self, entity: ExtractedProposalJudge) -> ExtractedProposalJudge:
         """Create a new entity."""
         query = text("""

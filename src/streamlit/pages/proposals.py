@@ -31,6 +31,12 @@ from src.infrastructure.persistence.extracted_proposal_judge_repository_impl imp
     ExtractedProposalJudgeRepositoryImpl,
 )
 from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
+from src.infrastructure.persistence.parliamentary_group_repository_impl import (
+    ParliamentaryGroupRepositoryImpl,
+)
+from src.infrastructure.persistence.politician_affiliation_repository_impl import (
+    PoliticianAffiliationRepositoryImpl,
+)
 from src.infrastructure.persistence.politician_repository_impl import (
     PoliticianRepositoryImpl,
 )
@@ -460,6 +466,7 @@ def manage_extracted_judges_tab():
     extracted_repo = RepositoryAdapter(ExtractedProposalJudgeRepositoryImpl)
     proposal_repo = RepositoryAdapter(ProposalRepositoryImpl)
     politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
+    parliamentary_group_repo = RepositoryAdapter(ParliamentaryGroupRepositoryImpl)
 
     # フィルター
     col1, col2 = st.columns(2)
@@ -491,6 +498,56 @@ def manage_extracted_judges_tab():
         extracted_judges = [
             e for e in extracted_judges if e.matching_status == selected_status
         ]
+
+    # 編集モードのフラグだけチェック（実際の編集フォームは各レコードの下に表示）
+
+    # 確定処理（編集フォームから呼ばれた場合）
+    if "confirm_extracted_id" in st.session_state:
+        confirm_id = st.session_state.confirm_extracted_id
+        extracted = extracted_repo.get_by_id(confirm_id)
+
+        if extracted and extracted.matching_status == "matched":
+            try:
+                # 会派の賛否として確定する場合
+                if extracted.matched_parliamentary_group_id:
+                    group_judge_repo = RepositoryAdapter(
+                        ppgjr.ProposalParliamentaryGroupJudgeRepositoryImpl
+                    )
+                    new_judge = ProposalParliamentaryGroupJudge(
+                        proposal_id=extracted.proposal_id,
+                        parliamentary_group_id=extracted.matched_parliamentary_group_id,
+                        judgment=extracted.extracted_judgment,
+                    )
+                    if group_judge_repo.create(new_judge):
+                        # 変換済みのExtractedJudgeを削除
+                        extracted_repo.delete(confirm_id)
+                        st.success("✅ 会派の賛否情報を確定しました")
+                    else:
+                        st.error("確定に失敗しました")
+                    group_judge_repo.close()
+
+                # 政治家個人の賛否として確定する場合
+                elif extracted.matched_politician_id:
+                    proposal_judge_repo = RepositoryAdapter(ProposalJudgeRepositoryImpl)
+                    new_judge = ProposalJudge(
+                        proposal_id=extracted.proposal_id,
+                        politician_id=extracted.matched_politician_id,
+                        approve=extracted.extracted_judgment,
+                    )
+                    if proposal_judge_repo.create(new_judge):
+                        # 変換済みのExtractedJudgeを削除
+                        extracted_repo.delete(confirm_id)
+                        st.success("✅ 政治家の賛否情報を確定しました")
+                    else:
+                        st.error("確定に失敗しました")
+                    proposal_judge_repo.close()
+
+            except Exception as e:
+                st.error(f"確定処理でエラーが発生しました: {str(e)}")
+
+        # 確定処理後、セッションステートをクリア
+        del st.session_state.confirm_extracted_id
+        st.rerun()
 
     if extracted_judges:
         # 議案情報を取得してマッピング
@@ -532,28 +589,18 @@ def manage_extracted_judges_tab():
                 oppose_count = len(
                     [j for j in judges if j.extracted_judgment == "反対"]
                 )
-                abstain_count = len(
-                    [j for j in judges if j.extracted_judgment == "棄権"]
-                )
-                absent_count = len(
-                    [j for j in judges if j.extracted_judgment == "欠席"]
-                )
 
-                col1, col2, col3, col4 = st.columns(4)
+                col1, col2 = st.columns(2)
                 with col1:
                     st.metric("賛成", approve_count)
                 with col2:
                     st.metric("反対", oppose_count)
-                with col3:
-                    st.metric("棄権", abstain_count)
-                with col4:
-                    st.metric("欠席", absent_count)
 
                 st.divider()
 
                 # 各抽出結果の表示
                 for judge in judges:
-                    col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 1, 1])
+                    col1, col2, col3, col4 = st.columns([3.5, 1.5, 1, 1])
 
                     with col1:
                         # 政治家名または議員団名を表示
@@ -562,6 +609,21 @@ def manage_extracted_judges_tab():
                             or judge.extracted_parliamentary_group_name
                             or "不明"
                         )
+
+                        # マッチング済みの場合、紐付け先を表示
+                        if judge.matched_politician_id:
+                            politician = politician_repo.get_by_id(
+                                judge.matched_politician_id
+                            )
+                            if politician:
+                                name = f"{name} → 🔗 {politician.name}"
+                        elif judge.matched_parliamentary_group_id:
+                            group = parliamentary_group_repo.get_by_id(
+                                judge.matched_parliamentary_group_id
+                            )
+                            if group:
+                                name = f"{name} → 🔗 {group.name}"
+
                         st.markdown(f"**{name}**")
                         judgment = judge.extracted_judgment or "不明"
 
@@ -569,11 +631,15 @@ def manage_extracted_judges_tab():
                         judgment_color = {
                             "賛成": "🟢",
                             "反対": "🔴",
-                            "棄権": "🟡",
-                            "欠席": "⚫",
                         }.get(judgment, "⚪")
 
-                        status_text = judge.matching_status
+                        status_text = {
+                            "pending": "未紐付け",
+                            "matched": "紐付け済",
+                            "no_match": "マッチなし",
+                            "needs_review": "要確認",
+                        }.get(judge.matching_status, judge.matching_status)
+
                         st.caption(f"{judgment_color} {judgment} | 状態: {status_text}")
                         if judge.matching_confidence:
                             st.caption(f"信頼度: {judge.matching_confidence:.2%}")
@@ -581,27 +647,28 @@ def manage_extracted_judges_tab():
                             st.caption(f"政党: {judge.extracted_party_name}")
 
                     with col2:
-                        if st.button("編集", key=f"edit_extracted_{judge.id}"):
-                            st.session_state.edit_extracted_id = judge.id
+                        # 編集中の場合はキャンセルボタン、そうでない場合は編集ボタン
+                        is_editing = (
+                            "edit_extracted_id" in st.session_state
+                            and st.session_state.edit_extracted_id == judge.id
+                        )
+                        button_label = "キャンセル" if is_editing else "編集・紐付け"
+                        button_type = "secondary" if is_editing else "primary"
+
+                        if st.button(
+                            button_label,
+                            key=f"edit_extracted_{judge.id}",
+                            type=button_type,
+                        ):
+                            if is_editing:
+                                # 編集をキャンセル
+                                del st.session_state.edit_extracted_id
+                            else:
+                                # 編集モードに入る
+                                st.session_state.edit_extracted_id = judge.id
                             st.rerun()
 
                     with col3:
-                        # マッチング実行ボタン
-                        if judge.matching_status == "pending":
-                            if st.button(
-                                "マッチング", key=f"match_extracted_{judge.id}"
-                            ):
-                                with st.spinner("マッチング中..."):
-                                    # TODO: マッチング処理の実装
-                                    st.info("マッチング機能は開発中です")
-                        else:
-                            st.button(
-                                "マッチング済",
-                                key=f"match_extracted_{judge.id}",
-                                disabled=True,
-                            )
-
-                    with col4:
                         # 会派または政治家の賛否を確定するボタン
                         can_confirm = judge.matching_status == "matched" and (
                             judge.matched_parliamentary_group_id
@@ -609,7 +676,11 @@ def manage_extracted_judges_tab():
                         )
 
                         if can_confirm:
-                            if st.button("確定", key=f"confirm_extracted_{judge.id}"):
+                            if st.button(
+                                "確定",
+                                key=f"confirm_extracted_{judge.id}",
+                                type="secondary",
+                            ):
                                 try:
                                     # 会派の賛否として確定する場合
                                     if judge.matched_parliamentary_group_id:
@@ -656,9 +727,10 @@ def manage_extracted_judges_tab():
                                 "確定",
                                 key=f"confirm_extracted_{judge.id}",
                                 disabled=True,
+                                help="紐付けが必要です",
                             )
 
-                    with col5:
+                    with col4:
                         if st.button("削除", key=f"delete_extracted_{judge.id}"):
                             if extracted_repo.delete(judge.id):
                                 st.success("抽出結果を削除しました")
@@ -666,11 +738,17 @@ def manage_extracted_judges_tab():
                             else:
                                 st.error("削除に失敗しました")
 
-                    st.divider()
+                # 編集モードの場合、このレコードの直下に編集フォームを表示
+                if (
+                    "edit_extracted_id" in st.session_state
+                    and st.session_state.edit_extracted_id == judge.id
+                ):
+                    with st.container():
+                        st.divider()
+                        edit_extracted_judge(judge.id)
+                        st.divider()
 
-        # 編集モード
-        if "edit_extracted_id" in st.session_state:
-            edit_extracted_judge(st.session_state.edit_extracted_id)
+                    st.divider()
 
     else:
         st.info("抽出結果がありません")
@@ -678,61 +756,316 @@ def manage_extracted_judges_tab():
     extracted_repo.close()
     proposal_repo.close()
     politician_repo.close()
+    parliamentary_group_repo.close()
 
 
 def edit_extracted_judge(extracted_id: int):
-    """抽出結果編集フォーム."""
-    st.subheader("抽出結果編集")
+    """抽出結果編集・紐付けフォーム."""
+    st.subheader("抽出結果の編集と紐付け")
 
     extracted_repo = RepositoryAdapter(ExtractedProposalJudgeRepositoryImpl)
+    politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
+    parliamentary_group_repo = RepositoryAdapter(ParliamentaryGroupRepositoryImpl)
+    proposal_repo = RepositoryAdapter(ProposalRepositoryImpl)
+    meeting_repo = RepositoryAdapter(MeetingRepositoryImpl)
+    politician_affiliation_repo = RepositoryAdapter(PoliticianAffiliationRepositoryImpl)
+
     extracted = extracted_repo.get_by_id(extracted_id)
 
-    if extracted:
-        with st.form(key=f"edit_extracted_form_{extracted_id}"):
-            politician_name = st.text_input(
-                "政治家名", value=extracted.extracted_politician_name or ""
+    if not extracted:
+        st.error("抽出結果が見つかりません")
+        if st.button("戻る"):
+            del st.session_state.edit_extracted_id
+            st.rerun()
+        extracted_repo.close()
+        politician_repo.close()
+        parliamentary_group_repo.close()
+        proposal_repo.close()
+        meeting_repo.close()
+        politician_affiliation_repo.close()
+        return
+
+    # 議案から会議、そしてConferenceを特定
+    proposal = proposal_repo.get_by_id(extracted.proposal_id)
+    conference_id = None
+    if proposal and proposal.meeting_id:
+        meeting = meeting_repo.get_by_id(proposal.meeting_id)
+        if meeting:
+            conference_id = meeting.conference_id
+
+    # extracted が存在する場合の処理
+    # 現在の抽出内容を表示
+    st.info(f"""
+    **抽出された内容:**
+    - 名前: {
+        (
+            extracted.extracted_politician_name
+            or extracted.extracted_parliamentary_group_name
+            or "不明"
+        )
+    }
+    - 政党: {extracted.extracted_party_name or "不明"}
+    - 賛否: {extracted.extracted_judgment or "不明"}
+    """)
+
+    # 議員と議員団のデータを事前に取得（フォーム外で取得）
+    if conference_id:
+        # Conferenceに所属する政治家を取得
+        affiliations = politician_affiliation_repo.get_by_conference(conference_id)
+        politician_ids = [a.politician_id for a in affiliations if a.politician_id]
+
+        all_politicians = politician_repo.get_all()
+        politicians = [p for p in all_politicians if p.id in politician_ids]
+
+        # Conferenceに所属する議員団を取得
+        all_groups = parliamentary_group_repo.get_all()
+        groups = [g for g in all_groups if g.conference_id == conference_id]
+
+        if politicians or groups:
+            st.success(
+                f"開催主体の議員: {len(politicians)}名、議員団: {len(groups)}団体"
             )
-            party_name = st.text_input(
-                "政党名", value=extracted.extracted_party_name or ""
+        else:
+            st.warning("この議案の開催主体に紐づく政治家・議員団が見つかりません")
+            # フォールバックとして全データを表示
+            politicians = all_politicians
+            groups = all_groups
+    else:
+        st.warning(
+            "議案の開催主体を特定できませんでした。すべての政治家・議員団を表示します"
+        )
+        politicians = politician_repo.get_all()
+        groups = parliamentary_group_repo.get_all()
+
+    with st.form(key=f"edit_extracted_form_{extracted_id}"):
+        st.markdown("### 紐付け設定")
+        st.markdown("議員または議員団のいずれか一つを選択してください")
+
+        # 議員と議員団の選択肢を両方表示
+        col1, col2 = st.columns(2)
+
+        # 議員選択
+        with col1:
+            st.markdown("#### 👤 議員に紐付ける場合")
+
+            # 名前でフィルタリング（抽出名に近いものを上位に）
+            if extracted.extracted_politician_name:
+                # 部分一致する議員を優先表示
+                filtered_politicians = [
+                    p
+                    for p in politicians
+                    if extracted.extracted_politician_name in p.name
+                    or p.name in extracted.extracted_politician_name
+                ]
+                other_politicians = [
+                    p for p in politicians if p not in filtered_politicians
+                ]
+                politicians = filtered_politicians + other_politicians
+                # 候補数を表示（フォーム内ではst.successは使えない）
+                politician_help_text = (
+                    f"議員を選択する場合、議員団は選択できません"
+                    f"（候補: {len(filtered_politicians)}件の部分一致）"
+                    if filtered_politicians
+                    else "議員を選択する場合、議員団は選択できません"
+                )
+            else:
+                politician_help_text = "議員を選択する場合、議員団は選択できません"
+
+            selected_politician_id = st.selectbox(
+                "議員を選択",
+                options=[None] + [p.id for p in politicians],
+                format_func=lambda x: "-- 選択してください --"
+                if x is None
+                else next((f"{p.name}" for p in politicians if p.id == x), ""),
+                index=0
+                if not extracted.matched_politician_id
+                else next(
+                    (
+                        i + 1
+                        for i, p in enumerate(politicians)
+                        if p.id == extracted.matched_politician_id
+                    ),
+                    0,
+                ),
+                help=politician_help_text,
             )
-            parliamentary_group = st.text_input(
-                "議員団名", value=extracted.extracted_parliamentary_group_name or ""
+
+        # 議員団選択
+        with col2:
+            st.markdown("#### 🏛️ 議員団に紐付ける場合")
+
+            # 名前でフィルタリング
+            if extracted.extracted_parliamentary_group_name:
+                filtered_groups = [
+                    g
+                    for g in groups
+                    if extracted.extracted_parliamentary_group_name in g.name
+                    or g.name in extracted.extracted_parliamentary_group_name
+                ]
+                other_groups = [g for g in groups if g not in filtered_groups]
+                groups = filtered_groups + other_groups
+                # 候補数を表示（フォーム内ではst.successは使えない）
+                group_help_text = (
+                    f"議員団を選択する場合、議員は選択できません"
+                    f"（候補: {len(filtered_groups)}件の部分一致）"
+                    if filtered_groups
+                    else "議員団を選択する場合、議員は選択できません"
+                )
+            else:
+                group_help_text = "議員団を選択する場合、議員は選択できません"
+
+            selected_group_id = st.selectbox(
+                "議員団を選択",
+                options=[None] + [g.id for g in groups],
+                format_func=lambda x: "-- 選択してください --"
+                if x is None
+                else next((f"{g.name}" for g in groups if g.id == x), ""),
+                index=0
+                if not extracted.matched_parliamentary_group_id
+                else next(
+                    (
+                        i + 1
+                        for i, g in enumerate(groups)
+                        if g.id == extracted.matched_parliamentary_group_id
+                    ),
+                    0,
+                ),
+                help=group_help_text,
             )
+
+            # 賛否判定
+            st.markdown("### 賛否判定")
             judgment = st.selectbox(
                 "賛否",
-                options=["賛成", "反対", "棄権", "欠席"],
-                index=["賛成", "反対", "棄権", "欠席"].index(
-                    extracted.extracted_judgment
-                )
-                if extracted.extracted_judgment in ["賛成", "反対", "棄権", "欠席"]
+                options=["賛成", "反対"],
+                index=["賛成", "反対"].index(extracted.extracted_judgment)
+                if extracted.extracted_judgment in ["賛成", "反対"]
                 else 0,
             )
 
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.form_submit_button("更新"):
-                    extracted.extracted_politician_name = (
-                        politician_name if politician_name else None
-                    )
-                    extracted.extracted_party_name = party_name if party_name else None
-                    extracted.extracted_parliamentary_group_name = (
-                        parliamentary_group if parliamentary_group else None
-                    )
-                    extracted.extracted_judgment = judgment
+            # 人手による紐付けは信頼度100%固定
+            confidence = 1.0
 
-                    if extracted_repo.update(extracted):
-                        st.success("抽出結果を更新しました")
-                        del st.session_state.edit_extracted_id
-                        st.rerun()
-                    else:
-                        st.error("更新に失敗しました")
+            st.markdown("---")
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                submit_save = st.form_submit_button("💾 保存", type="primary")
 
             with col2:
-                if st.form_submit_button("キャンセル"):
+                submit_cancel = st.form_submit_button("❌ キャンセル")
+
+            with col3:
+                # 紐付けされている場合のみ確定ボタンを有効化
+                can_confirm = selected_politician_id or selected_group_id
+                if can_confirm:
+                    submit_confirm = st.form_submit_button(
+                        "✅ 保存して確定", type="secondary"
+                    )
+                else:
+                    submit_confirm = st.form_submit_button(
+                        "✅ 保存して確定",
+                        disabled=True,
+                        help="議員または議員団を選択してください",
+                    )
+
+        # フォーム送信後の処理（フォームの外で処理）
+        if "submit_save" in locals() and submit_save:
+            # 更新処理
+            extracted.extracted_judgment = judgment
+
+            # 両方選択されている場合のバリデーション
+            if selected_politician_id and selected_group_id:
+                st.error(
+                    "議員と議員団の両方を選択することはできません。どちらか一つを選択してください。"
+                )
+            elif selected_politician_id:
+                # 議員に紐付け
+                extracted.matched_politician_id = selected_politician_id
+                extracted.matched_parliamentary_group_id = None
+                extracted.matching_confidence = 1.0
+                extracted.matching_status = "matched"
+
+                if extracted_repo.update(extracted):
+                    politician = next(
+                        (p for p in politicians if p.id == selected_politician_id), None
+                    )
+                    if politician:
+                        st.success(f"✅ 議員「{politician.name}」に紐付けました")
+                    else:
+                        st.success("✅ 議員に紐付けました")
+                    del st.session_state.edit_extracted_id
+                    st.rerun()
+                else:
+                    st.error("更新に失敗しました")
+
+            elif selected_group_id:
+                # 議員団に紐付け
+                extracted.matched_parliamentary_group_id = selected_group_id
+                extracted.matched_politician_id = None
+                extracted.matching_confidence = 1.0
+                extracted.matching_status = "matched"
+
+                if extracted_repo.update(extracted):
+                    group = next((g for g in groups if g.id == selected_group_id), None)
+                    if group:
+                        st.success(f"✅ 議員団「{group.name}」に紐付けました")
+                    else:
+                        st.success("✅ 議員団に紐付けました")
+                    del st.session_state.edit_extracted_id
+                    st.rerun()
+                else:
+                    st.error("更新に失敗しました")
+
+            else:
+                # 紐付けなし（賛否のみ更新）
+                extracted.matched_politician_id = None
+                extracted.matched_parliamentary_group_id = None
+                extracted.matching_confidence = None
+                extracted.matching_status = "pending"
+
+                if extracted_repo.update(extracted):
+                    st.success("✅ 賛否情報を更新しました（紐付けなし）")
+                    del st.session_state.edit_extracted_id
+                    st.rerun()
+                else:
+                    st.error("更新に失敗しました")
+
+        elif "submit_cancel" in locals() and submit_cancel:
+            del st.session_state.edit_extracted_id
+            st.rerun()
+
+        elif "submit_confirm" in locals() and submit_confirm:
+            # 両方選択されている場合のバリデーション
+            if selected_politician_id and selected_group_id:
+                st.error("議員と議員団の両方を選択することはできません")
+            else:
+                # 紐付けを保存してから確定処理
+                extracted.extracted_judgment = judgment
+
+                if selected_politician_id:
+                    extracted.matched_politician_id = selected_politician_id
+                    extracted.matched_parliamentary_group_id = None
+                    extracted.matching_confidence = 1.0
+                    extracted.matching_status = "matched"
+                elif selected_group_id:
+                    extracted.matched_parliamentary_group_id = selected_group_id
+                    extracted.matched_politician_id = None
+                    extracted.matching_confidence = 1.0
+                    extracted.matching_status = "matched"
+
+                if extracted_repo.update(extracted):
+                    # 確定処理を実行
+                    st.session_state.confirm_extracted_id = extracted_id
                     del st.session_state.edit_extracted_id
                     st.rerun()
 
     extracted_repo.close()
+    politician_repo.close()
+    parliamentary_group_repo.close()
+    proposal_repo.close()
+    meeting_repo.close()
+    politician_affiliation_repo.close()
 
 
 def manage_proposal_judges_tab():
@@ -780,7 +1113,7 @@ def manage_proposal_judges_tab():
 
             judgment = st.selectbox(
                 "賛否",
-                options=["賛成", "反対", "棄権", "欠席"],
+                options=["賛成", "反対"],
                 key="new_judge_judgment",
             )
 
@@ -807,9 +1140,18 @@ def manage_proposal_judges_tab():
     proposals = proposal_repo.get_all()
     politicians = politician_repo.get_all()
 
+    # 議員団の賛否情報も取得
+    group_judge_repo = RepositoryAdapter(
+        ppgjr.ProposalParliamentaryGroupJudgeRepositoryImpl
+    )
+    parliamentary_group_repo = RepositoryAdapter(ParliamentaryGroupRepositoryImpl)
+    group_judges = group_judge_repo.get_all()
+    parliamentary_groups = parliamentary_group_repo.get_all()
+
     # IDから名前を引けるようにマップ作成
     proposal_map = {p.id: p for p in proposals}
     politician_map = {p.id: p for p in politicians}
+    group_map = {g.id: g for g in parliamentary_groups}
 
     if judges:
         # 各レコードの表示と操作ボタン
@@ -853,11 +1195,54 @@ def manage_proposal_judges_tab():
             edit_proposal_judge(st.session_state.edit_judge_id)
 
     else:
+        st.info("政治家の確定賛否情報がありません")
+
+    # 議員団の賛否情報を表示
+    if group_judges:
+        st.subheader("議員団の賛否情報")
+        for group_judge in group_judges:
+            col1, col2, col3 = st.columns([5, 1, 1])
+
+            proposal = proposal_map.get(group_judge.proposal_id)
+            group = group_map.get(group_judge.parliamentary_group_id)
+
+            with col1:
+                group_name = (
+                    group.name if group else f"ID:{group_judge.parliamentary_group_id}"
+                )
+                if proposal:
+                    prop_num = proposal.proposal_number or f"ID:{proposal.id}"
+                    proposal_text = f"{prop_num}: {proposal.content[:30]}..."
+                else:
+                    proposal_text = f"議案ID:{group_judge.proposal_id}"
+                st.markdown(f"**{group_name}** - {group_judge.judgment or '不明'}")
+                st.caption(f"議案: {proposal_text}")
+                if group_judge.member_count:
+                    st.caption(f"賛同人数: {group_judge.member_count}名")
+                if group_judge.note:
+                    st.caption(f"備考: {group_judge.note}")
+
+            with col2:
+                if st.button("編集", key=f"edit_group_judge_{group_judge.id}"):
+                    st.info("議員団賛否の編集機能は開発中です")
+
+            with col3:
+                if st.button("削除", key=f"delete_group_judge_{group_judge.id}"):
+                    if group_judge_repo.delete(group_judge.id):
+                        st.success("議員団賛否情報を削除しました")
+                        st.rerun()
+                    else:
+                        st.error("削除に失敗しました")
+
+            st.divider()
+    elif not judges:  # 両方ない場合
         st.info("確定賛否情報がありません")
 
     judge_repo.close()
     proposal_repo.close()
     politician_repo.close()
+    group_judge_repo.close()
+    parliamentary_group_repo.close()
 
 
 def edit_proposal_judge(judge_id: int):
@@ -871,9 +1256,9 @@ def edit_proposal_judge(judge_id: int):
         with st.form(key=f"edit_judge_form_{judge_id}"):
             judgment = st.selectbox(
                 "賛否",
-                options=["賛成", "反対", "棄権", "欠席"],
-                index=["賛成", "反対", "棄権", "欠席"].index(judge.approve)
-                if judge.approve in ["賛成", "反対", "棄権", "欠席"]
+                options=["賛成", "反対"],
+                index=["賛成", "反対"].index(judge.approve)
+                if judge.approve in ["賛成", "反対"]
                 else 0,
             )
 

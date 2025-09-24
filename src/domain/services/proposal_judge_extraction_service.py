@@ -25,16 +25,12 @@ class ProposalJudgeExtractionService:
 
         # Map Japanese and English variations to standard types
         if text in ["賛成", "APPROVE", "YES", "FOR", "賛", "○"]:
-            return ("APPROVE", True)
+            return ("賛成", True)
         elif text in ["反対", "OPPOSE", "NO", "AGAINST", "反", "×", "✕"]:
-            return ("OPPOSE", True)
-        elif text in ["棄権", "ABSTAIN", "ABSTENTION", "棄"]:
-            return ("ABSTAIN", True)
-        elif text in ["欠席", "ABSENT", "ABSENCE", "欠", "－"]:
-            return ("ABSENT", True)
+            return ("反対", True)
         else:
-            # Return APPROVE as default but indicate it was unknown
-            return ("APPROVE", False)
+            # Return 賛成 as default but indicate it was unknown
+            return ("賛成", False)
 
     @staticmethod
     def normalize_politician_name(name: str) -> str:
@@ -120,12 +116,10 @@ class ProposalJudgeExtractionService:
         """
         results = []
 
-        # Split text into sections (approve, oppose, abstain, absent)
+        # Split text into sections (approve, oppose)
         sections = {
-            "APPROVE": ["賛成", "賛成者", "賛成議員", "可決", "承認"],
-            "OPPOSE": ["反対", "反対者", "反対議員", "否決", "不承認"],
-            "ABSTAIN": ["棄権", "棄権者", "棄権議員"],
-            "ABSENT": ["欠席", "欠席者", "欠席議員", "不在"],
+            "賛成": ["賛成", "賛成者", "賛成議員", "可決", "承認"],
+            "反対": ["反対", "反対者", "反対議員", "否決", "不承認"],
         }
 
         current_judgment = None
@@ -141,6 +135,14 @@ class ProposalJudgeExtractionService:
                 if any(keyword in line for keyword in keywords):
                     current_judgment = judgment
                     break
+
+            # 棄権や欠席のセクションは無視（賛成・反対のみ処理）
+            if any(
+                keyword in line
+                for keyword in ["棄権", "欠席", "退席", "ABSTAIN", "ABSENT"]
+            ):
+                current_judgment = None
+                continue
 
             # If we have a current judgment and the line contains names
             if current_judgment and not any(
