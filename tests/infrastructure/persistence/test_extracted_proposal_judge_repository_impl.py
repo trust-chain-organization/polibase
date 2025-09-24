@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.domain.entities.extracted_proposal_judge import ExtractedProposalJudge
 from src.domain.entities.proposal_judge import ProposalJudge
 from src.infrastructure.persistence.extracted_proposal_judge_repository_impl import (
-    ExtractedProposalJudgeModel,
     ExtractedProposalJudgeRepositoryImpl,
 )
 
@@ -329,20 +328,48 @@ class TestExtractedProposalJudgeRepositoryImpl:
             for i in range(3)
         ]
 
-        # Mock the refresh method to set IDs
-        async def mock_refresh(model: ExtractedProposalJudgeModel) -> None:
-            model.id = 1  # Simulate DB assigning ID
+        # Mock the execute result for each insert
+        mock_rows = []
+        for i in range(3):
+            mock_row = MagicMock()
+            mock_row.id = i + 1
+            mock_row.proposal_id = 10
+            mock_row.extracted_politician_name = f"議員{i}"
+            mock_row.extracted_party_name = None
+            mock_row.extracted_parliamentary_group_name = None
+            mock_row.extracted_judgment = "賛成"
+            mock_row.source_url = None
+            mock_row.extracted_at = None
+            mock_row.matched_politician_id = None
+            mock_row.matched_parliamentary_group_id = None
+            mock_row.matching_confidence = None
+            mock_row.matching_status = "pending"
+            mock_row.matched_at = None
+            mock_row.additional_data = None
+            mock_rows.append(mock_row)
 
-        mock_session.refresh = AsyncMock(side_effect=mock_refresh)
+        # Create mock results for each insert
+        mock_results = []
+        for mock_row in mock_rows:
+            mock_result = MagicMock()
+            mock_result.fetchone = MagicMock(return_value=mock_row)
+            mock_results.append(mock_result)
+
+        # Set side effect to return different result for each call
+        mock_session.execute.side_effect = mock_results
 
         # Execute
         result = await repository.bulk_create(judges)
 
         # Assert
         assert len(result) == 3
-        mock_session.add_all.assert_called_once()
+        assert mock_session.execute.call_count == 3
         mock_session.commit.assert_called_once()
-        assert mock_session.refresh.call_count == 3
+        # Verify returned entities
+        for i, judge in enumerate(result):
+            assert judge.id == i + 1
+            assert judge.proposal_id == 10
+            assert judge.extracted_politician_name == f"議員{i}"
 
     @pytest.mark.asyncio
     async def test_convert_to_proposal_judge_success(

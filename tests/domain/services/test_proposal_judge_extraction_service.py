@@ -12,44 +12,47 @@ class TestProposalJudgeExtractionService:
         """Test normalizing Japanese judgment types"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("賛成") == ("APPROVE", True)
-        assert service.normalize_judgment_type("反対") == ("OPPOSE", True)
-        assert service.normalize_judgment_type("棄権") == ("ABSTAIN", True)
-        assert service.normalize_judgment_type("欠席") == ("ABSENT", True)
+        assert service.normalize_judgment_type("賛成") == ("賛成", True)
+        assert service.normalize_judgment_type("反対") == ("反対", True)
+        # 棄権と欠席はデフォルトで賛成になる
+        assert service.normalize_judgment_type("棄権") == ("賛成", False)
+        assert service.normalize_judgment_type("欠席") == ("賛成", False)
 
     def test_normalize_judgment_type_english(self):
         """Test normalizing English judgment types"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("APPROVE") == ("APPROVE", True)
-        assert service.normalize_judgment_type("OPPOSE") == ("OPPOSE", True)
-        assert service.normalize_judgment_type("ABSTAIN") == ("ABSTAIN", True)
-        assert service.normalize_judgment_type("ABSENT") == ("ABSENT", True)
+        assert service.normalize_judgment_type("APPROVE") == ("賛成", True)
+        assert service.normalize_judgment_type("OPPOSE") == ("反対", True)
+        # ABSTAINとABSENTはデフォルトで賛成になる
+        assert service.normalize_judgment_type("ABSTAIN") == ("賛成", False)
+        assert service.normalize_judgment_type("ABSENT") == ("賛成", False)
 
     def test_normalize_judgment_type_symbols(self):
         """Test normalizing symbol judgment types"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("○") == ("APPROVE", True)
-        assert service.normalize_judgment_type("×") == ("OPPOSE", True)
-        assert service.normalize_judgment_type("－") == ("ABSENT", True)
+        assert service.normalize_judgment_type("○") == ("賛成", True)
+        assert service.normalize_judgment_type("×") == ("反対", True)
+        # ハイフンはデフォルトで賛成になる
+        assert service.normalize_judgment_type("－") == ("賛成", False)
 
     def test_normalize_judgment_type_variations(self):
         """Test normalizing various judgment type variations"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("YES") == ("APPROVE", True)
-        assert service.normalize_judgment_type("NO") == ("OPPOSE", True)
-        assert service.normalize_judgment_type("FOR") == ("APPROVE", True)
-        assert service.normalize_judgment_type("AGAINST") == ("OPPOSE", True)
+        assert service.normalize_judgment_type("YES") == ("賛成", True)
+        assert service.normalize_judgment_type("NO") == ("反対", True)
+        assert service.normalize_judgment_type("FOR") == ("賛成", True)
+        assert service.normalize_judgment_type("AGAINST") == ("反対", True)
 
     def test_normalize_judgment_type_unknown(self):
-        """Test normalizing unknown judgment type defaults to APPROVE"""
+        """Test normalizing unknown judgment type defaults to 賛成"""
         service = ProposalJudgeExtractionService()
 
-        assert service.normalize_judgment_type("不明") == ("APPROVE", False)
-        assert service.normalize_judgment_type("その他") == ("APPROVE", False)
-        assert service.normalize_judgment_type("") == ("APPROVE", False)
+        assert service.normalize_judgment_type("不明") == ("賛成", False)
+        assert service.normalize_judgment_type("その他") == ("賛成", False)
+        assert service.normalize_judgment_type("") == ("賛成", False)
 
     def test_normalize_politician_name(self):
         """Test normalizing politician names"""
@@ -120,16 +123,17 @@ class TestProposalJudgeExtractionService:
 
         results = service.parse_voting_result_text(text)
 
-        assert len(results) == 6
+        # 棄権者は無視されるため、5人になる
+        assert len(results) == 5
 
         # Check for expected names and judgments
         names_judgments = {(r["name"], r["judgment"]) for r in results}
-        assert ("山田太郎", "APPROVE") in names_judgments
-        assert ("田中花子", "APPROVE") in names_judgments
-        assert ("佐藤一郎", "APPROVE") in names_judgments
-        assert ("鈴木次郎", "OPPOSE") in names_judgments
-        assert ("高橋三郎", "OPPOSE") in names_judgments
-        assert ("渡辺四郎", "ABSTAIN") in names_judgments
+        assert ("山田太郎", "賛成") in names_judgments
+        assert ("田中花子", "賛成") in names_judgments
+        assert ("佐藤一郎", "賛成") in names_judgments
+        assert ("鈴木次郎", "反対") in names_judgments
+        assert ("高橋三郎", "反対") in names_judgments
+        # 渡辺四郎は棄権のため含まれない
 
     def test_parse_voting_result_text_with_party(self):
         """Test parsing voting result text with party information"""
@@ -151,17 +155,17 @@ class TestProposalJudgeExtractionService:
         yamada = next((r for r in results if r["name"] == "山田太郎"), None)
         assert yamada is not None
         assert yamada["party"] == "○○党"
-        assert yamada["judgment"] == "APPROVE"
+        assert yamada["judgment"] == "賛成"
 
         tanaka = next((r for r in results if r["name"] == "田中花子"), None)
         assert tanaka is not None
         assert tanaka["party"] == "△△党"
-        assert tanaka["judgment"] == "APPROVE"
+        assert tanaka["judgment"] == "賛成"
 
         sato = next((r for r in results if r["name"] == "佐藤一郎"), None)
         assert sato is not None
         assert sato["party"] == "××党"
-        assert sato["judgment"] == "OPPOSE"
+        assert sato["judgment"] == "反対"
 
     def test_calculate_matching_confidence_exact_match(self):
         """Test calculating matching confidence for exact match"""

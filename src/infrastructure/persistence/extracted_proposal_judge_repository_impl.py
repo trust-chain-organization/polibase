@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import Any
 
+from pydantic import BaseModel as PydanticBaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,27 +15,26 @@ from src.domain.repositories.extracted_proposal_judge_repository import (
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
-class ExtractedProposalJudgeModel:
-    """Extracted proposal judge database model (dynamic)."""
+class ExtractedProposalJudgeModel(PydanticBaseModel):
+    """Extracted proposal judge database model."""
 
-    id: int | None
+    id: int | None = None
     proposal_id: int
-    extracted_politician_name: str | None
-    extracted_party_name: str | None
-    extracted_parliamentary_group_name: str | None
-    extracted_judgment: str | None
-    source_url: str | None
+    extracted_politician_name: str | None = None
+    extracted_party_name: str | None = None
+    extracted_parliamentary_group_name: str | None = None
+    extracted_judgment: str | None = None
+    source_url: str | None = None
     extracted_at: datetime
-    matched_politician_id: int | None
-    matched_parliamentary_group_id: int | None
-    matching_confidence: float | None
-    matching_status: str
-    matched_at: datetime | None
-    additional_data: str | None
+    matched_politician_id: int | None = None
+    matched_parliamentary_group_id: int | None = None
+    matching_confidence: float | None = None
+    matching_status: str = "pending"
+    matched_at: datetime | None = None
+    additional_data: str | None = None
 
-    def __init__(self, **kwargs: Any):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ExtractedProposalJudgeRepositoryImpl(
@@ -44,6 +44,137 @@ class ExtractedProposalJudgeRepositoryImpl(
 
     def __init__(self, session: AsyncSession):
         super().__init__(session, ExtractedProposalJudge, ExtractedProposalJudgeModel)
+
+    async def get_by_id(self, entity_id: int) -> ExtractedProposalJudge | None:
+        """Get entity by ID."""
+        query = text("""
+            SELECT * FROM extracted_proposal_judges WHERE id = :id
+        """)
+        result = await self.session.execute(query, {"id": entity_id})
+        row = result.fetchone()
+        if row:
+            return self._row_to_entity(row)
+        return None
+
+    async def delete(self, entity_id: int) -> bool:
+        """Delete an entity by ID."""
+        query = text("""
+            DELETE FROM extracted_proposal_judges WHERE id = :id
+        """)
+
+        await self.session.execute(query, {"id": entity_id})
+        await self.session.commit()
+
+        # rowcountは削除された行数を返す
+        return True  # SQLAlchemy AsyncSessionではrowcountが使えないため、常にTrueを返す
+
+    async def update(self, entity: ExtractedProposalJudge) -> ExtractedProposalJudge:
+        """Update an existing entity."""
+        if not entity.id:
+            raise ValueError("Entity must have an ID to update")
+
+        query = text("""
+            UPDATE extracted_proposal_judges SET
+                proposal_id = :proposal_id,
+                extracted_politician_name = :extracted_politician_name,
+                extracted_party_name = :extracted_party_name,
+                extracted_parliamentary_group_name =
+                    :extracted_parliamentary_group_name,
+                extracted_judgment = :extracted_judgment,
+                source_url = :source_url,
+                matched_politician_id = :matched_politician_id,
+                matched_parliamentary_group_id = :matched_parliamentary_group_id,
+                matching_confidence = :matching_confidence,
+                matching_status = :matching_status,
+                matched_at = :matched_at,
+                additional_data = :additional_data
+            WHERE id = :id
+            RETURNING id, proposal_id, extracted_politician_name,
+                      extracted_party_name, extracted_parliamentary_group_name,
+                      extracted_judgment, source_url, extracted_at,
+                      matched_politician_id, matched_parliamentary_group_id,
+                      matching_confidence, matching_status, matched_at,
+                      additional_data
+        """)
+
+        params: dict[str, Any] = {
+            "id": entity.id,
+            "proposal_id": entity.proposal_id,
+            "extracted_politician_name": entity.extracted_politician_name,
+            "extracted_party_name": entity.extracted_party_name,
+            "extracted_parliamentary_group_name": (
+                entity.extracted_parliamentary_group_name
+            ),
+            "extracted_judgment": entity.extracted_judgment,
+            "source_url": entity.source_url,
+            "matched_politician_id": entity.matched_politician_id,
+            "matched_parliamentary_group_id": entity.matched_parliamentary_group_id,
+            "matching_confidence": entity.matching_confidence,
+            "matching_status": entity.matching_status,
+            "matched_at": entity.matched_at,
+            "additional_data": (
+                entity.additional_data if hasattr(entity, "additional_data") else None
+            ),
+        }
+
+        result = await self.session.execute(query, params)
+        row = result.fetchone()
+        await self.session.commit()
+
+        if row:
+            return self._row_to_entity(row)
+        raise RuntimeError("Failed to update extracted proposal judge")
+
+    async def create(self, entity: ExtractedProposalJudge) -> ExtractedProposalJudge:
+        """Create a new entity."""
+        query = text("""
+            INSERT INTO extracted_proposal_judges (
+                proposal_id, extracted_politician_name, extracted_party_name,
+                extracted_parliamentary_group_name, extracted_judgment, source_url,
+                extracted_at, matched_politician_id, matched_parliamentary_group_id,
+                matching_confidence, matching_status, matched_at, additional_data
+            )
+            VALUES (
+                :proposal_id, :extracted_politician_name, :extracted_party_name,
+                :extracted_parliamentary_group_name, :extracted_judgment, :source_url,
+                :extracted_at, :matched_politician_id, :matched_parliamentary_group_id,
+                :matching_confidence, :matching_status, :matched_at, :additional_data
+            )
+            RETURNING id, proposal_id, extracted_politician_name,
+                      extracted_party_name, extracted_parliamentary_group_name,
+                      extracted_judgment, source_url, extracted_at,
+                      matched_politician_id, matched_parliamentary_group_id,
+                      matching_confidence, matching_status, matched_at,
+                      additional_data
+        """)
+
+        params: dict[str, Any] = {
+            "proposal_id": entity.proposal_id,
+            "extracted_politician_name": entity.extracted_politician_name,
+            "extracted_party_name": entity.extracted_party_name,
+            "extracted_parliamentary_group_name": (
+                entity.extracted_parliamentary_group_name
+            ),
+            "extracted_judgment": entity.extracted_judgment,
+            "source_url": entity.source_url,
+            "extracted_at": entity.extracted_at,
+            "matched_politician_id": entity.matched_politician_id,
+            "matched_parliamentary_group_id": entity.matched_parliamentary_group_id,
+            "matching_confidence": entity.matching_confidence,
+            "matching_status": entity.matching_status,
+            "matched_at": entity.matched_at,
+            "additional_data": (
+                entity.additional_data if hasattr(entity, "additional_data") else None
+            ),
+        }
+
+        result = await self.session.execute(query, params)
+        row = result.fetchone()
+        await self.session.commit()
+
+        if row:
+            return self._row_to_entity(row)
+        raise RuntimeError("Failed to create extracted proposal judge")
 
     async def get_all(
         self, limit: int | None = None, offset: int | None = None
@@ -225,15 +356,79 @@ class ExtractedProposalJudgeRepositoryImpl(
         self, judges: list[ExtractedProposalJudge]
     ) -> list[ExtractedProposalJudge]:
         """Create multiple extracted judges at once."""
-        models = [self._to_model(judge) for judge in judges]
-        self.session.add_all(models)
+        if not judges:
+            return []
+
+        # Build values for bulk insert
+        values = []
+        for judge in judges:
+            value_dict: dict[str, Any] = {
+                "proposal_id": judge.proposal_id,
+                "extracted_politician_name": judge.extracted_politician_name,
+                "extracted_party_name": judge.extracted_party_name,
+                "extracted_parliamentary_group_name": (
+                    judge.extracted_parliamentary_group_name
+                ),
+                "extracted_judgment": judge.extracted_judgment,
+                "source_url": judge.source_url,
+                "extracted_at": judge.extracted_at,
+                "matching_status": judge.matching_status,
+            }
+
+            # Add optional fields if present
+            if judge.matched_politician_id:
+                value_dict["matched_politician_id"] = judge.matched_politician_id
+            if judge.matched_parliamentary_group_id:
+                value_dict["matched_parliamentary_group_id"] = (
+                    judge.matched_parliamentary_group_id
+                )
+            if judge.matching_confidence is not None:
+                value_dict["matching_confidence"] = judge.matching_confidence
+            if judge.matched_at:
+                value_dict["matched_at"] = judge.matched_at
+            if hasattr(judge, "additional_data") and judge.additional_data:
+                value_dict["additional_data"] = judge.additional_data
+
+            values.append(value_dict)
+
+        # Create bulk insert query
+        query = text("""
+            INSERT INTO extracted_proposal_judges (
+                proposal_id, extracted_politician_name, extracted_party_name,
+                extracted_parliamentary_group_name, extracted_judgment, source_url,
+                extracted_at, matched_politician_id, matched_parliamentary_group_id,
+                matching_confidence, matching_status, matched_at, additional_data
+            )
+            VALUES (
+                :proposal_id, :extracted_politician_name, :extracted_party_name,
+                :extracted_parliamentary_group_name, :extracted_judgment, :source_url,
+                :extracted_at, :matched_politician_id, :matched_parliamentary_group_id,
+                :matching_confidence, :matching_status, :matched_at, :additional_data
+            )
+            RETURNING id, proposal_id, extracted_politician_name,
+                      extracted_party_name, extracted_parliamentary_group_name,
+                      extracted_judgment, source_url, extracted_at,
+                      matched_politician_id, matched_parliamentary_group_id,
+                      matching_confidence, matching_status, matched_at,
+                      additional_data
+        """)
+
+        created_judges = []
+        for value in values:
+            # Set defaults for optional fields
+            value.setdefault("matched_politician_id", None)
+            value.setdefault("matched_parliamentary_group_id", None)
+            value.setdefault("matching_confidence", None)
+            value.setdefault("matched_at", None)
+            value.setdefault("additional_data", None)
+
+            result = await self.session.execute(query, value)
+            row = result.fetchone()
+            if row:
+                created_judges.append(self._row_to_entity(row))
+
         await self.session.commit()
-
-        # Refresh all models to get IDs
-        for model in models:
-            await self.session.refresh(model)
-
-        return [self._to_entity(model) for model in models]
+        return created_judges
 
     async def convert_to_proposal_judge(
         self, extracted_judge: ExtractedProposalJudge
