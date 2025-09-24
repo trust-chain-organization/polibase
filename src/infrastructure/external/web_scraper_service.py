@@ -360,6 +360,10 @@ class PlaywrightScraperService(IWebScraperService):
                     else:
                         response_text = str(response)
 
+                    # Ensure response_text is a string
+                    if not isinstance(response_text, str):
+                        response_text = str(response_text)
+
                     # Try to extract JSON from the response
                     # Remove markdown code blocks if present
                     response_text = response_text.strip()
