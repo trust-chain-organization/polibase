@@ -28,5 +28,7 @@
 \i /docker-entrypoint-initdb.d/02_migrations/023_create_extracted_proposal_judges.sql
 \i /docker-entrypoint-initdb.d/02_migrations/024_add_status_url_to_proposals.sql
 \i /docker-entrypoint-initdb.d/02_migrations/025_create_proposal_parliamentary_group_judges.sql
+\i /docker-entrypoint-initdb.d/02_migrations/026_create_extracted_politicians_table.sql
+\i /docker-entrypoint-initdb.d/02_migrations/027_migrate_existing_politicians.sql
 
 \echo 'Migrations completed.'
