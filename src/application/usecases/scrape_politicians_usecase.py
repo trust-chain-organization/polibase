@@ -2,36 +2,32 @@
 
 from src.application.dtos.politician_dto import (
     ExtractedPoliticianDTO,
-    PoliticianDTO,
+    ExtractedPoliticianOutputDTO,
     ScrapePoliticiansInputDTO,
 )
+from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
-from src.domain.entities.politician import Politician
-from src.domain.entities.speaker import Speaker
+from src.domain.repositories.extracted_politician_repository import (
+    ExtractedPoliticianRepository,
+)
 from src.domain.repositories.political_party_repository import PoliticalPartyRepository
-from src.domain.repositories.politician_repository import PoliticianRepository
-from src.domain.repositories.speaker_repository import SpeakerRepository
-from src.domain.services.politician_domain_service import PoliticianDomainService
 from src.infrastructure.interfaces.web_scraper_service import IWebScraperService
 
 
 class ScrapePoliticiansUseCase:
     """政治家情報スクレイピングユースケース
 
-    政党のウェブサイトから政治家情報を収集し、データベースに保存します。
-    重複チェックとデータのマージ機能を含みます。
+    政党のウェブサイトから政治家情報を収集し、中間テーブル（extracted_politicians）に保存します。
+    重複チェック機能を含みます。
 
     Attributes:
         party_repo: 政党リポジトリ
-        politician_repo: 政治家リポジトリ
-        speaker_repo: 発言者リポジトリ
-        politician_service: 政治家ドメインサービス
+        extracted_politician_repo: 抽出済み政治家リポジトリ
         scraper: Webスクレイピングサービス
 
     Example:
         >>> use_case = ScrapePoliticiansUseCase(
-        ...     party_repo, politician_repo, speaker_repo,
-        ...     politician_service, scraper_service
+        ...     party_repo, extracted_politician_repo, scraper_service
         ... )
         >>> # 全政党から収集
         >>> result = await use_case.execute(
@@ -48,37 +44,31 @@ class ScrapePoliticiansUseCase:
     def __init__(
         self,
         political_party_repository: PoliticalPartyRepository,
-        politician_repository: PoliticianRepository,
-        speaker_repository: SpeakerRepository,
-        politician_domain_service: PoliticianDomainService,
+        extracted_politician_repository: ExtractedPoliticianRepository,
         web_scraper_service: IWebScraperService,
     ):
         """政治家スクレイピングユースケースを初期化する
 
         Args:
             political_party_repository: 政党リポジトリの実装
-            politician_repository: 政治家リポジトリの実装
-            speaker_repository: 発言者リポジトリの実装
-            politician_domain_service: 政治家ドメインサービス
+            extracted_politician_repository: 抽出済み政治家リポジトリの実装
             web_scraper_service: Webスクレイピングサービス
         """
         self.party_repo = political_party_repository
-        self.politician_repo = politician_repository
-        self.speaker_repo = speaker_repository
-        self.politician_service = politician_domain_service
+        self.extracted_politician_repo = extracted_politician_repository
         self.scraper = web_scraper_service
 
     async def execute(
         self,
         request: ScrapePoliticiansInputDTO,
-    ) -> list[PoliticianDTO]:
+    ) -> list[ExtractedPoliticianOutputDTO]:
         """政治家情報のスクレイピングを実行する
 
         処理の流れ：
         1. 対象政党の特定（単一または全政党）
         2. 各政党のメンバーリストURLからスクレイピング
-        3. 重複チェックとデータマージ
-        4. 新規登録または既存データ更新
+        3. 重複チェック
+        4. extracted_politiciansテーブルへの保存
 
         Args:
             request: スクレイピングリクエストDTO
@@ -87,17 +77,16 @@ class ScrapePoliticiansUseCase:
                 - dry_run: 実行せずに結果を確認するか
 
         Returns:
-            PoliticianDTOのリスト。各DTOには以下が含まれる：
-            - id: 政治家ID（dry_runの場合は0）
+            ExtractedPoliticianOutputDTOのリスト。各DTOには以下が含まれる：
+            - id: 抽出済み政治家ID（dry_runの場合は0）
             - name: 政治家名
-            - speaker_id: 発言者ID
-            - political_party_id: 所属政党ID
-            - political_party_name: 所属政党名
-            - furigana: ふりがな
-            - position: 役職
+            - party_id: 所属政党ID
+            - party_name: 所属政党名
             - district: 選挙区
-            - profile_image_url: プロフィール画像URL
-            - profile_page_url: プロフィールページURL
+            - position: 役職
+            - profile_url: プロフィールURL
+            - image_url: プロフィール画像URL
+            - status: ステータス（pending）
 
         Raises:
             ValueError: party_idが無効、または必須パラメータが未指定の場合
@@ -117,7 +106,7 @@ class ScrapePoliticiansUseCase:
         else:
             raise ValueError("Either party_id or all_parties must be specified")
 
-        all_results: list[PoliticianDTO] = []
+        all_results: list[ExtractedPoliticianOutputDTO] = []
 
         for party in parties:
             # Scrape party website
@@ -127,32 +116,45 @@ class ScrapePoliticiansUseCase:
                 # Convert to DTOs without saving
                 for data in extracted:
                     all_results.append(
-                        PoliticianDTO(
+                        ExtractedPoliticianOutputDTO(
                             id=0,  # Not saved
                             name=data.name,
-                            speaker_id=0,  # Not created
-                            political_party_id=data.party_id,
-                            political_party_name=party.name,
-                            furigana=data.furigana,
-                            position=data.position,
+                            party_id=data.party_id,
+                            party_name=party.name,
                             district=data.district,
-                            profile_image_url=data.profile_image_url,
-                            profile_page_url=data.profile_page_url,
+                            position=data.position,
+                            profile_url=data.profile_page_url,
+                            image_url=data.profile_image_url,
+                            status="pending",
                         )
                     )
             else:
-                # Save politicians
-                logger.info(f"Saving {len(extracted)} politicians to database")
-                for idx, data in enumerate(extracted, 1):
-                    logger.info(
-                        f"Processing politician {idx}/{len(extracted)}: {data.name}"
-                    )
-                    politician_dto = await self._create_or_update_politician(data)
-                    if politician_dto:
-                        all_results.append(politician_dto)
-                        logger.info(
-                            f"Saved: {politician_dto.name} (ID: {politician_dto.id})"
+                # Save extracted politicians
+                logger.info(
+                    f"Saving {len(extracted)} politicians to "
+                    "extracted_politicians table"
+                )
+                saved_politicians = await self._save_extracted_politicians(
+                    extracted, party.name
+                )
+                for politician in saved_politicians:
+                    all_results.append(
+                        ExtractedPoliticianOutputDTO(
+                            id=politician.id if politician.id else 0,
+                            name=politician.name,
+                            party_id=politician.party_id,
+                            party_name=party.name,
+                            district=politician.district,
+                            position=politician.position,
+                            profile_url=politician.profile_url,
+                            image_url=politician.image_url,
+                            status=politician.status,
                         )
+                    )
+                logger.info(
+                    f"Saved {len(saved_politicians)} politicians to "
+                    "extracted_politicians"
+                )
 
         return all_results
 
@@ -177,7 +179,7 @@ class ScrapePoliticiansUseCase:
         if party.id is None:
             raise ValueError("Party must have an ID")
         raw_data = await self.scraper.scrape_party_members(
-            party.members_list_url, party.id, party.name
+            party.members_list_url, party.id
         )
 
         # Log raw data count
@@ -203,111 +205,54 @@ class ScrapePoliticiansUseCase:
 
         return extracted
 
-    async def _create_or_update_politician(
-        self, data: ExtractedPoliticianDTO
-    ) -> PoliticianDTO | None:
-        """抽出データから政治家を作成または更新する
+    async def _save_extracted_politicians(
+        self, extracted_data: list[ExtractedPoliticianDTO], party_name: str
+    ) -> list[ExtractedPolitician]:
+        """抽出データを extracted_politicians テーブルに保存する
 
-        重複チェックを行い、既存データがある場合は新しい情報で
-        更新します。新規の場合は発言者レコードも作成します。
+        重複チェックを行い、既存のデータがある場合はスキップします。
 
         Args:
-            data: 抽出された政治家データ
+            extracted_data: 抽出された政治家データのリスト
+            party_name: 政党名（ログ用）
 
         Returns:
-            作成または更新された政治家DTO（重複スキップの場合None）
-
-        Raises:
-            ValueError: 作成された発言者にIDがない場合
+            保存された ExtractedPolitician エンティティのリスト
         """
-        # Check for existing politician
-        existing = await self.politician_repo.get_by_name_and_party(
-            data.name, data.party_id
-        )
+        import logging
 
-        if existing:
-            # Check if duplicate
-            all_politicians = await self.politician_repo.get_by_party(data.party_id)
-            duplicate = self.politician_service.is_duplicate_politician(
-                Politician(
-                    name=data.name,
-                    speaker_id=0,  # Temporary
-                    political_party_id=data.party_id,
-                ),
-                all_politicians,
+        logger = logging.getLogger(__name__)
+        saved_politicians: list[ExtractedPolitician] = []
+
+        for data in extracted_data:
+            # Check for duplicates in extracted_politicians table
+            duplicates = await self.extracted_politician_repo.get_duplicates(
+                data.name, data.party_id
             )
 
-            if duplicate:
-                # Update existing if new data
-                if any(
-                    [
-                        data.furigana and not duplicate.furigana,
-                        data.position and not duplicate.position,
-                        data.district and not duplicate.district,
-                        data.profile_image_url and not duplicate.profile_image_url,
-                        data.profile_page_url and not duplicate.profile_page_url,
-                    ]
-                ):
-                    merged = self.politician_service.merge_politician_info(
-                        duplicate,
-                        Politician(
-                            name=data.name,
-                            speaker_id=duplicate.speaker_id,
-                            political_party_id=data.party_id,
-                            furigana=data.furigana,
-                            position=data.position,
-                            district=data.district,
-                            profile_image_url=data.profile_image_url,
-                            profile_page_url=data.profile_page_url,
-                        ),
-                    )
-                    updated = await self.politician_repo.update(merged)
-                    return self._to_dto(updated)
-                return None  # Skip duplicate
+            if duplicates:
+                logger.info(
+                    f"Skipping duplicate: {data.name} already exists in "
+                    "extracted_politicians"
+                )
+                continue
 
-        # Create new speaker first
-        speaker = Speaker(
-            name=data.name,
-            type="政治家",
-            is_politician=True,
-        )
-        created_speaker = await self.speaker_repo.upsert(speaker)
+            # Create new extracted politician
+            extracted_politician = ExtractedPolitician(
+                name=data.name,
+                party_id=data.party_id,
+                district=data.district,
+                position=data.position,
+                profile_url=data.profile_page_url,
+                image_url=data.profile_image_url,
+                status="pending",  # Initial status is pending for review
+            )
 
-        # Create politician
-        if created_speaker.id is None:
-            raise ValueError("Created speaker must have an ID")
-        politician = Politician(
-            name=data.name,
-            speaker_id=created_speaker.id,
-            political_party_id=data.party_id,
-            furigana=data.furigana,
-            position=data.position,
-            district=data.district,
-            profile_image_url=data.profile_image_url,
-            profile_page_url=data.profile_page_url,
-        )
+            created = await self.extracted_politician_repo.create(extracted_politician)
+            if created:
+                saved_politicians.append(created)
+                logger.info(
+                    f"Saved to extracted_politicians: {created.name} (ID: {created.id})"
+                )
 
-        created = await self.politician_repo.create(politician)
-        return self._to_dto(created)
-
-    def _to_dto(self, politician: Politician) -> PoliticianDTO:
-        """政治家エンティティをDTOに変換する
-
-        Args:
-            politician: 政治家エンティティ
-
-        Returns:
-            政治家DTO
-        """
-        return PoliticianDTO(
-            id=politician.id if politician.id is not None else 0,
-            name=politician.name,
-            speaker_id=politician.speaker_id,
-            political_party_id=politician.political_party_id,
-            political_party_name=None,  # Would need to fetch
-            furigana=politician.furigana,
-            position=politician.position,
-            district=politician.district,
-            profile_image_url=politician.profile_image_url,
-            profile_page_url=politician.profile_page_url,
-        )
+        return saved_politicians

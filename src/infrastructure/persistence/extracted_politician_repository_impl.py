@@ -43,6 +43,55 @@ class ExtractedPoliticianRepositoryImpl(
     def __init__(self, session: AsyncSession):
         super().__init__(session, ExtractedPolitician, ExtractedPoliticianModel)
 
+    async def create(self, entity: ExtractedPolitician) -> ExtractedPolitician:
+        """Create a new extracted politician using raw SQL."""
+        query = text("""
+            INSERT INTO extracted_politicians (
+                name, party_id, district, position, profile_url, image_url,
+                status, extracted_at, reviewed_at, reviewer_id
+            )
+            VALUES (
+                :name, :party_id, :district, :position, :profile_url, :image_url,
+                :status, :extracted_at, :reviewed_at, :reviewer_id
+            )
+            RETURNING *
+        """)
+
+        params = {
+            "name": entity.name,
+            "party_id": entity.party_id,
+            "district": entity.district,
+            "position": entity.position,
+            "profile_url": entity.profile_url,
+            "image_url": entity.image_url,
+            "status": entity.status,
+            "extracted_at": entity.extracted_at,
+            "reviewed_at": entity.reviewed_at,
+            "reviewer_id": entity.reviewer_id,
+        }
+
+        result = await self.session.execute(query, params)
+        row = result.fetchone()
+        await self.session.commit()
+
+        if row:
+            return self._row_to_entity(row)
+        raise ValueError("Failed to create extracted politician")
+
+    async def get_by_id(self, entity_id: int) -> ExtractedPolitician | None:
+        """Get extracted politician by ID using raw SQL."""
+        query = text("""
+            SELECT * FROM extracted_politicians
+            WHERE id = :id
+        """)
+
+        result = await self.session.execute(query, {"id": entity_id})
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        return None
+
     async def get_pending(
         self, party_id: int | None = None
     ) -> list[ExtractedPolitician]:

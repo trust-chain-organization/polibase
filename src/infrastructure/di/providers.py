@@ -35,6 +35,9 @@ from src.infrastructure.persistence.conversation_repository_impl import (
 from src.infrastructure.persistence.extracted_conference_member_repository_impl import (
     ExtractedConferenceMemberRepositoryImpl,
 )
+from src.infrastructure.persistence.extracted_politician_repository_impl import (
+    ExtractedPoliticianRepositoryImpl,
+)
 from src.infrastructure.persistence.extracted_proposal_judge_repository_impl import (
     ExtractedProposalJudgeRepositoryImpl,
 )
@@ -246,6 +249,11 @@ class RepositoryContainer(containers.DeclarativeContainer):
         session=database.async_session,
     )
 
+    extracted_politician_repository = providers.Factory(
+        ExtractedPoliticianRepositoryImpl,
+        session=database.async_session,
+    )
+
     extracted_proposal_judge_repository = providers.Factory(
         ExtractedProposalJudgeRepositoryImpl,
         session=database.async_session,
@@ -344,9 +352,7 @@ class UseCaseContainer(containers.DeclarativeContainer):
     scrape_politicians_usecase = providers.Factory(
         ScrapePoliticiansUseCase,
         political_party_repository=repositories.political_party_repository,
-        politician_repository=repositories.politician_repository,
-        speaker_repository=repositories.speaker_repository,
-        politician_domain_service=services.politician_domain_service,
+        extracted_politician_repository=repositories.extracted_politician_repository,
         web_scraper_service=services.web_scraper_service,
     )
 
