@@ -68,3 +68,18 @@ class ScrapePoliticiansInputDTO:
     party_id: int | None = None
     all_parties: bool = False
     dry_run: bool = False
+
+
+@dataclass
+class ExtractedPoliticianOutputDTO:
+    """DTO for extracted politician output."""
+
+    id: int
+    name: str
+    party_id: int | None
+    party_name: str | None
+    district: str | None
+    position: str | None
+    profile_url: str | None
+    image_url: str | None
+    status: str
