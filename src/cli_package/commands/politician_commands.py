@@ -229,9 +229,139 @@ class PoliticianCommands(BaseCommand):
             # 少し待機してから終了
             time.sleep(0.5)
 
+    @staticmethod
+    @click.command()
+    @click.option("--party-id", type=int, help="Specific party ID to convert")
+    @click.option(
+        "--batch-size",
+        type=int,
+        default=100,
+        help="Number of records to process at once",
+    )
+    @click.option(
+        "--dry-run", is_flag=True, help="Preview what would be converted without saving"
+    )
+    @with_error_handling
+    def convert_politicians(party_id: int | None, batch_size: int, dry_run: bool):
+        """Convert approved extracted politicians to main politicians table
+
+        This command processes extracted_politicians records with status='approved'
+        and converts them to the main politicians/speakers tables.
+
+        Examples:
+            polibase convert-politicians
+            polibase convert-politicians --party-id 1
+            polibase convert-politicians --batch-size 50 --dry-run
+        """
+        asyncio.run(
+            PoliticianCommands._async_convert_politicians(party_id, batch_size, dry_run)
+        )
+
+    @staticmethod
+    async def _async_convert_politicians(
+        party_id: int | None, batch_size: int, dry_run: bool
+    ):
+        """Async implementation of convert_politicians"""
+        from src.application.dtos.convert_extracted_politician_dto import (
+            ConvertExtractedPoliticianInputDTO,
+        )
+        from src.application.usecases.convert_extracted_politician_usecase import (
+            ConvertExtractedPoliticianUseCase,
+        )
+        from src.config.async_database import get_async_session
+        from src.infrastructure.persistence import (
+            extracted_politician_repository_impl as extracted_repo,
+        )
+        from src.infrastructure.persistence.politician_repository_impl import (
+            PoliticianRepositoryImpl,
+        )
+        from src.infrastructure.persistence.speaker_repository_impl import (
+            SpeakerRepositoryImpl,
+        )
+
+        async with get_async_session() as session:
+            # Initialize repositories
+            extracted_politician_impl = extracted_repo.ExtractedPoliticianRepositoryImpl
+            extracted_politician_repo = extracted_politician_impl(session)
+            politician_repo = PoliticianRepositoryImpl(session)
+            speaker_repo = SpeakerRepositoryImpl(session)
+
+            # Create use case
+            use_case = ConvertExtractedPoliticianUseCase(
+                extracted_politician_repo, politician_repo, speaker_repo
+            )
+
+            # Create input DTO
+            input_dto = ConvertExtractedPoliticianInputDTO(
+                party_id=party_id, batch_size=batch_size, dry_run=dry_run
+            )
+
+            # Show what will be processed
+            if dry_run:
+                PoliticianCommands.show_progress(
+                    "Running in DRY-RUN mode - no changes will be saved"
+                )
+
+            with spinner("Processing approved extracted politicians..."):
+                result = await use_case.execute(input_dto)
+
+            # Display results
+            PoliticianCommands.show_progress("\n=== Conversion Results ===")
+            PoliticianCommands.show_progress(
+                f"Total processed: {result.total_processed}"
+            )
+            PoliticianCommands.show_progress(
+                f"Successfully converted: {result.converted_count}"
+            )
+
+            if result.converted_count > 0:
+                PoliticianCommands.show_progress("\nConverted politicians:")
+                for politician in result.converted_politicians[:10]:
+                    PoliticianCommands.show_progress(
+                        f"  ✓ {politician.name} (ID: {politician.politician_id})"
+                    )
+                if len(result.converted_politicians) > 10:
+                    PoliticianCommands.show_progress(
+                        f"  ... and {len(result.converted_politicians) - 10} more"
+                    )
+
+            if result.skipped_count > 0:
+                PoliticianCommands.show_progress(f"\nSkipped: {result.skipped_count}")
+                for name in result.skipped_names[:5]:
+                    PoliticianCommands.show_progress(f"  - {name}")
+                if len(result.skipped_names) > 5:
+                    PoliticianCommands.show_progress(
+                        f"  ... and {len(result.skipped_names) - 5} more"
+                    )
+
+            if result.error_count > 0:
+                PoliticianCommands.show_progress(f"\nErrors: {result.error_count}")
+                for msg in result.error_messages[:5]:
+                    PoliticianCommands.show_progress(f"  ✗ {msg}")
+                if len(result.error_messages) > 5:
+                    PoliticianCommands.show_progress(
+                        f"  ... and {len(result.error_messages) - 5} more"
+                    )
+
+            if not dry_run and result.converted_count > 0:
+                PoliticianCommands.success(
+                    f"Successfully converted {result.converted_count} politicians"
+                )
+            elif dry_run:
+                PoliticianCommands.show_progress(
+                    f"\nDRY-RUN completed: {result.converted_count} politicians "
+                    f"would be converted"
+                )
+            else:
+                PoliticianCommands.show_progress("No politicians were converted")
+
+        # 少し待機してから終了
+        time.sleep(0.5)
+
 
 def get_politician_commands():
     """Get all politician-related commands"""
     return [
         PoliticianCommands.scrape_politicians,
+        PoliticianCommands.convert_politicians,
     ]
