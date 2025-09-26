@@ -6,6 +6,7 @@ from typing import Any
 from src.domain.entities.conference import Conference
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.extracted_conference_member import ExtractedConferenceMember
+from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.extracted_proposal_judge import ExtractedProposalJudge
 from src.domain.entities.governing_body import GoverningBody
 from src.domain.entities.meeting import Meeting
@@ -100,6 +101,25 @@ def create_politician(**kwargs: Any) -> Politician:
     }
     defaults.update(kwargs)
     return Politician(**defaults)
+
+
+def create_extracted_politician(**kwargs: Any) -> ExtractedPolitician:
+    """Create a test extracted politician."""
+    defaults = {
+        "id": 1,
+        "name": "山田太郎",
+        "party_id": 1,
+        "district": "東京1区",
+        "position": "衆議院議員",
+        "profile_url": "https://example.com/profile",
+        "image_url": "https://example.com/image.jpg",
+        "status": "pending",
+        "extracted_at": datetime.now(),
+        "reviewed_at": None,
+        "reviewer_id": None,
+    }
+    defaults.update(kwargs)
+    return ExtractedPolitician(**defaults)
 
 
 def create_political_party(**kwargs: Any) -> PoliticalParty:
