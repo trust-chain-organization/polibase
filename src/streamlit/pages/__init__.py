@@ -11,6 +11,7 @@ from .political_parties import manage_political_parties
 from .politicians import manage_politicians
 from .processes import execute_processes
 from .proposals import manage_proposals
+from .政治家レビュー import review_extracted_politicians
 
 __all__ = [
     "manage_conferences",
@@ -24,4 +25,5 @@ __all__ = [
     "manage_political_parties",
     "manage_proposals",
     "execute_processes",
+    "review_extracted_politicians",
 ]
