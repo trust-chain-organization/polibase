@@ -274,7 +274,6 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         name: str,
         party_id: int | None = None,
         district: str | None = None,
-        position: str | None = None,
         profile_url: str | None = None,
     ) -> tuple[bool, str]:
         """Update an extracted politician's information.
@@ -301,7 +300,6 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             politician.name = name
             politician.party_id = party_id
             politician.district = district
-            politician.position = position
             politician.profile_url = profile_url
 
             # Save updates
@@ -383,7 +381,6 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
                     "名前": p.name,
                     "政党": party_name,
                     "選挙区": p.district or "",
-                    "役職": p.position or "",
                     "ステータス": status_display,
                     "抽出日時": extracted_date,
                     "レビュー日時": reviewed_date,

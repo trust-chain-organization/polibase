@@ -143,10 +143,8 @@ class ConvertExtractedPoliticianUseCase:
                             name=extracted.name,
                             party_id=extracted.party_id,
                             district=extracted.district,
-                            position=extracted.position,
                             speaker_id=0,  # Mock speaker ID for dry run
                             profile_url=extracted.profile_url,
-                            image_url=extracted.image_url,
                         )
                     )
                 else:
@@ -159,10 +157,8 @@ class ConvertExtractedPoliticianUseCase:
                                 name=politician.name,
                                 party_id=politician.political_party_id,
                                 district=politician.district,
-                                position=politician.position,
                                 speaker_id=politician.speaker_id,
                                 profile_url=politician.profile_page_url,
-                                image_url=politician.profile_image_url,
                             )
                         )
 
@@ -231,14 +227,8 @@ class ConvertExtractedPoliticianUseCase:
                 existing_politician.district = (
                     extracted.district or existing_politician.district
                 )
-                existing_politician.position = (
-                    extracted.position or existing_politician.position
-                )
                 existing_politician.profile_page_url = (
                     extracted.profile_url or existing_politician.profile_page_url
-                )
-                existing_politician.profile_image_url = (
-                    extracted.image_url or existing_politician.profile_image_url
                 )
                 politician = await self.politician_repo.update(existing_politician)
                 logger.info(f"Updated existing politician: {politician.name}")
@@ -249,9 +239,7 @@ class ConvertExtractedPoliticianUseCase:
                     speaker_id=speaker.id,
                     political_party_id=extracted.party_id,
                     district=extracted.district,
-                    position=extracted.position,
                     profile_page_url=extracted.profile_url,
-                    profile_image_url=extracted.image_url,
                 )
                 politician = await self.politician_repo.create(politician)
                 logger.info(f"Created new politician: {politician.name}")

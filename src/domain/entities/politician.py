@@ -12,9 +12,7 @@ class Politician(BaseEntity):
         speaker_id: int,
         political_party_id: int | None = None,
         furigana: str | None = None,
-        position: str | None = None,
         district: str | None = None,
-        profile_image_url: str | None = None,
         profile_page_url: str | None = None,
         id: int | None = None,
     ) -> None:
@@ -23,9 +21,7 @@ class Politician(BaseEntity):
         self.speaker_id = speaker_id
         self.political_party_id = political_party_id
         self.furigana = furigana
-        self.position = position
         self.district = district
-        self.profile_image_url = profile_image_url
         self.profile_page_url = profile_page_url
 
     def __str__(self) -> str:

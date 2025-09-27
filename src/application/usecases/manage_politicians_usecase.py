@@ -152,7 +152,6 @@ class ManagePoliticiansUseCase:
                 political_party_id=input_dto.party_id,
                 district=input_dto.district,
                 profile_page_url=input_dto.profile_url,
-                profile_image_url=input_dto.image_url,
             )
 
             created = self.politician_repository.create(politician)
@@ -178,7 +177,6 @@ class ManagePoliticiansUseCase:
             existing.political_party_id = input_dto.party_id
             existing.district = input_dto.district
             existing.profile_page_url = input_dto.profile_url
-            existing.profile_image_url = input_dto.image_url
 
             self.politician_repository.update(existing)
             return UpdatePoliticianOutputDto(success=True)

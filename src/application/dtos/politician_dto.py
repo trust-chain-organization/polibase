@@ -13,7 +13,6 @@ class CreatePoliticianDTO:
     furigana: str | None = None
     position: str | None = None
     district: str | None = None
-    profile_image_url: str | None = None
     profile_page_url: str | None = None
 
 
@@ -27,7 +26,6 @@ class UpdatePoliticianDTO:
     furigana: str | None = None
     position: str | None = None
     district: str | None = None
-    profile_image_url: str | None = None
     profile_page_url: str | None = None
 
 
@@ -43,7 +41,6 @@ class PoliticianDTO:
     furigana: str | None
     position: str | None
     district: str | None
-    profile_image_url: str | None
     profile_page_url: str | None
 
 
@@ -56,7 +53,6 @@ class ExtractedPoliticianDTO:
     furigana: str | None = None
     position: str | None = None
     district: str | None = None
-    profile_image_url: str | None = None
     profile_page_url: str | None = None
     source_url: str | None = None
 
@@ -81,5 +77,4 @@ class ExtractedPoliticianOutputDTO:
     district: str | None
     position: str | None
     profile_url: str | None
-    image_url: str | None
     status: str

@@ -207,7 +207,6 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
                         st.write(f"**名前:** {politician.name}")
                         st.write(f"**政党:** {df.iloc[idx]['政党']}")
                         st.write(f"**選挙区:** {politician.district or '-'}")
-                        st.write(f"**役職:** {politician.position or '-'}")
 
                     with col_b:
                         st.write(f"**ステータス:** {df.iloc[idx]['ステータス']}")
@@ -304,12 +303,6 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
                                 key=f"edit_district_{politician.id}",
                             )
 
-                            edit_position = st.text_input(
-                                "役職",
-                                value=politician.position or "",
-                                key=f"edit_position_{politician.id}",
-                            )
-
                             edit_profile_url = st.text_input(
                                 "プロフィールURL",
                                 value=politician.profile_url or "",
@@ -330,7 +323,6 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
                                             edit_name,
                                             party_map[edit_party],
                                             edit_district if edit_district else None,
-                                            edit_position if edit_position else None,
                                             edit_profile_url
                                             if edit_profile_url
                                             else None,

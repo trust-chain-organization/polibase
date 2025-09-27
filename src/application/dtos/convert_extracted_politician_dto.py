@@ -18,10 +18,8 @@ class ConvertedPoliticianDTO:
     name: str
     party_id: int | None
     district: str | None
-    position: str | None
     speaker_id: int
     profile_url: str | None
-    image_url: str | None
 
 
 @dataclass

@@ -218,7 +218,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                     # Update if needed
                     needs_update = False
                     for field in [
-                        "position",
                         "prefecture",
                         "electoral_district",
                         "profile_url",
@@ -240,7 +239,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                         name=data.get("name", ""),
                         speaker_id=data.get("speaker_id", 0),  # Provide default value
                         political_party_id=data.get("political_party_id"),
-                        position=data.get("position"),
                         district=data.get("electoral_district"),
                         profile_page_url=data.get("profile_url"),
                     )
@@ -309,7 +307,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                 "name": getattr(row, "name", None),
                 "speaker_id": getattr(row, "speaker_id", None),
                 "political_party_id": getattr(row, "political_party_id", None),
-                "position": getattr(row, "position", None),
                 "prefecture": getattr(row, "prefecture", None),
                 "electoral_district": getattr(row, "electoral_district", None),
                 "profile_url": getattr(row, "profile_url", None),
@@ -321,11 +318,9 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             speaker_id=int(data.get("speaker_id") or 0),
             political_party_id=data.get("political_party_id"),
             furigana=None,  # Not in current database
-            position=data.get("position"),
             district=data.get(
                 "electoral_district"
             ),  # Map electoral_district to district
-            profile_image_url=None,  # Not in current database
             profile_page_url=data.get(
                 "profile_url"
             ),  # Map profile_url to profile_page_url
@@ -342,7 +337,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             name=entity.name,
             speaker_id=entity.speaker_id,
             political_party_id=entity.political_party_id,
-            position=entity.position,
             prefecture=None,  # No direct mapping from entity.district
             electoral_district=entity.district,  # Map district to electoral_district
             profile_url=entity.profile_page_url,  # Map profile_page_url to profile_url
@@ -354,7 +348,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         model.name = entity.name
         model.speaker_id = entity.speaker_id
         model.political_party_id = entity.political_party_id
-        model.position = entity.position
         model.electoral_district = entity.district
         model.profile_url = entity.profile_page_url
 
@@ -498,7 +491,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                         update_fields = []
                         update_values = {"id": existing["id"]}
                         for field in [
-                            "position",
                             "prefecture",
                             "electoral_district",
                             "profile_url",
@@ -670,11 +662,11 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         query = text("""
             INSERT INTO politicians (
                 name, speaker_id, political_party_id,
-                position, electoral_district, profile_url
+                electoral_district, profile_url
             )
             VALUES (
                 :name, :speaker_id, :political_party_id,
-                :position, :electoral_district, :profile_url
+                :electoral_district, :profile_url
             )
             RETURNING *
         """)
@@ -683,7 +675,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             "name": entity.name,
             "speaker_id": entity.speaker_id,
             "political_party_id": entity.political_party_id,
-            "position": entity.position,
             # Map district to electoral_district
             "electoral_district": entity.district,
             # Map profile_page_url to profile_url
@@ -710,7 +701,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             SET name = :name,
                 speaker_id = :speaker_id,
                 political_party_id = :political_party_id,
-                position = :position,
                 electoral_district = :electoral_district,
                 profile_url = :profile_url
             WHERE id = :id
@@ -722,7 +712,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             "name": entity.name,
             "speaker_id": entity.speaker_id,
             "political_party_id": entity.political_party_id,
-            "position": entity.position,
             # Map district to electoral_district
             "electoral_district": entity.district,
             # Map profile_page_url to profile_url

@@ -13,7 +13,6 @@ class ExtractedPolitician(BaseEntity):
         name: str,
         party_id: int | None = None,
         district: str | None = None,
-        position: str | None = None,
         profile_url: str | None = None,
         status: str = "pending",
         extracted_at: datetime | None = None,
@@ -25,7 +24,6 @@ class ExtractedPolitician(BaseEntity):
         self.name = name
         self.party_id = party_id
         self.district = district
-        self.position = position
         self.profile_url = profile_url
         self.status = status
         self.extracted_at = extracted_at or datetime.now()

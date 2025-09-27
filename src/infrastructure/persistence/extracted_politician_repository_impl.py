@@ -20,7 +20,6 @@ class ExtractedPoliticianModel:
     name: str
     party_id: int | None
     district: str | None
-    position: str | None
     profile_url: str | None
     status: str
     extracted_at: datetime
@@ -46,11 +45,11 @@ class ExtractedPoliticianRepositoryImpl(
         """Create a new extracted politician using raw SQL."""
         query = text("""
             INSERT INTO extracted_politicians (
-                name, party_id, district, position, profile_url,
+                name, party_id, district, profile_url,
                 status, extracted_at, reviewed_at, reviewer_id
             )
             VALUES (
-                :name, :party_id, :district, :position, :profile_url,
+                :name, :party_id, :district, :profile_url,
                 :status, :extracted_at, :reviewed_at, :reviewer_id
             )
             RETURNING *
@@ -60,7 +59,6 @@ class ExtractedPoliticianRepositoryImpl(
             "name": entity.name,
             "party_id": entity.party_id,
             "district": entity.district,
-            "position": entity.position,
             "profile_url": entity.profile_url,
             "status": entity.status,
             "extracted_at": entity.extracted_at,
@@ -118,7 +116,6 @@ class ExtractedPoliticianRepositoryImpl(
             SET name = :name,
                 party_id = :party_id,
                 district = :district,
-                position = :position,
                 profile_url = :profile_url,
                 status = :status,
                 extracted_at = :extracted_at,
@@ -134,7 +131,6 @@ class ExtractedPoliticianRepositoryImpl(
             "name": entity.name,
             "party_id": entity.party_id,
             "district": entity.district,
-            "position": entity.position,
             "profile_url": entity.profile_url,
             "status": entity.status,
             "extracted_at": entity.extracted_at,
@@ -353,7 +349,6 @@ class ExtractedPoliticianRepositoryImpl(
             name=row.name,
             party_id=row.party_id,
             district=row.district,
-            position=row.position,
             profile_url=row.profile_url,
             status=row.status,
             extracted_at=row.extracted_at,
@@ -368,7 +363,6 @@ class ExtractedPoliticianRepositoryImpl(
             name=model.name,
             party_id=model.party_id,
             district=model.district,
-            position=model.position,
             profile_url=model.profile_url,
             status=model.status,
             extracted_at=model.extracted_at,
@@ -383,7 +377,6 @@ class ExtractedPoliticianRepositoryImpl(
         model.name = entity.name
         model.party_id = entity.party_id
         model.district = entity.district
-        model.position = entity.position
         model.profile_url = entity.profile_url
         model.status = entity.status
         model.extracted_at = entity.extracted_at
