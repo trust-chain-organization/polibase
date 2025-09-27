@@ -133,7 +133,7 @@ class ReviewExtractedPoliticianUseCase:
         Returns:
             Output DTO with bulk review results
         """
-        results = []
+        results: list[ReviewExtractedPoliticianOutputDTO] = []
         successful_count = 0
         failed_count = 0
 
@@ -226,7 +226,7 @@ class ReviewExtractedPoliticianUseCase:
 
         # Get all parties for party statistics
         parties = await self.party_repo.get_all()
-        party_statistics = {}
+        party_statistics: dict[str, dict[str, int]] = {}
 
         for party in parties:
             if party.id:

@@ -1,8 +1,9 @@
 """Presenter for extracted politician review functionality."""
 
 import asyncio
+from collections.abc import Coroutine
 from datetime import datetime
-from typing import Any
+from typing import Any, TypeVar
 
 import pandas as pd
 
@@ -40,6 +41,8 @@ from src.infrastructure.persistence.speaker_repository_impl import (
 from src.interfaces.web.streamlit.presenters.base import BasePresenter
 from src.interfaces.web.streamlit.utils.session_manager import SessionManager
 
+T = TypeVar("T")
+
 
 class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
     """Presenter for extracted politician review operations."""
@@ -48,7 +51,13 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         """Initialize the presenter."""
         super().__init__(container)
 
-        # Initialize repositories with adapter
+        # Initialize repository implementations directly
+        extracted_politician_repo_impl = ExtractedPoliticianRepositoryImpl()
+        party_repo_impl = PoliticalPartyRepositoryImpl()
+        politician_repo_impl = PoliticianRepositoryImpl()
+        speaker_repo_impl = SpeakerRepositoryImpl()
+
+        # Wrap with adapter for sync access
         self.extracted_politician_repo = RepositoryAdapter(
             ExtractedPoliticianRepositoryImpl
         )
@@ -56,11 +65,12 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         self.politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
         self.speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl)
 
+        # Use implementations directly for use cases (they expect async interfaces)
         self.review_use_case = ReviewExtractedPoliticianUseCase(
-            self.extracted_politician_repo, self.party_repo
+            extracted_politician_repo_impl, party_repo_impl
         )
         self.convert_use_case = ConvertExtractedPoliticianUseCase(
-            self.extracted_politician_repo, self.politician_repo, self.speaker_repo
+            extracted_politician_repo_impl, politician_repo_impl, speaker_repo_impl
         )
 
         self.session = SessionManager()
@@ -69,7 +79,8 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
     def load_data(self) -> list[ExtractedPolitician]:
         """Load all extracted politicians."""
         try:
-            return self._run_async(self.extracted_politician_repo.get_all())
+            # RepositoryAdapter already handles async-to-sync conversion
+            return self.extracted_politician_repo.get_all()
         except Exception as e:
             self.logger.error(f"Failed to load extracted politicians: {e}")
             return []
@@ -111,7 +122,8 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             List of political parties
         """
-        return self._run_async(self.party_repo.get_all())
+        # RepositoryAdapter already handles async-to-sync conversion
+        return self.party_repo.get_all()
 
     def get_filtered_politicians(
         self,
@@ -150,7 +162,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             self.review_use_case.get_filtered_politicians(filter_dto)
         )
 
-    def get_statistics(self) -> dict:
+    def get_statistics(self) -> dict[str, Any]:
         """Get statistics for extracted politicians.
 
         Returns:
@@ -290,7 +302,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
 
         return pd.DataFrame(data)
 
-    def _run_async(self, coro):
+    def _run_async(self, coro: Coroutine[Any, Any, T]) -> T:
         """Run async coroutine in sync context.
 
         Args:
