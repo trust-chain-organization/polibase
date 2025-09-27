@@ -2,8 +2,10 @@
 
 import asyncio
 from datetime import datetime
+from typing import Any
 
 import pandas as pd
+from dependency_injector.wiring import Container
 
 from src.application.dtos.convert_extracted_politician_dto import (
     ConvertExtractedPoliticianInputDTO,
@@ -19,8 +21,10 @@ from src.application.usecases.convert_extracted_politician_usecase import (
 from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
+from src.common.logging import get_logger
 from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
+from src.infrastructure.adapters.repository_adapter import RepositoryAdapter
 from src.infrastructure.persistence.extracted_politician_repository_impl import (
     ExtractedPoliticianRepositoryImpl,
 )
@@ -34,18 +38,23 @@ from src.infrastructure.persistence.speaker_repository_impl import (
     SpeakerRepositoryImpl,
 )
 from src.interfaces.web.streamlit.presenters.base import BasePresenter
+from src.interfaces.web.streamlit.session_manager import SessionManager
 
 
-class ExtractedPoliticianPresenter(BasePresenter):
+class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
     """Presenter for extracted politician review operations."""
 
-    def __init__(self):
+    def __init__(self, container: Container | None = None):
         """Initialize the presenter."""
-        super().__init__()
-        self.extracted_politician_repo = ExtractedPoliticianRepositoryImpl(self.session)
-        self.party_repo = PoliticalPartyRepositoryImpl(self.session)
-        self.politician_repo = PoliticianRepositoryImpl(self.session)
-        self.speaker_repo = SpeakerRepositoryImpl(self.session)
+        super().__init__(container)
+
+        # Initialize repositories with adapter
+        self.extracted_politician_repo = RepositoryAdapter(
+            ExtractedPoliticianRepositoryImpl
+        )
+        self.party_repo = RepositoryAdapter(PoliticalPartyRepositoryImpl)
+        self.politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
+        self.speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl)
 
         self.review_use_case = ReviewExtractedPoliticianUseCase(
             self.extracted_politician_repo, self.party_repo
@@ -53,6 +62,48 @@ class ExtractedPoliticianPresenter(BasePresenter):
         self.convert_use_case = ConvertExtractedPoliticianUseCase(
             self.extracted_politician_repo, self.politician_repo, self.speaker_repo
         )
+
+        self.session = SessionManager()
+        self.logger = get_logger(__name__)
+
+    def load_data(self) -> list[ExtractedPolitician]:
+        """Load all extracted politicians."""
+        try:
+            return self._run_async(self.extracted_politician_repo.get_all())
+        except Exception as e:
+            self.logger.error(f"Failed to load extracted politicians: {e}")
+            return []
+
+    def handle_action(self, action: str, **kwargs: Any) -> Any:
+        """Handle user actions.
+
+        Args:
+            action: The action to perform
+            **kwargs: Additional parameters for the action
+
+        Returns:
+            Result of the action
+        """
+        if action == "review":
+            return self.review_politician(
+                kwargs.get("politician_id", 0),
+                kwargs.get("action", ""),
+                kwargs.get("reviewer_id", 1),
+            )
+        elif action == "bulk_review":
+            return self.bulk_review(
+                kwargs.get("politician_ids", []),
+                kwargs.get("action", ""),
+                kwargs.get("reviewer_id", 1),
+            )
+        elif action == "convert":
+            return self.convert_approved_politicians(
+                kwargs.get("party_id"),
+                kwargs.get("batch_size", 100),
+                kwargs.get("dry_run", False),
+            )
+        else:
+            raise ValueError(f"Unknown action: {action}")
 
     def get_all_parties(self) -> list[PoliticalParty]:
         """Get all political parties.
