@@ -173,13 +173,17 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
     if df is not None:
         # Add checkboxes for each row
         for idx, politician in enumerate(politicians):
+            if politician.id is None:
+                continue
+
             col1, col2 = st.columns([1, 9])
 
             with col1:
                 selected = st.checkbox(
-                    "",
+                    "選択",
                     key=f"check_{politician.id}",
                     value=politician.id in st.session_state.selected_politicians,
+                    label_visibility="hidden",
                 )
                 if (
                     selected
@@ -225,36 +229,39 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
                         if st.button(
                             "✅ 承認", key=f"approve_{politician.id}", type="primary"
                         ):
-                            success, message = presenter.review_politician(
-                                politician.id, "approve"
-                            )
-                            if success:
-                                st.success(message)
-                                st.rerun()
-                            else:
-                                st.error(message)
+                            if politician.id is not None:
+                                success, message = presenter.review_politician(
+                                    politician.id, "approve"
+                                )
+                                if success:
+                                    st.success(message)
+                                    st.rerun()
+                                else:
+                                    st.error(message)
 
                     with col_2:
                         if st.button("❌ 却下", key=f"reject_{politician.id}"):
-                            success, message = presenter.review_politician(
-                                politician.id, "reject"
-                            )
-                            if success:
-                                st.success(message)
-                                st.rerun()
-                            else:
-                                st.error(message)
+                            if politician.id is not None:
+                                success, message = presenter.review_politician(
+                                    politician.id, "reject"
+                                )
+                                if success:
+                                    st.success(message)
+                                    st.rerun()
+                                else:
+                                    st.error(message)
 
                     with col_3:
                         if st.button("👀 レビュー済み", key=f"review_{politician.id}"):
-                            success, message = presenter.review_politician(
-                                politician.id, "review"
-                            )
-                            if success:
-                                st.success(message)
-                                st.rerun()
-                            else:
-                                st.error(message)
+                            if politician.id is not None:
+                                success, message = presenter.review_politician(
+                                    politician.id, "review"
+                                )
+                                if success:
+                                    st.success(message)
+                                    st.rerun()
+                                else:
+                                    st.error(message)
 
 
 def render_statistics_tab(presenter: ExtractedPoliticianPresenter):
