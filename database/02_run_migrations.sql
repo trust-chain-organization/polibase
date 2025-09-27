@@ -31,5 +31,6 @@
 \i /docker-entrypoint-initdb.d/02_migrations/026_create_extracted_politicians_table.sql
 \i /docker-entrypoint-initdb.d/02_migrations/027_migrate_existing_politicians.sql
 \i /docker-entrypoint-initdb.d/02_migrations/028_add_converted_status_to_extracted_politicians.sql
+\i /docker-entrypoint-initdb.d/02_migrations/029_remove_image_url_from_extracted_politicians.sql
 
 \echo 'Migrations completed.'

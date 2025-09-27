@@ -37,7 +37,6 @@ class TestExtractedPoliticianRepositoryImpl:
             "district": "東京1区",
             "position": "衆議院議員",
             "profile_url": "https://example.com/profile",
-            "image_url": "https://example.com/image.jpg",
             "status": "pending",
             "extracted_at": datetime(2023, 1, 1),
             "reviewed_at": None,
@@ -205,7 +204,6 @@ class TestExtractedPoliticianRepositoryImpl:
                 district="東京1区",
                 position="衆議院議員",
                 profile_url="https://example.com/profile",
-                image_url="https://example.com/image.jpg",
                 status="approved",
                 extracted_at=datetime(2023, 1, 1),
                 reviewed_at=reviewed_at,
@@ -266,7 +264,6 @@ class TestExtractedPoliticianRepositoryImpl:
                 district="東京1区",
                 position="衆議院議員",
                 profile_url="https://example.com/profile",
-                image_url="https://example.com/image.jpg",
                 status="pending",
                 extracted_at=datetime(2023, 1, 1),
                 reviewed_at=None,
@@ -423,7 +420,6 @@ class TestExtractedPoliticianRepositoryImpl:
             district="大阪1区",
             position="参議院議員",
             profile_url="https://test.com/profile",
-            image_url="https://test.com/image.jpg",
             status="reviewed",
             extracted_at=extracted_at,
             reviewed_at=reviewed_at,
@@ -441,7 +437,6 @@ class TestExtractedPoliticianRepositoryImpl:
         assert entity.district == "大阪1区"
         assert entity.position == "参議院議員"
         assert entity.profile_url == "https://test.com/profile"
-        assert entity.image_url == "https://test.com/image.jpg"
         assert entity.status == "reviewed"
         assert entity.extracted_at == extracted_at
         assert entity.reviewed_at == reviewed_at

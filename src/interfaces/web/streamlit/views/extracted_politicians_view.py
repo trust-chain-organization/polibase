@@ -218,8 +218,6 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
 
                     if politician.profile_url:
                         st.write(f"**プロフィールURL:** {politician.profile_url}")
-                    if politician.image_url:
-                        st.write(f"**画像URL:** {politician.image_url}")
 
                     # Individual action buttons
                     st.markdown("---")
@@ -318,12 +316,6 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
                                 key=f"edit_profile_url_{politician.id}",
                             )
 
-                            edit_image_url = st.text_input(
-                                "画像URL",
-                                value=politician.image_url or "",
-                                key=f"edit_image_url_{politician.id}",
-                            )
-
                             # Save/Cancel buttons
                             save_col, cancel_col = st.columns(2)
                             with save_col:
@@ -342,7 +334,6 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
                                             edit_profile_url
                                             if edit_profile_url
                                             else None,
-                                            edit_image_url if edit_image_url else None,
                                         )
                                         if success:
                                             st.success(message)

@@ -15,7 +15,6 @@ class ExtractedPolitician(BaseEntity):
         district: str | None = None,
         position: str | None = None,
         profile_url: str | None = None,
-        image_url: str | None = None,
         status: str = "pending",
         extracted_at: datetime | None = None,
         reviewed_at: datetime | None = None,
@@ -28,7 +27,6 @@ class ExtractedPolitician(BaseEntity):
         self.district = district
         self.position = position
         self.profile_url = profile_url
-        self.image_url = image_url
         self.status = status
         self.extracted_at = extracted_at or datetime.now()
         self.reviewed_at = reviewed_at
