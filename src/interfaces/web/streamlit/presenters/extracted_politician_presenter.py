@@ -1,9 +1,8 @@
 """Presenter for extracted politician review functionality."""
 
 import asyncio
-from collections.abc import Coroutine
 from datetime import datetime
-from typing import Any, TypeVar
+from typing import Any
 
 import pandas as pd
 
@@ -22,6 +21,7 @@ from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
 from src.common.logging import get_logger
+from src.config.async_database import async_db
 from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
 from src.infrastructure.di.container import Container
@@ -41,8 +41,6 @@ from src.infrastructure.persistence.speaker_repository_impl import (
 from src.interfaces.web.streamlit.presenters.base import BasePresenter
 from src.interfaces.web.streamlit.utils.session_manager import SessionManager
 
-T = TypeVar("T")
-
 
 class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
     """Presenter for extracted politician review operations."""
@@ -51,13 +49,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         """Initialize the presenter."""
         super().__init__(container)
 
-        # Initialize repository implementations directly
-        extracted_politician_repo_impl = ExtractedPoliticianRepositoryImpl()
-        party_repo_impl = PoliticalPartyRepositoryImpl()
-        politician_repo_impl = PoliticianRepositoryImpl()
-        speaker_repo_impl = SpeakerRepositoryImpl()
-
-        # Wrap with adapter for sync access
+        # Wrap repositories with adapter for sync access
         self.extracted_politician_repo = RepositoryAdapter(
             ExtractedPoliticianRepositoryImpl
         )
@@ -65,13 +57,8 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         self.politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
         self.speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl)
 
-        # Use implementations directly for use cases (they expect async interfaces)
-        self.review_use_case = ReviewExtractedPoliticianUseCase(
-            extracted_politician_repo_impl, party_repo_impl
-        )
-        self.convert_use_case = ConvertExtractedPoliticianUseCase(
-            extracted_politician_repo_impl, politician_repo_impl, speaker_repo_impl
-        )
+        # Note: Use cases are not initialized here because they need async repositories
+        # They will be created on demand in _run_async_use_case method
 
         self.session = SessionManager()
         self.logger = get_logger(__name__)
@@ -158,8 +145,8 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             limit=limit,
             offset=offset,
         )
-        return self._run_async(
-            self.review_use_case.get_filtered_politicians(filter_dto)
+        return self._run_async_with_use_case(
+            "review", "get_filtered_politicians", filter_dto
         )
 
     def get_statistics(self) -> dict[str, Any]:
@@ -168,7 +155,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             Dictionary with statistics
         """
-        stats = self._run_async(self.review_use_case.get_statistics())
+        stats = self._run_async_with_use_case("review", "get_statistics")
         return {
             "total": stats.total,
             "pending": stats.pending_count,
@@ -195,7 +182,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         input_dto = ReviewExtractedPoliticianInputDTO(
             politician_id=politician_id, action=action, reviewer_id=reviewer_id
         )
-        result = self._run_async(self.review_use_case.review_politician(input_dto))
+        result = self._run_async_with_use_case("review", "review_politician", input_dto)
         return result.success, result.message
 
     def bulk_review(
@@ -214,7 +201,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         input_dto = BulkReviewInputDTO(
             politician_ids=politician_ids, action=action, reviewer_id=reviewer_id
         )
-        result = self._run_async(self.review_use_case.bulk_review(input_dto))
+        result = self._run_async_with_use_case("review", "bulk_review", input_dto)
         return result.successful_count, result.failed_count, result.message
 
     def convert_approved_politicians(
@@ -233,7 +220,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         input_dto = ConvertExtractedPoliticianInputDTO(
             party_id=party_id, batch_size=batch_size, dry_run=dry_run
         )
-        result = self._run_async(self.convert_use_case.execute(input_dto))
+        result = self._run_async_with_use_case("convert", "execute", input_dto)
         return (
             result.converted_count,
             result.skipped_count,
@@ -302,18 +289,47 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
 
         return pd.DataFrame(data)
 
-    def _run_async(self, coro: Coroutine[Any, Any, T]) -> T:
-        """Run async coroutine in sync context.
+    def _run_async_with_use_case(
+        self, use_case_type: str, method_name: str, *args: Any, **kwargs: Any
+    ) -> Any:
+        """Run async use case method in sync context.
 
         Args:
-            coro: Coroutine to run
+            use_case_type: Type of use case ('review' or 'convert')
+            method_name: Name of the method to call
+            *args: Positional arguments for the method
+            **kwargs: Keyword arguments for the method
 
         Returns:
-            Result of the coroutine
+            Result of the use case method
         """
+
+        async def async_wrapper():
+            async with async_db.get_session() as session:
+                # Create repository implementations with the session
+                extracted_politician_repo = ExtractedPoliticianRepositoryImpl(session)
+                party_repo = PoliticalPartyRepositoryImpl(session)
+
+                if use_case_type == "review":
+                    use_case = ReviewExtractedPoliticianUseCase(
+                        extracted_politician_repo, party_repo
+                    )
+                    method = getattr(use_case, method_name)
+                    return await method(*args, **kwargs)
+                elif use_case_type == "convert":
+                    politician_repo = PoliticianRepositoryImpl(session)
+                    speaker_repo = SpeakerRepositoryImpl(session)
+                    use_case = ConvertExtractedPoliticianUseCase(
+                        extracted_politician_repo, politician_repo, speaker_repo
+                    )
+                    method = getattr(use_case, method_name)
+                    return await method(*args, **kwargs)
+                else:
+                    raise ValueError(f"Unknown use case type: {use_case_type}")
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            return loop.run_until_complete(coro)
+            return loop.run_until_complete(async_wrapper())
         finally:
             loop.close()
