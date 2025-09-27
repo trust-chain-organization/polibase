@@ -1,29 +1,11 @@
 """Presenter for extracted politician review functionality."""
 
-import asyncio
-import concurrent.futures
 from datetime import datetime
 from typing import Any
 
-import nest_asyncio
 import pandas as pd
 
-from src.application.dtos.convert_extracted_politician_dto import (
-    ConvertExtractedPoliticianInputDTO,
-)
-from src.application.dtos.review_extracted_politician_dto import (
-    BulkReviewInputDTO,
-    ExtractedPoliticianFilterDTO,
-    ReviewExtractedPoliticianInputDTO,
-)
-from src.application.usecases.convert_extracted_politician_usecase import (
-    ConvertExtractedPoliticianUseCase,
-)
-from src.application.usecases.review_extracted_politician_usecase import (
-    ReviewExtractedPoliticianUseCase,
-)
 from src.common.logging import get_logger
-from src.config.async_database import async_db
 from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
 from src.infrastructure.di.container import Container
@@ -51,9 +33,6 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         """Initialize the presenter."""
         super().__init__(container)
 
-        # Apply nest_asyncio to allow nested event loops
-        nest_asyncio.apply()
-
         # Wrap repositories with adapter for sync access
         self.extracted_politician_repo = RepositoryAdapter(
             ExtractedPoliticianRepositoryImpl
@@ -61,9 +40,6 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         self.party_repo = RepositoryAdapter(PoliticalPartyRepositoryImpl)
         self.politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
         self.speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl)
-
-        # Note: Use cases are not initialized here because they need async repositories
-        # They will be created on demand in _run_async_use_case method
 
         self.session = SessionManager()
         self.logger = get_logger(__name__)
@@ -141,18 +117,42 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             List of filtered extracted politicians
         """
-        filter_dto = ExtractedPoliticianFilterDTO(
-            statuses=statuses,
-            party_id=party_id,
-            start_date=start_date,
-            end_date=end_date,
-            search_name=search_name,
-            limit=limit,
-            offset=offset,
-        )
-        return self._run_async_with_use_case(
-            "review", "get_filtered_politicians", filter_dto
-        )
+        # Start with all politicians
+        politicians = self.extracted_politician_repo.get_all()
+
+        # Apply status filter
+        if statuses:
+            politicians = [p for p in politicians if p.status in statuses]
+
+        # Apply party filter
+        if party_id is not None:
+            politicians = [p for p in politicians if p.party_id == party_id]
+
+        # Apply date range filter
+        if start_date:
+            politicians = [
+                p
+                for p in politicians
+                if p.extracted_at and p.extracted_at >= start_date
+            ]
+
+        if end_date:
+            politicians = [
+                p for p in politicians if p.extracted_at and p.extracted_at <= end_date
+            ]
+
+        # Apply name search
+        if search_name:
+            search_term = search_name.lower()
+            politicians = [p for p in politicians if search_term in p.name.lower()]
+
+        # Sort by extracted_at descending
+        politicians.sort(key=lambda p: p.extracted_at or datetime.min, reverse=True)
+
+        # Apply pagination
+        start = offset
+        end = start + limit
+        return politicians[start:end]
 
     def get_statistics(self) -> dict[str, Any]:
         """Get statistics for extracted politicians.
@@ -160,15 +160,27 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             Dictionary with statistics
         """
-        stats = self._run_async_with_use_case("review", "get_statistics")
+        # Get status summary
+        status_summary = self.extracted_politician_repo.get_summary_by_status()
+
+        # Get all parties for party statistics
+        parties = self.party_repo.get_all()
+        party_statistics: dict[str, dict[str, int]] = {}
+
+        for party in parties:
+            if party.id:
+                stats = self.extracted_politician_repo.get_statistics_by_party(party.id)
+                if stats["total"] > 0:  # Only include parties with data
+                    party_statistics[party.name] = stats
+
         return {
-            "total": stats.total,
-            "pending": stats.pending_count,
-            "reviewed": stats.reviewed_count,
-            "approved": stats.approved_count,
-            "rejected": stats.rejected_count,
-            "converted": stats.converted_count,
-            "by_party": stats.party_statistics,
+            "total": sum(status_summary.values()),
+            "pending": status_summary.get("pending", 0),
+            "reviewed": status_summary.get("reviewed", 0),
+            "approved": status_summary.get("approved", 0),
+            "rejected": status_summary.get("rejected", 0),
+            "converted": status_summary.get("converted", 0),
+            "by_party": party_statistics,
         }
 
     def review_politician(
@@ -184,11 +196,46 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             Tuple of (success, message)
         """
-        input_dto = ReviewExtractedPoliticianInputDTO(
-            politician_id=politician_id, action=action, reviewer_id=reviewer_id
-        )
-        result = self._run_async_with_use_case("review", "review_politician", input_dto)
-        return result.success, result.message
+        try:
+            # Get the politician
+            politician = self.extracted_politician_repo.get_by_id(politician_id)
+            if not politician:
+                return False, f"Politician with ID {politician_id} not found"
+
+            # Validate action
+            if action not in ["approve", "reject", "review"]:
+                return False, f"Invalid action: {action}"
+
+            # Determine new status
+            status_map = {
+                "approve": "approved",
+                "reject": "rejected",
+                "review": "reviewed",
+            }
+            new_status = status_map[action]
+
+            # Update status
+            updated_politician = self.extracted_politician_repo.update_status(
+                politician_id, new_status, reviewer_id
+            )
+
+            if updated_politician:
+                action_past = {
+                    "approve": "approved",
+                    "reject": "rejected",
+                    "review": "reviewed",
+                }
+                name = updated_politician.name
+                return True, f"Successfully {action_past[action]} politician: {name}"
+            else:
+                return (
+                    False,
+                    f"Failed to update status for politician ID {politician_id}",
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error reviewing politician {politician_id}: {e}")
+            return False, f"Error: {str(e)}"
 
     def bulk_review(
         self, politician_ids: list[int], action: str, reviewer_id: int = 1
@@ -203,11 +250,23 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             Tuple of (successful_count, failed_count, message)
         """
-        input_dto = BulkReviewInputDTO(
-            politician_ids=politician_ids, action=action, reviewer_id=reviewer_id
+        successful_count = 0
+        failed_count = 0
+
+        for politician_id in politician_ids:
+            success, _ = self.review_politician(politician_id, action, reviewer_id)
+            if success:
+                successful_count += 1
+            else:
+                failed_count += 1
+
+        total_processed = len(politician_ids)
+        message = (
+            f"Processed {total_processed} politicians: "
+            f"{successful_count} succeeded, {failed_count} failed"
         )
-        result = self._run_async_with_use_case("review", "bulk_review", input_dto)
-        return result.successful_count, result.failed_count, result.message
+
+        return successful_count, failed_count, message
 
     def convert_approved_politicians(
         self, party_id: int | None = None, batch_size: int = 100, dry_run: bool = False
@@ -222,16 +281,10 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             Tuple of (converted_count, skipped_count, error_count, error_messages)
         """
-        input_dto = ConvertExtractedPoliticianInputDTO(
-            party_id=party_id, batch_size=batch_size, dry_run=dry_run
-        )
-        result = self._run_async_with_use_case("convert", "execute", input_dto)
-        return (
-            result.converted_count,
-            result.skipped_count,
-            result.error_count,
-            result.error_messages,
-        )
+        # This is a complex operation that still needs async implementation
+        # For now, return a placeholder
+        self.logger.warning("Convert operation not yet implemented in sync mode")
+        return 0, 0, 0, ["Convert operation not yet implemented in sync mode"]
 
     def to_dataframe(
         self,
@@ -293,72 +346,3 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             )
 
         return pd.DataFrame(data)
-
-    def _run_async_with_use_case(
-        self, use_case_type: str, method_name: str, *args: Any, **kwargs: Any
-    ) -> Any:
-        """Run async use case method in sync context.
-
-        Args:
-            use_case_type: Type of use case ('review' or 'convert')
-            method_name: Name of the method to call
-            *args: Positional arguments for the method
-            **kwargs: Keyword arguments for the method
-
-        Returns:
-            Result of the use case method
-        """
-
-        async def async_wrapper():
-            # Don't use context manager to avoid auto-commit issues
-            session = async_db.async_session_maker()
-            try:
-                # Create repository implementations with the session
-                extracted_politician_repo = ExtractedPoliticianRepositoryImpl(session)
-                party_repo = PoliticalPartyRepositoryImpl(session)
-
-                if use_case_type == "review":
-                    use_case = ReviewExtractedPoliticianUseCase(
-                        extracted_politician_repo, party_repo
-                    )
-                    method = getattr(use_case, method_name)
-                    result = await method(*args, **kwargs)
-                    return result
-                elif use_case_type == "convert":
-                    politician_repo = PoliticianRepositoryImpl(session)
-                    speaker_repo = SpeakerRepositoryImpl(session)
-                    use_case = ConvertExtractedPoliticianUseCase(
-                        extracted_politician_repo, politician_repo, speaker_repo
-                    )
-                    method = getattr(use_case, method_name)
-                    result = await method(*args, **kwargs)
-                    return result
-                else:
-                    raise ValueError(f"Unknown use case type: {use_case_type}")
-            finally:
-                await session.close()
-
-        # Check if event loop is already running (due to nest_asyncio)
-        try:
-            loop = asyncio.get_running_loop()
-            # Create a task and wait for it
-            task = loop.create_task(async_wrapper())
-            # Use asyncio.run_coroutine_threadsafe if needed
-            future: concurrent.futures.Future[Any] = concurrent.futures.Future()
-
-            def callback(task: asyncio.Task[Any]) -> None:
-                if task.exception() is not None:
-                    future.set_exception(task.exception())
-                else:
-                    future.set_result(task.result())
-
-            task.add_done_callback(callback)
-            return future.result()
-        except RuntimeError:
-            # No running loop, create a new one
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                return loop.run_until_complete(async_wrapper())
-            finally:
-                loop.close()
