@@ -35,7 +35,6 @@ class TestExtractedPoliticianRepositoryImpl:
             "name": "山田太郎",
             "party_id": 1,
             "district": "東京1区",
-            "position": "衆議院議員",
             "profile_url": "https://example.com/profile",
             "status": "pending",
             "extracted_at": datetime(2023, 1, 1),
@@ -418,7 +417,6 @@ class TestExtractedPoliticianRepositoryImpl:
             name="テスト政治家",
             party_id=3,
             district="大阪1区",
-            position="参議院議員",
             profile_url="https://test.com/profile",
             status="reviewed",
             extracted_at=extracted_at,
@@ -435,7 +433,6 @@ class TestExtractedPoliticianRepositoryImpl:
         assert entity.name == "テスト政治家"
         assert entity.party_id == 3
         assert entity.district == "大阪1区"
-        assert entity.position == "参議院議員"
         assert entity.profile_url == "https://test.com/profile"
         assert entity.status == "reviewed"
         assert entity.extracted_at == extracted_at

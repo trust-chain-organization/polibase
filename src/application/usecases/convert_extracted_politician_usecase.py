@@ -275,7 +275,7 @@ class ConvertExtractedPoliticianUseCase:
                 name=extracted.name,
                 type="議員",
                 political_party_name=None,  # Will be set from party_id relation
-                position=extracted.position,
+                position=None,  # Position info managed via politician_affiliations
                 is_politician=True,
             )
             created_speaker = await self.speaker_repo.create(speaker)
