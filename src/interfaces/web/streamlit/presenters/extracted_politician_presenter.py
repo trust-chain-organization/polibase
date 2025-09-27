@@ -1,9 +1,11 @@
 """Presenter for extracted politician review functionality."""
 
 import asyncio
+import concurrent.futures
 from datetime import datetime
 from typing import Any
 
+import nest_asyncio
 import pandas as pd
 
 from src.application.dtos.convert_extracted_politician_dto import (
@@ -48,6 +50,9 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
     def __init__(self, container: Container | None = None):
         """Initialize the presenter."""
         super().__init__(container)
+
+        # Apply nest_asyncio to allow nested event loops
+        nest_asyncio.apply()
 
         # Wrap repositories with adapter for sync access
         self.extracted_politician_repo = RepositoryAdapter(
@@ -305,7 +310,9 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         """
 
         async def async_wrapper():
-            async with async_db.get_session() as session:
+            # Don't use context manager to avoid auto-commit issues
+            session = async_db.async_session_maker()
+            try:
                 # Create repository implementations with the session
                 extracted_politician_repo = ExtractedPoliticianRepositoryImpl(session)
                 party_repo = PoliticalPartyRepositoryImpl(session)
@@ -315,7 +322,8 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
                         extracted_politician_repo, party_repo
                     )
                     method = getattr(use_case, method_name)
-                    return await method(*args, **kwargs)
+                    result = await method(*args, **kwargs)
+                    return result
                 elif use_case_type == "convert":
                     politician_repo = PoliticianRepositoryImpl(session)
                     speaker_repo = SpeakerRepositoryImpl(session)
@@ -323,13 +331,34 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
                         extracted_politician_repo, politician_repo, speaker_repo
                     )
                     method = getattr(use_case, method_name)
-                    return await method(*args, **kwargs)
+                    result = await method(*args, **kwargs)
+                    return result
                 else:
                     raise ValueError(f"Unknown use case type: {use_case_type}")
+            finally:
+                await session.close()
 
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        # Check if event loop is already running (due to nest_asyncio)
         try:
-            return loop.run_until_complete(async_wrapper())
-        finally:
-            loop.close()
+            loop = asyncio.get_running_loop()
+            # Create a task and wait for it
+            task = loop.create_task(async_wrapper())
+            # Use asyncio.run_coroutine_threadsafe if needed
+            future: concurrent.futures.Future[Any] = concurrent.futures.Future()
+
+            def callback(task: asyncio.Task[Any]) -> None:
+                if task.exception() is not None:
+                    future.set_exception(task.exception())
+                else:
+                    future.set_result(task.result())
+
+            task.add_done_callback(callback)
+            return future.result()
+        except RuntimeError:
+            # No running loop, create a new one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                return loop.run_until_complete(async_wrapper())
+            finally:
+                loop.close()
