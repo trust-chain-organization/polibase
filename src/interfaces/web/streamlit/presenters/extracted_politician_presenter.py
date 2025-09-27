@@ -268,6 +268,55 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
 
         return successful_count, failed_count, message
 
+    def update_politician(
+        self,
+        politician_id: int,
+        name: str,
+        party_id: int | None = None,
+        district: str | None = None,
+        position: str | None = None,
+        profile_url: str | None = None,
+        image_url: str | None = None,
+    ) -> tuple[bool, str]:
+        """Update an extracted politician's information.
+
+        Args:
+            politician_id: ID of the politician to update
+            name: New name
+            party_id: New party ID
+            district: New district
+            position: New position
+            profile_url: New profile URL
+            image_url: New image URL
+
+        Returns:
+            Tuple of (success, message)
+        """
+        try:
+            # Get the politician
+            politician = self.extracted_politician_repo.get_by_id(politician_id)
+            if not politician:
+                return False, f"Politician with ID {politician_id} not found"
+
+            # Update fields
+            politician.name = name
+            politician.party_id = party_id
+            politician.district = district
+            politician.position = position
+            politician.profile_url = profile_url
+            politician.image_url = image_url
+
+            # Save updates
+            updated = self.extracted_politician_repo.update(politician)
+            if updated:
+                return True, f"Successfully updated politician: {name}"
+            else:
+                return False, f"Failed to update politician ID {politician_id}"
+
+        except Exception as e:
+            self.logger.error(f"Error updating politician {politician_id}: {e}")
+            return False, f"Error: {str(e)}"
+
     def convert_approved_politicians(
         self, party_id: int | None = None, batch_size: int = 100, dry_run: bool = False
     ) -> tuple[int, int, int, list[str]]:

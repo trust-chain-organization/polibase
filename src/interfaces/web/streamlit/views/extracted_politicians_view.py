@@ -223,9 +223,13 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
 
                     # Individual action buttons
                     st.markdown("---")
-                    col_1, col_2, col_3 = st.columns(3)
+                    col_1, col_2, col_3, col_4 = st.columns(4)
 
                     with col_1:
+                        if st.button("✏️ 編集", key=f"edit_{politician.id}"):
+                            st.session_state[f"editing_{politician.id}"] = True
+
+                    with col_2:
                         if st.button(
                             "✅ 承認", key=f"approve_{politician.id}", type="primary"
                         ):
@@ -239,7 +243,7 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
                                 else:
                                     st.error(message)
 
-                    with col_2:
+                    with col_3:
                         if st.button("❌ 却下", key=f"reject_{politician.id}"):
                             if politician.id is not None:
                                 success, message = presenter.review_politician(
@@ -251,7 +255,7 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
                                 else:
                                     st.error(message)
 
-                    with col_3:
+                    with col_4:
                         if st.button("👀 レビュー済み", key=f"review_{politician.id}"):
                             if politician.id is not None:
                                 success, message = presenter.review_politician(
@@ -262,6 +266,99 @@ def render_review_tab(presenter: ExtractedPoliticianPresenter):
                                     st.rerun()
                                 else:
                                     st.error(message)
+
+                    # Edit dialog
+                    if st.session_state.get(f"editing_{politician.id}", False):
+                        with st.container():
+                            st.markdown("#### 政治家情報の編集")
+
+                            # Create edit form
+                            edit_name = st.text_input(
+                                "名前",
+                                value=politician.name,
+                                key=f"edit_name_{politician.id}",
+                            )
+
+                            # Party selection
+                            party_names = ["無所属"] + [p.name for p in parties]
+                            party_map: dict[str, int | None] = {
+                                p.name: p.id for p in parties if p.id
+                            }
+                            party_map["無所属"] = None
+
+                            current_party = "無所属"
+                            if politician.party_id:
+                                for p in parties:
+                                    if p.id == politician.party_id:
+                                        current_party = p.name
+                                        break
+
+                            edit_party = st.selectbox(
+                                "政党",
+                                party_names,
+                                index=party_names.index(current_party),
+                                key=f"edit_party_{politician.id}",
+                            )
+
+                            edit_district = st.text_input(
+                                "選挙区",
+                                value=politician.district or "",
+                                key=f"edit_district_{politician.id}",
+                            )
+
+                            edit_position = st.text_input(
+                                "役職",
+                                value=politician.position or "",
+                                key=f"edit_position_{politician.id}",
+                            )
+
+                            edit_profile_url = st.text_input(
+                                "プロフィールURL",
+                                value=politician.profile_url or "",
+                                key=f"edit_profile_url_{politician.id}",
+                            )
+
+                            edit_image_url = st.text_input(
+                                "画像URL",
+                                value=politician.image_url or "",
+                                key=f"edit_image_url_{politician.id}",
+                            )
+
+                            # Save/Cancel buttons
+                            save_col, cancel_col = st.columns(2)
+                            with save_col:
+                                if st.button(
+                                    "💾 保存",
+                                    key=f"save_{politician.id}",
+                                    type="primary",
+                                ):
+                                    if politician.id is not None:
+                                        success, message = presenter.update_politician(
+                                            politician.id,
+                                            edit_name,
+                                            party_map[edit_party],
+                                            edit_district if edit_district else None,
+                                            edit_position if edit_position else None,
+                                            edit_profile_url
+                                            if edit_profile_url
+                                            else None,
+                                            edit_image_url if edit_image_url else None,
+                                        )
+                                        if success:
+                                            st.success(message)
+                                            st.session_state[
+                                                f"editing_{politician.id}"
+                                            ] = False
+                                            st.rerun()
+                                        else:
+                                            st.error(message)
+
+                            with cancel_col:
+                                if st.button(
+                                    "❌ キャンセル", key=f"cancel_{politician.id}"
+                                ):
+                                    st.session_state[f"editing_{politician.id}"] = False
+                                    st.rerun()
 
 
 def render_statistics_tab(presenter: ExtractedPoliticianPresenter):
