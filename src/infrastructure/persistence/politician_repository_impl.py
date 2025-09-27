@@ -750,3 +750,20 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         await self.async_session.commit()
 
         return result.rowcount > 0  # type: ignore[attr-defined]
+
+    async def count_by_party(self, political_party_id: int) -> int:
+        """Count politicians by political party."""
+        query = text("""
+            SELECT COUNT(*) as count
+            FROM politicians
+            WHERE political_party_id = :party_id
+        """)
+
+        if not self.async_session:
+            raise RuntimeError("Async session required for async operations")
+
+        result = await self.async_session.execute(
+            query, {"party_id": political_party_id}
+        )
+        row = result.first()
+        return row.count if row else 0  # type: ignore[attr-defined]

@@ -239,6 +239,42 @@ class ExtractedPoliticianRepositoryImpl(
 
         return [self._row_to_entity(row) for row in rows]
 
+    async def get_statistics_by_party(self, party_id: int) -> dict[str, int]:
+        """Get statistics for a specific party."""
+        query = text("""
+            SELECT
+                COUNT(*) as total,
+                COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+                COUNT(CASE WHEN status = 'reviewed' THEN 1 END) as reviewed,
+                COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved,
+                COUNT(CASE WHEN status = 'rejected' THEN 1 END) as rejected,
+                COUNT(CASE WHEN status = 'converted' THEN 1 END) as converted
+            FROM extracted_politicians
+            WHERE party_id = :party_id
+        """)
+
+        result = await self.session.execute(query, {"party_id": party_id})
+        row = result.fetchone()
+
+        if row:
+            return {
+                "total": row.total or 0,
+                "pending": row.pending or 0,
+                "reviewed": row.reviewed or 0,
+                "approved": row.approved or 0,
+                "rejected": row.rejected or 0,
+                "converted": row.converted or 0,
+            }
+
+        return {
+            "total": 0,
+            "pending": 0,
+            "reviewed": 0,
+            "approved": 0,
+            "rejected": 0,
+            "converted": 0,
+        }
+
     def _row_to_entity(self, row: Any) -> ExtractedPolitician:
         """Convert database row to domain entity."""
         return ExtractedPolitician(
