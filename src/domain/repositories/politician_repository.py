@@ -50,3 +50,15 @@ class PoliticianRepository(BaseRepository[Politician]):
     ) -> list[dict[str, Any]]:
         """Execute raw SQL query and return results as dictionaries (async)."""
         pass
+
+    @abstractmethod
+    async def count_by_party(self, political_party_id: int) -> int:
+        """Count politicians by political party.
+
+        Args:
+            political_party_id: Political party ID
+
+        Returns:
+            Number of politicians in the party
+        """
+        pass

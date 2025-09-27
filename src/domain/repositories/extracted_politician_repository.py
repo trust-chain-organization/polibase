@@ -54,3 +54,13 @@ class ExtractedPoliticianRepository(BaseRepository[ExtractedPolitician]):
     ) -> list[ExtractedPolitician]:
         """Find potential duplicate extracted politicians by name and party."""
         pass
+
+    @abstractmethod
+    async def get_statistics_by_party(self, party_id: int) -> dict[str, int]:
+        """Get statistics for a specific party.
+
+        Returns:
+            Dictionary with status counts
+            (total, pending, reviewed, approved, rejected, converted)
+        """
+        pass
