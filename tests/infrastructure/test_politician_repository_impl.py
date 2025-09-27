@@ -144,7 +144,6 @@ class TestPoliticianRepositoryImpl:
                 name="既存太郎",
                 speaker_id=13,
                 political_party_id=4,
-                position="衆議院議員",
                 id=10,
             )
             with patch.object(
@@ -155,7 +154,6 @@ class TestPoliticianRepositoryImpl:
                     name="既存太郎",
                     speaker_id=13,
                     political_party_id=4,
-                    position="衆議院議員",
                 )
                 result = await async_repository.upsert(new_data)
 
@@ -270,7 +268,6 @@ class TestPoliticianRepositoryImpl:
         assert result.name == "変換太郎"
         assert result.speaker_id == 20
         assert result.political_party_id == 6
-        assert result.position == "参議院議員"
         assert result.district == "大阪1区"  # electoral_district -> district
         assert (
             result.profile_page_url == "https://example.com/convert"

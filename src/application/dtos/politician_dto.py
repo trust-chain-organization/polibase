@@ -39,7 +39,6 @@ class PoliticianDTO:
     political_party_id: int | None
     political_party_name: str | None
     furigana: str | None
-    position: str | None
     district: str | None
     profile_page_url: str | None
 
@@ -51,7 +50,6 @@ class ExtractedPoliticianDTO:
     name: str
     party_id: int
     furigana: str | None = None
-    position: str | None = None
     district: str | None = None
     profile_page_url: str | None = None
     source_url: str | None = None
@@ -75,6 +73,5 @@ class ExtractedPoliticianOutputDTO:
     party_id: int | None
     party_name: str | None
     district: str | None
-    position: str | None
     profile_url: str | None
     status: str

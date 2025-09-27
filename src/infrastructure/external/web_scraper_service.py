@@ -179,9 +179,7 @@ class PlaywrightScraperService(IWebScraperService):
                             {
                                 "name": member.name,
                                 "furigana": None,  # Not available in PartyMemberInfo
-                                "position": member.position,
                                 "district": member.electoral_district,
-                                "profile_image_url": None,  # Not in PartyMemberInfo
                                 "profile_page_url": member.profile_url,
                             }
                         )

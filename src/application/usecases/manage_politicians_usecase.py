@@ -53,7 +53,6 @@ class UpdatePoliticianInputDto:
     party_id: int | None = None
     district: str | None = None
     profile_url: str | None = None
-    image_url: str | None = None
 
 
 @dataclass
