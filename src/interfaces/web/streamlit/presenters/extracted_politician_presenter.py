@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Any
 
 import pandas as pd
-from dependency_injector.wiring import Container
 
 from src.application.dtos.convert_extracted_politician_dto import (
     ConvertExtractedPoliticianInputDTO,
@@ -24,7 +23,7 @@ from src.application.usecases.review_extracted_politician_usecase import (
 from src.common.logging import get_logger
 from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
-from src.infrastructure.adapters.repository_adapter import RepositoryAdapter
+from src.infrastructure.di.container import Container
 from src.infrastructure.persistence.extracted_politician_repository_impl import (
     ExtractedPoliticianRepositoryImpl,
 )
@@ -34,11 +33,12 @@ from src.infrastructure.persistence.political_party_repository_impl import (
 from src.infrastructure.persistence.politician_repository_impl import (
     PoliticianRepositoryImpl,
 )
+from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.infrastructure.persistence.speaker_repository_impl import (
     SpeakerRepositoryImpl,
 )
 from src.interfaces.web.streamlit.presenters.base import BasePresenter
-from src.interfaces.web.streamlit.session_manager import SessionManager
+from src.interfaces.web.streamlit.utils.session_manager import SessionManager
 
 
 class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
