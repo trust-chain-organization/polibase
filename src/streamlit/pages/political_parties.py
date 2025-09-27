@@ -7,7 +7,20 @@ import pandas as pd
 from sqlalchemy import text
 
 import streamlit as st
+from src.application.usecases.get_party_statistics_usecase import (
+    GetPartyStatisticsUseCase,
+)
+from src.config.async_database import get_async_session
 from src.config.database import get_db_engine
+from src.infrastructure.persistence.extracted_politician_repository_impl import (
+    ExtractedPoliticianRepositoryImpl,
+)
+from src.infrastructure.persistence.political_party_repository_impl import (
+    PoliticalPartyRepositoryImpl,
+)
+from src.infrastructure.persistence.politician_repository_impl import (
+    PoliticianRepositoryImpl,
+)
 from src.seed_generator import SeedGenerator
 
 
@@ -32,6 +45,23 @@ def manage_political_parties():
         if not parties:
             st.info("政党が登録されていません")
             return
+
+        # 統計情報を取得（非同期処理を同期的に実行）
+        async def get_statistics():
+            async with get_async_session() as session:
+                party_repo = PoliticalPartyRepositoryImpl(session)
+                extracted_repo = ExtractedPoliticianRepositoryImpl(session)
+                politician_repo = PoliticianRepositoryImpl(session)
+
+                use_case = GetPartyStatisticsUseCase(
+                    party_repo, extracted_repo, politician_repo
+                )
+                return await use_case.execute()
+
+        party_statistics = asyncio.run(get_statistics())
+
+        # party_idをキーとした辞書に変換
+        stats_by_party = {stat["party_id"]: stat for stat in party_statistics}
 
         # SEEDファイル生成セクション（一番上に配置）
         with st.container():
@@ -125,7 +155,11 @@ def manage_political_parties():
                 is_scraping = st.session_state.get(scraping_processing_key, False)
 
                 # 各政党を個別に表示
-                col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 1, 1])
+                # 統計情報を取得
+                party_stats = stats_by_party.get(party.id, None)
+
+                # 政党名とURL状態の表示
+                col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
 
                 with col1:
                     st.markdown(f"**{party.name}**")
@@ -137,23 +171,14 @@ def manage_political_parties():
                         st.error("❌ URL未設定")
 
                 with col3:
-                    # 編集状態の管理
-                    edit_key = f"edit_party_{party.id}"
-                    if edit_key not in st.session_state:
-                        st.session_state[edit_key] = False
-
-                    # 現在のURLを表示（編集モードでない場合）
-                    if not st.session_state[edit_key] and party.members_list_url:
-                        url = party.members_list_url
-                        display_url = url[:25] + "..." if len(url) > 25 else url
-                        st.caption(f"🔗 {display_url}")
-
-                with col4:
                     if st.button("✏️ 編集", key=f"edit_party_btn_{party.id}"):
+                        edit_key = f"edit_party_{party.id}"
+                        if edit_key not in st.session_state:
+                            st.session_state[edit_key] = False
                         st.session_state[edit_key] = not st.session_state[edit_key]
                         st.rerun()
 
-                with col5:
+                with col4:
                     # 政治家抽出ボタン
                     if is_scraping:
                         st.button(
@@ -183,6 +208,40 @@ def manage_political_parties():
                             disabled=True,
                             help="議員一覧URLを設定してください",
                         )
+
+                # 統計情報の表示
+                if party_stats:
+                    # 統計情報を一行で表示
+                    stats_text_parts = []
+
+                    # extracted_politicians総数
+                    extracted_total = party_stats["extracted_total"]
+                    if extracted_total > 0:
+                        stats_text_parts.append(f"📊 抽出済み: {extracted_total}")
+
+                    # 承認済み
+                    approved = party_stats["extracted_approved"]
+                    if approved > 0:
+                        stats_text_parts.append(f"✅ 承認済み: {approved}")
+
+                    # politicians総数
+                    politicians_total = party_stats["politicians_total"]
+                    stats_text_parts.append(f"👥 政治家: {politicians_total}")
+
+                    # 一行で表示
+                    if stats_text_parts:
+                        st.caption(" | ".join(stats_text_parts))
+
+                # 編集状態の管理
+                edit_key = f"edit_party_{party.id}"
+                if edit_key not in st.session_state:
+                    st.session_state[edit_key] = False
+
+                # 現在のURLを表示（編集モードでない場合）
+                if not st.session_state[edit_key] and party.members_list_url:
+                    url = party.members_list_url
+                    display_url = url[:50] + "..." if len(url) > 50 else url
+                    st.caption(f"🔗 {display_url}")
 
                 # 編集モード
                 if st.session_state[edit_key]:
