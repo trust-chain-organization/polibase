@@ -167,10 +167,9 @@ def show_meetings_list():
 
             # 処理状態を取得
             try:
-                import nest_asyncio
+                from src.streamlit.utils.async_helper import run_async_in_streamlit
 
-                nest_asyncio.apply()
-                status = asyncio.run(get_meeting_status(m.id))
+                status = run_async_in_streamlit(get_meeting_status(m.id))
             except Exception:
                 # エラーが発生した場合はデフォルト値を使用
                 status = {
@@ -1242,7 +1241,6 @@ def execute_minutes_scraping(meeting_id: int, url: str):
 
     def run_async_scraping():
         """非同期処理を実行するラッパー関数"""
-        import asyncio
         import os
         from pathlib import Path
 
@@ -1276,7 +1274,11 @@ def execute_minutes_scraping(meeting_id: int, url: str):
             proc_logger.add_log(meeting_id, f"議事録を取得中: {url}", "info")
 
             # 非同期関数を同期的に実行
-            minutes = asyncio.run(service.fetch_from_url(url, use_cache=False))
+            from src.streamlit.utils.async_helper import run_async_in_streamlit
+
+            minutes = run_async_in_streamlit(
+                service.fetch_from_url(url, use_cache=False)
+            )
 
             if not minutes:
                 proc_logger.add_log(

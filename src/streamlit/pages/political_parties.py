@@ -10,7 +10,6 @@ import streamlit as st
 from src.application.usecases.get_party_statistics_usecase import (
     GetPartyStatisticsUseCase,
 )
-from src.config.async_database import get_async_session
 from src.config.database import get_db_engine
 from src.infrastructure.persistence.extracted_politician_repository_impl import (
     ExtractedPoliticianRepositoryImpl,
@@ -46,7 +45,10 @@ def manage_political_parties():
             st.info("政党が登録されていません")
             return
 
-        # 統計情報を取得（非同期処理を同期的に実行）
+        # 統計情報を取得（同期的に実行）
+        from src.config.async_database import get_async_session
+        from src.streamlit.utils.async_helper import run_async_in_streamlit
+
         async def get_statistics():
             async with get_async_session() as session:
                 party_repo = PoliticalPartyRepositoryImpl(session)
@@ -58,7 +60,7 @@ def manage_political_parties():
                 )
                 return await use_case.execute()
 
-        party_statistics = asyncio.run(get_statistics())
+        party_statistics = run_async_in_streamlit(get_statistics())
 
         # party_idをキーとした辞書に変換
         stats_by_party = {stat["party_id"]: stat for stat in party_statistics}
