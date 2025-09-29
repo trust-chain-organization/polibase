@@ -55,8 +55,9 @@ graph TB
 - **GoverningBody**: 開催主体（国、都道府県、市町村）
 - **Conference**: 会議体（議会、委員会）
 - **Meeting**: 会議の具体的な開催インスタンス
-- **Speaker**: 発言者
-- **Politician**: 政治家
+- **Speaker**: 議事録から抽出された発言者（議事録における政治家の表現を記録）
+- **Politician**: 政治家マスタデータ（議事録由来または政党サイト由来）
+- **ExtractedPolitician**: 政党サイトから抽出された政治家の中間データ（レビュー後にPoliticianに変換）
 - **Conversation**: 発言内容
 - **PoliticalParty**: 政党
 - **ParliamentaryGroup**: 議員団（会派）
@@ -133,7 +134,9 @@ sequenceDiagram
     participant ScrapePoliticiansUseCase
     participant WebScraper
     participant LLM
-    participant Repository
+    participant ExtractedPoliticianRepo
+    participant ReviewProcess
+    participant PoliticianRepo
 
     User->>CLI: scrape-politicians command
     CLI->>ScrapePoliticiansUseCase: execute()
@@ -141,9 +144,53 @@ sequenceDiagram
     WebScraper-->>ScrapePoliticiansUseCase: HTML content
     ScrapePoliticiansUseCase->>LLM: extract politician data
     LLM-->>ScrapePoliticiansUseCase: structured data
-    ScrapePoliticiansUseCase->>Repository: save politicians
+    ScrapePoliticiansUseCase->>ExtractedPoliticianRepo: save as ExtractedPolitician
     ScrapePoliticiansUseCase-->>CLI: result
     CLI-->>User: scraping complete
+
+    Note over User,ReviewProcess: レビュープロセス
+    User->>ReviewProcess: approve politician
+    ReviewProcess->>ExtractedPoliticianRepo: update status to approved
+    ReviewProcess->>PoliticianRepo: convert to Politician
+    ReviewProcess->>ExtractedPoliticianRepo: update status to converted
+```
+
+### 3. エンティティ関係図
+
+```mermaid
+erDiagram
+    SPEAKERS ||--o| POLITICIANS : "議事録由来の紐付け"
+    EXTRACTED_POLITICIANS ||--o| POLITICIANS : "承認後に変換"
+    POLITICAL_PARTIES ||--o{ POLITICIANS : "所属"
+    POLITICAL_PARTIES ||--o{ EXTRACTED_POLITICIANS : "所属"
+    SPEAKERS ||--o{ CONVERSATIONS : "発言"
+    MINUTES ||--o{ CONVERSATIONS : "含む"
+
+    SPEAKERS {
+        int id PK
+        string name "議事録上の名前"
+        string type
+        string political_party_name
+        string position
+    }
+
+    POLITICIANS {
+        int id PK
+        string name "正式名"
+        int speaker_id FK "nullable"
+        int political_party_id FK
+        string district
+        string profile_url
+    }
+
+    EXTRACTED_POLITICIANS {
+        int id PK
+        string name
+        int party_id FK
+        string district
+        string profile_url
+        string status "レビュー状態"
+    }
 ```
 
 ## 技術スタック

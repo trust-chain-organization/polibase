@@ -11,7 +11,6 @@ class CreatePoliticianDTO:
     speaker_id: int
     political_party_id: int | None = None
     furigana: str | None = None
-    position: str | None = None
     district: str | None = None
     profile_page_url: str | None = None
 
@@ -24,7 +23,6 @@ class UpdatePoliticianDTO:
     name: str | None = None
     political_party_id: int | None = None
     furigana: str | None = None
-    position: str | None = None
     district: str | None = None
     profile_page_url: str | None = None
 

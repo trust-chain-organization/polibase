@@ -8,6 +8,8 @@ import pandas as pd
 from src.common.logging import get_logger
 from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
+from src.domain.entities.politician import Politician
+from src.domain.entities.speaker import Speaker
 from src.infrastructure.di.container import Container
 from src.infrastructure.persistence.extracted_politician_repository_impl import (
     ExtractedPoliticianRepositoryImpl,
@@ -226,7 +228,27 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
                     "review": "reviewed",
                 }
                 name = updated_politician.name
-                return True, f"Successfully {action_past[action]} politician: {name}"
+
+                # If approved, automatically convert to Politician
+                conversion_message = ""
+                if action == "approve":
+                    try:
+                        # Convert to Politician
+                        converted = self._convert_single_politician(updated_politician)
+                        if converted:
+                            # Update status to converted
+                            self.extracted_politician_repo.update_status(
+                                politician_id, "converted", reviewer_id
+                            )
+                            conversion_message = " and converted to politician"
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Failed to auto-convert politician {politician_id}: {e}"
+                        )
+                        conversion_message = " (auto-conversion failed)"
+
+                msg = f"Successfully {action_past[action]} politician: {name}"
+                return True, msg + conversion_message
             else:
                 return (
                     False,
@@ -389,3 +411,76 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             )
 
         return pd.DataFrame(data)
+
+    def _convert_single_politician(self, extracted: ExtractedPolitician) -> bool:
+        """Convert a single extracted politician to politician table.
+
+        Args:
+            extracted: ExtractedPolitician entity
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Check for existing politician
+            existing_politician = self.politician_repo.get_by_name_and_party(
+                extracted.name, extracted.party_id
+            )
+
+            if existing_politician:
+                # Update existing politician
+                existing_politician.district = (
+                    extracted.district or existing_politician.district
+                )
+                existing_politician.profile_page_url = (
+                    extracted.profile_url or existing_politician.profile_page_url
+                )
+                self.politician_repo.update(existing_politician)
+                self.logger.info(f"Updated existing politician: {extracted.name}")
+            else:
+                # Create new politician without speaker_id
+                # (speaker_id will be set later when politician is
+                # identified from meeting minutes)
+                politician = Politician(
+                    name=extracted.name,
+                    speaker_id=None,  # No speaker_id from party websites
+                    political_party_id=extracted.party_id,
+                    district=extracted.district,
+                    profile_page_url=extracted.profile_url,
+                )
+                self.politician_repo.create(politician)
+                self.logger.info(
+                    f"Created new politician: {extracted.name} (from party website)"
+                )
+
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Failed to convert politician {extracted.name}: {e}")
+            return False
+
+    def _get_or_create_speaker(self, extracted: ExtractedPolitician) -> Speaker | None:
+        """Get or create a speaker for the extracted politician.
+
+        Args:
+            extracted: ExtractedPolitician entity
+
+        Returns:
+            Speaker entity or None if failed
+        """
+        try:
+            # Check for existing speaker
+            existing_speakers = self.speaker_repo.find_by_name(extracted.name)
+            if existing_speakers:
+                return existing_speakers[0]
+
+            # Create new speaker
+            speaker = Speaker(
+                name=extracted.name,
+                position=None,
+                party_name=None,
+            )
+            return self.speaker_repo.create(speaker)
+        except Exception as e:
+            self.logger.error(f"Failed to get or create speaker: {e}")
+            return None

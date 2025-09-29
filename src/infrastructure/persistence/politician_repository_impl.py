@@ -313,9 +313,13 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                 "party_position": getattr(row, "party_position", None),
             }
 
+        # Handle speaker_id properly - it can be NULL
+        speaker_id_value = data.get("speaker_id")
+        speaker_id = int(speaker_id_value) if speaker_id_value is not None else None
+
         return Politician(
             name=str(data.get("name") or ""),
-            speaker_id=int(data.get("speaker_id") or 0),
+            speaker_id=speaker_id,
             political_party_id=data.get("political_party_id"),
             furigana=None,  # Not in current database
             district=data.get(

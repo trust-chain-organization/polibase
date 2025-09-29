@@ -51,7 +51,7 @@ Table Speakers {
   is_politician boolean [default: false] // 政治家かどうか
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
-  note: '発言者'
+  note: '議事録から抽出された発言者。議事録における政治家の表現（例：「山田太郎君」「山田議員」など）を記録し、Politiciansテーブルとの紐付けを管理'
 }
 
 Table PoliticalParties {
@@ -65,16 +65,17 @@ Table PoliticalParties {
 
 Table Politicians {
   id int [pk, increment] // 政治家固有のID
-  name varchar [not null] // 政治家名
+  name varchar [not null] // 政治家名（正式名）
   political_party_id int [ref: > PoliticalParties.id] // 現在の主要所属政党 (履歴はPartyMembershipHistoryで管理)
-  speaker_id int [ref: > Speakers.id, unique] // 各政治家は一意の発言者でもある (1対1関係) - nullable
-  position text // 役職（衆議院議員、参議院議員など）
+  speaker_id int [ref: > Speakers.id, unique] // 議事録から抽出された場合の発言者ID (政党サイトから取得した場合はNULL)
+  furigana varchar // ふりがな
   prefecture varchar(10) // 都道府県
   electoral_district text // 選挙区
   profile_url text // プロフィールページURL
+  party_position varchar // 党内役職（代表、幹事長など）
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
-  note: '政治家'
+  note: '政治家マスタデータ。議事録から特定された政治家（speaker_id有）と政党サイトから取得した政治家（speaker_id無）の両方を管理'
 }
 
 Table Pledges {
@@ -196,4 +197,19 @@ Table ParliamentaryGroupMemberships {
   created_at timestamp [default: `now()`]
   updated_at timestamp [default: `now()`]
   note: '議員団所属履歴'
+}
+
+Table ExtractedPoliticians {
+  id int [pk, increment]
+  name varchar(255) [not null] // 政治家名
+  party_id int [ref: > PoliticalParties.id] // 所属政党ID
+  district varchar(255) // 選挙区
+  profile_url varchar(500) // プロフィールURL
+  status varchar(50) [default: 'pending'] // ステータス（pending, reviewed, approved, rejected, converted）
+  extracted_at timestamp [not null, default: `now()`] // 抽出日時
+  reviewed_at timestamp // レビュー日時
+  reviewer_id int // レビュー者ID
+  created_at timestamp [not null, default: `now()`]
+  updated_at timestamp [not null, default: `now()`]
+  note: '政党サイトから抽出された政治家の中間データ。レビュー後に承認されるとPoliticiansテーブルに変換される'
 }

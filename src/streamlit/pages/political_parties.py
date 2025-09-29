@@ -7,15 +7,9 @@ import pandas as pd
 from sqlalchemy import text
 
 import streamlit as st
-from src.application.usecases.get_party_statistics_usecase import (
-    GetPartyStatisticsUseCase,
-)
 from src.config.database import get_db_engine
 from src.infrastructure.persistence.extracted_politician_repository_impl import (
     ExtractedPoliticianRepositoryImpl,
-)
-from src.infrastructure.persistence.political_party_repository_impl import (
-    PoliticalPartyRepositoryImpl,
 )
 from src.infrastructure.persistence.politician_repository_impl import (
     PoliticianRepositoryImpl,
@@ -45,22 +39,41 @@ def manage_political_parties():
             st.info("政党が登録されていません")
             return
 
-        # 統計情報を取得（同期的に実行）
-        from src.config.async_database import get_async_session
-        from src.streamlit.utils.async_helper import run_async_in_streamlit
+        # 統計情報を取得（RepositoryAdapterを使用）
+        from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 
-        async def get_statistics():
-            async with get_async_session() as session:
-                party_repo = PoliticalPartyRepositoryImpl(session)
-                extracted_repo = ExtractedPoliticianRepositoryImpl(session)
-                politician_repo = PoliticianRepositoryImpl(session)
+        # RepositoryAdapterを使用して同期的に実行
+        extracted_repo_sync = RepositoryAdapter(ExtractedPoliticianRepositoryImpl)
+        politician_repo_sync = RepositoryAdapter(PoliticianRepositoryImpl)
 
-                use_case = GetPartyStatisticsUseCase(
-                    party_repo, extracted_repo, politician_repo
-                )
-                return await use_case.execute()
+        # 統計情報を同期的に取得
+        party_statistics = []
 
-        party_statistics = run_async_in_streamlit(get_statistics())
+        # 各政党の統計を取得
+        for party in parties:
+            party_id = party.id
+
+            # 抽出済み政治家の統計を取得
+            extracted_stats = extracted_repo_sync.get_statistics_by_party(party_id)
+
+            # 登録済み政治家数を取得
+            registered_politicians = politician_repo_sync.get_by_party(party_id)
+            registered_count = (
+                len(registered_politicians) if registered_politicians else 0
+            )
+
+            party_statistics.append(
+                {
+                    "party_id": party_id,
+                    "party_name": party.name,
+                    "extracted_total": extracted_stats.get("total", 0),
+                    "extracted_pending": extracted_stats.get("pending", 0),
+                    "extracted_approved": extracted_stats.get("approved", 0),
+                    "extracted_rejected": extracted_stats.get("rejected", 0),
+                    "extracted_converted": extracted_stats.get("converted", 0),
+                    "registered_count": registered_count,
+                }
+            )
 
         # party_idをキーとした辞書に変換
         stats_by_party = {stat["party_id"]: stat for stat in party_statistics}
@@ -227,8 +240,8 @@ def manage_political_parties():
                         stats_text_parts.append(f"✅ 承認済み: {approved}")
 
                     # politicians総数
-                    politicians_total = party_stats["politicians_total"]
-                    stats_text_parts.append(f"👥 政治家: {politicians_total}")
+                    registered_count = party_stats["registered_count"]
+                    stats_text_parts.append(f"👥 政治家: {registered_count}")
 
                     # 一行で表示
                     if stats_text_parts:

@@ -53,9 +53,7 @@ class TestReviewExtractedPoliticianUseCase:
             name="山田太郎",
             party_id=1,
             district="東京1区",
-            position="衆議院議員",
             profile_url="https://example.com/profile",
-            image_url="https://example.com/image.jpg",
             status="pending",
             extracted_at=datetime.now(),
         )

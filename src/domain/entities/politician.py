@@ -9,7 +9,7 @@ class Politician(BaseEntity):
     def __init__(
         self,
         name: str,
-        speaker_id: int,
+        speaker_id: int | None = None,
         political_party_id: int | None = None,
         furigana: str | None = None,
         district: str | None = None,

@@ -84,7 +84,6 @@ class TestScrapePoliticiansUseCase:
                 id=1,
                 name="山田太郎",
                 party_id=1,
-                position="衆議院議員",
                 district="東京1区",
                 status="pending",
             ),
@@ -92,7 +91,6 @@ class TestScrapePoliticiansUseCase:
                 id=2,
                 name="鈴木花子",
                 party_id=1,
-                position="参議院議員",
                 district="比例区",
                 status="pending",
             ),
@@ -218,7 +216,6 @@ class TestScrapePoliticiansUseCase:
             id=10,
             name="山田太郎",
             party_id=1,
-            position="衆議院議員",
             status="pending",
         )
 
@@ -263,7 +260,6 @@ class TestScrapePoliticiansUseCase:
             id=10,
             name="山田太郎",
             party_id=1,
-            position="衆議院議員",
             district="東京1区",
             status="pending",
         )
