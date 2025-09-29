@@ -280,7 +280,6 @@ class TestPoliticianRepositoryImpl:
             name="モデル太郎",
             speaker_id=25,
             political_party_id=7,
-            position="衆議院議員",
             district="京都1区",
             profile_page_url="https://example.com/model",
             id=30,
@@ -293,7 +292,6 @@ class TestPoliticianRepositoryImpl:
         assert result.name == "モデル太郎"
         assert result.speaker_id == 25
         assert result.political_party_id == 7
-        assert result.position == "衆議院議員"
         assert result.electoral_district == "京都1区"  # district -> electoral_district
         assert (
             result.profile_url == "https://example.com/model"

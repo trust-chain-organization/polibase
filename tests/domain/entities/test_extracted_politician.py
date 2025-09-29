@@ -18,9 +18,7 @@ class TestExtractedPolitician:
         assert politician.name == "山田太郎"
         assert politician.party_id is None
         assert politician.district is None
-        assert politician.position is None
         assert politician.profile_url is None
-        assert politician.image_url is None
         assert politician.status == "pending"
         assert isinstance(politician.extracted_at, datetime)
         assert politician.reviewed_at is None
@@ -36,9 +34,7 @@ class TestExtractedPolitician:
             name="山田太郎",
             party_id=1,
             district="東京1区",
-            position="衆議院議員",
             profile_url="https://example.com/profile",
-            image_url="https://example.com/image.jpg",
             status="approved",
             extracted_at=extracted_at,
             reviewed_at=reviewed_at,
@@ -49,9 +45,7 @@ class TestExtractedPolitician:
         assert politician.name == "山田太郎"
         assert politician.party_id == 1
         assert politician.district == "東京1区"
-        assert politician.position == "衆議院議員"
         assert politician.profile_url == "https://example.com/profile"
-        assert politician.image_url == "https://example.com/image.jpg"
         assert politician.status == "approved"
         assert politician.extracted_at == extracted_at
         assert politician.reviewed_at == reviewed_at
@@ -200,9 +194,7 @@ class TestExtractedPolitician:
         assert politician.name == "山田太郎"
         assert politician.party_id == 1
         assert politician.district == "東京1区"
-        assert politician.position == "衆議院議員"
         assert politician.profile_url == "https://example.com/profile"
-        assert politician.image_url == "https://example.com/image.jpg"
         assert politician.status == "pending"
 
     def test_factory_with_overrides(self) -> None:
@@ -221,7 +213,6 @@ class TestExtractedPolitician:
         assert politician.party_id == 3
         assert politician.district == "大阪1区"
         # Verify defaults are still applied
-        assert politician.position == "衆議院議員"
         assert politician.profile_url == "https://example.com/profile"
 
     def test_extracted_at_default_value(self) -> None:
@@ -238,13 +229,11 @@ class TestExtractedPolitician:
             name="田中次郎",
             party_id=2,
             district="京都2区",
-            position="参議院議員",
         )
 
         assert politician.name == "田中次郎"
         assert politician.party_id == 2
         assert politician.district == "京都2区"
-        assert politician.position == "参議院議員"
 
     def test_politician_without_party_affiliation(self) -> None:
         """Test a politician without party affiliation (independent)."""

@@ -451,7 +451,6 @@ class SeedGenerator:
                 text("""
                     SELECT
                         p.name,
-                        p.position,
                         p.prefecture,
                         p.electoral_district,
                         p.profile_url,

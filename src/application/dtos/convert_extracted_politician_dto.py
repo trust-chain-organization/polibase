@@ -18,7 +18,7 @@ class ConvertedPoliticianDTO:
     name: str
     party_id: int | None
     district: str | None
-    speaker_id: int
+    speaker_id: int | None
     profile_url: str | None
 
 
