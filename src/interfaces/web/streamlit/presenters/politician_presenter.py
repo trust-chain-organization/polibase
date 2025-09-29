@@ -104,7 +104,6 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
         party_id: int | None = None,
         district: str | None = None,
         profile_url: str | None = None,
-        image_url: str | None = None,
     ) -> tuple[bool, str | None]:
         """Update an existing politician."""
         try:
@@ -115,7 +114,6 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
                     party_id=party_id,
                     district=district,
                     profile_url=profile_url,
-                    image_url=image_url,
                 )
             )
             if result.success:

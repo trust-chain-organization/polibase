@@ -575,3 +575,8 @@ When working on this project, refer to these documentation files for detailed in
   - 修正方法を具体的に記述
   - 関連するPRやIssueをリンク
   - 優先度を適切に設定（通常は高優先度）
+- **Pre-commit Hooks遵守**: **絶対に `--no-verify` オプションを使用してpre-commit hooksを回避しないでください**
+  - pre-commit hooksがfailした場合は、必ずエラーを修正してからコミットしてください
+  - ruff、pyright、prettier等のチェックが通らない場合は、コードを修正してください
+  - 一時的な回避が必要な場合は、設定ファイル（pyproject.toml等）で適切に除外設定を追加してください
+  - `git commit --no-verify` は使用禁止です

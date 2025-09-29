@@ -66,9 +66,7 @@ class TestConvertExtractedPoliticianUseCase:
                 name="山田太郎",
                 party_id=1,
                 district="東京1区",
-                position="衆議院議員",
                 profile_url="https://example.com/yamada",
-                image_url="https://example.com/yamada.jpg",
                 status="approved",
             ),
             ExtractedPolitician(
@@ -76,9 +74,7 @@ class TestConvertExtractedPoliticianUseCase:
                 name="鈴木花子",
                 party_id=2,
                 district="大阪2区",
-                position="参議院議員",
                 profile_url="https://example.com/suzuki",
-                image_url="https://example.com/suzuki.jpg",
                 status="approved",
             ),
         ]
@@ -105,9 +101,7 @@ class TestConvertExtractedPoliticianUseCase:
                 speaker_id=1,
                 political_party_id=1,
                 district="東京1区",
-                position="衆議院議員",
                 profile_page_url="https://example.com/yamada",
-                profile_image_url="https://example.com/yamada.jpg",
             ),
             Politician(
                 id=2,
@@ -115,9 +109,7 @@ class TestConvertExtractedPoliticianUseCase:
                 speaker_id=2,
                 political_party_id=2,
                 district="大阪2区",
-                position="参議院議員",
                 profile_page_url="https://example.com/suzuki",
-                profile_image_url="https://example.com/suzuki.jpg",
             ),
         ]
 
@@ -157,9 +149,7 @@ class TestConvertExtractedPoliticianUseCase:
             name="山田太郎",
             party_id=1,
             district="東京2区",  # Updated district
-            position="衆議院議員",
             profile_url="https://example.com/yamada-new",
-            image_url="https://example.com/yamada-new.jpg",
             status="approved",
         )
 
@@ -172,9 +162,7 @@ class TestConvertExtractedPoliticianUseCase:
             speaker_id=5,
             political_party_id=1,
             district="東京1区",  # Old district
-            position="衆議院議員",
             profile_page_url="https://example.com/yamada-old",
-            profile_image_url="https://example.com/yamada-old.jpg",
         )
         mock_politician_repo.get_by_name_and_party.return_value = existing_politician
 
@@ -189,9 +177,7 @@ class TestConvertExtractedPoliticianUseCase:
             speaker_id=5,
             political_party_id=1,
             district="東京2区",  # Updated
-            position="衆議院議員",
             profile_page_url="https://example.com/yamada-new",  # Updated
-            profile_image_url="https://example.com/yamada-new.jpg",  # Updated
         )
         mock_politician_repo.update.return_value = updated_politician
 
@@ -228,7 +214,6 @@ class TestConvertExtractedPoliticianUseCase:
             name="山田太郎",
             party_id=1,
             district="東京1区",
-            position="衆議院議員",
             status="approved",
         )
 

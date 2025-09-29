@@ -23,9 +23,7 @@ class TestPoliticianDomainService:
             speaker_id=100,
             political_party_id=1,
             furigana="ヤマダタロウ",
-            position="議員",
             district="東京1区",
-            profile_image_url="https://example.com/image.jpg",
             profile_page_url="https://example.com/profile",
         )
 
@@ -121,9 +119,7 @@ class TestPoliticianDomainService:
             speaker_id=100,
             political_party_id=1,
             furigana=None,
-            position=None,
             district="東京1区",
-            profile_image_url=None,
             profile_page_url=None,
         )
 
@@ -132,9 +128,7 @@ class TestPoliticianDomainService:
             speaker_id=200,  # Different speaker_id
             political_party_id=2,
             furigana="ヤマダタロウ",
-            position="議員",
             district="東京2区",
-            profile_image_url="https://example.com/new.jpg",
             profile_page_url="https://example.com/new",
         )
 
@@ -148,8 +142,6 @@ class TestPoliticianDomainService:
         # Should take new values when existing is None
         assert merged.political_party_id == 2
         assert merged.furigana == "ヤマダタロウ"
-        assert merged.position == "議員"
-        assert merged.profile_image_url == "https://example.com/new.jpg"
         assert merged.profile_page_url == "https://example.com/new"
 
         # Should take new value when provided

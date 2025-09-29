@@ -1,6 +1,5 @@
 """議案管理UI（Streamlit）."""
 
-import asyncio
 import logging
 from typing import cast
 
@@ -262,9 +261,11 @@ def manage_proposals_tab():
                                     url=detail_url, meeting_id=None
                                 )
                                 # 非同期処理を同期的に実行
-                                loop = asyncio.new_event_loop()
-                                asyncio.set_event_loop(loop)
-                                result = loop.run_until_complete(
+                                from src.streamlit.utils.async_helper import (
+                                    run_async_in_streamlit,
+                                )
+
+                                result = run_async_in_streamlit(
                                     use_case.execute(input_dto)
                                 )
                                 if result:
@@ -354,8 +355,13 @@ def manage_proposals_tab():
                                 )
 
                                 # 非同期処理を同期的に実行
-                                # Streamlitでは asyncio.run() を使用する
-                                result = asyncio.run(use_case.extract_judges(input_dto))
+                                from src.streamlit.utils.async_helper import (
+                                    run_async_in_streamlit,
+                                )
+
+                                result = run_async_in_streamlit(
+                                    use_case.extract_judges(input_dto)
+                                )
 
                                 if result and result.extracted_count > 0:
                                     st.success(

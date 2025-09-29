@@ -10,7 +10,6 @@ class PoliticianBase(BaseModel):
 
     name: str = Field(..., description="政治家名")
     political_party_id: int | None = Field(None, description="現在の主要所属政党ID")
-    position: str | None = Field(None, description="役職（衆議院議員、参議院議員など）")
     prefecture: str | None = Field(None, description="都道府県", max_length=10)
     electoral_district: str | None = Field(None, description="選挙区")
     profile_url: str | None = Field(None, description="プロフィールページURL")
@@ -28,7 +27,6 @@ class PoliticianUpdate(BaseModel):
 
     name: str | None = Field(None, description="政治家名")
     political_party_id: int | None = Field(None, description="現在の主要所属政党ID")
-    position: str | None = Field(None, description="役職（衆議院議員、参議院議員など）")
     prefecture: str | None = Field(None, description="都道府県", max_length=10)
     electoral_district: str | None = Field(None, description="選挙区")
     profile_url: str | None = Field(None, description="プロフィールページURL")

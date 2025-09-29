@@ -95,9 +95,7 @@ def create_politician_dto(**kwargs: Any) -> PoliticianDTO:
         "political_party_id": 1,
         "political_party_name": "自民党",
         "furigana": None,
-        "position": None,
         "district": None,
-        "profile_image_url": None,
         "profile_page_url": None,
     }
     defaults.update(kwargs)
@@ -110,9 +108,7 @@ def create_extracted_politician_dto(**kwargs: Any) -> ExtractedPoliticianDTO:
         "name": "山田太郎",
         "party_id": 1,
         "furigana": None,
-        "position": None,
         "district": None,
-        "profile_image_url": None,
         "profile_page_url": None,
         "source_url": "https://example.com/members",
     }

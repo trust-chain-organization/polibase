@@ -52,9 +52,7 @@ class PoliticianDomainService:
             political_party_id=new_info.political_party_id
             or existing.political_party_id,
             furigana=new_info.furigana or existing.furigana,
-            position=new_info.position or existing.position,
             district=new_info.district or existing.district,
-            profile_image_url=new_info.profile_image_url or existing.profile_image_url,
             profile_page_url=new_info.profile_page_url or existing.profile_page_url,
             id=existing.id,
         )

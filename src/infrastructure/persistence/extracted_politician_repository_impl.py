@@ -20,9 +20,7 @@ class ExtractedPoliticianModel:
     name: str
     party_id: int | None
     district: str | None
-    position: str | None
     profile_url: str | None
-    image_url: str | None
     status: str
     extracted_at: datetime
     reviewed_at: datetime | None
@@ -47,11 +45,11 @@ class ExtractedPoliticianRepositoryImpl(
         """Create a new extracted politician using raw SQL."""
         query = text("""
             INSERT INTO extracted_politicians (
-                name, party_id, district, position, profile_url, image_url,
+                name, party_id, district, profile_url,
                 status, extracted_at, reviewed_at, reviewer_id
             )
             VALUES (
-                :name, :party_id, :district, :position, :profile_url, :image_url,
+                :name, :party_id, :district, :profile_url,
                 :status, :extracted_at, :reviewed_at, :reviewer_id
             )
             RETURNING *
@@ -61,9 +59,7 @@ class ExtractedPoliticianRepositoryImpl(
             "name": entity.name,
             "party_id": entity.party_id,
             "district": entity.district,
-            "position": entity.position,
             "profile_url": entity.profile_url,
-            "image_url": entity.image_url,
             "status": entity.status,
             "extracted_at": entity.extracted_at,
             "reviewed_at": entity.reviewed_at,
@@ -78,6 +74,24 @@ class ExtractedPoliticianRepositoryImpl(
             return self._row_to_entity(row)
         raise ValueError("Failed to create extracted politician")
 
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = None
+    ) -> list[ExtractedPolitician]:
+        """Get all extracted politicians using raw SQL."""
+        query_str = "SELECT * FROM extracted_politicians ORDER BY extracted_at DESC"
+
+        if limit is not None:
+            query_str += f" LIMIT {limit}"
+        if offset is not None:
+            query_str += f" OFFSET {offset}"
+
+        query = text(query_str)
+
+        result = await self.session.execute(query)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
     async def get_by_id(self, entity_id: int) -> ExtractedPolitician | None:
         """Get extracted politician by ID using raw SQL."""
         query = text("""
@@ -91,6 +105,59 @@ class ExtractedPoliticianRepositoryImpl(
         if row:
             return self._row_to_entity(row)
         return None
+
+    async def update(self, entity: ExtractedPolitician) -> ExtractedPolitician:
+        """Update an existing entity using raw SQL."""
+        if not entity.id:
+            raise ValueError("Entity must have an ID to update")
+
+        query = text("""
+            UPDATE extracted_politicians
+            SET name = :name,
+                party_id = :party_id,
+                district = :district,
+                profile_url = :profile_url,
+                status = :status,
+                extracted_at = :extracted_at,
+                reviewed_at = :reviewed_at,
+                reviewer_id = :reviewer_id,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :id
+            RETURNING *
+        """)
+
+        params = {
+            "id": entity.id,
+            "name": entity.name,
+            "party_id": entity.party_id,
+            "district": entity.district,
+            "profile_url": entity.profile_url,
+            "status": entity.status,
+            "extracted_at": entity.extracted_at,
+            "reviewed_at": entity.reviewed_at,
+            "reviewer_id": entity.reviewer_id,
+        }
+
+        result = await self.session.execute(query, params)
+        row = result.fetchone()
+        await self.session.commit()
+
+        if row:
+            return self._row_to_entity(row)
+        raise ValueError(f"Entity with ID {entity.id} not found")
+
+    async def delete(self, entity_id: int) -> bool:
+        """Delete an entity by ID using raw SQL."""
+        query = text("""
+            DELETE FROM extracted_politicians
+            WHERE id = :id
+        """)
+
+        await self.session.execute(query, {"id": entity_id})
+        await self.session.commit()
+
+        # Check if any rows were affected
+        return True  # Assume success if no exception was raised
 
     async def get_pending(
         self, party_id: int | None = None
@@ -282,9 +349,7 @@ class ExtractedPoliticianRepositoryImpl(
             name=row.name,
             party_id=row.party_id,
             district=row.district,
-            position=row.position,
             profile_url=row.profile_url,
-            image_url=row.image_url,
             status=row.status,
             extracted_at=row.extracted_at,
             reviewed_at=row.reviewed_at,
@@ -298,9 +363,7 @@ class ExtractedPoliticianRepositoryImpl(
             name=model.name,
             party_id=model.party_id,
             district=model.district,
-            position=model.position,
             profile_url=model.profile_url,
-            image_url=model.image_url,
             status=model.status,
             extracted_at=model.extracted_at,
             reviewed_at=model.reviewed_at,
@@ -314,9 +377,7 @@ class ExtractedPoliticianRepositoryImpl(
         model.name = entity.name
         model.party_id = entity.party_id
         model.district = entity.district
-        model.position = entity.position
         model.profile_url = entity.profile_url
-        model.image_url = entity.image_url
         model.status = entity.status
         model.extracted_at = entity.extracted_at
         model.reviewed_at = entity.reviewed_at

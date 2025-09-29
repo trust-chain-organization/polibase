@@ -219,9 +219,6 @@ def render_edit_delete_tab(presenter: PoliticianPresenter):
             new_profile_url = st.text_input(
                 "プロフィールURL", value=selected_politician.profile_page_url or ""
             )
-            new_image_url = st.text_input(
-                "画像URL", value=selected_politician.profile_image_url or ""
-            )
 
             submitted = st.form_submit_button("更新")
 
@@ -238,7 +235,6 @@ def render_edit_delete_tab(presenter: PoliticianPresenter):
                         party_id,
                         new_district if new_district else None,
                         new_profile_url if new_profile_url else None,
-                        new_image_url if new_image_url else None,
                     )
                     if success:
                         st.success("政治家を更新しました")

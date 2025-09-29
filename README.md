@@ -10,6 +10,14 @@
 詳細なデータベース設計はこちらをご確認ください：
 https://dbdocs.io/polibase/Polibase
 
+### 主要エンティティの役割
+
+- **Speaker**: 議事録から抽出された発言者。議事録における政治家の表現（例：「山田太郎君」「山田議員」など）を記録
+- **Politician**: 政治家マスタデータ。議事録由来（speaker_id有）と政党サイト由来（speaker_id無）の両方を管理
+- **ExtractedPolitician**: 政党サイトから抽出された政治家の中間データ。レビュー後に承認されるとPoliticianテーブルに変換される
+- **PoliticalParty**: 政党マスタデータ
+- **Conversation**: 議事録の発言内容
+
 ## 🚀 環境構築手順
 
 ### 前提条件

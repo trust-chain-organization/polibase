@@ -94,9 +94,7 @@ def create_politician(**kwargs: Any) -> Politician:
         "speaker_id": 1,
         "political_party_id": None,
         "furigana": None,
-        "position": None,
         "district": None,
-        "profile_image_url": None,
         "profile_page_url": None,
     }
     defaults.update(kwargs)
@@ -110,9 +108,7 @@ def create_extracted_politician(**kwargs: Any) -> ExtractedPolitician:
         "name": "山田太郎",
         "party_id": 1,
         "district": "東京1区",
-        "position": "衆議院議員",
         "profile_url": "https://example.com/profile",
-        "image_url": "https://example.com/image.jpg",
         "status": "pending",
         "extracted_at": datetime.now(),
         "reviewed_at": None,

@@ -122,9 +122,7 @@ class ScrapePoliticiansUseCase:
                             party_id=data.party_id,
                             party_name=party.name,
                             district=data.district,
-                            position=data.position,
                             profile_url=data.profile_page_url,
-                            image_url=data.profile_image_url,
                             status="pending",
                         )
                     )
@@ -145,9 +143,7 @@ class ScrapePoliticiansUseCase:
                             party_id=politician.party_id,
                             party_name=party.name,
                             district=politician.district,
-                            position=politician.position,
                             profile_url=politician.profile_url,
-                            image_url=politician.image_url,
                             status=politician.status,
                         )
                     )
@@ -195,9 +191,7 @@ class ScrapePoliticiansUseCase:
                 name=item["name"],
                 party_id=party.id,  # Safe because we checked above
                 furigana=item.get("furigana"),
-                position=item.get("position"),
                 district=item.get("district"),
-                profile_image_url=item.get("profile_image_url"),
                 profile_page_url=item.get("profile_page_url"),
                 source_url=party.members_list_url,
             )
@@ -242,9 +236,7 @@ class ScrapePoliticiansUseCase:
                 name=data.name,
                 party_id=data.party_id,
                 district=data.district,
-                position=data.position,
                 profile_url=data.profile_page_url,
-                image_url=data.profile_image_url,
                 status="pending",  # Initial status is pending for review
             )
 
