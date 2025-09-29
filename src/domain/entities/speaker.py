@@ -13,6 +13,7 @@ class Speaker(BaseEntity):
         political_party_name: str | None = None,
         position: str | None = None,
         is_politician: bool = False,
+        politician_id: int | None = None,
         id: int | None = None,
     ) -> None:
         super().__init__(id)
@@ -21,6 +22,7 @@ class Speaker(BaseEntity):
         self.political_party_name = political_party_name
         self.position = position
         self.is_politician = is_politician
+        self.politician_id = politician_id
 
     def __str__(self) -> str:
         parts = [self.name]

@@ -67,11 +67,11 @@ class TestMatchSpeakersUseCase:
     ):
         """Test matching when speaker already has a linked politician."""
         # Setup
-        speaker = Speaker(id=1, name="山田太郎", is_politician=True)
-        politician = Politician(id=10, name="山田太郎", speaker_id=1)
+        speaker = Speaker(id=1, name="山田太郎", is_politician=True, politician_id=10)
+        politician = Politician(id=10, name="山田太郎", political_party_id=1)
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = politician
+        mock_politician_repo.get_by_id.return_value = politician
 
         # Execute
         results = use_case.execute(use_llm=False)
@@ -89,10 +89,10 @@ class TestMatchSpeakersUseCase:
         """Test rule-based matching."""
         # Setup
         speaker = Speaker(id=2, name="鈴木花子", is_politician=True)
-        politician = Politician(id=20, name="鈴木花子", speaker_id=None)
+        politician = Politician(id=20, name="鈴木花子", political_party_id=1)
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = [politician]
         mock_speaker_service.calculate_name_similarity.return_value = 0.9
 
@@ -112,10 +112,10 @@ class TestMatchSpeakersUseCase:
         """Test LLM-based matching."""
         # Setup
         speaker = Speaker(id=3, name="田中次郎", is_politician=True)
-        politician = Politician(id=30, name="田中次郎", speaker_id=None)
+        politician = Politician(id=30, name="田中次郎", political_party_id=2)
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []  # No rule-based match
         mock_politician_repo.get_all.return_value = [politician]
         mock_politician_repo.get_by_id.return_value = politician
@@ -143,7 +143,7 @@ class TestMatchSpeakersUseCase:
         speaker = Speaker(id=4, name="佐藤三郎", is_politician=True)
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []
 
         # Execute
@@ -167,7 +167,7 @@ class TestMatchSpeakersUseCase:
         # Configure mock to not have batch_get_by_ids method
         del mock_speaker_repo.batch_get_by_ids
         mock_speaker_repo.get_by_id.side_effect = [speaker1, speaker2]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []
 
         # Execute
@@ -187,7 +187,7 @@ class TestMatchSpeakersUseCase:
         ]
 
         mock_speaker_repo.get_politicians.return_value = speakers
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []
 
         # Execute
@@ -206,7 +206,7 @@ class TestMatchSpeakersUseCase:
 
         mock_speaker_repo.get_politicians.return_value = speakers
         mock_politician_repo = use_case.politician_repo
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []
 
         # Execute
@@ -230,12 +230,11 @@ class TestMatchSpeakersUseCase:
         politician = Politician(
             id=50,
             name="高橋四郎",
-            speaker_id=None,
             political_party_id=1,
         )
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = [politician]
         mock_speaker_service.calculate_name_similarity.return_value = 0.75
 
@@ -256,7 +255,7 @@ class TestMatchSpeakersUseCase:
         speaker = Speaker(id=6, name="新人議員", is_politician=True)
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []
         # Configure mock to not have get_all_cached method
         del mock_politician_repo.get_all_cached

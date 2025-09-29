@@ -143,7 +143,6 @@ class ConvertExtractedPoliticianUseCase:
                             name=extracted.name,
                             party_id=extracted.party_id,
                             district=extracted.district,
-                            speaker_id=0,  # Mock speaker ID for dry run
                             profile_url=extracted.profile_url,
                         )
                     )
@@ -157,7 +156,6 @@ class ConvertExtractedPoliticianUseCase:
                                 name=politician.name,
                                 party_id=politician.political_party_id,
                                 district=politician.district,
-                                speaker_id=politician.speaker_id,
                                 profile_url=politician.profile_page_url,
                             )
                         )
@@ -211,11 +209,8 @@ class ConvertExtractedPoliticianUseCase:
             Exception: スピーカー作成に失敗した場合
         """
         try:
-            # Create or get speaker
-            speaker = await self._get_or_create_speaker(extracted)
-            if not speaker or not speaker.id:
-                logger.error(f"Failed to create speaker for {extracted.name}")
-                raise Exception(f"Failed to create speaker for {extracted.name}")
+            # Note: We no longer create speaker here as it's
+            # decoupled from politician creation
 
             # Check for existing politician
             existing_politician = await self.politician_repo.get_by_name_and_party(
@@ -236,13 +231,21 @@ class ConvertExtractedPoliticianUseCase:
                 # Create new politician
                 politician = Politician(
                     name=extracted.name,
-                    speaker_id=speaker.id,
                     political_party_id=extracted.party_id,
                     district=extracted.district,
                     profile_page_url=extracted.profile_url,
                 )
                 politician = await self.politician_repo.create(politician)
                 logger.info(f"Created new politician: {politician.name}")
+
+                # Create or update speaker and link to politician
+                speaker = await self._get_or_create_speaker(extracted)
+                if speaker and politician.id:
+                    speaker.politician_id = politician.id
+                    await self.speaker_repo.update(speaker)
+                    logger.info(
+                        f"Linked speaker {speaker.name} to politician {politician.name}"
+                    )
 
             return politician
 

@@ -8,7 +8,6 @@ class CreatePoliticianDTO:
     """DTO for creating a politician."""
 
     name: str
-    speaker_id: int
     political_party_id: int | None = None
     furigana: str | None = None
     district: str | None = None
@@ -33,7 +32,6 @@ class PoliticianDTO:
 
     id: int
     name: str
-    speaker_id: int
     political_party_id: int | None
     political_party_name: str | None
     furigana: str | None

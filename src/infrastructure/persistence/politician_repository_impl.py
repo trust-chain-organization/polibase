@@ -100,29 +100,8 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             row = result.fetchone()
             return self._row_to_entity(row) if row else None
 
-    async def get_by_speaker_id(self, speaker_id: int) -> Politician | None:
-        """Get politician by speaker ID."""
-        if self.async_session:
-            query = text("""
-                SELECT * FROM politicians
-                WHERE speaker_id = :speaker_id
-                LIMIT 1
-            """)
-            result = await self.async_session.execute(query, {"speaker_id": speaker_id})
-            row = result.fetchone()
-            return self._row_to_entity(row) if row else None
-        else:
-            # Sync implementation
-            if not self.sync_session:
-                return None
-            query = text("""
-                SELECT * FROM politicians
-                WHERE speaker_id = :speaker_id
-                LIMIT 1
-            """)
-            result = self.sync_session.execute(query, {"speaker_id": speaker_id})
-            row = result.fetchone()
-            return self._row_to_entity(row) if row else None
+    # Removed get_by_speaker_id method as speaker_id is no longer on politicians table
+    # Politicians are now linked from speakers table via speakers.politician_id
 
     async def get_by_party(self, political_party_id: int) -> list[Politician]:
         """Get all politicians for a political party."""
@@ -222,7 +201,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                         "electoral_district",
                         "profile_url",
                         "party_position",
-                        "speaker_id",
                     ]:
                         if field in data and data[field] != getattr(
                             existing, field, None
@@ -237,7 +215,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                     # Create new politician
                     new_politician = Politician(
                         name=data.get("name", ""),
-                        speaker_id=data.get("speaker_id", 0),  # Provide default value
                         political_party_id=data.get("political_party_id"),
                         district=data.get("electoral_district"),
                         profile_page_url=data.get("profile_url"),
@@ -305,23 +282,18 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
             data = {
                 "id": getattr(row, "id", None),
                 "name": getattr(row, "name", None),
-                "speaker_id": getattr(row, "speaker_id", None),
                 "political_party_id": getattr(row, "political_party_id", None),
                 "prefecture": getattr(row, "prefecture", None),
                 "electoral_district": getattr(row, "electoral_district", None),
                 "profile_url": getattr(row, "profile_url", None),
                 "party_position": getattr(row, "party_position", None),
+                "furigana": getattr(row, "furigana", None),
             }
-
-        # Handle speaker_id properly - it can be NULL
-        speaker_id_value = data.get("speaker_id")
-        speaker_id = int(speaker_id_value) if speaker_id_value is not None else None
 
         return Politician(
             name=str(data.get("name") or ""),
-            speaker_id=speaker_id,
             political_party_id=data.get("political_party_id"),
-            furigana=None,  # Not in current database
+            furigana=data.get("furigana"),
             district=data.get(
                 "electoral_district"
             ),  # Map electoral_district to district
@@ -339,21 +311,22 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         """Convert domain entity to database model."""
         return self.model_class(
             name=entity.name,
-            speaker_id=entity.speaker_id,
             political_party_id=entity.political_party_id,
             prefecture=None,  # No direct mapping from entity.district
             electoral_district=entity.district,  # Map district to electoral_district
             profile_url=entity.profile_page_url,  # Map profile_page_url to profile_url
             party_position=None,  # Not in entity
+            furigana=entity.furigana,
+            id=entity.id,
         )
 
     def _update_model(self, model: Any, entity: Politician) -> None:
         """Update model fields from entity."""
         model.name = entity.name
-        model.speaker_id = entity.speaker_id
         model.political_party_id = entity.political_party_id
         model.electoral_district = entity.district
         model.profile_url = entity.profile_page_url
+        model.furigana = entity.furigana
 
     async def create_entity(self, entity: Politician) -> Politician:
         """Create a new politician entity (async) without committing."""
@@ -499,7 +472,6 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                             "electoral_district",
                             "profile_url",
                             "party_position",
-                            "speaker_id",
                         ]:
                             if field in data and data[field] != existing.get(field):
                                 update_fields.append(f"{field} = :{field}")
@@ -665,24 +637,24 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         """Create a new politician."""
         query = text("""
             INSERT INTO politicians (
-                name, speaker_id, political_party_id,
-                electoral_district, profile_url
+                name, political_party_id,
+                electoral_district, profile_url, furigana
             )
             VALUES (
-                :name, :speaker_id, :political_party_id,
-                :electoral_district, :profile_url
+                :name, :political_party_id,
+                :electoral_district, :profile_url, :furigana
             )
             RETURNING *
         """)
 
         params = {
             "name": entity.name,
-            "speaker_id": entity.speaker_id,
             "political_party_id": entity.political_party_id,
             # Map district to electoral_district
             "electoral_district": entity.district,
             # Map profile_page_url to profile_url
             "profile_url": entity.profile_page_url,
+            "furigana": entity.furigana,
         }
 
         if not self.async_session:
@@ -703,10 +675,10 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         query = text("""
             UPDATE politicians
             SET name = :name,
-                speaker_id = :speaker_id,
                 political_party_id = :political_party_id,
                 electoral_district = :electoral_district,
-                profile_url = :profile_url
+                profile_url = :profile_url,
+                furigana = :furigana
             WHERE id = :id
             RETURNING *
         """)
@@ -714,12 +686,12 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         params = {
             "id": entity.id,
             "name": entity.name,
-            "speaker_id": entity.speaker_id,
             "political_party_id": entity.political_party_id,
             # Map district to electoral_district
             "electoral_district": entity.district,
             # Map profile_page_url to profile_url
             "profile_url": entity.profile_page_url,
+            "furigana": entity.furigana,
         }
 
         if not self.async_session:
