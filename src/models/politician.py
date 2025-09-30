@@ -19,7 +19,7 @@ class PoliticianBase(BaseModel):
 class PoliticianCreate(PoliticianBase):
     """Model for creating a politician"""
 
-    speaker_id: int | None = Field(None, description="関連する発言者ID")
+    pass
 
 
 class PoliticianUpdate(BaseModel):
@@ -31,10 +31,14 @@ class PoliticianUpdate(BaseModel):
     electoral_district: str | None = Field(None, description="選挙区")
     profile_url: str | None = Field(None, description="プロフィールページURL")
     party_position: str | None = Field(None, description="党内役職（代表、幹事長など）")
-    speaker_id: int | None = Field(None, description="関連する発言者ID")
 
 
 class Politician(PoliticianBase, DBModel):
-    """Complete politician model with all fields"""
+    """Complete politician model with all fields
 
-    speaker_id: int | None = Field(None, description="関連する発言者ID")
+    Note: Speaker-Politician relationship is now managed through
+    speakers.politician_id (many-to-one), not politicians.speaker_id.
+    See Issue #531 for details.
+    """
+
+    pass
