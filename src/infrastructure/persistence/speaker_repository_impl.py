@@ -110,6 +110,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             political_party_name=model.political_party_name,
             position=model.position,
             is_politician=model.is_politician,
+            politician_id=getattr(model, "politician_id", None),
             id=model.id,
         )
 
@@ -281,6 +282,38 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
         if row:
             return self._row_to_entity(row)
         raise RuntimeError("Failed to create speaker")
+
+    async def update(self, entity: Speaker) -> Speaker:
+        """Update an existing speaker."""
+        query = text("""
+            UPDATE speakers
+            SET name = :name,
+                type = :type,
+                political_party_name = :political_party_name,
+                position = :position,
+                is_politician = :is_politician,
+                politician_id = :politician_id
+            WHERE id = :id
+            RETURNING *
+        """)
+
+        params = {
+            "id": entity.id,
+            "name": entity.name,
+            "type": entity.type,
+            "political_party_name": entity.political_party_name,
+            "position": entity.position,
+            "is_politician": entity.is_politician,
+            "politician_id": entity.politician_id,
+        }
+
+        result = await self.session.execute(query, params)
+        await self.session.commit()
+
+        row = result.first()
+        if row:
+            return self._row_to_entity(row)
+        raise ValueError(f"Speaker with ID {entity.id} not found")
 
     def _row_to_entity(self, row: Any) -> Speaker:
         """Convert database row to domain entity."""
