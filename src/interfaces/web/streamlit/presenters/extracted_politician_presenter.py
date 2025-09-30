@@ -1,7 +1,7 @@
 """Presenter for extracted politician review functionality."""
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -53,22 +53,25 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
 
         # Get use cases from container or use provided instances
         if review_use_case is None:
-            self.review_use_case = (
-                self.container.use_cases.review_extracted_politician_usecase()
+            self.review_use_case = cast(
+                ReviewExtractedPoliticianUseCase,
+                self.container.use_cases.review_extracted_politician_usecase(),
             )
         else:
             self.review_use_case = review_use_case
 
         if convert_use_case is None:
-            self.convert_use_case = (
-                self.container.use_cases.convert_extracted_politician_usecase()
+            self.convert_use_case = cast(
+                ConvertExtractedPoliticianUseCase,
+                self.container.use_cases.convert_extracted_politician_usecase(),
             )
         else:
             self.convert_use_case = convert_use_case
 
         if review_and_convert_use_case is None:
-            self.review_and_convert_use_case = (
-                self.container.use_cases.review_and_convert_politician_usecase()
+            self.review_and_convert_use_case = cast(
+                ReviewAndConvertPoliticianUseCase,
+                self.container.use_cases.review_and_convert_politician_usecase(),
             )
         else:
             self.review_and_convert_use_case = review_and_convert_use_case

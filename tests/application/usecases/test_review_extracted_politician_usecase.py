@@ -180,30 +180,19 @@ class TestReviewExtractedPoliticianUseCase:
     ):
         """Test getting filtered politicians."""
         # Arrange
-        politicians = [
-            ExtractedPolitician(
-                id=1,
-                name="山田太郎",
-                party_id=1,
-                status="pending",
-                extracted_at=datetime.now(),
-            ),
-            ExtractedPolitician(
-                id=2,
-                name="佐藤花子",
-                party_id=2,
-                status="approved",
-                extracted_at=datetime.now(),
-            ),
-            ExtractedPolitician(
-                id=3,
-                name="田中一郎",
-                party_id=1,
-                status="pending",
-                extracted_at=datetime.now(),
-            ),
-        ]
-        mock_extracted_politician_repo.get_all.return_value = politicians
+        expected_politician = ExtractedPolitician(
+            id=1,
+            name="山田太郎",
+            party_id=1,
+            status="pending",
+            extracted_at=datetime.now(),
+        )
+
+        # Mock async method
+        async def mock_get_filtered(*args, **kwargs):
+            return [expected_politician]
+
+        mock_extracted_politician_repo.get_filtered = mock_get_filtered
 
         filter_dto = ExtractedPoliticianFilterDTO(
             statuses=["pending"], party_id=1, search_name="山田"

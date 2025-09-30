@@ -1,7 +1,6 @@
 """Use case for reviewing extracted politicians."""
 
 import logging
-from datetime import datetime
 
 from src.application.dtos.review_extracted_politician_dto import (
     BulkReviewInputDTO,
@@ -173,50 +172,23 @@ class ReviewExtractedPoliticianUseCase:
     ) -> list[ExtractedPolitician]:
         """Get filtered list of extracted politicians.
 
+        Uses database-level filtering for better performance.
+
         Args:
             filter_dto: DTO containing filter criteria
 
         Returns:
             List of filtered extracted politicians
         """
-        # Start with all politicians
-        politicians = await self.extracted_politician_repo.get_all()
-
-        # Apply status filter
-        if filter_dto.statuses:
-            politicians = [p for p in politicians if p.status in filter_dto.statuses]
-
-        # Apply party filter
-        if filter_dto.party_id is not None:
-            politicians = [p for p in politicians if p.party_id == filter_dto.party_id]
-
-        # Apply date range filter
-        if filter_dto.start_date:
-            politicians = [
-                p
-                for p in politicians
-                if p.extracted_at and p.extracted_at >= filter_dto.start_date
-            ]
-
-        if filter_dto.end_date:
-            politicians = [
-                p
-                for p in politicians
-                if p.extracted_at and p.extracted_at <= filter_dto.end_date
-            ]
-
-        # Apply name search
-        if filter_dto.search_name:
-            search_term = filter_dto.search_name.lower()
-            politicians = [p for p in politicians if search_term in p.name.lower()]
-
-        # Sort by extracted_at descending
-        politicians.sort(key=lambda p: p.extracted_at or datetime.min, reverse=True)
-
-        # Apply pagination
-        start = filter_dto.offset
-        end = start + filter_dto.limit
-        return politicians[start:end]
+        return await self.extracted_politician_repo.get_filtered(
+            statuses=filter_dto.statuses,
+            party_id=filter_dto.party_id,
+            start_date=filter_dto.start_date,
+            end_date=filter_dto.end_date,
+            search_name=filter_dto.search_name,
+            limit=filter_dto.limit,
+            offset=filter_dto.offset,
+        )
 
     async def get_statistics(self) -> ExtractedPoliticianStatisticsDTO:
         """Get statistics for extracted politicians.
