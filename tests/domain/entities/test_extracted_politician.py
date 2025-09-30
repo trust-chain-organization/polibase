@@ -2,7 +2,9 @@
 
 from datetime import datetime
 
-from src.domain.entities.extracted_politician import ExtractedPolitician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from tests.fixtures.entity_factories import create_extracted_politician
 
 
@@ -11,7 +13,7 @@ class TestExtractedPolitician:
 
     def test_initialization_with_required_fields(self) -> None:
         """Test entity initialization with required fields only."""
-        politician = ExtractedPolitician(
+        politician = PoliticianPartyExtractedPolitician(
             name="山田太郎",
         )
 
@@ -29,7 +31,7 @@ class TestExtractedPolitician:
         extracted_at = datetime(2023, 1, 1, 12, 0, 0)
         reviewed_at = datetime(2023, 1, 2, 12, 0, 0)
 
-        politician = ExtractedPolitician(
+        politician = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -175,7 +177,7 @@ class TestExtractedPolitician:
         """Test string representation of the entity."""
         politician = create_extracted_politician(name="鈴木一郎", status="approved")
 
-        expected = "ExtractedPolitician(name=鈴木一郎, status=approved)"
+        expected = "PoliticianPartyExtractedPolitician(name=鈴木一郎, status=approved)"
         assert str(politician) == expected
 
     def test_different_statuses(self) -> None:
@@ -218,7 +220,7 @@ class TestExtractedPolitician:
     def test_extracted_at_default_value(self) -> None:
         """Test that extracted_at is set to current time by default."""
         before = datetime.now()
-        politician = ExtractedPolitician(name="Test")
+        politician = PoliticianPartyExtractedPolitician(name="Test")
         after = datetime.now()
 
         assert before <= politician.extracted_at <= after

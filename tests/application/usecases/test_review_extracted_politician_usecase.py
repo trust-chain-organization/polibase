@@ -13,8 +13,10 @@ from src.application.dtos.review_extracted_politician_dto import (
 from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 
 
 class TestReviewExtractedPoliticianUseCase:
@@ -48,7 +50,7 @@ class TestReviewExtractedPoliticianUseCase:
     @pytest.fixture
     def sample_extracted_politician(self):
         """Create a sample extracted politician."""
-        return ExtractedPolitician(
+        return PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -180,7 +182,7 @@ class TestReviewExtractedPoliticianUseCase:
     ):
         """Test getting filtered politicians."""
         # Arrange
-        expected_politician = ExtractedPolitician(
+        expected_politician = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,

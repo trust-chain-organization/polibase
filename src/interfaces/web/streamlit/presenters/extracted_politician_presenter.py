@@ -24,14 +24,18 @@ from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
 from src.common.logging import get_logger
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.infrastructure.di.container import Container
 from src.interfaces.web.streamlit.presenters.base import BasePresenter
 from src.interfaces.web.streamlit.utils.session_manager import SessionManager
 
 
-class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
+class ExtractedPoliticianPresenter(
+    BasePresenter[list[PoliticianPartyExtractedPolitician]]
+):
     """Presenter for extracted politician review operations."""
 
     def __init__(
@@ -79,7 +83,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         self.session = SessionManager()
         self.logger = get_logger(__name__)
 
-    def load_data(self) -> list[ExtractedPolitician]:
+    def load_data(self) -> list[PoliticianPartyExtractedPolitician]:
         """Load all extracted politicians.
 
         Returns:
@@ -144,7 +148,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         search_name: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[ExtractedPolitician]:
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get filtered extracted politicians.
 
         Args:
@@ -329,7 +333,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
 
     def to_dataframe(
         self,
-        politicians: list[ExtractedPolitician],
+        politicians: list[PoliticianPartyExtractedPolitician],
         parties: list[PoliticalParty] | None = None,
     ) -> pd.DataFrame | None:
         """Convert extracted politicians to DataFrame.

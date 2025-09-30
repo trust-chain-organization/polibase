@@ -6,8 +6,10 @@ import pytest
 
 from src.application.dtos.politician_dto import ScrapePoliticiansInputDTO
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 
 
 class TestScrapePoliticiansUseCase:
@@ -80,14 +82,14 @@ class TestScrapePoliticiansUseCase:
 
         # Mock created entities
         mock_extracted_politician_repo.create.side_effect = [
-            ExtractedPolitician(
+            PoliticianPartyExtractedPolitician(
                 id=1,
                 name="山田太郎",
                 party_id=1,
                 district="東京1区",
                 status="pending",
             ),
-            ExtractedPolitician(
+            PoliticianPartyExtractedPolitician(
                 id=2,
                 name="鈴木花子",
                 party_id=1,
@@ -212,7 +214,7 @@ class TestScrapePoliticiansUseCase:
             name="自民党",
             members_list_url="https://example.com/members",
         )
-        existing_extracted = ExtractedPolitician(
+        existing_extracted = PoliticianPartyExtractedPolitician(
             id=10,
             name="山田太郎",
             party_id=1,
@@ -256,7 +258,7 @@ class TestScrapePoliticiansUseCase:
             name="自民党",
             members_list_url="https://example.com/members",
         )
-        new_extracted = ExtractedPolitician(
+        new_extracted = PoliticianPartyExtractedPolitician(
             id=10,
             name="山田太郎",
             party_id=1,

@@ -16,8 +16,10 @@ from src.application.usecases.review_and_convert_politician_usecase import (
 from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.politician import Politician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.entities.speaker import Speaker
 
 
@@ -101,7 +103,7 @@ class TestReviewAndConvertPoliticianUseCase:
         5. ステータス更新の確認
         """
         # Setup - ExtractedPolitician
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -112,7 +114,7 @@ class TestReviewAndConvertPoliticianUseCase:
 
         # Mock for review step
         mock_extracted_politician_repo.get_by_id.return_value = extracted
-        approved_politician = ExtractedPolitician(
+        approved_politician = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -180,7 +182,7 @@ class TestReviewAndConvertPoliticianUseCase:
         4. ステータスが'approved'のままであることを確認
         """
         # Setup
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -190,7 +192,7 @@ class TestReviewAndConvertPoliticianUseCase:
 
         # Mock for review step (succeeds)
         mock_extracted_politician_repo.get_by_id.return_value = extracted
-        approved_politician = ExtractedPolitician(
+        approved_politician = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -240,7 +242,7 @@ class TestReviewAndConvertPoliticianUseCase:
         4. 重複作成されていないことを確認
         """
         # Setup - Extracted politician
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -251,7 +253,7 @@ class TestReviewAndConvertPoliticianUseCase:
 
         # Mock for review step
         mock_extracted_politician_repo.get_by_id.return_value = extracted
-        approved_politician = ExtractedPolitician(
+        approved_politician = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -323,7 +325,7 @@ class TestReviewAndConvertPoliticianUseCase:
         3. 変換は実行されない
         """
         # Setup
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -331,7 +333,7 @@ class TestReviewAndConvertPoliticianUseCase:
         )
 
         mock_extracted_politician_repo.get_by_id.return_value = extracted
-        approved_politician = ExtractedPolitician(
+        approved_politician = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -369,7 +371,7 @@ class TestReviewAndConvertPoliticianUseCase:
         3. 変換は実行されない
         """
         # Setup
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -377,7 +379,7 @@ class TestReviewAndConvertPoliticianUseCase:
         )
 
         mock_extracted_politician_repo.get_by_id.return_value = extracted
-        rejected_politician = ExtractedPolitician(
+        rejected_politician = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -414,7 +416,7 @@ class TestReviewAndConvertPoliticianUseCase:
         3. 変換はスキップされる
         """
         # Setup
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=None,  # Missing party_id
@@ -422,7 +424,7 @@ class TestReviewAndConvertPoliticianUseCase:
         )
 
         mock_extracted_politician_repo.get_by_id.return_value = extracted
-        approved_politician = ExtractedPolitician(
+        approved_politician = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=None,
