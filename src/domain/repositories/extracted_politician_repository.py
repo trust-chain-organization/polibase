@@ -1,6 +1,7 @@
 """ExtractedPolitician repository interface."""
 
 from abc import abstractmethod
+from datetime import datetime
 
 from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.repositories.base import BaseRepository
@@ -62,5 +63,35 @@ class ExtractedPoliticianRepository(BaseRepository[ExtractedPolitician]):
         Returns:
             Dictionary with status counts
             (total, pending, reviewed, approved, rejected, converted)
+        """
+        pass
+
+    @abstractmethod
+    async def get_filtered(
+        self,
+        statuses: list[str] | None = None,
+        party_id: int | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        search_name: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[ExtractedPolitician]:
+        """Get filtered politicians with database-level filtering.
+
+        This method performs filtering at the database level for better
+        performance with large datasets.
+
+        Args:
+            statuses: List of statuses to filter by
+            party_id: Party ID to filter by
+            start_date: Start date for extraction date filter
+            end_date: End date for extraction date filter
+            search_name: Name search term (case-insensitive)
+            limit: Maximum number of records to return
+            offset: Number of records to skip (for pagination)
+
+        Returns:
+            List of filtered extracted politicians, sorted by extracted_at desc
         """
         pass

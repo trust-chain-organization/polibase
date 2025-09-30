@@ -116,3 +116,37 @@ class ExtractedPoliticianStatisticsDTO:
     rejected_count: int
     converted_count: int
     party_statistics: dict[str, dict[str, int]]
+
+
+@dataclass
+class UpdateExtractedPoliticianInputDTO:
+    """Input DTO for updating an extracted politician.
+
+    Attributes:
+        politician_id: ID of the politician to update
+        name: Updated name
+        party_id: Updated party ID
+        district: Updated district
+        profile_url: Updated profile URL
+    """
+
+    politician_id: int
+    name: str
+    party_id: int | None = None
+    district: str | None = None
+    profile_url: str | None = None
+
+
+@dataclass
+class UpdateExtractedPoliticianOutputDTO:
+    """Output DTO for updating an extracted politician.
+
+    Attributes:
+        success: Whether the update was successful
+        politician_id: ID of the updated politician
+        message: Result message
+    """
+
+    success: bool
+    politician_id: int
+    message: str

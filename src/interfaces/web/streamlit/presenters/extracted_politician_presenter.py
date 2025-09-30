@@ -1,29 +1,32 @@
 """Presenter for extracted politician review functionality."""
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
+from src.application.dtos.convert_extracted_politician_dto import (
+    ConvertExtractedPoliticianInputDTO,
+)
+from src.application.dtos.review_extracted_politician_dto import (
+    BulkReviewInputDTO,
+    ExtractedPoliticianFilterDTO,
+    ReviewExtractedPoliticianInputDTO,
+    UpdateExtractedPoliticianInputDTO,
+)
+from src.application.usecases.convert_extracted_politician_usecase import (
+    ConvertExtractedPoliticianUseCase,
+)
+from src.application.usecases.review_and_convert_politician_usecase import (
+    ReviewAndConvertPoliticianUseCase,
+)
+from src.application.usecases.review_extracted_politician_usecase import (
+    ReviewExtractedPoliticianUseCase,
+)
 from src.common.logging import get_logger
 from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
-from src.domain.entities.politician import Politician
-from src.domain.entities.speaker import Speaker
 from src.infrastructure.di.container import Container
-from src.infrastructure.persistence.extracted_politician_repository_impl import (
-    ExtractedPoliticianRepositoryImpl,
-)
-from src.infrastructure.persistence.political_party_repository_impl import (
-    PoliticalPartyRepositoryImpl,
-)
-from src.infrastructure.persistence.politician_repository_impl import (
-    PoliticianRepositoryImpl,
-)
-from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
-from src.infrastructure.persistence.speaker_repository_impl import (
-    SpeakerRepositoryImpl,
-)
 from src.interfaces.web.streamlit.presenters.base import BasePresenter
 from src.interfaces.web.streamlit.utils.session_manager import SessionManager
 
@@ -31,26 +34,63 @@ from src.interfaces.web.streamlit.utils.session_manager import SessionManager
 class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
     """Presenter for extracted politician review operations."""
 
-    def __init__(self, container: Container | None = None):
-        """Initialize the presenter."""
+    def __init__(
+        self,
+        container: Container | None = None,
+        review_use_case: ReviewExtractedPoliticianUseCase | None = None,
+        convert_use_case: ConvertExtractedPoliticianUseCase | None = None,
+        review_and_convert_use_case: ReviewAndConvertPoliticianUseCase | None = None,
+    ):
+        """Initialize the presenter.
+
+        Args:
+            container: Dependency injection container
+            review_use_case: Use case for reviewing politicians
+            convert_use_case: Use case for converting politicians
+            review_and_convert_use_case: Use case for review with auto-conversion
+        """
         super().__init__(container)
 
-        # Wrap repositories with adapter for sync access
-        self.extracted_politician_repo = RepositoryAdapter(
-            ExtractedPoliticianRepositoryImpl
-        )
-        self.party_repo = RepositoryAdapter(PoliticalPartyRepositoryImpl)
-        self.politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
-        self.speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl)
+        # Get use cases from container or use provided instances
+        if review_use_case is None:
+            self.review_use_case = cast(
+                ReviewExtractedPoliticianUseCase,
+                self.container.use_cases.review_extracted_politician_usecase(),
+            )
+        else:
+            self.review_use_case = review_use_case
+
+        if convert_use_case is None:
+            self.convert_use_case = cast(
+                ConvertExtractedPoliticianUseCase,
+                self.container.use_cases.convert_extracted_politician_usecase(),
+            )
+        else:
+            self.convert_use_case = convert_use_case
+
+        if review_and_convert_use_case is None:
+            self.review_and_convert_use_case = cast(
+                ReviewAndConvertPoliticianUseCase,
+                self.container.use_cases.review_and_convert_politician_usecase(),
+            )
+        else:
+            self.review_and_convert_use_case = review_and_convert_use_case
 
         self.session = SessionManager()
         self.logger = get_logger(__name__)
 
     def load_data(self) -> list[ExtractedPolitician]:
-        """Load all extracted politicians."""
+        """Load all extracted politicians.
+
+        Returns:
+            List of all extracted politicians
+        """
         try:
-            # RepositoryAdapter already handles async-to-sync conversion
-            return self.extracted_politician_repo.get_all()
+            # Use the review use case to get all politicians
+            filter_dto = ExtractedPoliticianFilterDTO(limit=10000, offset=0)
+            return self._run_async(
+                self.review_use_case.get_filtered_politicians(filter_dto)
+            )
         except Exception as e:
             self.logger.error(f"Failed to load extracted politicians: {e}")
             return []
@@ -92,8 +132,8 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             List of political parties
         """
-        # RepositoryAdapter already handles async-to-sync conversion
-        return self.party_repo.get_all()
+        # Use the review use case to get parties
+        return self._run_async(self.review_use_case.get_all_parties())
 
     def get_filtered_politicians(
         self,
@@ -119,42 +159,18 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             List of filtered extracted politicians
         """
-        # Start with all politicians
-        politicians = self.extracted_politician_repo.get_all()
-
-        # Apply status filter
-        if statuses:
-            politicians = [p for p in politicians if p.status in statuses]
-
-        # Apply party filter
-        if party_id is not None:
-            politicians = [p for p in politicians if p.party_id == party_id]
-
-        # Apply date range filter
-        if start_date:
-            politicians = [
-                p
-                for p in politicians
-                if p.extracted_at and p.extracted_at >= start_date
-            ]
-
-        if end_date:
-            politicians = [
-                p for p in politicians if p.extracted_at and p.extracted_at <= end_date
-            ]
-
-        # Apply name search
-        if search_name:
-            search_term = search_name.lower()
-            politicians = [p for p in politicians if search_term in p.name.lower()]
-
-        # Sort by extracted_at descending
-        politicians.sort(key=lambda p: p.extracted_at or datetime.min, reverse=True)
-
-        # Apply pagination
-        start = offset
-        end = start + limit
-        return politicians[start:end]
+        filter_dto = ExtractedPoliticianFilterDTO(
+            statuses=statuses,
+            party_id=party_id,
+            start_date=start_date,
+            end_date=end_date,
+            search_name=search_name,
+            limit=limit,
+            offset=offset,
+        )
+        return self._run_async(
+            self.review_use_case.get_filtered_politicians(filter_dto)
+        )
 
     def get_statistics(self) -> dict[str, Any]:
         """Get statistics for extracted politicians.
@@ -162,27 +178,15 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             Dictionary with statistics
         """
-        # Get status summary
-        status_summary = self.extracted_politician_repo.get_summary_by_status()
-
-        # Get all parties for party statistics
-        parties = self.party_repo.get_all()
-        party_statistics: dict[str, dict[str, int]] = {}
-
-        for party in parties:
-            if party.id:
-                stats = self.extracted_politician_repo.get_statistics_by_party(party.id)
-                if stats["total"] > 0:  # Only include parties with data
-                    party_statistics[party.name] = stats
-
+        stats_dto = self._run_async(self.review_use_case.get_statistics())
         return {
-            "total": sum(status_summary.values()),
-            "pending": status_summary.get("pending", 0),
-            "reviewed": status_summary.get("reviewed", 0),
-            "approved": status_summary.get("approved", 0),
-            "rejected": status_summary.get("rejected", 0),
-            "converted": status_summary.get("converted", 0),
-            "by_party": party_statistics,
+            "total": stats_dto.total,
+            "pending": stats_dto.pending_count,
+            "reviewed": stats_dto.reviewed_count,
+            "approved": stats_dto.approved_count,
+            "rejected": stats_dto.rejected_count,
+            "converted": stats_dto.converted_count,
+            "by_party": stats_dto.party_statistics,
         }
 
     def review_politician(
@@ -199,61 +203,21 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             Tuple of (success, message)
         """
         try:
-            # Get the politician
-            politician = self.extracted_politician_repo.get_by_id(politician_id)
-            if not politician:
-                return False, f"Politician with ID {politician_id} not found"
-
-            # Validate action
-            if action not in ["approve", "reject", "review"]:
-                return False, f"Invalid action: {action}"
-
-            # Determine new status
-            status_map = {
-                "approve": "approved",
-                "reject": "rejected",
-                "review": "reviewed",
-            }
-            new_status = status_map[action]
-
-            # Update status
-            updated_politician = self.extracted_politician_repo.update_status(
-                politician_id, new_status, reviewer_id
+            # Create input DTO
+            input_dto = ReviewExtractedPoliticianInputDTO(
+                politician_id=politician_id,
+                action=action,
+                reviewer_id=reviewer_id,
             )
 
-            if updated_politician:
-                action_past = {
-                    "approve": "approved",
-                    "reject": "rejected",
-                    "review": "reviewed",
-                }
-                name = updated_politician.name
-
-                # If approved, automatically convert to Politician
-                conversion_message = ""
-                if action == "approve":
-                    try:
-                        # Convert to Politician
-                        converted = self._convert_single_politician(updated_politician)
-                        if converted:
-                            # Update status to converted
-                            self.extracted_politician_repo.update_status(
-                                politician_id, "converted", reviewer_id
-                            )
-                            conversion_message = " and converted to politician"
-                    except Exception as e:
-                        self.logger.warning(
-                            f"Failed to auto-convert politician {politician_id}: {e}"
-                        )
-                        conversion_message = " (auto-conversion failed)"
-
-                msg = f"Successfully {action_past[action]} politician: {name}"
-                return True, msg + conversion_message
-            else:
-                return (
-                    False,
-                    f"Failed to update status for politician ID {politician_id}",
+            # Use the composite use case for review with auto-conversion
+            result = self._run_async(
+                self.review_and_convert_use_case.review_with_auto_convert(
+                    input_dto, auto_convert=True
                 )
+            )
+
+            return result.success, result.message
 
         except Exception as e:
             self.logger.error(f"Error reviewing politician {politician_id}: {e}")
@@ -272,23 +236,22 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             Tuple of (successful_count, failed_count, message)
         """
-        successful_count = 0
-        failed_count = 0
+        try:
+            # Create input DTO
+            input_dto = BulkReviewInputDTO(
+                politician_ids=politician_ids,
+                action=action,
+                reviewer_id=reviewer_id,
+            )
 
-        for politician_id in politician_ids:
-            success, _ = self.review_politician(politician_id, action, reviewer_id)
-            if success:
-                successful_count += 1
-            else:
-                failed_count += 1
+            # Call bulk review use case
+            result = self._run_async(self.review_use_case.bulk_review(input_dto))
 
-        total_processed = len(politician_ids)
-        message = (
-            f"Processed {total_processed} politicians: "
-            f"{successful_count} succeeded, {failed_count} failed"
-        )
+            return result.successful_count, result.failed_count, result.message
 
-        return successful_count, failed_count, message
+        except Exception as e:
+            self.logger.error(f"Error in bulk review: {e}")
+            return 0, len(politician_ids), f"Error: {str(e)}"
 
     def update_politician(
         self,
@@ -305,31 +268,25 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             name: New name
             party_id: New party ID
             district: New district
-            position: New position
             profile_url: New profile URL
-            image_url: New image URL
 
         Returns:
             Tuple of (success, message)
         """
         try:
-            # Get the politician
-            politician = self.extracted_politician_repo.get_by_id(politician_id)
-            if not politician:
-                return False, f"Politician with ID {politician_id} not found"
+            # Create input DTO
+            input_dto = UpdateExtractedPoliticianInputDTO(
+                politician_id=politician_id,
+                name=name,
+                party_id=party_id,
+                district=district,
+                profile_url=profile_url,
+            )
 
-            # Update fields
-            politician.name = name
-            politician.party_id = party_id
-            politician.district = district
-            politician.profile_url = profile_url
+            # Call update use case
+            result = self._run_async(self.review_use_case.update_politician(input_dto))
 
-            # Save updates
-            updated = self.extracted_politician_repo.update(politician)
-            if updated:
-                return True, f"Successfully updated politician: {name}"
-            else:
-                return False, f"Failed to update politician ID {politician_id}"
+            return result.success, result.message
 
         except Exception as e:
             self.logger.error(f"Error updating politician {politician_id}: {e}")
@@ -348,10 +305,27 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             Tuple of (converted_count, skipped_count, error_count, error_messages)
         """
-        # This is a complex operation that still needs async implementation
-        # For now, return a placeholder
-        self.logger.warning("Convert operation not yet implemented in sync mode")
-        return 0, 0, 0, ["Convert operation not yet implemented in sync mode"]
+        try:
+            # Create input DTO
+            input_dto = ConvertExtractedPoliticianInputDTO(
+                party_id=party_id,
+                batch_size=batch_size,
+                dry_run=dry_run,
+            )
+
+            # Call convert use case
+            result = self._run_async(self.convert_use_case.execute(input_dto))
+
+            return (
+                result.converted_count,
+                result.skipped_count,
+                result.error_count,
+                result.error_messages,
+            )
+
+        except Exception as e:
+            self.logger.error(f"Error converting politicians: {e}")
+            return 0, 0, 1, [f"Error: {str(e)}"]
 
     def to_dataframe(
         self,
@@ -411,75 +385,3 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             )
 
         return pd.DataFrame(data)
-
-    def _convert_single_politician(self, extracted: ExtractedPolitician) -> bool:
-        """Convert a single extracted politician to politician table.
-
-        Args:
-            extracted: ExtractedPolitician entity
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            # Check for existing politician
-            existing_politician = self.politician_repo.get_by_name_and_party(
-                extracted.name, extracted.party_id
-            )
-
-            if existing_politician:
-                # Update existing politician
-                existing_politician.district = (
-                    extracted.district or existing_politician.district
-                )
-                existing_politician.profile_page_url = (
-                    extracted.profile_url or existing_politician.profile_page_url
-                )
-                self.politician_repo.update(existing_politician)
-                self.logger.info(f"Updated existing politician: {extracted.name}")
-            else:
-                # Create new politician
-                # Note: Speaker-Politician relationship is managed separately
-                # through the speakers table (speakers.politician_id)
-                politician = Politician(
-                    name=extracted.name,
-                    political_party_id=extracted.party_id,
-                    district=extracted.district,
-                    profile_page_url=extracted.profile_url,
-                )
-                self.politician_repo.create(politician)
-                self.logger.info(
-                    f"Created new politician: {extracted.name} (from party website)"
-                )
-
-            return True
-
-        except Exception as e:
-            self.logger.error(f"Failed to convert politician {extracted.name}: {e}")
-            return False
-
-    def _get_or_create_speaker(self, extracted: ExtractedPolitician) -> Speaker | None:
-        """Get or create a speaker for the extracted politician.
-
-        Args:
-            extracted: ExtractedPolitician entity
-
-        Returns:
-            Speaker entity or None if failed
-        """
-        try:
-            # Check for existing speaker
-            existing_speakers = self.speaker_repo.find_by_name(extracted.name)
-            if existing_speakers:
-                return existing_speakers[0]
-
-            # Create new speaker
-            speaker = Speaker(
-                name=extracted.name,
-                position=None,
-                party_name=None,
-            )
-            return self.speaker_repo.create(speaker)
-        except Exception as e:
-            self.logger.error(f"Failed to get or create speaker: {e}")
-            return None

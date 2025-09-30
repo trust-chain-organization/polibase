@@ -385,3 +385,59 @@ class ExtractedPoliticianRepositoryImpl(
         model.created_at = entity.created_at
         model.updated_at = entity.updated_at
         return model
+
+    async def get_filtered(
+        self,
+        statuses: list[str] | None = None,
+        party_id: int | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        search_name: str | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[ExtractedPolitician]:
+        """Get filtered politicians with database-level filtering."""
+        # Build WHERE conditions
+        conditions = []
+        params: dict[str, Any] = {}
+
+        if statuses:
+            # Use ANY for list matching
+            placeholders = ", ".join(f":status_{i}" for i in range(len(statuses)))
+            conditions.append(f"status IN ({placeholders})")
+            for i, status in enumerate(statuses):
+                params[f"status_{i}"] = status
+
+        if party_id is not None:
+            conditions.append("party_id = :party_id")
+            params["party_id"] = party_id
+
+        if start_date:
+            conditions.append("extracted_at >= :start_date")
+            params["start_date"] = start_date
+
+        if end_date:
+            conditions.append("extracted_at <= :end_date")
+            params["end_date"] = end_date
+
+        if search_name:
+            conditions.append("LOWER(name) LIKE LOWER(:search_name)")
+            params["search_name"] = f"%{search_name}%"
+
+        # Build query
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+        query = text(f"""
+            SELECT * FROM extracted_politicians
+            {where_clause}
+            ORDER BY extracted_at DESC
+            LIMIT :limit OFFSET :offset
+        """)
+
+        params["limit"] = limit
+        params["offset"] = offset
+
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
