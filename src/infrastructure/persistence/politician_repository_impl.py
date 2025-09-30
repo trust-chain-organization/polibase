@@ -1,22 +1,16 @@
-"""Politician repository implementation."""
+"""Politician repository implementation (async-only)."""
 
 import logging
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from src.domain.entities.politician import Politician
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
-from src.models.politician import PoliticianCreate, PoliticianUpdate
-
-# Type alias for SQL parameters
-SQLParam = str | int | float | bool | datetime | None
 
 logger = logging.getLogger(__name__)
 
@@ -30,133 +24,66 @@ class PoliticianModel:
 
 
 class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianRepository):
-    """Implementation of politician repository using SQLAlchemy."""
+    """Async-only implementation of politician repository using SQLAlchemy."""
 
     def __init__(
         self,
-        session: AsyncSession | Session,
+        session: AsyncSession,
         model_class: type[Any] | None = None,
     ):
         """Initialize repository.
 
         Args:
-            session: Database session (async or sync)
+            session: Async database session
             model_class: Optional model class for compatibility
         """
         # Use dynamic model if no model class provided
         if model_class is None:
             model_class = PoliticianModel
 
-        # Handle both async and sync sessions
-        if isinstance(session, AsyncSession):
-            super().__init__(session, Politician, model_class)
-            self.sync_session = None
-            self.async_session = session
-        else:
-            # For sync session, create a wrapper
-            self.sync_session = session
-            self.async_session = None
-            self.session = session
-            self.entity_class = Politician
-            self.model_class = model_class
+        super().__init__(session, Politician, model_class)
 
     async def get_by_name_and_party(
         self, name: str, political_party_id: int | None = None
     ) -> Politician | None:
         """Get politician by name and political party."""
-        if self.async_session:
-            conditions = ["name = :name"]
-            params: dict[str, SQLParam] = {"name": name}
+        conditions = ["name = :name"]
+        params: dict[str, Any] = {"name": name}
 
-            if political_party_id is not None:
-                conditions.append("political_party_id = :party_id")
-                params["party_id"] = political_party_id
+        if political_party_id is not None:
+            conditions.append("political_party_id = :party_id")
+            params["party_id"] = political_party_id
 
-            query = text(f"""
-                SELECT * FROM politicians
-                WHERE {" AND ".join(conditions)}
-                LIMIT 1
-            """)
-            result = await self.async_session.execute(query, params)
-            row = result.fetchone()
-            return self._row_to_entity(row) if row else None
-        else:
-            # Sync implementation
-            if not self.sync_session:
-                return None
-            conditions = ["name = :name"]
-            params: dict[str, SQLParam] = {"name": name}
-
-            if political_party_id is not None:
-                conditions.append("political_party_id = :party_id")
-                params["party_id"] = political_party_id
-
-            query = text(f"""
-                SELECT * FROM politicians
-                WHERE {" AND ".join(conditions)}
-                LIMIT 1
-            """)
-            result = self.sync_session.execute(query, params)
-            row = result.fetchone()
-            return self._row_to_entity(row) if row else None
-
-    # Removed get_by_speaker_id method as speaker_id is no longer on politicians table
-    # Politicians are now linked from speakers table via speakers.politician_id
+        query = text(f"""
+            SELECT * FROM politicians
+            WHERE {" AND ".join(conditions)}
+            LIMIT 1
+        """)
+        result = await self.session.execute(query, params)
+        row = result.fetchone()
+        return self._row_to_entity(row) if row else None
 
     async def get_by_party(self, political_party_id: int) -> list[Politician]:
         """Get all politicians for a political party."""
-        if self.async_session:
-            query = text("""
-                SELECT * FROM politicians
-                WHERE political_party_id = :party_id
-                ORDER BY name
-            """)
-            result = await self.async_session.execute(
-                query, {"party_id": political_party_id}
-            )
-            rows = result.fetchall()
-            return [self._row_to_entity(row) for row in rows]
-        else:
-            # Sync implementation
-            if not self.sync_session:
-                return []
-            query = text("""
-                SELECT * FROM politicians
-                WHERE political_party_id = :party_id
-                ORDER BY name
-            """)
-            result = self.sync_session.execute(query, {"party_id": political_party_id})
-            rows = result.fetchall()
-            return [self._row_to_entity(row) for row in rows]
+        query = text("""
+            SELECT * FROM politicians
+            WHERE political_party_id = :party_id
+            ORDER BY name
+        """)
+        result = await self.session.execute(query, {"party_id": political_party_id})
+        rows = result.fetchall()
+        return [self._row_to_entity(row) for row in rows]
 
     async def search_by_name(self, name_pattern: str) -> list[Politician]:
         """Search politicians by name pattern."""
-        if self.async_session:
-            query = text("""
-                SELECT * FROM politicians
-                WHERE name ILIKE :pattern
-                ORDER BY name
-            """)
-            result = await self.async_session.execute(
-                query, {"pattern": f"%{name_pattern}%"}
-            )
-            rows = result.fetchall()
-            return [self._row_to_entity(row) for row in rows]
-        else:
-            # Sync implementation - still return Politician objects
-            if not self.sync_session:
-                return []
-
-            query = text("""
-                SELECT * FROM politicians
-                WHERE name ILIKE :pattern
-                ORDER BY name
-            """)
-            result = self.sync_session.execute(query, {"pattern": f"%{name_pattern}%"})
-            rows = result.fetchall()
-
-            # Return as Politician objects for consistency
-            return [self._row_to_entity(row) for row in rows]
+        query = text("""
+            SELECT * FROM politicians
+            WHERE name ILIKE :pattern
+            ORDER BY name
+        """)
+        result = await self.session.execute(query, {"pattern": f"%{name_pattern}%"})
+        rows = result.fetchall()
+        return [self._row_to_entity(row) for row in rows]
 
     async def upsert(self, politician: Politician) -> Politician:
         """Insert or update politician (upsert)."""
@@ -243,11 +170,8 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
                 )
                 errors.append({"data": data, "error": f"Unexpected error: {str(e)}"})
 
-        # Commit changes if async
-        if self.async_session:
-            await self.async_session.commit()
-        elif self.sync_session:
-            self.sync_session.commit()
+        # Commit changes
+        await self.session.commit()
 
         return {"created": created, "updated": updated, "errors": errors}
 
@@ -255,17 +179,147 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         self, query: str, params: dict[str, Any] | None = None
     ) -> list[dict[str, Any]]:
         """Execute raw SQL query and return results as dictionaries (async)."""
-        if self.async_session:
-            result = await self.async_session.execute(text(query), params or {})
-            rows = result.fetchall()
-            return [dict(row) for row in rows]
-        else:
-            # Sync implementation
-            if not self.sync_session:
-                return []
-            result = self.sync_session.execute(text(query), params or {})
-            rows = result.fetchall()
-            return [dict(row) for row in rows]
+        result = await self.session.execute(text(query), params or {})
+        rows = result.fetchall()
+        return [dict(row._mapping) for row in rows]  # type: ignore[attr-defined]
+
+    async def create_entity(self, entity: Politician) -> Politician:
+        """Create a new politician entity (async) without committing."""
+        # Create without committing (for bulk operations)
+        model = self._to_model(entity)
+
+        self.session.add(model)
+        # Don't commit here - let the caller decide when to commit
+        await self.session.flush()  # Flush to get the ID without committing
+        await self.session.refresh(model)
+
+        return self._to_entity(model)
+
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = 0
+    ) -> list[Politician]:
+        """Get all politicians."""
+        query_text = """
+            SELECT p.*, pp.name as party_name
+            FROM politicians p
+            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
+            ORDER BY p.name
+        """
+        params = {}
+
+        if limit is not None:
+            query_text += " LIMIT :limit OFFSET :offset"
+            params = {"limit": limit, "offset": offset or 0}
+
+        result = await self.session.execute(
+            text(query_text), params if params else None
+        )
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
+    async def get_by_id(self, entity_id: int) -> Politician | None:
+        """Get politician by ID."""
+        query = text("""
+            SELECT p.*, pp.name as party_name
+            FROM politicians p
+            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
+            WHERE p.id = :id
+        """)
+
+        result = await self.session.execute(query, {"id": entity_id})
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        return None
+
+    async def create(self, entity: Politician) -> Politician:
+        """Create a new politician."""
+        query = text("""
+            INSERT INTO politicians (
+                name, political_party_id,
+                electoral_district, profile_url, furigana
+            )
+            VALUES (
+                :name, :political_party_id,
+                :electoral_district, :profile_url, :furigana
+            )
+            RETURNING *
+        """)
+
+        params = {
+            "name": entity.name,
+            "political_party_id": entity.political_party_id,
+            # Map district to electoral_district
+            "electoral_district": entity.district,
+            # Map profile_page_url to profile_url
+            "profile_url": entity.profile_page_url,
+            "furigana": entity.furigana,
+        }
+
+        result = await self.session.execute(query, params)
+        await self.session.commit()
+
+        row = result.first()
+        if row:
+            return self._row_to_entity(row)
+        raise RuntimeError("Failed to create politician")
+
+    async def update(self, entity: Politician) -> Politician:
+        """Update an existing politician."""
+        from src.exceptions import UpdateError
+
+        query = text("""
+            UPDATE politicians
+            SET name = :name,
+                political_party_id = :political_party_id,
+                electoral_district = :electoral_district,
+                profile_url = :profile_url,
+                furigana = :furigana
+            WHERE id = :id
+            RETURNING *
+        """)
+
+        params = {
+            "id": entity.id,
+            "name": entity.name,
+            "political_party_id": entity.political_party_id,
+            # Map district to electoral_district
+            "electoral_district": entity.district,
+            # Map profile_page_url to profile_url
+            "profile_url": entity.profile_page_url,
+            "furigana": entity.furigana,
+        }
+
+        result = await self.session.execute(query, params)
+        await self.session.commit()
+
+        row = result.first()
+        if row:
+            return self._row_to_entity(row)
+        raise UpdateError(f"Politician with ID {entity.id} not found")
+
+    async def delete(self, entity_id: int) -> bool:
+        """Delete a politician by ID."""
+        query = text("DELETE FROM politicians WHERE id = :id")
+
+        result = await self.session.execute(query, {"id": entity_id})
+        await self.session.commit()
+
+        return result.rowcount > 0  # type: ignore[attr-defined]
+
+    async def count_by_party(self, political_party_id: int) -> int:
+        """Count politicians by political party."""
+        query = text("""
+            SELECT COUNT(*) as count
+            FROM politicians
+            WHERE political_party_id = :party_id
+        """)
+
+        result = await self.session.execute(query, {"party_id": political_party_id})
+        row = result.first()
+        return row.count if row else 0  # type: ignore[attr-defined]
 
     def _row_to_entity(self, row: Any) -> Politician:
         """Convert database row to domain entity."""
@@ -274,7 +328,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
 
         # Handle both Row and dict objects
         if hasattr(row, "_mapping"):
-            data = dict(getattr(row, "_mapping"))  # noqa: B009
+            data = dict(row._mapping)  # type: ignore[attr-defined]
         elif isinstance(row, dict):
             data = row
         else:
@@ -327,408 +381,3 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         model.electoral_district = entity.district
         model.profile_url = entity.profile_page_url
         model.furigana = entity.furigana
-
-    async def create_entity(self, entity: Politician) -> Politician:
-        """Create a new politician entity (async) without committing."""
-        # Create without committing (for bulk operations)
-        model = self._to_model(entity)
-
-        if self.async_session:
-            self.async_session.add(model)
-            # Don't commit here - let the caller decide when to commit
-            await self.async_session.flush()  # Flush to get the ID without committing
-            await self.async_session.refresh(model)
-        elif self.sync_session:
-            self.sync_session.add(model)
-            self.sync_session.flush()
-            self.sync_session.refresh(model)
-
-        return self._to_entity(model)
-
-    # Sync wrapper methods for backward compatibility
-    def find_by_name_and_party(
-        self, name: str, political_party_id: int | None = None
-    ) -> Any:
-        """Sync wrapper for get_by_name_and_party (backward compatibility)."""
-        if self.sync_session:
-            query = "SELECT * FROM politicians WHERE name = :name"
-            params: dict[str, Any] = {"name": name}
-            if political_party_id is not None:
-                query += " AND political_party_id = :party_id"
-                params["party_id"] = political_party_id
-            query += " LIMIT 1"
-            result = self.sync_session.execute(text(query), params)
-            row = result.first()
-            if row:
-                # Use getattr to avoid protected member access warning
-                mapping = getattr(row, "_mapping", None)
-                if mapping:
-                    return dict(mapping)
-                # Fallback to dict conversion
-                return dict(row)
-            return None
-        return None
-
-    def find_by_name(self, name: str) -> list[Any]:
-        """Find politicians by name (for backward compatibility)."""
-        # Use the existing search_by_name_sync method
-        return self.search_by_name_sync(name)
-
-    def execute_query(
-        self, query: str, params: dict[str, Any] | None = None
-    ) -> list[dict[str, Any]]:
-        """Execute raw SQL query (backward compatibility)."""
-        return self.fetch_as_dict_sync(query, params)
-
-    def create_sync(self, politician_create: PoliticianCreate) -> Any:
-        """Sync wrapper for create (backward compatibility)."""
-        if self.sync_session:
-            data = politician_create.model_dump(exclude_unset=True)
-            columns = ", ".join(data.keys())
-            values = ", ".join([f":{key}" for key in data.keys()])
-            query = f"INSERT INTO politicians ({columns}) VALUES ({values}) RETURNING *"
-            result = self.sync_session.execute(text(query), data)
-            self.sync_session.commit()
-            row = result.first()
-            if row:
-                # Use getattr to avoid protected member access warning
-                mapping = getattr(row, "_mapping", None)
-                if mapping:
-                    return dict(mapping)
-                # Fallback to dict conversion
-                return dict(row)
-            return None
-        return None
-
-    def update_v2(self, politician_id: int, update_data: PoliticianUpdate) -> Any:
-        """Sync wrapper for update (backward compatibility)."""
-        if self.sync_session:
-            data = update_data.model_dump(exclude_unset=True)
-            if not data:
-                return None
-            set_clause = ", ".join([f"{key} = :{key}" for key in data.keys()])
-            query = f"UPDATE politicians SET {set_clause} WHERE id = :id RETURNING *"
-            data["id"] = politician_id
-            result = self.sync_session.execute(text(query), data)
-            self.sync_session.commit()
-            row = result.first()
-            if row:
-                # Use getattr to avoid protected member access warning
-                mapping = getattr(row, "_mapping", None)
-                if mapping:
-                    return dict(mapping)
-                # Fallback to dict conversion
-                return dict(row)
-            return None
-        return None
-
-    def search_by_name_sync(self, name_pattern: str) -> list[dict[str, Any]]:
-        """Sync wrapper for search_by_name (backward compatibility)."""
-        # This method is for sync code that expects a list of dicts
-        if self.sync_session:
-            query = """
-                SELECT * FROM politicians
-                WHERE name LIKE :pattern
-                ORDER BY name
-            """
-            result = self.sync_session.execute(
-                text(query), {"pattern": f"%{name_pattern}%"}
-            )
-            rows = result.fetchall()
-            results = []
-            for row in rows:
-                # Use getattr to avoid protected member access warning
-                mapping = getattr(row, "_mapping", None)
-                if mapping:
-                    results.append(dict(mapping))
-                else:
-                    # Fallback to dict conversion
-                    results.append(dict(row))
-            return results
-        return []
-
-    def bulk_create_politicians_sync(
-        self, politicians_data: list[dict[str, Any]]
-    ) -> dict[str, list[Any] | list[dict[str, Any]]]:
-        """Sync wrapper for bulk_create_politicians (backward compatibility)."""
-        if self.sync_session:
-            created = []
-            updated = []
-            errors = []
-
-            for data in politicians_data:
-                try:
-                    # Check if politician exists
-                    existing = self.find_by_name_and_party(
-                        data.get("name", ""), data.get("political_party_id")
-                    )
-
-                    if existing:
-                        # Update existing politician if needed
-                        update_fields = []
-                        update_values = {"id": existing["id"]}
-                        for field in [
-                            "prefecture",
-                            "electoral_district",
-                            "profile_url",
-                            "party_position",
-                        ]:
-                            if field in data and data[field] != existing.get(field):
-                                update_fields.append(f"{field} = :{field}")
-                                update_values[field] = data[field]
-
-                        if update_fields:
-                            query = (
-                                f"UPDATE politicians SET {', '.join(update_fields)} "
-                                f"WHERE id = :id RETURNING *"
-                            )
-                            result = self.sync_session.execute(
-                                text(query), update_values
-                            )
-                            row = result.first()
-                            if row:
-                                mapping = getattr(row, "_mapping", None)
-                                if mapping:
-                                    updated.append(dict(mapping))
-                                else:
-                                    updated.append(dict(row))
-                    else:
-                        # Create new politician
-                        columns = ", ".join(data.keys())
-                        values = ", ".join([f":{key}" for key in data.keys()])
-                        query = (
-                            f"INSERT INTO politicians ({columns}) "
-                            f"VALUES ({values}) RETURNING *"
-                        )
-                        result = self.sync_session.execute(text(query), data)
-                        row = result.first()
-                        if row:
-                            mapping = getattr(row, "_mapping", None)
-                            if mapping:
-                                created.append(dict(mapping))
-                            else:
-                                created.append(dict(row))
-
-                except SQLIntegrityError as e:
-                    errors.append(
-                        {
-                            "data": data,
-                            "error": f"Duplicate or constraint violation: {str(e)}",
-                        }
-                    )
-                except Exception as e:
-                    errors.append({"data": data, "error": f"Error: {str(e)}"})
-
-            self.sync_session.commit()
-            return {"created": created, "updated": updated, "errors": errors}
-        return {"created": [], "updated": [], "errors": []}
-
-    def close(self) -> None:
-        """Close the session if needed."""
-        # Sessions are typically managed by the application, not the repository
-        # This is here for backward compatibility
-        pass
-
-    def fetch_as_dict_sync(
-        self, query: str, params: dict[str, Any] | None = None
-    ) -> list[dict[str, Any]]:
-        """Sync wrapper for fetch_as_dict (backward compatibility)."""
-        if self.sync_session:
-            result = self.sync_session.execute(text(query), params or {})
-            rows = result.fetchall()
-            # SQLAlchemy Row objects need special handling
-            result_list = []
-            for row in rows:
-                # Try to convert row to dict using various methods
-                try:
-                    # Try _mapping with getattr to avoid direct access
-                    if hasattr(row, "_mapping"):
-                        mapping = getattr(row, "_mapping")  # noqa: B009
-                        result_list.append(dict(mapping))
-                    elif hasattr(row, "keys"):
-                        # SQLAlchemy 1.4 Row object
-                        result_list.append(dict(zip(row.keys(), row, strict=False)))
-                    else:
-                        # Fallback for other row types
-                        result_list.append(dict(row))
-                except Exception:
-                    # Final fallback - try to convert directly
-                    try:
-                        result_list.append(dict(row))
-                    except Exception:
-                        # If all else fails, create dict from keys
-                        if hasattr(row, "keys"):
-                            result_list.append({k: row[k] for k in row.keys()})
-                        else:
-                            result_list.append({})
-            return result_list
-        return []
-
-    # Alias for backward compatibility with streamlit code
-    fetch_as_dict = fetch_as_dict_sync
-
-    def fetch_all_as_models(
-        self,
-        model_class: type[Any],
-        query: str,
-        params: dict[str, Any] | None = None,
-    ) -> list[Any]:
-        """Fetch all rows as models."""
-        if self.sync_session:
-            result = self.sync_session.execute(text(query), params or {})
-            rows = result.fetchall()
-            result_list = []
-            for row in rows:
-                # Use getattr to avoid protected member access warning
-                mapping = getattr(row, "_mapping", None)
-                if mapping:
-                    result_list.append(model_class(**dict(mapping)))
-                else:
-                    # Fallback to dict conversion
-                    result_list.append(model_class(**dict(row)))
-            return result_list
-        return []
-
-    async def get_all(
-        self, limit: int | None = None, offset: int | None = 0
-    ) -> list[Politician]:
-        """Get all politicians."""
-        query_text = """
-            SELECT p.*, pp.name as party_name
-            FROM politicians p
-            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
-            ORDER BY p.name
-        """
-        params = {}
-
-        if limit is not None:
-            query_text += " LIMIT :limit OFFSET :offset"
-            params = {"limit": limit, "offset": offset or 0}
-
-        if not self.async_session:
-            raise RuntimeError("Async session required for async operations")
-
-        result = await self.async_session.execute(
-            text(query_text), params if params else None
-        )
-        rows = result.fetchall()
-
-        return [self._row_to_entity(row) for row in rows]
-
-    async def get_by_id(self, entity_id: int) -> Politician | None:
-        """Get politician by ID."""
-        query = text("""
-            SELECT p.*, pp.name as party_name
-            FROM politicians p
-            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
-            WHERE p.id = :id
-        """)
-        if not self.async_session:
-            raise RuntimeError("Async session required for async operations")
-
-        result = await self.async_session.execute(query, {"id": entity_id})
-        row = result.fetchone()
-
-        if row:
-            return self._row_to_entity(row)
-        return None
-
-    async def create(self, entity: Politician) -> Politician:
-        """Create a new politician."""
-        query = text("""
-            INSERT INTO politicians (
-                name, political_party_id,
-                electoral_district, profile_url, furigana
-            )
-            VALUES (
-                :name, :political_party_id,
-                :electoral_district, :profile_url, :furigana
-            )
-            RETURNING *
-        """)
-
-        params = {
-            "name": entity.name,
-            "political_party_id": entity.political_party_id,
-            # Map district to electoral_district
-            "electoral_district": entity.district,
-            # Map profile_page_url to profile_url
-            "profile_url": entity.profile_page_url,
-            "furigana": entity.furigana,
-        }
-
-        if not self.async_session:
-            raise RuntimeError("Async session required for async operations")
-
-        result = await self.async_session.execute(query, params)
-        await self.async_session.commit()
-
-        row = result.first()
-        if row:
-            return self._row_to_entity(row)
-        raise RuntimeError("Failed to create politician")
-
-    async def update(self, entity: Politician) -> Politician:
-        """Update an existing politician."""
-        from src.exceptions import UpdateError
-
-        query = text("""
-            UPDATE politicians
-            SET name = :name,
-                political_party_id = :political_party_id,
-                electoral_district = :electoral_district,
-                profile_url = :profile_url,
-                furigana = :furigana
-            WHERE id = :id
-            RETURNING *
-        """)
-
-        params = {
-            "id": entity.id,
-            "name": entity.name,
-            "political_party_id": entity.political_party_id,
-            # Map district to electoral_district
-            "electoral_district": entity.district,
-            # Map profile_page_url to profile_url
-            "profile_url": entity.profile_page_url,
-            "furigana": entity.furigana,
-        }
-
-        if not self.async_session:
-            raise RuntimeError("Async session required for async operations")
-
-        result = await self.async_session.execute(query, params)
-        await self.async_session.commit()
-
-        row = result.first()
-        if row:
-            return self._row_to_entity(row)
-        raise UpdateError(f"Politician with ID {entity.id} not found")
-
-    async def delete(self, entity_id: int) -> bool:
-        """Delete a politician by ID."""
-        query = text("DELETE FROM politicians WHERE id = :id")
-        if not self.async_session:
-            raise RuntimeError("Async session required for async operations")
-
-        result = await self.async_session.execute(query, {"id": entity_id})
-        await self.async_session.commit()
-
-        return result.rowcount > 0  # type: ignore[attr-defined]
-
-    async def count_by_party(self, political_party_id: int) -> int:
-        """Count politicians by political party."""
-        query = text("""
-            SELECT COUNT(*) as count
-            FROM politicians
-            WHERE political_party_id = :party_id
-        """)
-
-        if not self.async_session:
-            raise RuntimeError("Async session required for async operations")
-
-        result = await self.async_session.execute(
-            query, {"party_id": political_party_id}
-        )
-        row = result.first()
-        return row.count if row else 0  # type: ignore[attr-defined]

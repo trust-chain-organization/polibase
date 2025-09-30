@@ -51,8 +51,8 @@ class PoliticianCommands(BaseCommand):
     ):
         """Async implementation of scrape_politicians"""
         from src.config.database import get_db_engine
-        from src.infrastructure.persistence.politician_repository_impl import (
-            PoliticianRepositoryImpl,
+        from src.infrastructure.persistence.politician_repository_sync_impl import (
+            PoliticianRepositorySyncImpl,
         )
         from src.party_member_extractor.extractor import PartyMemberExtractor
         from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
@@ -186,7 +186,7 @@ class PoliticianCommands(BaseCommand):
                                 from src.config.database import get_db_session
 
                                 session = get_db_session()
-                                repo = PoliticianRepositoryImpl(session)
+                                repo = PoliticianRepositorySyncImpl(session)
 
                                 # Pydanticモデルを辞書に変換して
                                 # political_party_idを追加

@@ -62,7 +62,7 @@ class TestConferenceMemberMatchingService:
                 return_value=Mock(),
             ):
                 with patch(
-                    "src.conference_member_extractor.matching_service.PoliticianRepositoryImpl",
+                    "src.conference_member_extractor.matching_service.PoliticianRepositorySyncImpl",
                     return_value=mock_politician_repo,
                 ):
                     with patch(
