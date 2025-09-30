@@ -143,11 +143,8 @@ class SyncPoliticianScraper:
                         district = (
                             f" ({politician.district})" if politician.district else ""
                         )
-                        position = (
-                            f" - {politician.position}" if politician.position else ""
-                        )
                         details_lines.append(
-                            f"  {i}. {status} {politician.name}{district}{position}"
+                            f"  {i}. {status} {politician.name}{district}"
                         )
                     if len(all_politicians) > 30:
                         details_lines.append(f"  ... 他{len(all_politicians) - 30}人")
@@ -166,10 +163,7 @@ class SyncPoliticianScraper:
                         district = (
                             f" ({politician.district})" if politician.district else ""
                         )
-                        position = (
-                            f" - {politician.position}" if politician.position else ""
-                        )
-                        new_details.append(f"  • {politician.name}{district}{position}")
+                        new_details.append(f"  • {politician.name}{district}")
                     if len(new_politicians_list) > 20:
                         new_details.append(
                             f"  ... 他{len(new_politicians_list) - 20}人"
@@ -189,12 +183,7 @@ class SyncPoliticianScraper:
                         district = (
                             f" ({politician.district})" if politician.district else ""
                         )
-                        position = (
-                            f" - {politician.position}" if politician.position else ""
-                        )
-                        updated_details.append(
-                            f"  • {politician.name}{district}{position}"
-                        )
+                        updated_details.append(f"  • {politician.name}{district}")
                     if len(updated_politicians_list) > 20:
                         updated_details.append(
                             f"  ... 他{len(updated_politicians_list) - 20}人"
