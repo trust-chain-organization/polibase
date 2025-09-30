@@ -291,8 +291,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
                 type = :type,
                 political_party_name = :political_party_name,
                 position = :position,
-                is_politician = :is_politician,
-                politician_id = :politician_id
+                is_politician = :is_politician
             WHERE id = :id
             RETURNING *
         """)
@@ -304,7 +303,6 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             "political_party_name": entity.political_party_name,
             "position": entity.position,
             "is_politician": entity.is_politician,
-            "politician_id": entity.politician_id,
         }
 
         result = await self.session.execute(query, params)
