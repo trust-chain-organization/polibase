@@ -147,7 +147,7 @@ class PoliticianRepositorySyncImpl:
                             row = result.first()
                             if row:
                                 if hasattr(row, "_mapping"):
-                                    updated.append(dict(row._mapping))
+                                    updated.append(dict(row._mapping))  # type: ignore[attr-defined]
                                 else:
                                     updated.append(dict(row))
                     else:
@@ -162,7 +162,7 @@ class PoliticianRepositorySyncImpl:
                         row = result.first()
                         if row:
                             if hasattr(row, "_mapping"):
-                                created.append(dict(row._mapping))
+                                created.append(dict(row._mapping))  # type: ignore[attr-defined]
                             else:
                                 created.append(dict(row))
 
@@ -230,7 +230,7 @@ class PoliticianRepositorySyncImpl:
             row = result.first()
             if row:
                 if hasattr(row, "_mapping"):
-                    return dict(row._mapping)
+                    return dict(row._mapping)  # type: ignore[attr-defined]
                 return dict(row)
             return None
         elif self.async_session:
@@ -260,7 +260,7 @@ class PoliticianRepositorySyncImpl:
             for row in rows:
                 try:
                     if hasattr(row, "_mapping"):
-                        result_list.append(dict(row._mapping))
+                        result_list.append(dict(row._mapping))  # type: ignore[attr-defined]
                     elif hasattr(row, "keys"):
                         result_list.append(dict(zip(row.keys(), row, strict=False)))
                     else:
@@ -305,7 +305,7 @@ class PoliticianRepositorySyncImpl:
             row = result.first()
             if row:
                 if hasattr(row, "_mapping"):
-                    return dict(row._mapping)
+                    return dict(row._mapping)  # type: ignore[attr-defined]
                 return dict(row)
             return None
         return None
@@ -326,7 +326,7 @@ class PoliticianRepositorySyncImpl:
             row = result.first()
             if row:
                 if hasattr(row, "_mapping"):
-                    return dict(row._mapping)
+                    return dict(row._mapping)  # type: ignore[attr-defined]
                 return dict(row)
             return None
         return None
@@ -344,7 +344,7 @@ class PoliticianRepositorySyncImpl:
             result_list = []
             for row in rows:
                 if hasattr(row, "_mapping"):
-                    result_list.append(model_class(**dict(row._mapping)))
+                    result_list.append(model_class(**dict(row._mapping)))  # type: ignore[attr-defined]
                 else:
                     result_list.append(model_class(**dict(row)))
             return result_list
