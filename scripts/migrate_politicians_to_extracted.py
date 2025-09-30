@@ -15,7 +15,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.config.async_database import get_async_session
-from src.domain.entities.extracted_politician import ExtractedPolitician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.infrastructure.persistence.extracted_politician_repository_impl import (
     ExtractedPoliticianRepositoryImpl,
 )
@@ -67,7 +69,7 @@ class PoliticianMigrator:
                             continue
 
                         # Create ExtractedPolitician entity
-                        extracted = ExtractedPolitician(
+                        extracted = PoliticianPartyExtractedPolitician(
                             name=politician.name,
                             party_id=politician.political_party_id,
                             district=getattr(politician, "electoral_district", None),

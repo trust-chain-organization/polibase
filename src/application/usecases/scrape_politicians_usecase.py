@@ -1,12 +1,14 @@
 """Use case for scraping politicians from party websites."""
 
 from src.application.dtos.politician_dto import (
-    ExtractedPoliticianDTO,
-    ExtractedPoliticianOutputDTO,
+    PoliticianPartyExtractedPoliticianDTO,
+    PoliticianPartyExtractedPoliticianOutputDTO,
     ScrapePoliticiansInputDTO,
 )
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.repositories.extracted_politician_repository import (
     ExtractedPoliticianRepository,
 )
@@ -61,7 +63,7 @@ class ScrapePoliticiansUseCase:
     async def execute(
         self,
         request: ScrapePoliticiansInputDTO,
-    ) -> list[ExtractedPoliticianOutputDTO]:
+    ) -> list[PoliticianPartyExtractedPoliticianOutputDTO]:
         """政治家情報のスクレイピングを実行する
 
         処理の流れ：
@@ -77,7 +79,7 @@ class ScrapePoliticiansUseCase:
                 - dry_run: 実行せずに結果を確認するか
 
         Returns:
-            ExtractedPoliticianOutputDTOのリスト。各DTOには以下が含まれる：
+            PoliticianPartyExtractedPoliticianOutputDTOのリスト。各DTOには以下が含まれる：
             - id: 抽出済み政治家ID（dry_runの場合は0）
             - name: 政治家名
             - party_id: 所属政党ID
@@ -106,7 +108,7 @@ class ScrapePoliticiansUseCase:
         else:
             raise ValueError("Either party_id or all_parties must be specified")
 
-        all_results: list[ExtractedPoliticianOutputDTO] = []
+        all_results: list[PoliticianPartyExtractedPoliticianOutputDTO] = []
 
         for party in parties:
             # Scrape party website
@@ -116,7 +118,7 @@ class ScrapePoliticiansUseCase:
                 # Convert to DTOs without saving
                 for data in extracted:
                     all_results.append(
-                        ExtractedPoliticianOutputDTO(
+                        PoliticianPartyExtractedPoliticianOutputDTO(
                             id=0,  # Not saved
                             name=data.name,
                             party_id=data.party_id,
@@ -137,7 +139,7 @@ class ScrapePoliticiansUseCase:
                 )
                 for politician in saved_politicians:
                     all_results.append(
-                        ExtractedPoliticianOutputDTO(
+                        PoliticianPartyExtractedPoliticianOutputDTO(
                             id=politician.id if politician.id else 0,
                             name=politician.name,
                             party_id=politician.party_id,
@@ -156,7 +158,7 @@ class ScrapePoliticiansUseCase:
 
     async def _scrape_party_website(
         self, party: PoliticalParty
-    ) -> list[ExtractedPoliticianDTO]:
+    ) -> list[PoliticianPartyExtractedPoliticianDTO]:
         """政党ウェブサイトから政治家情報をスクレイピングする
 
         Args:
@@ -185,9 +187,9 @@ class ScrapePoliticiansUseCase:
         logger.info(f"Raw data received: {len(raw_data)} items")
 
         # Convert to DTOs
-        extracted: list[ExtractedPoliticianDTO] = []
+        extracted: list[PoliticianPartyExtractedPoliticianDTO] = []
         for item in raw_data:
-            dto = ExtractedPoliticianDTO(
+            dto = PoliticianPartyExtractedPoliticianDTO(
                 name=item["name"],
                 party_id=party.id,  # Safe because we checked above
                 furigana=item.get("furigana"),
@@ -200,8 +202,10 @@ class ScrapePoliticiansUseCase:
         return extracted
 
     async def _save_extracted_politicians(
-        self, extracted_data: list[ExtractedPoliticianDTO], party_name: str
-    ) -> list[ExtractedPolitician]:
+        self,
+        extracted_data: list[PoliticianPartyExtractedPoliticianDTO],
+        party_name: str,
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """抽出データを extracted_politicians テーブルに保存する
 
         重複チェックを行い、既存のデータがある場合はスキップします。
@@ -211,12 +215,12 @@ class ScrapePoliticiansUseCase:
             party_name: 政党名（ログ用）
 
         Returns:
-            保存された ExtractedPolitician エンティティのリスト
+            保存された PoliticianPartyExtractedPolitician エンティティのリスト
         """
         import logging
 
         logger = logging.getLogger(__name__)
-        saved_politicians: list[ExtractedPolitician] = []
+        saved_politicians: list[PoliticianPartyExtractedPolitician] = []
 
         for data in extracted_data:
             # Check for duplicates in extracted_politicians table
@@ -232,7 +236,7 @@ class ScrapePoliticiansUseCase:
                 continue
 
             # Create new extracted politician
-            extracted_politician = ExtractedPolitician(
+            extracted_politician = PoliticianPartyExtractedPolitician(
                 name=data.name,
                 party_id=data.party_id,
                 district=data.district,

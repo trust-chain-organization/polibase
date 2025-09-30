@@ -10,8 +10,10 @@ from src.application.dtos.convert_extracted_politician_dto import (
 from src.application.usecases.convert_extracted_politician_usecase import (
     ConvertExtractedPoliticianUseCase,
 )
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.politician import Politician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.entities.speaker import Speaker
 
 
@@ -61,7 +63,7 @@ class TestConvertExtractedPoliticianUseCase:
         """Test converting approved extracted politicians."""
         # Setup
         extracted_politicians = [
-            ExtractedPolitician(
+            PoliticianPartyExtractedPolitician(
                 id=1,
                 name="山田太郎",
                 party_id=1,
@@ -69,7 +71,7 @@ class TestConvertExtractedPoliticianUseCase:
                 profile_url="https://example.com/yamada",
                 status="approved",
             ),
-            ExtractedPolitician(
+            PoliticianPartyExtractedPolitician(
                 id=2,
                 name="鈴木花子",
                 party_id=2,
@@ -142,7 +144,7 @@ class TestConvertExtractedPoliticianUseCase:
     ):
         """Test updating existing politician when converting."""
         # Setup
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -205,7 +207,7 @@ class TestConvertExtractedPoliticianUseCase:
     ):
         """Test dry run mode doesn't save changes."""
         # Setup
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -241,9 +243,15 @@ class TestConvertExtractedPoliticianUseCase:
         """Test filtering by party_id."""
         # Setup
         extracted_politicians = [
-            ExtractedPolitician(id=1, name="山田太郎", party_id=1, status="approved"),
-            ExtractedPolitician(id=2, name="鈴木花子", party_id=2, status="approved"),
-            ExtractedPolitician(id=3, name="佐藤一郎", party_id=1, status="approved"),
+            PoliticianPartyExtractedPolitician(
+                id=1, name="山田太郎", party_id=1, status="approved"
+            ),
+            PoliticianPartyExtractedPolitician(
+                id=2, name="鈴木花子", party_id=2, status="approved"
+            ),
+            PoliticianPartyExtractedPolitician(
+                id=3, name="佐藤一郎", party_id=1, status="approved"
+            ),
         ]
 
         mock_extracted_politician_repo.get_by_status.return_value = (
@@ -282,7 +290,9 @@ class TestConvertExtractedPoliticianUseCase:
         """Test batch size limiting."""
         # Setup - create more politicians than batch size
         extracted_politicians = [
-            ExtractedPolitician(id=i, name=f"政治家{i}", party_id=1, status="approved")
+            PoliticianPartyExtractedPolitician(
+                id=i, name=f"政治家{i}", party_id=1, status="approved"
+            )
             for i in range(1, 6)  # 5 politicians
         ]
 
@@ -322,8 +332,12 @@ class TestConvertExtractedPoliticianUseCase:
         """Test handling errors during conversion."""
         # Setup
         extracted_politicians = [
-            ExtractedPolitician(id=1, name="山田太郎", party_id=1, status="approved"),
-            ExtractedPolitician(id=2, name="鈴木花子", party_id=2, status="approved"),
+            PoliticianPartyExtractedPolitician(
+                id=1, name="山田太郎", party_id=1, status="approved"
+            ),
+            PoliticianPartyExtractedPolitician(
+                id=2, name="鈴木花子", party_id=2, status="approved"
+            ),
         ]
 
         mock_extracted_politician_repo.get_by_status.return_value = (
@@ -369,7 +383,7 @@ class TestConvertExtractedPoliticianUseCase:
         4. ステータス更新が実行されない（ロールバック相当）
         """
         # Setup
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,
@@ -418,9 +432,15 @@ class TestConvertExtractedPoliticianUseCase:
         """
         # Setup - 3 politicians
         extracted_politicians = [
-            ExtractedPolitician(id=1, name="山田太郎", party_id=1, status="approved"),
-            ExtractedPolitician(id=2, name="鈴木花子", party_id=1, status="approved"),
-            ExtractedPolitician(id=3, name="佐藤一郎", party_id=1, status="approved"),
+            PoliticianPartyExtractedPolitician(
+                id=1, name="山田太郎", party_id=1, status="approved"
+            ),
+            PoliticianPartyExtractedPolitician(
+                id=2, name="鈴木花子", party_id=1, status="approved"
+            ),
+            PoliticianPartyExtractedPolitician(
+                id=3, name="佐藤一郎", party_id=1, status="approved"
+            ),
         ]
 
         mock_extracted_politician_repo.get_by_status.return_value = (
@@ -502,7 +522,7 @@ class TestConvertExtractedPoliticianUseCase:
         4. 変換自体は成功として扱われる
         """
         # Setup
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="山田太郎",
             party_id=1,

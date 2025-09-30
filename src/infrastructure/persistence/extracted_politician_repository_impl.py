@@ -1,4 +1,4 @@
-"""ExtractedPolitician repository implementation using SQLAlchemy."""
+"""PoliticianPartyExtractedPolitician repository implementation using SQLAlchemy."""
 
 from datetime import datetime
 from typing import Any
@@ -6,7 +6,9 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.domain.entities.extracted_politician import ExtractedPolitician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.repositories.extracted_politician_repository import (
     ExtractedPoliticianRepository as IExtractedPoliticianRepository,
 )
@@ -34,14 +36,21 @@ class ExtractedPoliticianModel:
 
 
 class ExtractedPoliticianRepositoryImpl(
-    BaseRepositoryImpl[ExtractedPolitician], IExtractedPoliticianRepository
+    BaseRepositoryImpl[PoliticianPartyExtractedPolitician],
+    IExtractedPoliticianRepository,
 ):
     """Implementation of ExtractedPoliticianRepository using SQLAlchemy."""
 
     def __init__(self, session: AsyncSession):
-        super().__init__(session, ExtractedPolitician, ExtractedPoliticianModel)
+        super().__init__(
+            session,
+            PoliticianPartyExtractedPolitician,
+            ExtractedPoliticianModel,
+        )
 
-    async def create(self, entity: ExtractedPolitician) -> ExtractedPolitician:
+    async def create(
+        self, entity: PoliticianPartyExtractedPolitician
+    ) -> PoliticianPartyExtractedPolitician:
         """Create a new extracted politician using raw SQL."""
         query = text("""
             INSERT INTO extracted_politicians (
@@ -76,7 +85,7 @@ class ExtractedPoliticianRepositoryImpl(
 
     async def get_all(
         self, limit: int | None = None, offset: int | None = None
-    ) -> list[ExtractedPolitician]:
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get all extracted politicians using raw SQL."""
         query_str = "SELECT * FROM extracted_politicians ORDER BY extracted_at DESC"
 
@@ -92,7 +101,9 @@ class ExtractedPoliticianRepositoryImpl(
 
         return [self._row_to_entity(row) for row in rows]
 
-    async def get_by_id(self, entity_id: int) -> ExtractedPolitician | None:
+    async def get_by_id(
+        self, entity_id: int
+    ) -> PoliticianPartyExtractedPolitician | None:
         """Get extracted politician by ID using raw SQL."""
         query = text("""
             SELECT * FROM extracted_politicians
@@ -106,7 +117,9 @@ class ExtractedPoliticianRepositoryImpl(
             return self._row_to_entity(row)
         return None
 
-    async def update(self, entity: ExtractedPolitician) -> ExtractedPolitician:
+    async def update(
+        self, entity: PoliticianPartyExtractedPolitician
+    ) -> PoliticianPartyExtractedPolitician:
         """Update an existing entity using raw SQL."""
         if not entity.id:
             raise ValueError("Entity must have an ID to update")
@@ -161,7 +174,7 @@ class ExtractedPoliticianRepositoryImpl(
 
     async def get_pending(
         self, party_id: int | None = None
-    ) -> list[ExtractedPolitician]:
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get all pending politicians for review."""
         conditions = ["status = 'pending'"]
         params: dict[str, Any] = {}
@@ -181,7 +194,9 @@ class ExtractedPoliticianRepositoryImpl(
 
         return [self._row_to_entity(row) for row in rows]
 
-    async def get_by_status(self, status: str) -> list[ExtractedPolitician]:
+    async def get_by_status(
+        self, status: str
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get all politicians by status."""
         query = text("""
             SELECT * FROM extracted_politicians
@@ -194,7 +209,9 @@ class ExtractedPoliticianRepositoryImpl(
 
         return [self._row_to_entity(row) for row in rows]
 
-    async def get_by_party(self, party_id: int) -> list[ExtractedPolitician]:
+    async def get_by_party(
+        self, party_id: int
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get all extracted politicians for a party."""
         query = text("""
             SELECT * FROM extracted_politicians
@@ -212,7 +229,7 @@ class ExtractedPoliticianRepositoryImpl(
         politician_id: int,
         status: str,
         reviewer_id: int | None = None,
-    ) -> ExtractedPolitician | None:
+    ) -> PoliticianPartyExtractedPolitician | None:
         """Update the status for a politician."""
         params: dict[str, Any] = {
             "politician_id": politician_id,
@@ -271,8 +288,8 @@ class ExtractedPoliticianRepositoryImpl(
         return summary
 
     async def bulk_create(
-        self, politicians: list[ExtractedPolitician]
-    ) -> list[ExtractedPolitician]:
+        self, politicians: list[PoliticianPartyExtractedPolitician]
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Create multiple extracted politicians at once."""
         models = [self._to_model(politician) for politician in politicians]
         self.session.add_all(models)
@@ -286,7 +303,7 @@ class ExtractedPoliticianRepositoryImpl(
 
     async def get_duplicates(
         self, name: str, party_id: int | None = None
-    ) -> list[ExtractedPolitician]:
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Find potential duplicate extracted politicians by name and party."""
         conditions = ["LOWER(name) = LOWER(:name)"]
         params: dict[str, Any] = {"name": name}
@@ -342,9 +359,9 @@ class ExtractedPoliticianRepositoryImpl(
             "converted": 0,
         }
 
-    def _row_to_entity(self, row: Any) -> ExtractedPolitician:
+    def _row_to_entity(self, row: Any) -> PoliticianPartyExtractedPolitician:
         """Convert database row to domain entity."""
-        return ExtractedPolitician(
+        return PoliticianPartyExtractedPolitician(
             id=row.id,
             name=row.name,
             party_id=row.party_id,
@@ -356,9 +373,11 @@ class ExtractedPoliticianRepositoryImpl(
             reviewer_id=row.reviewer_id,
         )
 
-    def _to_entity(self, model: ExtractedPoliticianModel) -> ExtractedPolitician:
+    def _to_entity(
+        self, model: ExtractedPoliticianModel
+    ) -> PoliticianPartyExtractedPolitician:
         """Convert model to domain entity."""
-        return ExtractedPolitician(
+        return PoliticianPartyExtractedPolitician(
             id=model.id,
             name=model.name,
             party_id=model.party_id,
@@ -370,7 +389,9 @@ class ExtractedPoliticianRepositoryImpl(
             reviewer_id=model.reviewer_id,
         )
 
-    def _to_model(self, entity: ExtractedPolitician) -> ExtractedPoliticianModel:
+    def _to_model(
+        self, entity: PoliticianPartyExtractedPolitician
+    ) -> ExtractedPoliticianModel:
         """Convert domain entity to model."""
         model = ExtractedPoliticianModel()
         model.id = entity.id
@@ -395,7 +416,7 @@ class ExtractedPoliticianRepositoryImpl(
         search_name: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[ExtractedPolitician]:
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get filtered politicians with database-level filtering."""
         # Build WHERE conditions
         conditions = []

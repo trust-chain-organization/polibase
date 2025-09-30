@@ -1,12 +1,12 @@
-"""ExtractedPolitician entity module."""
+"""PoliticianPartyExtractedPolitician entity module."""
 
 from datetime import datetime
 
 from src.domain.entities.base import BaseEntity
 
 
-class ExtractedPolitician(BaseEntity):
-    """LLMが抽出した政治家データの中間オブジェクトを表すエンティティ."""
+class PoliticianPartyExtractedPolitician(BaseEntity):
+    """政党から抽出した政治家データの中間オブジェクトを表すエンティティ."""
 
     def __init__(
         self,
@@ -65,4 +65,7 @@ class ExtractedPolitician(BaseEntity):
         self.reviewer_id = reviewer_id
 
     def __str__(self) -> str:
-        return f"ExtractedPolitician(name={self.name}, status={self.status})"
+        return (
+            f"PoliticianPartyExtractedPolitician("
+            f"name={self.name}, status={self.status})"
+        )

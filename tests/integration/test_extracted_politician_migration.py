@@ -4,9 +4,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician import Politician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.entities.speaker import Speaker
 
 
@@ -141,7 +143,7 @@ class TestExtractedPoliticianMigration:
         mock_political_party_repo.create.return_value = party
 
         # Mock ExtractedPolitician creation
-        extracted = ExtractedPolitician(
+        extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="抽出太郎",
             party_id=party.id,
@@ -163,7 +165,7 @@ class TestExtractedPoliticianMigration:
         mock_politician_repo.create.return_value = politician
 
         # Mock status update
-        converted_extracted = ExtractedPolitician(
+        converted_extracted = PoliticianPartyExtractedPolitician(
             id=1,
             name="抽出太郎",
             party_id=party.id,

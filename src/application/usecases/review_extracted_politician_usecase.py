@@ -12,8 +12,10 @@ from src.application.dtos.review_extracted_politician_dto import (
     UpdateExtractedPoliticianInputDTO,
     UpdateExtractedPoliticianOutputDTO,
 )
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.political_party import PoliticalParty
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.repositories.extracted_politician_repository import (
     ExtractedPoliticianRepository,
 )
@@ -169,7 +171,7 @@ class ReviewExtractedPoliticianUseCase:
 
     async def get_filtered_politicians(
         self, filter_dto: ExtractedPoliticianFilterDTO
-    ) -> list[ExtractedPolitician]:
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get filtered list of extracted politicians.
 
         Uses database-level filtering for better performance.

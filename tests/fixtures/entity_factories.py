@@ -6,7 +6,6 @@ from typing import Any
 from src.domain.entities.conference import Conference
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.extracted_conference_member import ExtractedConferenceMember
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.extracted_proposal_judge import ExtractedProposalJudge
 from src.domain.entities.governing_body import GoverningBody
 from src.domain.entities.meeting import Meeting
@@ -15,6 +14,9 @@ from src.domain.entities.parliamentary_group import ParliamentaryGroup
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician import Politician
 from src.domain.entities.politician_affiliation import PoliticianAffiliation
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.entities.speaker import Speaker
 
 
@@ -101,7 +103,7 @@ def create_politician(**kwargs: Any) -> Politician:
     return Politician(**defaults)
 
 
-def create_extracted_politician(**kwargs: Any) -> ExtractedPolitician:
+def create_extracted_politician(**kwargs: Any) -> PoliticianPartyExtractedPolitician:
     """Create a test extracted politician."""
     defaults = {
         "id": 1,
@@ -115,7 +117,7 @@ def create_extracted_politician(**kwargs: Any) -> ExtractedPolitician:
         "reviewer_id": None,
     }
     defaults.update(kwargs)
-    return ExtractedPolitician(**defaults)
+    return PoliticianPartyExtractedPolitician(**defaults)
 
 
 def create_political_party(**kwargs: Any) -> PoliticalParty:

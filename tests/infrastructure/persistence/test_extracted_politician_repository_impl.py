@@ -7,7 +7,9 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.domain.entities.extracted_politician import ExtractedPolitician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.infrastructure.persistence.extracted_politician_repository_impl import (
     ExtractedPoliticianModel,
     ExtractedPoliticianRepositoryImpl,
@@ -318,8 +320,8 @@ class TestExtractedPoliticianRepositoryImpl:
         """Test bulk_create method."""
         # Setup
         politicians = [
-            ExtractedPolitician(name="山田太郎", party_id=1),
-            ExtractedPolitician(name="鈴木花子", party_id=2),
+            PoliticianPartyExtractedPolitician(name="山田太郎", party_id=1),
+            PoliticianPartyExtractedPolitician(name="鈴木花子", party_id=2),
         ]
 
         # Mock add_all and refresh
@@ -428,7 +430,7 @@ class TestExtractedPoliticianRepositoryImpl:
         entity = repository._row_to_entity(mock_row)  # type: ignore[attr-defined]
 
         # Verify
-        assert isinstance(entity, ExtractedPolitician)
+        assert isinstance(entity, PoliticianPartyExtractedPolitician)
         assert entity.id == 99
         assert entity.name == "テスト政治家"
         assert entity.party_id == 3

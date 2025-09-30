@@ -40,8 +40,8 @@ class PoliticianDTO:
 
 
 @dataclass
-class ExtractedPoliticianDTO:
-    """DTO for politician data extracted from web."""
+class PoliticianPartyExtractedPoliticianDTO:
+    """DTO for politician data extracted from party websites."""
 
     name: str
     party_id: int
@@ -61,8 +61,8 @@ class ScrapePoliticiansInputDTO:
 
 
 @dataclass
-class ExtractedPoliticianOutputDTO:
-    """DTO for extracted politician output."""
+class PoliticianPartyExtractedPoliticianOutputDTO:
+    """DTO for politician extracted from party websites output."""
 
     id: int
     name: str

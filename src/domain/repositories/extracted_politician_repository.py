@@ -1,29 +1,35 @@
-"""ExtractedPolitician repository interface."""
+"""PoliticianPartyExtractedPolitician repository interface."""
 
 from abc import abstractmethod
 from datetime import datetime
 
-from src.domain.entities.extracted_politician import ExtractedPolitician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.repositories.base import BaseRepository
 
 
-class ExtractedPoliticianRepository(BaseRepository[ExtractedPolitician]):
-    """Repository interface for extracted politicians."""
+class ExtractedPoliticianRepository(BaseRepository[PoliticianPartyExtractedPolitician]):
+    """Repository interface for politicians extracted from party websites."""
 
     @abstractmethod
     async def get_pending(
         self, party_id: int | None = None
-    ) -> list[ExtractedPolitician]:
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get all pending politicians for review."""
         pass
 
     @abstractmethod
-    async def get_by_status(self, status: str) -> list[ExtractedPolitician]:
+    async def get_by_status(
+        self, status: str
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get all politicians by status."""
         pass
 
     @abstractmethod
-    async def get_by_party(self, party_id: int) -> list[ExtractedPolitician]:
+    async def get_by_party(
+        self, party_id: int
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get all extracted politicians for a party."""
         pass
 
@@ -33,7 +39,7 @@ class ExtractedPoliticianRepository(BaseRepository[ExtractedPolitician]):
         politician_id: int,
         status: str,
         reviewer_id: int | None = None,
-    ) -> ExtractedPolitician | None:
+    ) -> PoliticianPartyExtractedPolitician | None:
         """Update the status for a politician."""
         pass
 
@@ -44,15 +50,15 @@ class ExtractedPoliticianRepository(BaseRepository[ExtractedPolitician]):
 
     @abstractmethod
     async def bulk_create(
-        self, politicians: list[ExtractedPolitician]
-    ) -> list[ExtractedPolitician]:
+        self, politicians: list[PoliticianPartyExtractedPolitician]
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Create multiple extracted politicians at once."""
         pass
 
     @abstractmethod
     async def get_duplicates(
         self, name: str, party_id: int | None = None
-    ) -> list[ExtractedPolitician]:
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Find potential duplicate extracted politicians by name and party."""
         pass
 
@@ -76,7 +82,7 @@ class ExtractedPoliticianRepository(BaseRepository[ExtractedPolitician]):
         search_name: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[ExtractedPolitician]:
+    ) -> list[PoliticianPartyExtractedPolitician]:
         """Get filtered politicians with database-level filtering.
 
         This method performs filtering at the database level for better

@@ -17,8 +17,10 @@ from src.application.usecases.convert_extracted_politician_usecase import (
 from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
-from src.domain.entities.extracted_politician import ExtractedPolitician
 from src.domain.entities.politician import Politician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.entities.speaker import Speaker
 
 
@@ -81,7 +83,7 @@ class TestExtractedPoliticianPerformance:
     def create_mock_extracted_politicians(self, count: int):
         """Helper to create mock extracted politicians."""
         return [
-            ExtractedPolitician(
+            PoliticianPartyExtractedPolitician(
                 id=i,
                 name=f"政治家{i}",
                 party_id=1,
@@ -171,7 +173,7 @@ class TestExtractedPoliticianPerformance:
         # Setup - 100 approved politicians
         politician_count = 100
         politicians = [
-            ExtractedPolitician(
+            PoliticianPartyExtractedPolitician(
                 id=i,
                 name=f"政治家{i}",
                 party_id=1,
@@ -232,7 +234,7 @@ class TestExtractedPoliticianPerformance:
         """
         # Setup - 500 politicians available
         all_politicians = [
-            ExtractedPolitician(
+            PoliticianPartyExtractedPolitician(
                 id=i,
                 name=f"政治家{i}",
                 party_id=1,
@@ -279,7 +281,7 @@ class TestExtractedPoliticianPerformance:
         3. データ整合性の維持
         """
         # Setup
-        politician = ExtractedPolitician(
+        politician = PoliticianPartyExtractedPolitician(
             id=1,
             name="テスト太郎",
             party_id=1,
@@ -343,7 +345,7 @@ class TestExtractedPoliticianPerformance:
         # Setup - simulate large dataset
         large_count = 1000
         politicians = [
-            ExtractedPolitician(
+            PoliticianPartyExtractedPolitician(
                 id=i,
                 name=f"政治家{i}",
                 party_id=1,
