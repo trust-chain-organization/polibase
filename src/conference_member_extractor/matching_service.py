@@ -12,8 +12,8 @@ from src.infrastructure.persistence.extracted_conference_member_repository_impl 
 from src.infrastructure.persistence.politician_affiliation_repository_impl import (
     PoliticianAffiliationRepositoryImpl,
 )
-from src.infrastructure.persistence.politician_repository_impl import (
-    PoliticianRepositoryImpl,
+from src.infrastructure.persistence.politician_repository_sync_impl import (
+    PoliticianRepositorySyncImpl,
 )
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.services.llm_service import LLMService
@@ -29,7 +29,7 @@ class ConferenceMemberMatchingService:
         from src.config.database import get_db_session
 
         session = get_db_session()
-        self.politician_repo = PoliticianRepositoryImpl(session)
+        self.politician_repo = PoliticianRepositorySyncImpl(session)
         self.affiliation_repo = RepositoryAdapter(PoliticianAffiliationRepositoryImpl)
         self.llm_service = LLMService()
 

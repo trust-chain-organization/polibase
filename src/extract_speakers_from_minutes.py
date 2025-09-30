@@ -17,8 +17,8 @@ from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl,
 )
 from src.infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
-from src.infrastructure.persistence.politician_repository_impl import (
-    PoliticianRepositoryImpl,
+from src.infrastructure.persistence.politician_repository_sync_impl import (
+    PoliticianRepositorySyncImpl,
 )
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
 from src.infrastructure.persistence.speaker_repository_impl import SpeakerRepositoryImpl
@@ -43,7 +43,7 @@ class SpeakerExtractorFromMinutes:
     def __init__(self, session: Session):
         self.session = session
         self.speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl, session)
-        self.politician_repo = PoliticianRepositoryImpl(session)
+        self.politician_repo = PoliticianRepositorySyncImpl(session)
         self.conversation_repo = RepositoryAdapter(ConversationRepositoryImpl, session)
         self.meeting_repo = RepositoryAdapter(MeetingRepositoryImpl, session)
         # Speaker matching service will be initialized when needed with LLM

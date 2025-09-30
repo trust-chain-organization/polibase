@@ -438,12 +438,11 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
                 self.politician_repo.update(existing_politician)
                 self.logger.info(f"Updated existing politician: {extracted.name}")
             else:
-                # Create new politician without speaker_id
-                # (speaker_id will be set later when politician is
-                # identified from meeting minutes)
+                # Create new politician
+                # Note: Speaker-Politician relationship is managed separately
+                # through the speakers table (speakers.politician_id)
                 politician = Politician(
                     name=extracted.name,
-                    speaker_id=None,  # No speaker_id from party websites
                     political_party_id=extracted.party_id,
                     district=extracted.district,
                     profile_page_url=extracted.profile_url,

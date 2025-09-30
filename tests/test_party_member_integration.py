@@ -171,12 +171,8 @@ class TestPartyMemberIntegration:
                     from src.models.politician import Politician
 
                     mock_create.side_effect = [
-                        Politician(
-                            id=1, name="DB統合太郎", speaker_id=1, political_party_id=1
-                        ),
-                        Politician(
-                            id=2, name="DB統合花子", speaker_id=2, political_party_id=1
-                        ),
+                        Politician(id=1, name="DB統合太郎", political_party_id=1),
+                        Politician(id=2, name="DB統合花子", political_party_id=1),
                     ]
 
                     # リポジトリ実行
@@ -265,9 +261,7 @@ class TestPartyMemberIntegration:
                         mock_create.return_value = Politician(
                             id=1,
                             name="重複チェック太郎",
-                            speaker_id=1,
                             political_party_id=1,
-                            position="衆議院議員",
                         )
 
                         repo = PoliticianRepository(session=mock_conn)
@@ -277,9 +271,7 @@ class TestPartyMemberIntegration:
                         existing_politician = Politician(
                             id=1,
                             name="重複チェック太郎",
-                            speaker_id=1,
                             political_party_id=1,
-                            position="衆議院議員",
                             prefecture="東京都",
                             electoral_district=None,
                             profile_url=None,
@@ -290,9 +282,7 @@ class TestPartyMemberIntegration:
                         mock_update.return_value = Politician(
                             id=1,
                             name="重複チェック太郎",
-                            speaker_id=1,
                             political_party_id=1,
-                            position="参議院議員",
                             electoral_district="東京",
                         )
 

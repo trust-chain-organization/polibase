@@ -31,13 +31,13 @@ class OptimizedPoliticianRepository(PoliticianRepositoryImpl, OptimizedRepositor
         This method loads all politicians once and caches them for subsequent calls.
         Used in LLM matching scenarios where the same data is accessed repeatedly.
         """
-        if not self._cache_loaded and self.async_session:
+        if not self._cache_loaded and self.session:
             # Load all politicians with party relationships
             query = select(PoliticianModel).options(
                 selectinload(PoliticianModel.political_party),  # type: ignore
                 selectinload(PoliticianModel.speaker),  # type: ignore
             )
-            result = await self.async_session.execute(query)
+            result = await self.session.execute(query)
             models = result.scalars().unique().all()
 
             # Cache the results
@@ -67,7 +67,7 @@ class OptimizedPoliticianRepository(PoliticianRepositoryImpl, OptimizedRepositor
         Returns:
             Dictionary mapping names to matching politicians
         """
-        if not names or not self.async_session:
+        if not names or not self.session:
             return {}
 
         # Normalize names for searching
@@ -89,7 +89,7 @@ class OptimizedPoliticianRepository(PoliticianRepositoryImpl, OptimizedRepositor
             )
         )
 
-        result = await self.async_session.execute(query)
+        result = await self.session.execute(query)
         models = result.scalars().unique().all()
 
         # Group results by matching names
@@ -115,7 +115,7 @@ class OptimizedPoliticianRepository(PoliticianRepositoryImpl, OptimizedRepositor
         Returns:
             List of politicians with relations loaded
         """
-        if not self.async_session:
+        if not self.session:
             return await self.get_by_party(party_id)
 
         query = (
@@ -127,7 +127,7 @@ class OptimizedPoliticianRepository(PoliticianRepositoryImpl, OptimizedRepositor
             )
         )
 
-        result = await self.async_session.execute(query)
+        result = await self.session.execute(query)
         models = result.scalars().unique().all()
 
         return [self._to_entity(model) for model in models]

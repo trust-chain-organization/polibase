@@ -9,6 +9,9 @@ from src.domain.entities.politician import Politician
 from src.infrastructure.persistence.politician_repository_impl import (
     PoliticianRepositoryImpl,
 )
+from src.infrastructure.persistence.politician_repository_sync_impl import (
+    PoliticianRepositorySyncImpl,
+)
 
 
 class TestPoliticianRepositoryImpl:
@@ -23,7 +26,15 @@ class TestPoliticianRepositoryImpl:
     @pytest.fixture
     def sync_repository(self, mock_sync_session):
         """同期リポジトリフィクスチャ"""
-        return PoliticianRepositoryImpl(mock_sync_session)
+        return PoliticianRepositorySyncImpl(mock_sync_session)
+
+    @pytest.fixture
+    def async_repository(self):
+        """非同期リポジトリフィクスチャ"""
+        from sqlalchemy.ext.asyncio import AsyncSession
+
+        mock_async_session = MagicMock(spec=AsyncSession)
+        return PoliticianRepositoryImpl(mock_async_session)
 
     def test_find_by_name_and_party_sync(self, sync_repository, mock_sync_session):
         """同期版のfind_by_name_and_partyのテスト"""
@@ -236,7 +247,7 @@ class TestPoliticianRepositoryImpl:
         assert results[1]["name"] == "テスト次郎"
         mock_sync_session.execute.assert_called_once()
 
-    def test_row_to_entity(self, sync_repository):
+    def test_row_to_entity(self, async_repository):
         """_row_to_entityのテスト"""
         # モックデータの準備 - Ensure proper Row-like object
         row_data = {
@@ -260,7 +271,7 @@ class TestPoliticianRepositoryImpl:
             setattr(mock_row, key, value)
 
         # テスト実行
-        result = sync_repository._row_to_entity(mock_row)
+        result = async_repository._row_to_entity(mock_row)
 
         # 検証
         assert isinstance(result, Politician)
@@ -273,7 +284,7 @@ class TestPoliticianRepositoryImpl:
             result.profile_page_url == "https://example.com/convert"
         )  # profile_url -> profile_page_url
 
-    def test_to_model(self, sync_repository):
+    def test_to_model(self, async_repository):
         """_to_modelのテスト"""
         # エンティティの準備
         entity = Politician(
@@ -286,7 +297,7 @@ class TestPoliticianRepositoryImpl:
         )
 
         # テスト実行
-        result = sync_repository._to_model(entity)
+        result = async_repository._to_model(entity)
 
         # 検証
         assert result.name == "モデル太郎"
