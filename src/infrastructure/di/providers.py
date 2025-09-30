@@ -16,6 +16,9 @@ from src.application.usecases.manage_conference_members_usecase import (
 )
 from src.application.usecases.match_speakers_usecase import MatchSpeakersUseCase
 from src.application.usecases.process_minutes_usecase import ProcessMinutesUseCase
+from src.application.usecases.review_and_convert_politician_usecase import (
+    ReviewAndConvertPoliticianUseCase,
+)
 from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
@@ -383,4 +386,11 @@ class UseCaseContainer(containers.DeclarativeContainer):
         extracted_politician_repository=repositories.extracted_politician_repository,
         politician_repository=repositories.politician_repository,
         speaker_repository=repositories.speaker_repository,
+    )
+
+    review_and_convert_politician_usecase = providers.Factory(
+        ReviewAndConvertPoliticianUseCase,
+        review_use_case=review_extracted_politician_usecase,
+        convert_use_case=convert_extracted_politician_usecase,
+        extracted_politician_repository=repositories.extracted_politician_repository,
     )

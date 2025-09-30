@@ -12,9 +12,13 @@ from src.application.dtos.review_extracted_politician_dto import (
     BulkReviewInputDTO,
     ExtractedPoliticianFilterDTO,
     ReviewExtractedPoliticianInputDTO,
+    UpdateExtractedPoliticianInputDTO,
 )
 from src.application.usecases.convert_extracted_politician_usecase import (
     ConvertExtractedPoliticianUseCase,
+)
+from src.application.usecases.review_and_convert_politician_usecase import (
+    ReviewAndConvertPoliticianUseCase,
 )
 from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
@@ -35,6 +39,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         container: Container | None = None,
         review_use_case: ReviewExtractedPoliticianUseCase | None = None,
         convert_use_case: ConvertExtractedPoliticianUseCase | None = None,
+        review_and_convert_use_case: ReviewAndConvertPoliticianUseCase | None = None,
     ):
         """Initialize the presenter.
 
@@ -42,6 +47,7 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             container: Dependency injection container
             review_use_case: Use case for reviewing politicians
             convert_use_case: Use case for converting politicians
+            review_and_convert_use_case: Use case for review with auto-conversion
         """
         super().__init__(container)
 
@@ -59,6 +65,13 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             )
         else:
             self.convert_use_case = convert_use_case
+
+        if review_and_convert_use_case is None:
+            self.review_and_convert_use_case = (
+                self.container.use_cases.review_and_convert_politician_usecase()
+            )
+        else:
+            self.review_and_convert_use_case = review_and_convert_use_case
 
         self.session = SessionManager()
         self.logger = get_logger(__name__)
@@ -116,10 +129,8 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
         Returns:
             List of political parties
         """
-        # Use the party repository through the use case's repository
-        # For now, we'll use the container directly
-        party_repo = self.container.repositories.political_party_repository()
-        return self._run_async(party_repo.get_all())
+        # Use the review use case to get parties
+        return self._run_async(self.review_use_case.get_all_parties())
 
     def get_filtered_politicians(
         self,
@@ -196,46 +207,14 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
                 reviewer_id=reviewer_id,
             )
 
-            # Call review use case
-            result = self._run_async(self.review_use_case.review_politician(input_dto))
+            # Use the composite use case for review with auto-conversion
+            result = self._run_async(
+                self.review_and_convert_use_case.review_with_auto_convert(
+                    input_dto, auto_convert=True
+                )
+            )
 
-            # If approved, automatically convert to Politician
-            conversion_message = ""
-            if result.success and action == "approve":
-                try:
-                    # Convert using the convert use case for single politician
-                    # Process this specific politician regardless of party
-                    convert_input = ConvertExtractedPoliticianInputDTO(
-                        party_id=None,
-                        batch_size=1,
-                        dry_run=False,
-                    )
-                    # Get the politician by ID first
-                    extracted_repo = (
-                        self.container.repositories.extracted_politician_repository()
-                    )
-                    politician = self._run_async(
-                        extracted_repo.get_by_id(politician_id)
-                    )
-
-                    if politician and politician.party_id:
-                        # Use the convert use case
-                        # Note: The use case processes approved politicians by party
-                        # For single politician, we'll need to process and filter
-                        convert_result = self._run_async(
-                            self.convert_use_case.execute(convert_input)
-                        )
-                        if convert_result.converted_count > 0:
-                            conversion_message = " and converted to politician"
-                        else:
-                            conversion_message = " (auto-conversion failed)"
-                except Exception as e:
-                    self.logger.warning(
-                        f"Failed to auto-convert politician {politician_id}: {e}"
-                    )
-                    conversion_message = " (auto-conversion failed)"
-
-            return result.success, result.message + conversion_message
+            return result.success, result.message
 
         except Exception as e:
             self.logger.error(f"Error reviewing politician {politician_id}: {e}")
@@ -292,28 +271,19 @@ class ExtractedPoliticianPresenter(BasePresenter[list[ExtractedPolitician]]):
             Tuple of (success, message)
         """
         try:
-            # Get repository from container
-            extracted_repo = (
-                self.container.repositories.extracted_politician_repository()
+            # Create input DTO
+            input_dto = UpdateExtractedPoliticianInputDTO(
+                politician_id=politician_id,
+                name=name,
+                party_id=party_id,
+                district=district,
+                profile_url=profile_url,
             )
 
-            # Get the politician
-            politician = self._run_async(extracted_repo.get_by_id(politician_id))
-            if not politician:
-                return False, f"Politician with ID {politician_id} not found"
+            # Call update use case
+            result = self._run_async(self.review_use_case.update_politician(input_dto))
 
-            # Update fields
-            politician.name = name
-            politician.party_id = party_id
-            politician.district = district
-            politician.profile_url = profile_url
-
-            # Save updates
-            updated = self._run_async(extracted_repo.update(politician))
-            if updated:
-                return True, f"Successfully updated politician: {name}"
-            else:
-                return False, f"Failed to update politician ID {politician_id}"
+            return result.success, result.message
 
         except Exception as e:
             self.logger.error(f"Error updating politician {politician_id}: {e}")

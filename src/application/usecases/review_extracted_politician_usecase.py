@@ -10,8 +10,11 @@ from src.application.dtos.review_extracted_politician_dto import (
     ExtractedPoliticianStatisticsDTO,
     ReviewExtractedPoliticianInputDTO,
     ReviewExtractedPoliticianOutputDTO,
+    UpdateExtractedPoliticianInputDTO,
+    UpdateExtractedPoliticianOutputDTO,
 )
 from src.domain.entities.extracted_politician import ExtractedPolitician
+from src.domain.entities.political_party import PoliticalParty
 from src.domain.repositories.extracted_politician_repository import (
     ExtractedPoliticianRepository,
 )
@@ -245,3 +248,63 @@ class ReviewExtractedPoliticianUseCase:
             converted_count=status_summary.get("converted", 0),
             party_statistics=party_statistics,
         )
+
+    async def get_all_parties(self) -> list[PoliticalParty]:
+        """Get all political parties for selection.
+
+        Returns:
+            List of all political parties
+        """
+        return await self.party_repo.get_all()
+
+    async def update_politician(
+        self, request: UpdateExtractedPoliticianInputDTO
+    ) -> UpdateExtractedPoliticianOutputDTO:
+        """Update an extracted politician's information.
+
+        Args:
+            request: Input DTO with politician ID and updated fields
+
+        Returns:
+            Output DTO with update result
+        """
+        try:
+            # Get the politician
+            politician = await self.extracted_politician_repo.get_by_id(
+                request.politician_id
+            )
+            if not politician:
+                return UpdateExtractedPoliticianOutputDTO(
+                    success=False,
+                    politician_id=request.politician_id,
+                    message=f"Politician with ID {request.politician_id} not found",
+                )
+
+            # Update fields
+            politician.name = request.name
+            politician.party_id = request.party_id
+            politician.district = request.district
+            politician.profile_url = request.profile_url
+
+            # Save updates
+            updated = await self.extracted_politician_repo.update(politician)
+            if updated:
+                return UpdateExtractedPoliticianOutputDTO(
+                    success=True,
+                    politician_id=request.politician_id,
+                    message=f"Successfully updated politician: {request.name}",
+                )
+            else:
+                return UpdateExtractedPoliticianOutputDTO(
+                    success=False,
+                    politician_id=request.politician_id,
+                    message=f"Failed to update politician ID {request.politician_id}",
+                )
+
+        except Exception as e:
+            logger.error(f"Error updating politician {request.politician_id}: {e}")
+            return UpdateExtractedPoliticianOutputDTO(
+                success=False,
+                politician_id=request.politician_id,
+                message=f"Error: {str(e)}",
+            )
