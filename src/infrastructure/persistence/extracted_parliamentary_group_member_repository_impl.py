@@ -289,3 +289,24 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
             data["id"] = entity.id
 
         return ExtractedParliamentaryGroupMemberModel(**data)
+
+    def _update_model(
+        self,
+        model: ExtractedParliamentaryGroupMemberModel,
+        entity: ExtractedParliamentaryGroupMember,
+    ) -> None:
+        """Update model fields from entity."""
+        model.parliamentary_group_id = entity.parliamentary_group_id
+        model.extracted_name = entity.extracted_name
+        model.source_url = entity.source_url
+        model.extracted_role = entity.extracted_role
+        model.extracted_party_name = entity.extracted_party_name
+        model.extracted_district = entity.extracted_district
+        model.extracted_at = entity.extracted_at
+        model.matched_politician_id = entity.matched_politician_id
+        model.matching_confidence = entity.matching_confidence
+        model.matching_status = entity.matching_status
+        model.matched_at = entity.matched_at
+
+        if hasattr(entity, "additional_info") and entity.additional_info is not None:
+            model.additional_info = entity.additional_info
