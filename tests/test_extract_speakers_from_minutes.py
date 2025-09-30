@@ -22,7 +22,7 @@ class TestSpeakerExtractorFromMinutes:
         """Create SpeakerExtractorFromMinutes instance with mocked repositories"""
         with (
             patch("src.extract_speakers_from_minutes.RepositoryAdapter"),
-            patch("src.extract_speakers_from_minutes.PoliticianRepositoryImpl"),
+            patch("src.extract_speakers_from_minutes.PoliticianRepositorySyncImpl"),
         ):
             return SpeakerExtractorFromMinutes(mock_session)
 
