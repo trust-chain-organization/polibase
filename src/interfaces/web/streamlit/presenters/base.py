@@ -5,13 +5,18 @@ should inherit from. It handles dependency injection, error handling, and
 common presenter functionality.
 """
 
+import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import Coroutine
 from typing import Any, Generic, TypeVar
+
+import nest_asyncio
 
 from src.common.logging import get_logger
 from src.infrastructure.di.container import Container
 
 T = TypeVar("T")
+R = TypeVar("R")
 
 
 class BasePresenter(ABC, Generic[T]):  # noqa: UP046
@@ -32,6 +37,48 @@ class BasePresenter(ABC, Generic[T]):  # noqa: UP046
         """
         self.container = container or Container()
         self.logger = get_logger(self.__class__.__name__)
+
+    def _run_async(self, coro: Coroutine[Any, Any, R]) -> R:
+        """Run an async coroutine from sync context.
+
+        This helper method allows presenters to call async use cases from
+        synchronous Streamlit code. It handles event loop management and
+        nested asyncio scenarios.
+
+        Args:
+            coro: The async coroutine to run
+
+        Returns:
+            The result of the coroutine
+
+        Raises:
+            Exception: If the async operation fails
+        """
+        nest_asyncio.apply()
+
+        try:
+            # Get or create event loop
+            try:
+                loop = asyncio.get_event_loop()
+                # Check if the loop is closed and create a new one if needed
+                if loop.is_closed():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            # Run the coroutine in the current loop
+            if loop.is_running():
+                # If loop is already running, create a task and wait for it
+                task = loop.create_task(coro)
+                return loop.run_until_complete(task)
+            else:
+                # If loop is not running, run normally
+                return loop.run_until_complete(coro)
+        except Exception as e:
+            self.logger.error(f"Failed to run async operation: {e}")
+            raise
 
     @abstractmethod
     def load_data(self) -> T:
