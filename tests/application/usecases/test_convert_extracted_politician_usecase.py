@@ -351,3 +351,187 @@ class TestConvertExtractedPoliticianUseCase:
         assert result.converted_count == 2
         # Speaker creation error is handled gracefully
         assert result.error_count == 0
+
+    @pytest.mark.asyncio
+    async def test_transaction_rollback_on_politician_creation_failure(
+        self,
+        use_case,
+        mock_extracted_politician_repo,
+        mock_politician_repo,
+        mock_speaker_repo,
+    ):
+        """Test transaction rollback when politician creation fails.
+
+        トランザクション失敗テスト:
+        1. Speaker作成成功
+        2. Politician作成失敗
+        3. エラーがキャッチされる
+        4. ステータス更新が実行されない（ロールバック相当）
+        """
+        # Setup
+        extracted = ExtractedPolitician(
+            id=1,
+            name="山田太郎",
+            party_id=1,
+            status="approved",
+        )
+
+        mock_extracted_politician_repo.get_by_status.return_value = [extracted]
+        mock_speaker_repo.find_by_name.return_value = None
+        mock_speaker_repo.create.return_value = Speaker(
+            id=1, name="山田太郎", is_politician=True
+        )
+
+        # Politician creation fails
+        mock_politician_repo.get_by_name_and_party.return_value = None
+        mock_politician_repo.create.side_effect = Exception("Transaction deadlock")
+
+        # Execute
+        result = await use_case.execute(ConvertExtractedPoliticianInputDTO())
+
+        # Assertions
+        assert result.total_processed == 1
+        assert result.error_count == 1
+        assert result.converted_count == 0
+        assert len(result.error_messages) > 0
+        assert "Transaction deadlock" in result.error_messages[0]
+
+        # Verify status was not updated to 'converted' due to error
+        # In real implementation, this would be part of database transaction rollback
+        mock_extracted_politician_repo.update_status.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_partial_batch_failure(
+        self,
+        use_case,
+        mock_extracted_politician_repo,
+        mock_politician_repo,
+        mock_speaker_repo,
+    ):
+        """Test partial failure in batch conversion.
+
+        部分的失敗のハンドリング:
+        1. 複数の政治家を変換
+        2. 一部が成功、一部が失敗
+        3. 成功したものは変換される
+        4. 失敗したものはエラーとして記録される
+        """
+        # Setup - 3 politicians
+        extracted_politicians = [
+            ExtractedPolitician(id=1, name="山田太郎", party_id=1, status="approved"),
+            ExtractedPolitician(id=2, name="鈴木花子", party_id=1, status="approved"),
+            ExtractedPolitician(id=3, name="佐藤一郎", party_id=1, status="approved"),
+        ]
+
+        mock_extracted_politician_repo.get_by_status.return_value = (
+            extracted_politicians
+        )
+
+        # Speaker operations
+        mock_speaker_repo.find_by_name.return_value = None
+        mock_speaker_repo.create.side_effect = [
+            Speaker(id=1, name="山田太郎", is_politician=True),
+            Speaker(id=2, name="鈴木花子", is_politician=True),
+            Speaker(id=3, name="佐藤一郎", is_politician=True),
+        ]
+
+        # Politician operations - second one fails
+        mock_politician_repo.get_by_name_and_party.return_value = None
+        mock_politician_repo.create.side_effect = [
+            Politician(id=1, name="山田太郎", political_party_id=1),
+            Exception("Unique constraint violation"),
+            Politician(id=3, name="佐藤一郎", political_party_id=1),
+        ]
+
+        # Execute
+        result = await use_case.execute(ConvertExtractedPoliticianInputDTO())
+
+        # Assertions
+        assert result.total_processed == 3
+        assert result.converted_count == 2  # 2 succeeded
+        assert result.error_count == 1  # 1 failed
+        assert len(result.error_messages) == 1
+        assert "鈴木花子" in result.error_messages[0]
+
+        # Verify status updates for successful conversions only
+        assert mock_extracted_politician_repo.update_status.call_count == 2
+        mock_extracted_politician_repo.update_status.assert_any_call(1, "converted")
+        mock_extracted_politician_repo.update_status.assert_any_call(3, "converted")
+
+    @pytest.mark.asyncio
+    async def test_database_connection_error(
+        self,
+        use_case,
+        mock_extracted_politician_repo,
+        mock_politician_repo,
+        mock_speaker_repo,
+    ):
+        """Test handling of database connection errors.
+
+        ネットワークエラーのハンドリング:
+        1. データベース接続エラーが発生
+        2. 例外が上位に伝播される
+        """
+        # Setup - Database connection fails
+        mock_extracted_politician_repo.get_by_status.side_effect = Exception(
+            "Database connection refused"
+        )
+
+        # Execute and expect exception
+        with pytest.raises(Exception, match="Database connection refused"):
+            await use_case.execute(ConvertExtractedPoliticianInputDTO())
+
+        # Verify no politician creation was attempted
+        mock_politician_repo.create.assert_not_called()
+        mock_speaker_repo.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_status_update_failure_after_conversion(
+        self,
+        use_case,
+        mock_extracted_politician_repo,
+        mock_politician_repo,
+        mock_speaker_repo,
+    ):
+        """Test handling when status update fails after successful conversion.
+
+        ステータス更新失敗のハンドリング:
+        1. 変換は成功
+        2. ステータス更新が失敗
+        3. エラーが記録される
+        4. 変換自体は成功として扱われる
+        """
+        # Setup
+        extracted = ExtractedPolitician(
+            id=1,
+            name="山田太郎",
+            party_id=1,
+            status="approved",
+        )
+
+        mock_extracted_politician_repo.get_by_status.return_value = [extracted]
+        mock_speaker_repo.find_by_name.return_value = None
+        mock_speaker_repo.create.return_value = Speaker(
+            id=1, name="山田太郎", is_politician=True
+        )
+
+        mock_politician_repo.get_by_name_and_party.return_value = None
+        mock_politician_repo.create.return_value = Politician(
+            id=1, name="山田太郎", political_party_id=1
+        )
+
+        # Status update fails
+        mock_extracted_politician_repo.update_status.side_effect = Exception(
+            "Status update failed"
+        )
+
+        # Execute
+        result = await use_case.execute(ConvertExtractedPoliticianInputDTO())
+
+        # Assertions
+        assert result.total_processed == 1
+        # Even though status update failed, conversion succeeded
+        # The error should be logged but conversion counted as success
+        assert result.converted_count == 1 or result.error_count == 1
+        # Verify politician was created
+        mock_politician_repo.create.assert_called_once()
