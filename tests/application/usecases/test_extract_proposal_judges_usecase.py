@@ -188,7 +188,6 @@ class TestExtractProposalJudgesUseCase:
         politician = Politician(
             id=10,
             name="山田太郎",
-            speaker_id=100,
             political_party_id=1,
         )
         politician_repo.search_by_name.return_value = [politician]
@@ -269,9 +268,7 @@ class TestExtractProposalJudgesUseCase:
         extracted_repo.get_all_matched.return_value = matched_judges
 
         # Mock politician
-        politician = Politician(
-            id=10, name="山田太郎", speaker_id=100, political_party_id=1
-        )
+        politician = Politician(id=10, name="山田太郎", political_party_id=1)
         politician_repo.get_by_id.return_value = politician
 
         # Mock no existing judge

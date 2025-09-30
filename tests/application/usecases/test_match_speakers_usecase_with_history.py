@@ -142,12 +142,11 @@ class TestMatchSpeakersUseCaseWithHistory:
         politician = Politician(
             id=1,
             name="山田太郎",
-            speaker_id=1,
             political_party_id=1,
         )
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []  # No rule-based match
         mock_politician_repo.get_all.return_value = [politician]
         mock_politician_repo.get_by_id.return_value = politician
@@ -197,12 +196,11 @@ class TestMatchSpeakersUseCaseWithHistory:
         politician = Politician(
             id=1,
             name="山田太郎",
-            speaker_id=1,
             political_party_id=1,
         )
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = [
             politician
         ]  # Rule-based match found
@@ -238,12 +236,11 @@ class TestMatchSpeakersUseCaseWithHistory:
         politician = Politician(
             id=456,
             name="佐藤花子",
-            speaker_id=123,
             political_party_id=2,
         )
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []  # No rule-based match
         mock_politician_repo.get_all.return_value = [politician]
         mock_politician_repo.get_by_id.return_value = politician
@@ -276,7 +273,7 @@ class TestMatchSpeakersUseCaseWithHistory:
         )
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []
         mock_politician_repo.get_all.return_value = []  # No candidates
         # Ensure get_all_cached doesn't exist so it uses get_all
@@ -315,11 +312,11 @@ class TestMatchSpeakersUseCaseWithHistory:
         politician = Politician(
             id=1,
             name="エラーテスト議員",
-            speaker_id=1,
+            political_party_id=1,
         )
 
         mock_speaker_repo.get_politicians.return_value = [speaker]
-        mock_politician_repo.get_by_speaker_id.return_value = None
+        # No existing politician link
         mock_politician_repo.search_by_name.return_value = []
         mock_politician_repo.get_all.return_value = [politician]
         mock_politician_repo.get_by_id.return_value = politician

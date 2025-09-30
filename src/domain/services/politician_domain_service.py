@@ -45,10 +45,9 @@ class PoliticianDomainService:
         self, existing: Politician, new_info: Politician
     ) -> Politician:
         """Merge new politician information with existing record."""
-        # Keep existing ID and speaker_id
+        # Keep existing ID
         merged = Politician(
             name=existing.name,  # Keep original name format
-            speaker_id=existing.speaker_id,
             political_party_id=new_info.political_party_id
             or existing.political_party_id,
             furigana=new_info.furigana or existing.furigana,
@@ -64,9 +63,6 @@ class PoliticianDomainService:
 
         if not politician.name or not politician.name.strip():
             issues.append("Name is required")
-
-        if not politician.speaker_id:
-            issues.append("Speaker ID is required")
 
         # Check for suspicious data
         if politician.name and len(politician.name) > 50:

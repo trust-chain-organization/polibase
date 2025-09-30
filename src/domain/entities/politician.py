@@ -9,7 +9,6 @@ class Politician(BaseEntity):
     def __init__(
         self,
         name: str,
-        speaker_id: int | None = None,
         political_party_id: int | None = None,
         furigana: str | None = None,
         district: str | None = None,
@@ -18,7 +17,6 @@ class Politician(BaseEntity):
     ) -> None:
         super().__init__(id)
         self.name = name
-        self.speaker_id = speaker_id
         self.political_party_id = political_party_id
         self.furigana = furigana
         self.district = district

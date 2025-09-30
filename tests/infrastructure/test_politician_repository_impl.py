@@ -32,7 +32,7 @@ class TestPoliticianRepositoryImpl:
         mock_row.name = "テスト太郎"
         mock_row.political_party_id = 2
         mock_row.id = 1
-        mock_row.speaker_id = None
+        mock_row.furigana = None
         mock_row.position = None
         mock_row.prefecture = None
         mock_row.electoral_district = None
@@ -42,7 +42,7 @@ class TestPoliticianRepositoryImpl:
             "id": 1,
             "name": "テスト太郎",
             "political_party_id": 2,
-            "speaker_id": None,
+            "furigana": None,
             "position": None,
             "prefecture": None,
             "electoral_district": None,
@@ -107,7 +107,7 @@ class TestPoliticianRepositoryImpl:
         with patch.object(async_repository, "get_by_name_and_party", return_value=None):
             # Mock create to return the new politician
             new_politician = Politician(
-                name="新規太郎", speaker_id=12, political_party_id=3, id=5
+                name="新規太郎", furigana="しんきたろう", political_party_id=3, id=5
             )
             with patch.object(async_repository, "create", return_value=new_politician):
                 # テスト実行
@@ -115,7 +115,7 @@ class TestPoliticianRepositoryImpl:
 
                 # 検証
                 assert result.name == new_politician.name
-                assert result.speaker_id == new_politician.speaker_id
+                assert result.furigana == new_politician.furigana
                 assert result.political_party_id == new_politician.political_party_id
 
     @pytest.mark.asyncio
@@ -132,7 +132,7 @@ class TestPoliticianRepositoryImpl:
         # Mock get_by_name_and_party to return existing politician
         existing_politician = Politician(
             name="既存太郎",
-            speaker_id=13,
+            furigana="きそんたろう",
             political_party_id=4,
             id=10,
         )
@@ -142,7 +142,7 @@ class TestPoliticianRepositoryImpl:
             # Mock update to return updated politician
             updated_politician = Politician(
                 name="既存太郎",
-                speaker_id=13,
+                furigana="きそんたろう",
                 political_party_id=4,
                 id=10,
             )
@@ -151,8 +151,8 @@ class TestPoliticianRepositoryImpl:
             ):
                 # テスト実行
                 new_data = Politician(
-                    name="既存太郎",
-                    speaker_id=13,
+                    name="既存太郮",
+                    furigana="きそんたろう",
                     political_party_id=4,
                 )
                 result = await async_repository.upsert(new_data)
@@ -166,7 +166,7 @@ class TestPoliticianRepositoryImpl:
         politicians_data = [
             {
                 "name": "バルク太郎",
-                "speaker_id": 15,
+                "furigana": "ばるくたろう",
                 "political_party_id": 5,
                 "position": "衆議院議員",
             }
@@ -179,7 +179,7 @@ class TestPoliticianRepositoryImpl:
             mock_row._mapping = {
                 "id": 20,
                 "name": "バルク太郎",
-                "speaker_id": 15,
+                "furigana": "ばるくたろう",
                 "political_party_id": 5,
                 "position": "衆議院議員",
             }
@@ -242,7 +242,7 @@ class TestPoliticianRepositoryImpl:
         row_data = {
             "id": 1,
             "name": "変換太郎",
-            "speaker_id": 20,
+            "furigana": "へんかんたろう",
             "political_party_id": 6,
             "position": "参議院議員",
             "prefecture": "大阪府",
@@ -266,7 +266,7 @@ class TestPoliticianRepositoryImpl:
         assert isinstance(result, Politician)
         assert result.id == 1
         assert result.name == "変換太郎"
-        assert result.speaker_id == 20
+        assert result.furigana == "へんかんたろう"
         assert result.political_party_id == 6
         assert result.district == "大阪1区"  # electoral_district -> district
         assert (
@@ -278,7 +278,7 @@ class TestPoliticianRepositoryImpl:
         # エンティティの準備
         entity = Politician(
             name="モデル太郎",
-            speaker_id=25,
+            furigana="もでるたろう",
             political_party_id=7,
             district="京都1区",
             profile_page_url="https://example.com/model",
@@ -290,7 +290,7 @@ class TestPoliticianRepositoryImpl:
 
         # 検証
         assert result.name == "モデル太郎"
-        assert result.speaker_id == 25
+        assert result.furigana == "もでるたろう"
         assert result.political_party_id == 7
         assert result.electoral_district == "京都1区"  # district -> electoral_district
         assert (

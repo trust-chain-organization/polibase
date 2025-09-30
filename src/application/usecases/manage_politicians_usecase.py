@@ -142,12 +142,9 @@ class ManagePoliticiansUseCase:
                 )
 
             # Create new politician
-            # Note: speaker_id is required but we'll use 0 as placeholder
-            # In production, this should be properly linked to a speaker
             politician = Politician(
                 id=0,  # Will be assigned by database
                 name=input_dto.name,
-                speaker_id=0,  # Placeholder - should be properly managed
                 political_party_id=input_dto.party_id,
                 district=input_dto.district,
                 profile_page_url=input_dto.profile_url,

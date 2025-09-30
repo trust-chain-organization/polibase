@@ -107,20 +107,24 @@ class MatchSpeakersUseCase:
             # Skip if already linked
             if speaker.id is None:
                 continue
-            existing_politician = self.politician_repo.get_by_speaker_id(speaker.id)
-            if existing_politician:
-                results.append(
-                    SpeakerMatchingDTO(
-                        speaker_id=speaker.id if speaker.id is not None else 0,
-                        speaker_name=speaker.name,
-                        matched_politician_id=existing_politician.id,
-                        matched_politician_name=existing_politician.name,
-                        confidence_score=1.0,
-                        matching_method="existing",
-                        matching_reason="Already linked to politician",
-                    )
+            # Check if speaker already has politician_id linked
+            if speaker.politician_id:
+                existing_politician = self.politician_repo.get_by_id(
+                    speaker.politician_id
                 )
-                continue
+                if existing_politician:
+                    results.append(
+                        SpeakerMatchingDTO(
+                            speaker_id=speaker.id if speaker.id is not None else 0,
+                            speaker_name=speaker.name,
+                            matched_politician_id=existing_politician.id,
+                            matched_politician_name=existing_politician.name,
+                            confidence_score=1.0,
+                            matching_method="existing",
+                            matching_reason="Already linked to politician",
+                        )
+                    )
+                    continue
 
             # Try rule-based matching first
             match_result = self._rule_based_matching(speaker)

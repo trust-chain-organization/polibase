@@ -76,10 +76,17 @@ CREATE TABLE politicians (
     id SERIAL PRIMARY KEY, -- 政治家固有のID
     name VARCHAR NOT NULL, -- 政治家名
     political_party_id INTEGER REFERENCES political_parties(id), -- 現在の主要所属政党
-    speaker_id INTEGER UNIQUE NOT NULL REFERENCES speakers(id), -- 各政治家は一意の発言者でもある (1対1関係)
+    furigana VARCHAR, -- 名前の読み（ひらがな）
+    district VARCHAR, -- 選挙区
+    profile_page_url VARCHAR, -- プロフィールページURL
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- speakers テーブルにpolitician_idを追加 (多対1の関係: 複数のspeakerが1人の政治家を指す)
+ALTER TABLE speakers ADD COLUMN politician_id INTEGER REFERENCES politicians(id);
+CREATE INDEX idx_speakers_politician_id ON speakers(politician_id);
+COMMENT ON COLUMN speakers.politician_id IS 'Reference to the politician this speaker represents. Multiple speakers can point to the same politician.';
 
 -- 公約テーブル
 CREATE TABLE pledges (

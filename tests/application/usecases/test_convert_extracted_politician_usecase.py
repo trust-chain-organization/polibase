@@ -98,7 +98,6 @@ class TestConvertExtractedPoliticianUseCase:
             Politician(
                 id=1,
                 name="山田太郎",
-                speaker_id=1,
                 political_party_id=1,
                 district="東京1区",
                 profile_page_url="https://example.com/yamada",
@@ -106,7 +105,6 @@ class TestConvertExtractedPoliticianUseCase:
             Politician(
                 id=2,
                 name="鈴木花子",
-                speaker_id=2,
                 political_party_id=2,
                 district="大阪2区",
                 profile_page_url="https://example.com/suzuki",
@@ -126,7 +124,7 @@ class TestConvertExtractedPoliticianUseCase:
         # Verify first politician
         assert result.converted_politicians[0].name == "山田太郎"
         assert result.converted_politicians[0].politician_id == 1
-        assert result.converted_politicians[0].speaker_id == 1
+        # Speaker-Politician linkage is now on the speaker side
         assert result.converted_politicians[0].party_id == 1
 
         # Verify status update was called
@@ -159,7 +157,6 @@ class TestConvertExtractedPoliticianUseCase:
         existing_politician = Politician(
             id=10,
             name="山田太郎",
-            speaker_id=5,
             political_party_id=1,
             district="東京1区",  # Old district
             profile_page_url="https://example.com/yamada-old",
@@ -174,7 +171,6 @@ class TestConvertExtractedPoliticianUseCase:
         updated_politician = Politician(
             id=10,
             name="山田太郎",
-            speaker_id=5,
             political_party_id=1,
             district="東京2区",  # Updated
             profile_page_url="https://example.com/yamada-new",  # Updated
@@ -263,8 +259,8 @@ class TestConvertExtractedPoliticianUseCase:
 
         mock_politician_repo.get_by_name_and_party.return_value = None
         mock_politician_repo.create.side_effect = [
-            Politician(id=1, name="山田太郎", speaker_id=1, political_party_id=1),
-            Politician(id=3, name="佐藤一郎", speaker_id=3, political_party_id=1),
+            Politician(id=1, name="山田太郎", political_party_id=1),
+            Politician(id=3, name="佐藤一郎", political_party_id=1),
         ]
 
         # Execute with party_id filter
@@ -302,7 +298,7 @@ class TestConvertExtractedPoliticianUseCase:
 
         mock_politician_repo.get_by_name_and_party.return_value = None
         mock_politician_repo.create.side_effect = [
-            Politician(id=i, name=f"政治家{i}", speaker_id=i, political_party_id=1)
+            Politician(id=i, name=f"政治家{i}", political_party_id=1)
             for i in range(1, 4)
         ]
 
@@ -343,7 +339,7 @@ class TestConvertExtractedPoliticianUseCase:
 
         mock_politician_repo.get_by_name_and_party.return_value = None
         mock_politician_repo.create.return_value = Politician(
-            id=1, name="山田太郎", speaker_id=1, political_party_id=1
+            id=1, name="山田太郎", political_party_id=1
         )
 
         # Execute
@@ -351,6 +347,7 @@ class TestConvertExtractedPoliticianUseCase:
 
         # Assertions
         assert result.total_processed == 2
-        assert result.converted_count == 1  # Only first succeeded
-        assert result.error_count == 1
-        assert "鈴木花子" in result.error_messages[0]
+        # Both politicians created despite speaker error
+        assert result.converted_count == 2
+        # Speaker creation error is handled gracefully
+        assert result.error_count == 0

@@ -121,6 +121,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             political_party_name=entity.political_party_name,
             position=entity.position,
             is_politician=entity.is_politician,
+            politician_id=entity.politician_id,
         )
 
     def _update_model(self, model: Any, entity: Speaker) -> None:
@@ -130,6 +131,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
         model.political_party_name = entity.political_party_name
         model.position = entity.position
         model.is_politician = entity.is_politician
+        model.politician_id = entity.politician_id
 
     async def get_speakers_with_conversation_count(
         self,
@@ -289,6 +291,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             political_party_name=getattr(row, "political_party_name", None),
             position=getattr(row, "position", None),
             is_politician=getattr(row, "is_politician", False),
+            politician_id=getattr(row, "politician_id", None),
         )
 
     async def get_speakers_with_politician_info(self) -> list[dict[str, Any]]:
@@ -306,7 +309,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
                 pp.name as party_name_from_politician,
                 COUNT(c.id) as conversation_count
             FROM speakers s
-            LEFT JOIN politicians p ON s.id = p.speaker_id
+            LEFT JOIN politicians p ON s.politician_id = p.id
             LEFT JOIN political_parties pp ON p.political_party_id = pp.id
             LEFT JOIN conversations c ON s.id = c.speaker_id
             GROUP BY s.id, s.name, s.type, s.political_party_name,
@@ -349,7 +352,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
                 SELECT
                     COUNT(DISTINCT s.id) as linked_speakers
                 FROM speakers s
-                INNER JOIN politicians p ON s.id = p.speaker_id
+                INNER JOIN politicians p ON s.politician_id = p.id
                 WHERE s.is_politician = TRUE
             )
             SELECT

@@ -18,11 +18,6 @@ class PoliticianRepository(BaseRepository[Politician]):
         pass
 
     @abstractmethod
-    async def get_by_speaker_id(self, speaker_id: int) -> Politician | None:
-        """Get politician by speaker ID."""
-        pass
-
-    @abstractmethod
     async def get_by_party(self, political_party_id: int) -> list[Politician]:
         """Get all politicians for a political party."""
         pass
