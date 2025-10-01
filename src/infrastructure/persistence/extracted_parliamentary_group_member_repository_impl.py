@@ -106,6 +106,7 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
         politician_id: int | None,
         confidence: float | None,
         status: str,
+        matched_at: datetime | None = None,
     ) -> ExtractedParliamentaryGroupMember | None:
         """Update the matching result for a member."""
         query = text("""
@@ -124,7 +125,7 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
                 "pol_id": politician_id,
                 "confidence": confidence,
                 "status": status,
-                "matched_at": datetime.now(),
+                "matched_at": matched_at or datetime.now(),
             },
         )
         await self.session.commit()
@@ -296,6 +297,12 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
         entity: ExtractedParliamentaryGroupMember,
     ) -> None:
         """Update model fields from entity."""
+        # Validate required fields
+        if not entity.extracted_name or not entity.source_url:
+            raise ValueError(
+                "Required fields (extracted_name, source_url) must not be empty"
+            )
+
         model.parliamentary_group_id = entity.parliamentary_group_id
         model.extracted_name = entity.extracted_name
         model.source_url = entity.source_url

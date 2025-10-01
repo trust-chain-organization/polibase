@@ -195,6 +195,62 @@ class TestExtractedParliamentaryGroupMemberRepositoryImpl:
             mock_session.execute.assert_called_once()
             mock_session.commit.assert_called_once()
 
+    async def test_update_matching_result_with_custom_timestamp(
+        self, repository, mock_session
+    ) -> None:
+        """Test updating matching result with custom matched_at timestamp."""
+        # Mock the update execution
+        mock_session.execute = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        custom_time = datetime(2023, 1, 15, 10, 30, 0)
+        updated_member = create_extracted_parliamentary_group_member(
+            id=1,
+            matching_status="matched",
+            matched_politician_id=1,
+            matching_confidence=0.95,
+            matched_at=custom_time,
+        )
+
+        with patch.object(repository, "get_by_id", return_value=updated_member):
+            # Execute with custom matched_at
+            result = await repository.update_matching_result(
+                member_id=1,
+                politician_id=1,
+                confidence=0.95,
+                status="matched",
+                matched_at=custom_time,
+            )
+
+            # Assert
+            assert result is not None
+            assert result.matched_at == custom_time
+            mock_session.execute.assert_called_once()
+            mock_session.commit.assert_called_once()
+
+    async def test_update_matching_result_with_none_values(
+        self, repository, mock_session
+    ) -> None:
+        """Test updating matching result with None politician_id."""
+        mock_session.execute = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        updated_member = create_extracted_parliamentary_group_member(
+            id=1,
+            matching_status="no_match",
+            matched_politician_id=None,
+            matching_confidence=None,
+        )
+
+        with patch.object(repository, "get_by_id", return_value=updated_member):
+            result = await repository.update_matching_result(
+                member_id=1, politician_id=None, confidence=None, status="no_match"
+            )
+
+            assert result is not None
+            assert result.matching_status == "no_match"
+            assert result.matched_politician_id is None
+
     async def test_get_by_parliamentary_group(self, repository, mock_session) -> None:
         """Test getting members by parliamentary group."""
         mock_rows = [
