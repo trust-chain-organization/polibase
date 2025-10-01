@@ -106,6 +106,7 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
         politician_id: int | None,
         confidence: float | None,
         status: str,
+        matched_at: datetime | None = None,
     ) -> ExtractedParliamentaryGroupMember | None:
         """Update the matching result for a member."""
         query = text("""
@@ -124,7 +125,7 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
                 "pol_id": politician_id,
                 "confidence": confidence,
                 "status": status,
-                "matched_at": datetime.now(),
+                "matched_at": matched_at or datetime.now(),
             },
         )
         await self.session.commit()
@@ -289,3 +290,30 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
             data["id"] = entity.id
 
         return ExtractedParliamentaryGroupMemberModel(**data)
+
+    def _update_model(
+        self,
+        model: ExtractedParliamentaryGroupMemberModel,
+        entity: ExtractedParliamentaryGroupMember,
+    ) -> None:
+        """Update model fields from entity."""
+        # Validate required fields
+        if not entity.extracted_name or not entity.source_url:
+            raise ValueError(
+                "Required fields (extracted_name, source_url) must not be empty"
+            )
+
+        model.parliamentary_group_id = entity.parliamentary_group_id
+        model.extracted_name = entity.extracted_name
+        model.source_url = entity.source_url
+        model.extracted_role = entity.extracted_role
+        model.extracted_party_name = entity.extracted_party_name
+        model.extracted_district = entity.extracted_district
+        model.extracted_at = entity.extracted_at
+        model.matched_politician_id = entity.matched_politician_id
+        model.matching_confidence = entity.matching_confidence
+        model.matching_status = entity.matching_status
+        model.matched_at = entity.matched_at
+
+        if hasattr(entity, "additional_info") and entity.additional_info is not None:
+            model.additional_info = entity.additional_info

@@ -1,6 +1,7 @@
 """Repository interface for extracted parliamentary group members."""
 
 from abc import abstractmethod
+from datetime import datetime
 
 from src.domain.entities.extracted_parliamentary_group_member import (
     ExtractedParliamentaryGroupMember,
@@ -36,6 +37,7 @@ class ExtractedParliamentaryGroupMemberRepository(
         politician_id: int | None,
         confidence: float | None,
         status: str,
+        matched_at: datetime | None = None,
     ) -> ExtractedParliamentaryGroupMember | None:
         """Update the matching result for a member."""
         pass
