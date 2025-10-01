@@ -246,13 +246,11 @@ JSONで回答してください。
         )
 
         try:
-            # Use invoke_with_retry method if available
-            if hasattr(self.llm_service, "invoke_with_retry"):
-                response = self.llm_service.invoke_with_retry(formatted_prompt)
+            # Use LLM service's llm property to invoke directly
+            if hasattr(self.llm_service, "llm"):
+                response = self.llm_service.llm.invoke(formatted_prompt)
             else:
-                raise AttributeError(
-                    "LLM service does not have invoke_with_retry method"
-                )
+                raise AttributeError("LLM service does not have llm property")
 
             # レスポンスをパース
             if hasattr(response, "content"):
