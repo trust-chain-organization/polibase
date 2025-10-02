@@ -5,13 +5,10 @@ import re
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.interfaces.llm_service import ILLMService
-from src.exceptions import DatabaseError, LLMError, QueryError
+from src.exceptions import LLMError
 
 if TYPE_CHECKING:
     pass
@@ -38,7 +35,6 @@ class SpeakerMatchingService:
         self,
         llm_service: ILLMService,
         speaker_repository: SpeakerRepository,
-        session: Session,
     ):
         """
         Initialize speaker matching service
@@ -46,16 +42,14 @@ class SpeakerMatchingService:
         Args:
             llm_service: LLM service instance (domain interface)
             speaker_repository: Speaker repository instance (domain interface)
-            session: Database session
         """
         self.llm_service = llm_service
         self.speaker_repository = speaker_repository
-        self.session = session
 
         # Create matching chain using LLM service
         self._matching_chain: Any = self.llm_service.get_structured_llm(SpeakerMatch)
 
-    def find_best_match(
+    async def find_best_match(
         self,
         speaker_name: str,
         meeting_date: str | None = None,
@@ -73,7 +67,7 @@ class SpeakerMatchingService:
             SpeakerMatch: マッチング結果
         """
         # 既存の発言者リストを取得
-        available_speakers = self._get_available_speakers()
+        available_speakers = await self.speaker_repository.get_all_for_matching()
 
         if not available_speakers:
             return SpeakerMatch(
@@ -84,7 +78,7 @@ class SpeakerMatchingService:
         affiliated_speakers: list[dict[str, Any]] = []
         affiliated_speaker_ids: set[int] = set()
         if meeting_date and conference_id:
-            affiliated_speakers = self._get_affiliated_speakers(
+            affiliated_speakers = await self.speaker_repository.get_affiliated_speakers(
                 meeting_date, conference_id
             )
             affiliated_speaker_ids = {s["speaker_id"] for s in affiliated_speakers}
@@ -142,89 +136,6 @@ class SpeakerMatchingService:
             raise LLMError(
                 "Unexpected error during LLM matching",
                 {"error": str(e)},
-            ) from e
-
-    def _get_available_speakers(self) -> list[dict[str, Any]]:
-        """利用可能な発言者リストを取得
-
-        Raises:
-            QueryError: If database query fails
-        """
-        try:
-            query = text("SELECT id, name FROM speakers ORDER BY name")
-            result = self.session.execute(query)
-
-            speakers: list[dict[str, Any]] = []
-            for row in result.fetchall():
-                speakers.append({"id": row[0], "name": row[1]})
-
-            return speakers
-        except SQLAlchemyError as e:
-            logger.error(f"Database error getting available speakers: {e}")
-            raise QueryError(
-                "Failed to retrieve available speakers", {"error": str(e)}
-            ) from e
-
-    def _get_affiliated_speakers(
-        self, meeting_date: str, conference_id: int
-    ) -> list[dict[str, Any]]:
-        """
-        指定された会議日と会議体IDに基づいて、その時点でアクティブな所属を持つ発言者を取得
-
-        Args:
-            meeting_date: 会議開催日（YYYY-MM-DD形式）
-            conference_id: 会議体ID
-
-        Returns:
-            List[dict]: アフィリエーション情報を含む発言者リスト
-
-        Raises:
-            QueryError: If database query fails
-        """
-        try:
-            query = text("""
-                SELECT DISTINCT
-                    s.id as speaker_id,
-                    s.name as speaker_name,
-                    p.id as politician_id,
-                    p.name as politician_name,
-                    pa.role as role
-                FROM politician_affiliations pa
-                JOIN politicians p ON pa.politician_id = p.id
-                JOIN speakers s ON p.speaker_id = s.id
-                WHERE pa.conference_id = :conference_id
-                    AND pa.start_date <= CAST(:meeting_date AS date)
-                    AND (pa.end_date IS NULL OR
-                         pa.end_date >= CAST(:meeting_date AS date))
-                ORDER BY s.name
-            """)
-
-            result = self.session.execute(
-                query, {"conference_id": conference_id, "meeting_date": meeting_date}
-            )
-
-            affiliated_speakers: list[dict[str, Any]] = []
-            for row in result.fetchall():
-                affiliated_speakers.append(
-                    {
-                        "speaker_id": row[0],
-                        "speaker_name": row[1],
-                        "politician_id": row[2],
-                        "politician_name": row[3],
-                        "role": row[4],
-                    }
-                )
-
-            return affiliated_speakers
-        except SQLAlchemyError as e:
-            logger.error(f"Database error getting affiliated speakers: {e}")
-            raise QueryError(
-                "Failed to retrieve affiliated speakers",
-                {
-                    "conference_id": conference_id,
-                    "meeting_date": meeting_date,
-                    "error": str(e),
-                },
             ) from e
 
     def _rule_based_matching(
@@ -348,113 +259,3 @@ class SpeakerMatchingService:
                 entry += " 【会議体所属議員】"
             formatted.append(entry)
         return "\n".join(formatted)
-
-    def batch_update_speaker_links(self) -> dict[str, int]:
-        """
-        未マッチの会話レコードを一括でマッチング更新
-
-        Returns:
-            Dict[str, int]: 更新統計
-        """
-        stats = {
-            "total_processed": 0,
-            "successfully_matched": 0,
-            "high_confidence_matches": 0,
-            "failed_matches": 0,
-            "affiliation_aided_matches": 0,
-        }
-
-        try:
-            # speaker_idがNULLのレコードを取得（会議情報も含む）
-            query = text("""
-                SELECT c.id, c.speaker_name, m.date, m.conference_id
-                FROM conversations c
-                JOIN minutes min ON c.minute_id = min.id
-                JOIN meetings m ON min.meeting_id = m.id
-                WHERE c.speaker_id IS NULL
-                ORDER BY c.id
-            """)
-
-            result = self.session.execute(query)
-            unlinked_conversations = result.fetchall()
-
-            stats["total_processed"] = len(unlinked_conversations)
-
-            for (
-                conversation_id,
-                speaker_name,
-                meeting_date,
-                conference_id,
-            ) in unlinked_conversations:
-                logger.info(f"マッチング処理中: {speaker_name}")
-
-                # 会議日付をYYYY-MM-DD形式に変換
-                meeting_date_str = (
-                    meeting_date.strftime("%Y-%m-%d") if meeting_date else None
-                )
-
-                match_result = self.find_best_match(
-                    speaker_name, meeting_date_str, conference_id
-                )
-
-                if match_result.matched and match_result.speaker_id:
-                    # speaker_idを更新
-                    update_query = text("""
-                        UPDATE conversations
-                        SET speaker_id = :speaker_id
-                        WHERE id = :conversation_id
-                    """)
-
-                    self.session.execute(
-                        update_query,
-                        {
-                            "speaker_id": match_result.speaker_id,
-                            "conversation_id": conversation_id,
-                        },
-                    )
-
-                    stats["successfully_matched"] += 1
-
-                    if match_result.confidence >= 0.9:
-                        stats["high_confidence_matches"] += 1
-
-                    confidence_emoji = "🟢" if match_result.confidence >= 0.9 else "🟡"
-                    logger.info(
-                        f"  {confidence_emoji} マッチ成功: {speaker_name} → "
-                        f"{match_result.speaker_name} "
-                        f"(信頼度: {match_result.confidence:.2f})"
-                    )
-                else:
-                    stats["failed_matches"] += 1
-                    logger.warning(
-                        f"  🔴 マッチ失敗: {speaker_name} ({match_result.reason})"
-                    )
-
-            self.session.commit()
-
-            logger.info("マッチング結果:")
-            logger.info(f"   - 処理総数: {stats['total_processed']}件")
-            logger.info(f"   - マッチ成功: {stats['successfully_matched']}件")
-            logger.info(f"   - 高信頼度マッチ: {stats['high_confidence_matches']}件")
-            logger.info(f"   - マッチ失敗: {stats['failed_matches']}件")
-
-            return stats
-
-        except SQLAlchemyError as e:
-            self.session.rollback()
-            logger.error(f"Database error during batch matching update: {e}")
-            raise DatabaseError(
-                "Failed to update speaker links in batch",
-                {"processed": stats.get("total_processed", 0), "error": str(e)},
-            ) from e
-        except Exception as e:
-            self.session.rollback()
-            logger.error(f"Unexpected error during batch matching update: {e}")
-            raise DatabaseError(
-                "Unexpected error during batch speaker link update",
-                {"error": str(e)},
-            ) from e
-        finally:
-            self.session.close()
-            if self.history_helper:
-                self.history_helper.close()

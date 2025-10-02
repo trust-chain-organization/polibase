@@ -7,13 +7,10 @@ import re
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.services.interfaces.llm_service import ILLMService
-from src.exceptions import DatabaseError, LLMError, QueryError
+from src.exceptions import LLMError
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +37,6 @@ class PoliticianMatchingService:
         self,
         llm_service: ILLMService,
         politician_repository: PoliticianRepository,
-        session: Session,
     ):
         """
         Initialize PoliticianMatchingService
@@ -48,17 +44,15 @@ class PoliticianMatchingService:
         Args:
             llm_service: LLM service instance (domain interface)
             politician_repository: Politician repository instance (domain interface)
-            session: Database session
         """
         self.llm_service = llm_service
         self.politician_repository = politician_repository
-        self.session = session
 
         # プロンプト名を使ってチェーンを取得
         prompt_name = "politician_matching"
         self.chain: Any = self.llm_service.get_prompt(prompt_name)
 
-    def find_best_match(
+    async def find_best_match(
         self,
         speaker_name: str,
         speaker_type: str | None = None,
@@ -76,7 +70,7 @@ class PoliticianMatchingService:
             PoliticianMatch: マッチング結果
         """
         # 既存の政治家リストを取得
-        available_politicians = self._get_available_politicians()
+        available_politicians = await self.politician_repository.get_all_for_matching()
 
         if not available_politicians:
             return PoliticianMatch(
@@ -140,43 +134,6 @@ class PoliticianMatchingService:
             raise LLMError(
                 "Unexpected error during LLM politician matching",
                 {"speaker_name": speaker_name, "error": str(e)},
-            ) from e
-
-    def _get_available_politicians(self) -> list[dict[str, Any]]:
-        """利用可能な政治家リストを取得
-
-        Raises:
-            QueryError: If database query fails
-        """
-        try:
-            query = text("""
-                SELECT p.id, p.name, p.position, p.prefecture,
-                       p.electoral_district, pp.name as party_name
-                FROM politicians p
-                LEFT JOIN political_parties pp ON p.political_party_id = pp.id
-                ORDER BY p.name
-            """)
-            result = self.session.execute(query)
-
-            politicians: list[dict[str, Any]] = []
-            for row in result.fetchall():
-                politicians.append(
-                    {
-                        "id": row[0],
-                        "name": row[1],
-                        "position": row[2],
-                        "prefecture": row[3],
-                        "electoral_district": row[4],
-                        "party_name": row[5],
-                    }
-                )
-
-            return politicians
-        except SQLAlchemyError as e:
-            logger.error(f"Database error getting available politicians: {e}")
-            raise QueryError(
-                "Failed to retrieve available politicians",
-                {"error": str(e)},
             ) from e
 
     def _rule_based_matching(
@@ -302,103 +259,3 @@ class PoliticianMatchingService:
                 info += f", 選挙区: {p['electoral_district']}"
             formatted.append(info)
         return "\n".join(formatted)
-
-    def batch_link_speakers_to_politicians(self) -> dict[str, int]:
-        """
-        未紐付けの発言者を一括で政治家とマッチング
-
-        Returns:
-            Dict[str, int]: 更新統計
-        """
-        stats = {
-            "total_processed": 0,
-            "successfully_matched": 0,
-            "high_confidence_matches": 0,
-            "failed_matches": 0,
-        }
-
-        try:
-            # is_politician=Falseのspeakerを取得
-            query = text("""
-                SELECT id, name, type, political_party_name
-                FROM speakers
-                WHERE is_politician = FALSE
-                ORDER BY id
-            """)
-
-            result = self.session.execute(query)
-            unlinked_speakers = result.fetchall()
-
-            stats["total_processed"] = len(unlinked_speakers)
-
-            for (
-                speaker_id,
-                speaker_name,
-                speaker_type,
-                speaker_party,
-            ) in unlinked_speakers:
-                logger.info(f"政治家マッチング処理中: {speaker_name}")
-
-                match_result = self.find_best_match(
-                    speaker_name, speaker_type, speaker_party
-                )
-
-                if match_result.matched and match_result.politician_id:
-                    # speakerを更新
-                    update_query = text("""
-                        UPDATE speakers
-                        SET is_politician = TRUE,
-                            political_party_name = COALESCE(:party_name,
-                                                           political_party_name)
-                        WHERE id = :speaker_id
-                    """)
-
-                    self.session.execute(
-                        update_query,
-                        {
-                            "speaker_id": speaker_id,
-                            "party_name": match_result.political_party_name,
-                        },
-                    )
-
-                    stats["successfully_matched"] += 1
-
-                    if match_result.confidence >= 0.9:
-                        stats["high_confidence_matches"] += 1
-
-                    logger.info(
-                        f"マッチ成功: {speaker_name} → "
-                        f"{match_result.politician_name} "
-                        f"({match_result.political_party_name}) "
-                        f"(信頼度: {match_result.confidence:.2f})"
-                    )
-                else:
-                    stats["failed_matches"] += 1
-                    logger.info(f"マッチ失敗: {speaker_name} ({match_result.reason})")
-
-            self.session.commit()
-
-            logger.info("政治家マッチング結果:")
-            logger.info(f"   - 処理総数: {stats['total_processed']}人")
-            logger.info(f"   - マッチ成功: {stats['successfully_matched']}人")
-            logger.info(f"   - 高信頼度マッチ: {stats['high_confidence_matches']}人")
-            logger.info(f"   - マッチ失敗: {stats['failed_matches']}人")
-
-            return stats
-
-        except SQLAlchemyError as e:
-            self.session.rollback()
-            logger.error(f"Database error during batch politician matching: {e}")
-            raise DatabaseError(
-                "Failed to update politician links in batch",
-                {"processed": stats.get("total_processed", 0), "error": str(e)},
-            ) from e
-        except Exception as e:
-            self.session.rollback()
-            logger.error(f"Unexpected error during batch politician matching: {e}")
-            raise DatabaseError(
-                "Unexpected error during batch politician link update",
-                {"error": str(e)},
-            ) from e
-        finally:
-            self.session.close()
