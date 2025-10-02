@@ -41,8 +41,6 @@ class TestCreateParliamentaryGroupMembershipsUseCase:
         self, use_case, mock_member_repo, mock_membership_repo
     ):
         """Test successful creation of memberships."""
-        from datetime import date
-
         from src.domain.entities.parliamentary_group_membership import (
             ParliamentaryGroupMembership,
         )
