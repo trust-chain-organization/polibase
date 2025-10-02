@@ -1,12 +1,10 @@
 """Parliamentary group membership domain entity"""
 
-from dataclasses import dataclass
 from datetime import date
 
 from .base import BaseEntity
 
 
-@dataclass
 class ParliamentaryGroupMembership(BaseEntity):
     """Parliamentary group membership entity
 
@@ -14,11 +12,21 @@ class ParliamentaryGroupMembership(BaseEntity):
     with time bounds and optional role.
     """
 
-    politician_id: int
-    parliamentary_group_id: int
-    start_date: date
-    end_date: date | None = None
-    role: str | None = None
+    def __init__(
+        self,
+        politician_id: int,
+        parliamentary_group_id: int,
+        start_date: date,
+        end_date: date | None = None,
+        role: str | None = None,
+        id: int | None = None,
+    ) -> None:
+        super().__init__(id)
+        self.politician_id = politician_id
+        self.parliamentary_group_id = parliamentary_group_id
+        self.start_date = start_date
+        self.end_date = end_date
+        self.role = role
 
     def is_active(self, as_of_date: date | None = None) -> bool:
         """Check if membership is active as of a specific date"""

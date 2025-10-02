@@ -41,6 +41,12 @@ class TestCreateParliamentaryGroupMembershipsUseCase:
         self, use_case, mock_member_repo, mock_membership_repo
     ):
         """Test successful creation of memberships."""
+        from datetime import date
+
+        from src.domain.entities.parliamentary_group_membership import (
+            ParliamentaryGroupMembership,
+        )
+
         # Arrange
         member1 = ExtractedParliamentaryGroupMember(
             parliamentary_group_id=1,
@@ -65,8 +71,20 @@ class TestCreateParliamentaryGroupMembershipsUseCase:
 
         mock_member_repo.get_matched_members.return_value = [member1, member2]
         mock_membership_repo.create_membership.side_effect = [
-            {"id": 1, "politician_id": 100, "parliamentary_group_id": 1},
-            {"id": 2, "politician_id": 200, "parliamentary_group_id": 1},
+            ParliamentaryGroupMembership(
+                id=1,
+                politician_id=100,
+                parliamentary_group_id=1,
+                start_date=date.today(),
+                role="団長",
+            ),
+            ParliamentaryGroupMembership(
+                id=2,
+                politician_id=200,
+                parliamentary_group_id=1,
+                start_date=date.today(),
+                role="幹事長",
+            ),
         ]
 
         # Act
@@ -111,6 +129,10 @@ class TestCreateParliamentaryGroupMembershipsUseCase:
         self, use_case, mock_member_repo, mock_membership_repo
     ):
         """Test creation with custom start date."""
+        from src.domain.entities.parliamentary_group_membership import (
+            ParliamentaryGroupMembership,
+        )
+
         # Arrange
         custom_date = date(2024, 1, 1)
         member = ExtractedParliamentaryGroupMember(
@@ -124,10 +146,14 @@ class TestCreateParliamentaryGroupMembershipsUseCase:
         )
 
         mock_member_repo.get_matched_members.return_value = [member]
-        mock_membership_repo.create_membership.return_value = {
-            "id": 1,
-            "politician_id": 100,
-        }
+        mock_membership_repo.create_membership.return_value = (
+            ParliamentaryGroupMembership(
+                id=1,
+                politician_id=100,
+                parliamentary_group_id=1,
+                start_date=custom_date,
+            )
+        )
 
         # Act
         await use_case.execute(parliamentary_group_id=1, start_date=custom_date)

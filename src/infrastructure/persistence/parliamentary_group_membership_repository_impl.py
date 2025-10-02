@@ -1,71 +1,82 @@
-"""Parliamentary group membership repository implementation"""
+"""Parliamentary group membership repository implementation."""
 
 from datetime import date
-from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.config.database import get_db_session
+from src.domain.entities.parliamentary_group_membership import (
+    ParliamentaryGroupMembership as ParliamentaryGroupMembershipEntity,
+)
+from src.domain.repositories.parliamentary_group_membership_repository import (
+    ParliamentaryGroupMembershipRepository,
+)
+from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
+from src.models.parliamentary_group import (
+    ParliamentaryGroupMembership as ParliamentaryGroupMembershipModel,
+)
 
 
-class ParliamentaryGroupMembershipRepositoryImpl:
-    """Parliamentary group membership repository implementation"""
+class ParliamentaryGroupMembershipRepositoryImpl(
+    BaseRepositoryImpl[ParliamentaryGroupMembershipEntity],
+    ParliamentaryGroupMembershipRepository,
+):
+    """Parliamentary group membership repository implementation using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession | None = None):
-        """Initialize repository
+    def __init__(self, session: AsyncSession):
+        """Initialize repository.
 
         Args:
-            session: Async database session (optional)
+            session: Async database session
         """
-        self.session = session
+        super().__init__(
+            session=session,
+            entity_class=ParliamentaryGroupMembershipEntity,
+            model_class=ParliamentaryGroupMembershipModel,
+        )
 
-    async def get_by_group(self, group_id: int) -> list[dict[str, Any]]:
-        """Get memberships by group"""
-        with get_db_session() as session:
-            result = session.execute(
-                text("""
-                    SELECT * FROM parliamentary_group_memberships
-                    WHERE parliamentary_group_id = :group_id
-                """),
-                {"group_id": group_id},
-            )
-            return [dict(row) for row in result]
+    async def get_by_group(
+        self, group_id: int
+    ) -> list[ParliamentaryGroupMembershipEntity]:
+        """Get memberships by group."""
+        query = select(self.model_class).where(
+            self.model_class.parliamentary_group_id == group_id
+        )
+        result = await self.session.execute(query)
+        models = result.scalars().all()
+        return [self._to_entity(model) for model in models]
 
-    async def get_by_politician(self, politician_id: int) -> list[dict[str, Any]]:
-        """Get memberships by politician"""
-        with get_db_session() as session:
-            result = session.execute(
-                text("""
-                    SELECT * FROM parliamentary_group_memberships
-                    WHERE politician_id = :politician_id
-                """),
-                {"politician_id": politician_id},
-            )
-            return [dict(row) for row in result]
+    async def get_by_politician(
+        self, politician_id: int
+    ) -> list[ParliamentaryGroupMembershipEntity]:
+        """Get memberships by politician."""
+        query = select(self.model_class).where(
+            self.model_class.politician_id == politician_id
+        )
+        result = await self.session.execute(query)
+        models = result.scalars().all()
+        return [self._to_entity(model) for model in models]
 
     async def get_active_by_group(
         self, group_id: int, as_of_date: date | None = None
-    ) -> list[dict[str, Any]]:
-        """Get active memberships by group"""
+    ) -> list[ParliamentaryGroupMembershipEntity]:
+        """Get active memberships by group."""
         if as_of_date is None:
             as_of_date = date.today()
 
-        with get_db_session() as session:
-            result = session.execute(
-                text("""
-                    SELECT * FROM parliamentary_group_memberships
-                    WHERE parliamentary_group_id = :group_id
-                    AND start_date <= :as_of_date
-                    AND (end_date IS NULL OR end_date >= :as_of_date)
-                """),
-                {"group_id": group_id, "as_of_date": as_of_date},
+        query = select(self.model_class).where(
+            and_(
+                self.model_class.parliamentary_group_id == group_id,
+                self.model_class.start_date <= as_of_date,
+                (
+                    self.model_class.end_date.is_(None)
+                    | (self.model_class.end_date >= as_of_date)
+                ),
             )
-            return [dict(row) for row in result]
-
-    async def get_current_members(self, group_id: int) -> list[dict[str, Any]]:
-        """Get current members of a parliamentary group"""
-        return await self.get_active_by_group(group_id, date.today())
+        )
+        result = await self.session.execute(query)
+        models = result.scalars().all()
+        return [self._to_entity(model) for model in models]
 
     async def create_membership(
         self,
@@ -73,97 +84,91 @@ class ParliamentaryGroupMembershipRepositoryImpl:
         group_id: int,
         start_date: date,
         role: str | None = None,
-    ) -> dict[str, Any]:
-        """Create a new membership in database"""
-        with get_db_session() as session:
-            # Check if already exists
-            existing = session.execute(
-                text("""
-                    SELECT * FROM parliamentary_group_memberships
-                    WHERE politician_id = :politician_id
-                    AND parliamentary_group_id = :group_id
-                    AND start_date = :start_date
-                """),
-                {
-                    "politician_id": politician_id,
-                    "group_id": group_id,
-                    "start_date": start_date,
-                },
-            ).first()
-
-            if existing:
-                return dict(existing)
-
-            # Create new membership
-            result = session.execute(
-                text("""
-                    INSERT INTO parliamentary_group_memberships
-                    (politician_id, parliamentary_group_id, start_date, role,
-                     created_at, updated_at)
-                    VALUES (:politician_id, :group_id, :start_date, :role,
-                            NOW(), NOW())
-                    RETURNING *
-                """),
-                {
-                    "politician_id": politician_id,
-                    "group_id": group_id,
-                    "start_date": start_date,
-                    "role": role,
-                },
+    ) -> ParliamentaryGroupMembershipEntity:
+        """Create a new membership."""
+        # Check if already exists
+        existing_query = select(self.model_class).where(
+            and_(
+                self.model_class.politician_id == politician_id,
+                self.model_class.parliamentary_group_id == group_id,
+                self.model_class.start_date == start_date,
             )
-            session.commit()
+        )
+        existing_result = await self.session.execute(existing_query)
+        existing = existing_result.scalar_one_or_none()
 
-            membership = result.first()
-            if membership:
-                # Log for debugging
-                print(
-                    f"✓ Created membership in DB: "
-                    f"politician_id={politician_id}, "
-                    f"group_id={group_id}, role={role}"
-                )
-                return dict(membership)
+        if existing:
+            return self._to_entity(existing)
 
-            return {}
+        # Create new membership
+        entity = ParliamentaryGroupMembershipEntity(
+            politician_id=politician_id,
+            parliamentary_group_id=group_id,
+            start_date=start_date,
+            role=role,
+        )
+
+        model = self._to_model(entity)
+        self.session.add(model)
+        await (
+            self.session.flush()
+        )  # Use flush instead of commit for transaction control
+        await self.session.refresh(model)
+
+        return self._to_entity(model)
 
     async def end_membership(
         self, membership_id: int, end_date: date
-    ) -> dict[str, Any] | None:
-        """End a membership"""
-        with get_db_session() as session:
-            result = session.execute(
-                text("""
-                    UPDATE parliamentary_group_memberships
-                    SET end_date = :end_date, updated_at = NOW()
-                    WHERE id = :membership_id
-                    RETURNING *
-                """),
-                {"membership_id": membership_id, "end_date": end_date},
-            )
-            session.commit()
+    ) -> ParliamentaryGroupMembershipEntity | None:
+        """End a membership."""
+        model = await self.session.get(self.model_class, membership_id)
+        if not model:
+            return None
 
-            membership = result.first()
-            return dict(membership) if membership else None
+        model.end_date = end_date
+        await self.session.flush()
+        await self.session.refresh(model)
 
-    async def delete_by_group(self, group_id: int) -> int:
-        """Delete all memberships for a group"""
-        with get_db_session() as session:
-            result = session.execute(
-                text("""
-                    DELETE FROM parliamentary_group_memberships
-                    WHERE parliamentary_group_id = :group_id
-                """),
-                {"group_id": group_id},
-            )
-            session.commit()
-            return result.rowcount or 0  # type: ignore[attr-defined]
+        return self._to_entity(model)
 
-    async def get_all(self) -> list[dict[str, Any]]:
-        """Get all memberships"""
-        with get_db_session() as session:
-            result = session.execute(
-                text(
-                    "SELECT * FROM parliamentary_group_memberships "
-                    "ORDER BY created_at DESC"
-                )
-            )
-            return [dict(row) for row in result]
+    def _to_entity(
+        self, model: ParliamentaryGroupMembershipModel
+    ) -> ParliamentaryGroupMembershipEntity:
+        """Convert database model to domain entity."""
+        return ParliamentaryGroupMembershipEntity(
+            id=model.id,
+            politician_id=model.politician_id,
+            parliamentary_group_id=model.parliamentary_group_id,
+            start_date=model.start_date,
+            end_date=model.end_date,
+            role=model.role,
+        )
+
+    def _to_model(
+        self, entity: ParliamentaryGroupMembershipEntity
+    ) -> ParliamentaryGroupMembershipModel:
+        """Convert domain entity to database model."""
+        from datetime import datetime
+
+        return ParliamentaryGroupMembershipModel(
+            id=entity.id or 0,  # Use 0 for new entities, will be set by DB
+            politician_id=entity.politician_id,
+            parliamentary_group_id=entity.parliamentary_group_id,
+            start_date=entity.start_date,
+            end_date=entity.end_date,
+            role=entity.role,
+            created_at=datetime.now() if not entity.id else None,
+            updated_at=datetime.now(),
+        )
+
+    def _update_model(
+        self,
+        model: ParliamentaryGroupMembershipModel,
+        entity: ParliamentaryGroupMembershipEntity,
+    ) -> None:
+        """Update model fields from entity."""
+        model.politician_id = entity.politician_id
+        model.parliamentary_group_id = entity.parliamentary_group_id
+        model.start_date = entity.start_date
+        model.end_date = entity.end_date
+        model.role = entity.role

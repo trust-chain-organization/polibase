@@ -5,9 +5,9 @@ from src.domain.entities.extracted_parliamentary_group_member import (
 )
 from src.domain.entities.politician import Politician
 from src.domain.repositories.politician_repository import PoliticianRepository
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.domain.types import LLMMatchResult, PoliticianDTO
-from src.infrastructure.interfaces.llm_service import ILLMService
 
 
 class ParliamentaryGroupMemberMatchingService:
