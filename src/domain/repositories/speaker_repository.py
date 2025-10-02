@@ -3,7 +3,7 @@
 from abc import abstractmethod
 from typing import Any
 
-from src.application.dtos.speaker_dto import SpeakerWithConversationCountDTO
+from src.domain.dtos.speaker_dto import SpeakerWithConversationCountDTO
 from src.domain.entities.speaker import Speaker
 from src.domain.repositories.base import BaseRepository
 

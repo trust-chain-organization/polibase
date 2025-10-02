@@ -2,6 +2,9 @@
 
 from dataclasses import dataclass
 
+# Re-export from domain layer for backward compatibility
+from src.domain.dtos.speaker_dto import SpeakerWithConversationCountDTO
+
 
 @dataclass
 class CreateSpeakerDTO:
@@ -55,14 +58,10 @@ class SpeakerMatchingDTO:
     )
 
 
-@dataclass
-class SpeakerWithConversationCountDTO:
-    """DTO for speaker with conversation count."""
-
-    id: int
-    name: str
-    type: str | None
-    political_party_name: str | None
-    position: str | None
-    is_politician: bool
-    conversation_count: int
+__all__ = [
+    "CreateSpeakerDTO",
+    "UpdateSpeakerDTO",
+    "SpeakerDTO",
+    "SpeakerMatchingDTO",
+    "SpeakerWithConversationCountDTO",
+]

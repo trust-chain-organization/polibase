@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.dtos.speaker_dto import SpeakerWithConversationCountDTO
+from src.domain.dtos.speaker_dto import SpeakerWithConversationCountDTO
 from src.domain.entities.speaker import Speaker
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
