@@ -12,7 +12,6 @@ from typing import Any
 
 from src.application.dtos.minutes_processing_dto import MinutesProcessingResultDTO
 from src.common.logging import get_logger
-from src.config import config
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
@@ -22,10 +21,10 @@ from src.domain.repositories.meeting_repository import MeetingRepository
 from src.domain.repositories.minutes_repository import MinutesRepository
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.storage_service import IStorageService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.exceptions import ProcessingError
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
-from src.utils.gcs_storage import GCSStorage
 
 logger = get_logger(__name__)
 
@@ -53,6 +52,7 @@ class ExecuteMinutesProcessingUseCase:
         speaker_repository: SpeakerRepository,
         speaker_domain_service: SpeakerDomainService,
         llm_service: ILLMService,
+        storage_service: IStorageService,
     ):
         """ユースケースを初期化する
 
@@ -63,6 +63,7 @@ class ExecuteMinutesProcessingUseCase:
             speaker_repository: 発言者リポジトリ
             speaker_domain_service: 発言者ドメインサービス
             llm_service: LLMサービス
+            storage_service: ストレージサービス
         """
         self.meeting_repo = meeting_repository
         self.minutes_repo = minutes_repository
@@ -70,6 +71,7 @@ class ExecuteMinutesProcessingUseCase:
         self.speaker_repo = speaker_repository
         self.speaker_service = speaker_domain_service
         self.llm_service = llm_service
+        self.storage_service = storage_service
 
     async def execute(
         self, request: ExecuteMinutesProcessingDTO
@@ -178,11 +180,7 @@ class ExecuteMinutesProcessingUseCase:
         if meeting.gcs_text_uri:
             # GCSからテキストを取得
             try:
-                gcs_storage = GCSStorage(
-                    bucket_name=config.GCS_BUCKET_NAME,
-                    project_id=config.GCS_PROJECT_ID,
-                )
-                text = gcs_storage.download_content(meeting.gcs_text_uri)
+                text = self.storage_service.download_content(meeting.gcs_text_uri)
                 if text:
                     logger.info(
                         f"Downloaded text from GCS ({len(text)} characters)",
