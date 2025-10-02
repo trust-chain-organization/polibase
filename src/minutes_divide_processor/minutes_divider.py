@@ -8,8 +8,8 @@ from langchain import hub
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
-from ..infrastructure.interfaces.llm_service import ILLMService
-from ..services.llm_factory import LLMServiceFactory
+from src.domain.services.interfaces.llm_service import ILLMService
+from src.services.llm_factory import LLMServiceFactory
 
 # Use relative import for modules within the same package
 from .models import (

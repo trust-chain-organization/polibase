@@ -5,8 +5,9 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 from langgraph.store.memory import InMemoryStore
 
-from ..infrastructure.external.instrumented_llm_service import InstrumentedLLMService
-from ..infrastructure.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.llm_service import ILLMService
+from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
+
 from .minutes_divider import MinutesDivider
 
 # Use relative import for modules within the same package

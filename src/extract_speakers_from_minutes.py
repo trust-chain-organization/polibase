@@ -12,7 +12,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from src.config.database import DATABASE_URL
-from src.domain.services.speaker_matching_service import SpeakerMatchingService
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl,
 )
@@ -138,16 +137,10 @@ class SpeakerExtractorFromMinutes:
 
         if use_llm:
             # LLMを使用した高度なマッチング
-            from src.domain.services.politician_matching_service import (
-                PoliticianMatchingService,
-            )
-
-            matching_service = PoliticianMatchingService()
-
-            stats = matching_service.batch_link_speakers_to_politicians()
-            logger.info(
-                f"LLMマッチング完了 - 成功: {stats['successfully_matched']}件, "
-                f"失敗: {stats['failed_matches']}件"
+            # TODO: Implement LLM-based matching using new Clean Architecture use cases
+            logger.warning(
+                "LLM-based matching is currently disabled. "
+                "Use MatchSpeakersUseCase instead."
             )
         else:
             # 従来のルールベースマッチング
@@ -298,46 +291,37 @@ class SpeakerExtractorFromMinutes:
         """conversationテーブルのspeaker_idを更新"""
         logger.info("conversation-speaker紐付け処理開始")
 
+        # TODO: Implement LLM-based conversation matching using Clean Architecture
         if use_llm:
-            # LLMを使用した高度なマッチング
-            unlinked_conversations = (
-                self.conversation_repo.get_all_conversations_without_speaker_id()
+            logger.warning(
+                "LLM-based conversation matching is disabled. "
+                "Falling back to simple name matching."
             )
 
-            logger.info(f"LLMを使用して{len(unlinked_conversations)}件の発言を処理")
+        # 単純な名前マッチング
+        conversations = (
+            self.conversation_repo.get_all_conversations_without_speaker_id()
+        )
+        logger.info(f"単純マッチングで{len(conversations)}件の発言を処理")
 
-            for conversation in unlinked_conversations:
-                # conversationが辞書の場合とオブジェクトの場合の両方に対応
-                speaker_name = (
-                    conversation.get("speaker_name")
-                    if isinstance(conversation, dict)
-                    else getattr(conversation, "speaker_name", None)
-                )
-                if not speaker_name:
-                    continue
-
-                # マッチング実行
-                matching_service = SpeakerMatchingService()
-                match_result = matching_service.find_best_match(speaker_name)
-                matched_speaker: dict[str, Any] | None = None
-
-                if match_result.matched and match_result.speaker_id:
-                    # Get speaker details
-                    query = "SELECT * FROM speakers WHERE id = :id"
-                    result = self.speaker_repo.execute_query(
-                        query, {"id": match_result.speaker_id}
-                    )
-                    rows = result.fetchall()
-                    if rows:
-                        columns = result.keys()
-                        matched_speaker = dict(zip(columns, rows[0], strict=False))
-
-                if matched_speaker:
-                    # conversationオブジェクトへのspeaker_id設定
+        linked_count = 0
+        for conv in conversations:
+            # convが辞書の場合とオブジェクトの場合の両方に対応
+            speaker_name = (
+                conv.get("speaker_name")
+                if isinstance(conv, dict)
+                else getattr(conv, "speaker_name", None)
+            )
+            if speaker_name:
+                query = "SELECT id FROM speakers WHERE name = :name LIMIT 1"
+                result = self.speaker_repo.execute_query(query, {"name": speaker_name})
+                rows = result.fetchall()
+                if rows:
+                    columns = result.keys()
+                    speakers = [dict(zip(columns, row, strict=False)) for row in rows]
+                    # conversationのIDを取得してUPDATEクエリで更新
                     conversation_id = (
-                        conversation.get("id")
-                        if isinstance(conversation, dict)
-                        else conversation.id
+                        conv.get("id") if isinstance(conv, dict) else conv.id
                     )
                     update_query = (
                         "UPDATE conversations SET speaker_id = :speaker_id "
@@ -345,56 +329,11 @@ class SpeakerExtractorFromMinutes:
                     )
                     self.conversation_repo.execute_query(
                         update_query,
-                        {"speaker_id": matched_speaker["id"], "id": conversation_id},
+                        {"speaker_id": speakers[0]["id"], "id": conversation_id},
                     )
-                    logger.debug(
-                        f"LLMマッチング成功: '{speaker_name}' -> "
-                        f"Speaker ID: {matched_speaker['id']}"
-                    )
-                else:
-                    logger.debug(f"LLMマッチング失敗: '{speaker_name}'")
+                    linked_count += 1
 
-        else:
-            # 単純な名前マッチング
-            conversations = (
-                self.conversation_repo.get_all_conversations_without_speaker_id()
-            )
-            logger.info(f"単純マッチングで{len(conversations)}件の発言を処理")
-
-            linked_count = 0
-            for conv in conversations:
-                # convが辞書の場合とオブジェクトの場合の両方に対応
-                speaker_name = (
-                    conv.get("speaker_name")
-                    if isinstance(conv, dict)
-                    else getattr(conv, "speaker_name", None)
-                )
-                if speaker_name:
-                    query = "SELECT id FROM speakers WHERE name = :name LIMIT 1"
-                    result = self.speaker_repo.execute_query(
-                        query, {"name": speaker_name}
-                    )
-                    rows = result.fetchall()
-                    if rows:
-                        columns = result.keys()
-                        speakers = [
-                            dict(zip(columns, row, strict=False)) for row in rows
-                        ]
-                        # conversationのIDを取得してUPDATEクエリで更新
-                        conversation_id = (
-                            conv.get("id") if isinstance(conv, dict) else conv.id
-                        )
-                        update_query = (
-                            "UPDATE conversations SET speaker_id = :speaker_id "
-                            "WHERE id = :id"
-                        )
-                        self.conversation_repo.execute_query(
-                            update_query,
-                            {"speaker_id": speakers[0]["id"], "id": conversation_id},
-                        )
-                        linked_count += 1
-
-            logger.info(f"単純マッチング完了: {linked_count}件")
+        logger.info(f"単純マッチング完了: {linked_count}件")
 
         self.session.commit()
         logger.info("conversation-speaker紐付け処理完了")
