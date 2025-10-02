@@ -6,15 +6,14 @@ import logging
 import re
 from typing import Any
 
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from src.config.database import get_db_session
+from src.domain.repositories.politician_repository import PoliticianRepository
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.exceptions import DatabaseError, LLMError, QueryError
-from src.services.llm_factory import LLMServiceFactory
 
 logger = logging.getLogger(__name__)
 
@@ -37,74 +36,27 @@ class PoliticianMatch(BaseModel):
 class PoliticianMatchingService:
     """LLMを活用した発言者-政治家マッチングサービス"""
 
-    def __init__(self, llm_service: Any | None = None):
+    def __init__(
+        self,
+        llm_service: ILLMService,
+        politician_repository: PoliticianRepository,
+        session: Session,
+    ):
         """
         Initialize PoliticianMatchingService
 
         Args:
-            llm_service: LLMService instance (creates default if not provided)
+            llm_service: LLM service instance (domain interface)
+            politician_repository: Politician repository instance (domain interface)
+            session: Database session
         """
-        if llm_service is None:
-            factory = LLMServiceFactory()
-            llm_service = factory.create_fast()
-
         self.llm_service = llm_service
-        self.session = get_db_session()
-        self.chain: Any = None
-        self._setup_prompt()
+        self.politician_repository = politician_repository
+        self.session = session
 
-    def _setup_prompt(self):
-        """LLMプロンプトの設定"""
-        self.prompt = ChatPromptTemplate.from_template("""
-あなたは日本の政治家データベースのマッチング専門家です。
-議事録の発言者（speaker）と政治家データベース（politicians）から最も適切なマッチを見つけてください。
-
-# 発言者情報
-名前: {speaker_name}
-種別: {speaker_type}
-政党名（もしあれば）: {speaker_party}
-
-# 候補となる政治家リスト
-{available_politicians}
-
-# マッチング基準
-1. 名前の完全一致を最優先
-2. 名前の部分一致や表記ゆれ（例: ひらがな/カタカナ/漢字の違い）
-3. 姓名の順序違い（例: "山田太郎" vs "太郎山田"）
-4. 敬称の有無（例: "山田太郎議員" vs "山田太郎"）
-5. 旧字体・新字体の違い
-6. 政党情報がある場合は、それも考慮
-7. 役職や肩書きも参考情報として使用
-
-# 注意事項
-- 同姓同名の別人の可能性も考慮すること
-- 政党が異なる場合は慎重に判断すること
-- 確実性が低い場合は matched: false を返すこと
-
-# 出力形式
-以下のJSON形式で回答してください：
-{{
-    "matched": true/false,
-    "politician_id": マッチした場合のID (数値) または null,
-    "politician_name": マッチした場合の名前 (文字列) または null,
-    "political_party_name": マッチした場合の所属政党名 (文字列) または null,
-    "confidence": 信頼度 (0.0-1.0の小数),
-    "reason": "マッチング判定の理由"
-}}
-
-信頼度の目安：
-- 1.0: 完全一致（名前と政党が一致）
-- 0.9: 名前が完全一致（政党情報なしまたは不一致）
-- 0.8: 表記ゆれだが高確度で同一人物
-- 0.7: 部分一致で同一人物の可能性が高い
-- 0.6以下: マッチングしない
-        """)
-
-        self.output_parser = JsonOutputParser(pydantic_object=PoliticianMatch)
-        if self.llm_service and hasattr(self.llm_service, "llm"):
-            self.chain = self.prompt | self.llm_service.llm | self.output_parser
-        else:
-            raise ValueError("LLM service is not properly initialized")
+        # プロンプト名を使ってチェーンを取得
+        prompt_name = "politician_matching"
+        self.chain: Any = self.llm_service.get_prompt(prompt_name)
 
     def find_best_match(
         self,
@@ -144,11 +96,6 @@ class PoliticianMatchingService:
             filtered_politicians = self._filter_candidates(
                 speaker_name, speaker_party, available_politicians
             )
-
-            if not self.llm_service or not hasattr(
-                self.llm_service, "invoke_with_retry"
-            ):
-                raise LLMError("LLM service is not available for matching")
 
             result = self.llm_service.invoke_with_retry(
                 self.chain,

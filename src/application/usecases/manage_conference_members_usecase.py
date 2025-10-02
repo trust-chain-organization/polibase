@@ -19,8 +19,8 @@ from src.domain.repositories.politician_affiliation_repository import (
 )
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.services.conference_domain_service import ConferenceDomainService
-from src.infrastructure.interfaces.llm_service import ILLMService
-from src.infrastructure.interfaces.web_scraper_service import IWebScraperService
+from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.web_scraper_service import IWebScraperService
 
 
 # DTOs for Use Case

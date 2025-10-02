@@ -22,8 +22,8 @@ from src.domain.repositories.extracted_proposal_judge_repository import (
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.repositories.proposal_judge_repository import ProposalJudgeRepository
 from src.domain.repositories.proposal_repository import ProposalRepository
-from src.infrastructure.interfaces.llm_service import ILLMService
-from src.infrastructure.interfaces.web_scraper_service import IWebScraperService
+from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.web_scraper_service import IWebScraperService
 
 logger = logging.getLogger(__name__)
 

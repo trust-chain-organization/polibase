@@ -1,40 +1,8 @@
-"""Web scraper service interface and implementation."""
+"""Web scraper service implementation using Playwright."""
 
-from abc import ABC, abstractmethod
 from typing import Any
 
-
-class IWebScraperService(ABC):
-    """Interface for web scraping service."""
-
-    @abstractmethod
-    def is_supported_url(self, url: str) -> bool:
-        """Check if the URL is supported for scraping."""
-        pass
-
-    @abstractmethod
-    async def scrape_party_members(
-        self, url: str, party_id: int, party_name: str | None = None
-    ) -> list[dict[str, Any]]:
-        """Scrape party members from website."""
-        pass
-
-    @abstractmethod
-    async def scrape_conference_members(self, url: str) -> list[dict[str, Any]]:
-        """Scrape conference members from website."""
-        pass
-
-    @abstractmethod
-    async def scrape_meeting_minutes(
-        self, url: str, upload_to_gcs: bool = False
-    ) -> dict[str, Any]:
-        """Scrape meeting minutes from website."""
-        pass
-
-    @abstractmethod
-    async def scrape_proposal_judges(self, url: str) -> list[dict[str, Any]]:
-        """Scrape proposal voting information from website."""
-        pass
+from src.domain.services.interfaces.web_scraper_service import IWebScraperService
 
 
 class PlaywrightScraperService(IWebScraperService):

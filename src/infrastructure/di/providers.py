@@ -23,6 +23,7 @@ from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.politician_domain_service import PoliticianDomainService
 from src.infrastructure.external.llm_service import GeminiLLMService
 from src.infrastructure.external.storage_service import (
@@ -33,7 +34,6 @@ from src.infrastructure.external.web_scraper_service import (
     IWebScraperService,
     PlaywrightScraperService,
 )
-from src.infrastructure.interfaces.llm_service import ILLMService
 from src.infrastructure.persistence.async_session_adapter import AsyncSessionAdapter
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,

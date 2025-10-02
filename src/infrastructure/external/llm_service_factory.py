@@ -6,9 +6,9 @@ from src.domain.repositories.llm_processing_history_repository import (
     LLMProcessingHistoryRepository,
 )
 from src.domain.repositories.prompt_version_repository import PromptVersionRepository
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
 from src.infrastructure.external.llm_service import GeminiLLMService
-from src.infrastructure.interfaces.llm_service import ILLMService
 from src.infrastructure.persistence.llm_processing_history_repository_impl import (
     LLMProcessingHistoryRepositoryImpl,
 )

@@ -9,7 +9,7 @@ from src.application.dtos.proposal_dto import (
 )
 from src.domain.entities.proposal import Proposal
 from src.domain.repositories.proposal_repository import ProposalRepository
-from src.infrastructure.interfaces.proposal_scraper_service import (
+from src.domain.services.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
 
@@ -63,11 +63,13 @@ class ScrapeProposalUseCase:
 
         # Create output DTO with scraped data
         output_dto = ScrapeProposalOutputDTO(
-            content=scraped_data.content,
-            proposal_number=scraped_data.proposal_number,
-            submission_date=scraped_data.submission_date,
-            summary=scraped_data.summary,
-            detail_url=scraped_data.url,  # Default to detail_url for scraped content
+            content=scraped_data["content"],
+            proposal_number=scraped_data.get("proposal_number"),
+            submission_date=scraped_data.get("submission_date"),
+            summary=scraped_data.get("summary"),
+            detail_url=scraped_data.get(
+                "url"
+            ),  # Default to detail_url for scraped content
             status_url=None,  # Status URL can be set separately
             meeting_id=input_dto.meeting_id,
         )

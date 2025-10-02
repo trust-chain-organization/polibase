@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Any
 
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.types import PoliticianDTO
 from src.domain.types.llm import (
     LLMExtractResult,
@@ -12,7 +13,6 @@ from src.domain.types.llm import (
     LLMSpeakerMatchContext,
 )
 from src.infrastructure.external.llm_service import GeminiLLMService
-from src.infrastructure.interfaces.llm_service import ILLMService
 
 
 class LLMCache:

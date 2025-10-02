@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from src.config.database import get_db_session
+from src.domain.repositories.speaker_repository import SpeakerRepository
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.exceptions import DatabaseError, LLMError, QueryError
-from src.infrastructure.persistence.llm_history_helper import SyncLLMHistoryHelper
-from src.services import ChainFactory, LLMService
 
 if TYPE_CHECKING:
     pass
@@ -36,37 +36,24 @@ class SpeakerMatchingService:
 
     def __init__(
         self,
-        llm_service: LLMService | None = None,
-        enable_history: bool = False,
+        llm_service: ILLMService,
+        speaker_repository: SpeakerRepository,
+        session: Session,
     ):
         """
         Initialize speaker matching service
 
         Args:
-            llm_service: Optional LLMService instance
-            enable_history: Whether to enable LLM history recording
+            llm_service: LLM service instance (domain interface)
+            speaker_repository: Speaker repository instance (domain interface)
+            session: Database session
         """
-        # Initialize services
-        if llm_service is None:
-            # Use fast model with low temperature for consistency
-            # Type ignore for unknown kwargs in LLMService
-            self.llm_service = LLMService.create_fast_instance(
-                temperature=0.1, max_tokens=1000
-            )
-        else:
-            self.llm_service = llm_service
+        self.llm_service = llm_service
+        self.speaker_repository = speaker_repository
+        self.session = session
 
-        self.chain_factory = ChainFactory(self.llm_service)
-        self.session = get_db_session()
-
-        # Initialize history helper if enabled
-        self.history_helper = SyncLLMHistoryHelper() if enable_history else None
-        self.model_name = getattr(self.llm_service, "model_name", "gemini-1.5-flash")
-
-        # Create matching chain
-        self._matching_chain: Any = self.chain_factory.create_speaker_matching_chain(
-            SpeakerMatch
-        )
+        # Create matching chain using LLM service
+        self._matching_chain: Any = self.llm_service.get_structured_llm(SpeakerMatch)
 
     def find_best_match(
         self,
@@ -114,8 +101,8 @@ class SpeakerMatchingService:
                 speaker_name, available_speakers, affiliated_speaker_ids
             )
 
-            # Use chain factory with retry logic
-            result = self.chain_factory.invoke_with_retry(
+            # Use LLM service with retry logic
+            result = self.llm_service.invoke_with_retry(
                 self._matching_chain,
                 {
                     "speaker_name": speaker_name,
@@ -123,7 +110,6 @@ class SpeakerMatchingService:
                         filtered_speakers, affiliated_speaker_ids
                     ),
                 },
-                max_retries=3,
             )
 
             # 結果の検証
@@ -144,22 +130,6 @@ class SpeakerMatchingService:
                 match_result.matched = False
                 match_result.speaker_id = None
                 match_result.speaker_name = None
-
-            # Record history if enabled
-            if self.history_helper:
-                try:
-                    self.history_helper.record_speaker_matching(
-                        speaker_name=speaker_name,
-                        matched=match_result.matched,
-                        speaker_id=match_result.speaker_id,
-                        confidence=match_result.confidence,
-                        reason=match_result.reason,
-                        model_name=self.model_name,
-                        prompt_template="speaker_matching",
-                    )
-                except Exception as hist_e:
-                    logger.warning(f"Failed to record LLM history: {hist_e}")
-                    # Don't fail the main operation due to history recording failure
 
             return match_result
 
