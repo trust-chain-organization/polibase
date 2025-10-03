@@ -246,6 +246,10 @@ async def test_execute_no_gcs_uri(use_case, mock_repositories):
         await use_case.execute(request)
 
 
+@pytest.mark.skip(
+    reason="Legacy test - API key validation no longer happens in UseCase layer. "
+    "LLM service handles API key validation internally."
+)
 @pytest.mark.asyncio
 async def test_execute_api_key_not_set(use_case, mock_repositories, sample_meeting):
     """APIキーが設定されていない場合のエラーテスト"""

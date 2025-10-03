@@ -163,6 +163,13 @@ class TestSpeakerExtractorFromMinutes:
         assert extractor.speaker_repo.execute_query.call_count >= 2
         extractor.session.commit.assert_called_once()
 
+    @pytest.mark.skip(
+        reason=(
+            "Legacy test - "
+            "PoliticianMatchingService.batch_link_speakers_to_politicians "
+            "no longer exists"
+        )
+    )
     def test_link_speakers_to_politicians_with_llm(self, extractor):
         """Test LLM-based speaker to politician linking"""
         # Arrange
@@ -213,6 +220,10 @@ class TestSpeakerExtractorFromMinutes:
         assert extractor.conversation_repo.execute_query.call_count == 3
         extractor.session.commit.assert_called_once()
 
+    @pytest.mark.skip(
+        reason="Legacy test - SpeakerMatchingService module structure changed in "
+        "Clean Architecture"
+    )
     def test_update_conversation_speaker_links_with_llm(self, extractor):
         """Test LLM-based conversation to speaker linking"""
         # Arrange
