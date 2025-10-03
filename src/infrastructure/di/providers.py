@@ -11,6 +11,9 @@ from sqlalchemy.orm import sessionmaker
 from src.application.usecases.convert_extracted_politician_usecase import (
     ConvertExtractedPoliticianUseCase,
 )
+from src.application.usecases.execute_speaker_extraction_usecase import (
+    ExecuteSpeakerExtractionUseCase,
+)
 from src.application.usecases.manage_conference_members_usecase import (
     ManageConferenceMembersUseCase,
 )
@@ -393,4 +396,12 @@ class UseCaseContainer(containers.DeclarativeContainer):
         review_use_case=review_extracted_politician_usecase,
         convert_use_case=convert_extracted_politician_usecase,
         extracted_politician_repository=repositories.extracted_politician_repository,
+    )
+
+    speaker_extraction_usecase = providers.Factory(
+        ExecuteSpeakerExtractionUseCase,
+        minutes_repository=repositories.minutes_repository,
+        conversation_repository=repositories.conversation_repository,
+        speaker_repository=repositories.speaker_repository,
+        speaker_domain_service=services.speaker_domain_service,
     )
