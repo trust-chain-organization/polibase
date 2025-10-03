@@ -1,6 +1,6 @@
 """Tests for PoliticianStatisticsQuery."""
 
-from unittest.mock import Mock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -15,38 +15,37 @@ class TestPoliticianStatisticsQuery:
     @pytest.mark.asyncio
     async def test_get_party_statistics_success(self):
         """Test successful retrieval of party statistics."""
-        # Create mock connection
-        mock_conn = Mock()
-        mock_result = Mock()
+        # Create mock repository
+        mock_repo = AsyncMock()
 
-        # Create mock row data
-        mock_row_1 = Mock()
-        mock_row_1.party_id = 1
-        mock_row_1.party_name = "Party A"
-        mock_row_1.extracted_total = 10
-        mock_row_1.extracted_pending = 3
-        mock_row_1.extracted_reviewed = 2
-        mock_row_1.extracted_approved = 4
-        mock_row_1.extracted_rejected = 1
-        mock_row_1.extracted_converted = 0
-        mock_row_1.politicians_total = 15
-
-        mock_row_2 = Mock()
-        mock_row_2.party_id = 2
-        mock_row_2.party_name = "Party B"
-        mock_row_2.extracted_total = 5
-        mock_row_2.extracted_pending = 2
-        mock_row_2.extracted_reviewed = 1
-        mock_row_2.extracted_approved = 1
-        mock_row_2.extracted_rejected = 0
-        mock_row_2.extracted_converted = 1
-        mock_row_2.politicians_total = 8
-
-        mock_result.fetchall.return_value = [mock_row_1, mock_row_2]
-        mock_conn.execute.return_value = mock_result
+        # Mock return data
+        mock_repo.get_party_statistics.return_value = [
+            {
+                "party_id": 1,
+                "party_name": "Party A",
+                "extracted_total": 10,
+                "extracted_pending": 3,
+                "extracted_reviewed": 2,
+                "extracted_approved": 4,
+                "extracted_rejected": 1,
+                "extracted_converted": 0,
+                "politicians_total": 15,
+            },
+            {
+                "party_id": 2,
+                "party_name": "Party B",
+                "extracted_total": 5,
+                "extracted_pending": 2,
+                "extracted_reviewed": 1,
+                "extracted_approved": 1,
+                "extracted_rejected": 0,
+                "extracted_converted": 1,
+                "politicians_total": 8,
+            },
+        ]
 
         # Create query instance and test
-        query = PoliticianStatisticsQuery(mock_conn)
+        query = PoliticianStatisticsQuery(mock_repo)
         stats = await query.get_party_statistics()
 
         # Assertions
@@ -72,14 +71,12 @@ class TestPoliticianStatisticsQuery:
     @pytest.mark.asyncio
     async def test_get_party_statistics_empty_result(self):
         """Test when no parties exist."""
-        # Create mock connection
-        mock_conn = Mock()
-        mock_result = Mock()
-        mock_result.fetchall.return_value = []
-        mock_conn.execute.return_value = mock_result
+        # Create mock repository
+        mock_repo = AsyncMock()
+        mock_repo.get_party_statistics.return_value = []
 
         # Create query instance and test
-        query = PoliticianStatisticsQuery(mock_conn)
+        query = PoliticianStatisticsQuery(mock_repo)
         stats = await query.get_party_statistics()
 
         # Assertions
@@ -88,27 +85,24 @@ class TestPoliticianStatisticsQuery:
     @pytest.mark.asyncio
     async def test_get_party_statistics_by_id_success(self):
         """Test successful retrieval of single party statistics."""
-        # Create mock connection
-        mock_conn = Mock()
-        mock_result = Mock()
+        # Create mock repository
+        mock_repo = AsyncMock()
 
-        # Create mock row data
-        mock_row = Mock()
-        mock_row.party_id = 1
-        mock_row.party_name = "Party A"
-        mock_row.extracted_total = 10
-        mock_row.extracted_pending = 3
-        mock_row.extracted_reviewed = 2
-        mock_row.extracted_approved = 4
-        mock_row.extracted_rejected = 1
-        mock_row.extracted_converted = 0
-        mock_row.politicians_total = 15
-
-        mock_result.fetchone.return_value = mock_row
-        mock_conn.execute.return_value = mock_result
+        # Mock return data
+        mock_repo.get_party_statistics_by_id.return_value = {
+            "party_id": 1,
+            "party_name": "Party A",
+            "extracted_total": 10,
+            "extracted_pending": 3,
+            "extracted_reviewed": 2,
+            "extracted_approved": 4,
+            "extracted_rejected": 1,
+            "extracted_converted": 0,
+            "politicians_total": 15,
+        }
 
         # Create query instance and test
-        query = PoliticianStatisticsQuery(mock_conn)
+        query = PoliticianStatisticsQuery(mock_repo)
         stats = await query.get_party_statistics_by_id(1)
 
         # Assertions
@@ -121,14 +115,12 @@ class TestPoliticianStatisticsQuery:
     @pytest.mark.asyncio
     async def test_get_party_statistics_by_id_not_found(self):
         """Test when party ID doesn't exist."""
-        # Create mock connection
-        mock_conn = Mock()
-        mock_result = Mock()
-        mock_result.fetchone.return_value = None
-        mock_conn.execute.return_value = mock_result
+        # Create mock repository
+        mock_repo = AsyncMock()
+        mock_repo.get_party_statistics_by_id.return_value = None
 
         # Create query instance and test
-        query = PoliticianStatisticsQuery(mock_conn)
+        query = PoliticianStatisticsQuery(mock_repo)
         stats = await query.get_party_statistics_by_id(999)
 
         # Assertions
@@ -137,27 +129,26 @@ class TestPoliticianStatisticsQuery:
     @pytest.mark.asyncio
     async def test_statistics_type_hints(self):
         """Test that returned statistics match the expected TypedDict structure."""
-        # Create mock connection
-        mock_conn = Mock()
-        mock_result = Mock()
+        # Create mock repository
+        mock_repo = AsyncMock()
 
-        # Create mock row data
-        mock_row = Mock()
-        mock_row.party_id = 1
-        mock_row.party_name = "Party A"
-        mock_row.extracted_total = 10
-        mock_row.extracted_pending = 3
-        mock_row.extracted_reviewed = 2
-        mock_row.extracted_approved = 4
-        mock_row.extracted_rejected = 1
-        mock_row.extracted_converted = 0
-        mock_row.politicians_total = 15
-
-        mock_result.fetchall.return_value = [mock_row]
-        mock_conn.execute.return_value = mock_result
+        # Mock return data
+        mock_repo.get_party_statistics.return_value = [
+            {
+                "party_id": 1,
+                "party_name": "Party A",
+                "extracted_total": 10,
+                "extracted_pending": 3,
+                "extracted_reviewed": 2,
+                "extracted_approved": 4,
+                "extracted_rejected": 1,
+                "extracted_converted": 0,
+                "politicians_total": 15,
+            }
+        ]
 
         # Create query instance and test
-        query = PoliticianStatisticsQuery(mock_conn)
+        query = PoliticianStatisticsQuery(mock_repo)
         stats = await query.get_party_statistics()
 
         # Verify that the structure matches PartyStatistics TypedDict
