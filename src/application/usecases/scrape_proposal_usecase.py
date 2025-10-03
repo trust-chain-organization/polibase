@@ -9,9 +9,10 @@ from src.application.dtos.proposal_dto import (
 )
 from src.domain.entities.proposal import Proposal
 from src.domain.repositories.proposal_repository import ProposalRepository
-from src.infrastructure.interfaces.proposal_scraper_service import (
+from src.domain.services.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
+from src.domain.types.scraper_types import ScrapedProposal
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,9 @@ class ScrapeProposalUseCase:
 
         # Scrape the proposal information
         try:
-            scraped_data = await self.scraper.scrape_proposal(input_dto.url)
+            scraped_data: ScrapedProposal = await self.scraper.scrape_proposal(
+                input_dto.url
+            )
         except Exception as e:
             logger.error(f"Failed to scrape proposal from {input_dto.url}: {str(e)}")
             raise RuntimeError(f"Failed to scrape proposal: {str(e)}") from e

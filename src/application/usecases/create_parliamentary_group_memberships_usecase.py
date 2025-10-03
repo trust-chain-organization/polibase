@@ -5,12 +5,8 @@ from datetime import date
 from src.domain.repositories.extracted_parliamentary_group_member_repository import (
     ExtractedParliamentaryGroupMemberRepository,
 )
-from src.infrastructure.persistence import (
-    parliamentary_group_membership_repository_impl as pgm_repo_impl,
-)
-
-ParliamentaryGroupMembershipRepositoryImpl = (
-    pgm_repo_impl.ParliamentaryGroupMembershipRepositoryImpl
+from src.domain.repositories.parliamentary_group_membership_repository import (
+    ParliamentaryGroupMembershipRepository,
 )
 
 
@@ -35,7 +31,7 @@ class CreateParliamentaryGroupMembershipsUseCase:
     def __init__(
         self,
         member_repository: ExtractedParliamentaryGroupMemberRepository,
-        membership_repository: ParliamentaryGroupMembershipRepositoryImpl,
+        membership_repository: ParliamentaryGroupMembershipRepository,
     ):
         """Initialize the use case.
 

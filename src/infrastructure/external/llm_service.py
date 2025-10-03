@@ -14,13 +14,13 @@ from src.domain.entities.llm_processing_history import LLMProcessingHistory
 from src.domain.repositories.llm_processing_history_repository import (
     LLMProcessingHistoryRepository,
 )
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.types import (
     LLMExtractResult,
     LLMMatchResult,
     LLMSpeakerMatchContext,
     PoliticianDTO,
 )
-from src.infrastructure.interfaces.llm_service import ILLMService
 from src.services.versioned_prompt_manager import VersionedPromptManager
 
 logger = logging.getLogger(__name__)

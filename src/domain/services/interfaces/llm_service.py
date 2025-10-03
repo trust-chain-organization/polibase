@@ -1,4 +1,4 @@
-"""LLM service interface definition."""
+"""LLM service interface definition for domain layer."""
 
 from typing import Any, Protocol
 
@@ -15,7 +15,11 @@ from src.domain.types import (
 
 
 class ILLMService(Protocol):
-    """Interface for LLM services."""
+    """Interface for LLM services.
+
+    This is a Protocol (interface) that defines the contract for LLM services.
+    It belongs to the domain layer as it represents a core business capability.
+    """
 
     model_name: str
     temperature: float

@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from src.infrastructure.types.scraper_types import ScrapedProposal
+from src.domain.types.scraper_types import ScrapedProposal
 
 
 class IProposalScraperService(Protocol):

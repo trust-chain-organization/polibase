@@ -42,25 +42,48 @@ class MinutesCommands(BaseCommand):
         default=True,
         help="Enable interactive confirmation",
     )
+    @click.option(
+        "--limit",
+        type=int,
+        default=None,
+        help="Limit number of speakers to process",
+    )
     @with_error_handling
-    def update_speakers(use_llm: bool, interactive: bool):
+    def update_speakers(use_llm: bool, interactive: bool, limit: int | None):
         """Update speaker links in database (発言者紐付け更新)
 
         This command links conversations to speaker records. Use --use-llm
         for advanced fuzzy matching with Google Gemini API.
+
+        Now uses Clean Architecture MatchSpeakersUseCase for improved
+        maintainability and testability.
         """
-        if use_llm:
-            MinutesCommands.show_progress("Using LLM-based speaker matching...")
-            # Import inside to avoid circular imports
-            from src.update_speaker_links_llm import main
+        from src.infrastructure.di.container import get_container, init_container
 
-            main()
-        else:
-            MinutesCommands.show_progress("Using rule-based speaker matching...")
-            from src.update_speaker_links import main
+        MinutesCommands.show_progress(
+            f"Using {'LLM-based' if use_llm else 'rule-based'} speaker matching..."
+        )
 
-            main()
+        # Initialize and get dependencies from DI container
+        try:
+            container = get_container()
+        except RuntimeError:
+            # Container not initialized yet
+            container = init_container()
 
+        match_speakers_usecase = container.use_cases.match_speakers_usecase()
+
+        # Execute matching
+        results = match_speakers_usecase.execute(use_llm=use_llm, limit=limit)
+
+        # Report results
+        matched = sum(1 for r in results if r.matched_politician_id is not None)
+        total = len(results)
+        success_rate = (matched / total * 100) if total > 0 else 0
+
+        MinutesCommands.show_progress(
+            f"Processed {total} speakers, matched {matched} ({success_rate:.1f}%)"
+        )
         MinutesCommands.success("Speaker links updated successfully")
 
 

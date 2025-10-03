@@ -5,7 +5,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.application.dtos.speaker_dto import SpeakerWithConversationCountDTO
+from src.domain.dtos.speaker_dto import SpeakerWithConversationCountDTO
 from src.domain.entities.speaker import Speaker
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
@@ -425,3 +425,48 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
                 "unlinked_politician_speakers": 0,
                 "link_rate": 0.0,
             }
+
+    async def get_all_for_matching(self) -> list[dict[str, Any]]:
+        """Get all speakers for matching purposes."""
+        query = text("SELECT id, name FROM speakers ORDER BY name")
+        result = await self.session.execute(query)
+        rows = result.fetchall()
+
+        return [{"id": row.id, "name": row.name} for row in rows]
+
+    async def get_affiliated_speakers(
+        self, meeting_date: str, conference_id: int
+    ) -> list[dict[str, Any]]:
+        """Get speakers affiliated with a conference at a specific date."""
+        query = text("""
+            SELECT DISTINCT
+                s.id as speaker_id,
+                s.name as speaker_name,
+                p.id as politician_id,
+                p.name as politician_name,
+                pa.role as role
+            FROM politician_affiliations pa
+            JOIN politicians p ON pa.politician_id = p.id
+            JOIN speakers s ON p.speaker_id = s.id
+            WHERE pa.conference_id = :conference_id
+                AND pa.start_date <= CAST(:meeting_date AS date)
+                AND (pa.end_date IS NULL OR
+                     pa.end_date >= CAST(:meeting_date AS date))
+            ORDER BY s.name
+        """)
+
+        result = await self.session.execute(
+            query, {"conference_id": conference_id, "meeting_date": meeting_date}
+        )
+        rows = result.fetchall()
+
+        return [
+            {
+                "speaker_id": row.speaker_id,
+                "speaker_name": row.speaker_name,
+                "politician_id": row.politician_id,
+                "politician_name": row.politician_name,
+                "role": row.role,
+            }
+            for row in rows
+        ]

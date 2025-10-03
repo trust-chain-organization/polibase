@@ -3,7 +3,7 @@
 from abc import abstractmethod
 from typing import Any
 
-from src.application.dtos.speaker_dto import SpeakerWithConversationCountDTO
+from src.domain.dtos.speaker_dto import SpeakerWithConversationCountDTO
 from src.domain.entities.speaker import Speaker
 from src.domain.repositories.base import BaseRepository
 
@@ -65,4 +65,28 @@ class SpeakerRepository(BaseRepository[Speaker]):
     @abstractmethod
     async def get_speaker_politician_stats(self) -> dict[str, int | float]:
         """Get statistics of speaker-politician linkage."""
+        pass
+
+    @abstractmethod
+    async def get_all_for_matching(self) -> list[dict[str, Any]]:
+        """Get all speakers for matching purposes.
+
+        Returns:
+            List of dicts with id and name keys
+        """
+        pass
+
+    @abstractmethod
+    async def get_affiliated_speakers(
+        self, meeting_date: str, conference_id: int
+    ) -> list[dict[str, Any]]:
+        """Get speakers affiliated with a conference at a specific date.
+
+        Args:
+            meeting_date: Meeting date in YYYY-MM-DD format
+            conference_id: Conference ID
+
+        Returns:
+            List of dicts with speaker and politician info
+        """
         pass

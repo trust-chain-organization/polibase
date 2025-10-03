@@ -16,13 +16,13 @@ from src.domain.repositories.llm_processing_history_repository import (
     LLMProcessingHistoryRepository,
 )
 from src.domain.repositories.prompt_version_repository import PromptVersionRepository
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.types import (
     LLMExtractResult,
     LLMMatchResult,
     LLMSpeakerMatchContext,
     PoliticianDTO,
 )
-from src.infrastructure.interfaces.llm_service import ILLMService
 
 logger = logging.getLogger(__name__)
 

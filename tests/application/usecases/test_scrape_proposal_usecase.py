@@ -12,10 +12,10 @@ from src.application.dtos.proposal_dto import (
 from src.application.usecases.scrape_proposal_usecase import ScrapeProposalUseCase
 from src.domain.entities.proposal import Proposal
 from src.domain.repositories.proposal_repository import ProposalRepository
-from src.infrastructure.interfaces.proposal_scraper_service import (
+from src.domain.services.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
-from src.infrastructure.types.scraper_types import ScrapedProposal
+from src.domain.types.scraper_types import ScrapedProposal
 
 
 class TestScrapeProposalUseCase:

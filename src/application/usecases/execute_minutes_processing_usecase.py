@@ -6,14 +6,12 @@ GCSまたはPDFから議事録テキストを取得し、MinutesProcessAgentを�
 """
 
 import asyncio
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from src.application.dtos.minutes_processing_dto import MinutesProcessingResultDTO
 from src.common.logging import get_logger
-from src.config import config
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
@@ -22,14 +20,11 @@ from src.domain.repositories.conversation_repository import ConversationReposito
 from src.domain.repositories.meeting_repository import MeetingRepository
 from src.domain.repositories.minutes_repository import MinutesRepository
 from src.domain.repositories.speaker_repository import SpeakerRepository
+from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.storage_service import IStorageService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
-from src.exceptions import APIKeyError, ProcessingError
-from src.infrastructure.external.instrumented_llm_service import (
-    InstrumentedLLMService,
-)
+from src.exceptions import ProcessingError
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
-from src.services.llm_factory import LLMServiceFactory
-from src.utils.gcs_storage import GCSStorage
 
 logger = get_logger(__name__)
 
@@ -56,6 +51,8 @@ class ExecuteMinutesProcessingUseCase:
         conversation_repository: ConversationRepository,
         speaker_repository: SpeakerRepository,
         speaker_domain_service: SpeakerDomainService,
+        llm_service: ILLMService,
+        storage_service: IStorageService,
     ):
         """ユースケースを初期化する
 
@@ -65,12 +62,16 @@ class ExecuteMinutesProcessingUseCase:
             conversation_repository: 発言リポジトリ
             speaker_repository: 発言者リポジトリ
             speaker_domain_service: 発言者ドメインサービス
+            llm_service: LLMサービス
+            storage_service: ストレージサービス
         """
         self.meeting_repo = meeting_repository
         self.minutes_repo = minutes_repository
         self.conversation_repo = conversation_repository
         self.speaker_repo = speaker_repository
         self.speaker_service = speaker_domain_service
+        self.llm_service = llm_service
+        self.storage_service = storage_service
 
     async def execute(
         self, request: ExecuteMinutesProcessingDTO
@@ -179,11 +180,7 @@ class ExecuteMinutesProcessingUseCase:
         if meeting.gcs_text_uri:
             # GCSからテキストを取得
             try:
-                gcs_storage = GCSStorage(
-                    bucket_name=config.GCS_BUCKET_NAME,
-                    project_id=config.GCS_PROJECT_ID,
-                )
-                text = gcs_storage.download_content(meeting.gcs_text_uri)
+                text = self.storage_service.download_content(meeting.gcs_text_uri)
                 if text:
                     logger.info(
                         f"Downloaded text from GCS ({len(text)} characters)",
@@ -215,32 +212,8 @@ class ExecuteMinutesProcessingUseCase:
         if not text:
             raise ProcessingError("No text provided for processing", {"text_length": 0})
 
-        # APIキーをチェック
-        if not os.getenv("GOOGLE_API_KEY"):
-            raise APIKeyError(
-                "GOOGLE_API_KEY not set. Please configure it in your .env file",
-                {"env_var": "GOOGLE_API_KEY"},
-            )
-
-        # LLMサービスを作成
-        factory = LLMServiceFactory()
-        llm_service = factory.create_fast(temperature=0.0)
-
-        # InstrumentedLLMServiceの場合、履歴記録を設定
-        # 注意: 現在、asyncpgの並行操作制限のため履歴記録を無効化
-        # TODO: 履歴記録用の別セッションを適切に管理する方法を実装
-        if isinstance(llm_service, InstrumentedLLMService):
-            llm_service.set_input_reference("meeting", meeting_id)
-
-            # 履歴記録を無効化（asyncpgの並行操作エラーを回避）
-            # history_repoは設定しない
-            logger.info(
-                "InstrumentedLLMService configured without history recording",
-                meeting_id=meeting_id,
-            )
-
-        # MinutesProcessAgentを使用して処理
-        agent = MinutesProcessAgent(llm_service=llm_service)
+        # MinutesProcessAgentを使用して処理（注入されたLLMサービスを使用）
+        agent = MinutesProcessAgent(llm_service=self.llm_service)
 
         logger.info(f"Processing minutes (text length: {len(text)})")
 

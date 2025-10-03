@@ -381,3 +381,154 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
         model.electoral_district = entity.district
         model.profile_url = entity.profile_page_url
         model.furigana = entity.furigana
+
+    async def get_all_for_matching(self) -> list[dict[str, Any]]:
+        """Get all politicians for matching purposes."""
+        query = text("""
+            SELECT p.id, p.name, p.position, p.prefecture,
+                   p.electoral_district, pp.name as party_name
+            FROM politicians p
+            LEFT JOIN political_parties pp ON p.political_party_id = pp.id
+            ORDER BY p.name
+        """)
+        result = await self.session.execute(query)
+        rows = result.fetchall()
+
+        return [
+            {
+                "id": row.id,
+                "name": row.name,
+                "position": row.position,
+                "prefecture": row.prefecture,
+                "electoral_district": row.electoral_district,
+                "party_name": row.party_name,
+            }
+            for row in rows
+        ]
+
+    async def get_party_statistics(self) -> list[dict[str, Any]]:
+        """Get politician statistics for all parties."""
+        query = text("""
+            WITH extracted_stats AS (
+                SELECT
+                    pp.id as party_id,
+                    pp.name as party_name,
+                    COUNT(ep.id) as extracted_total,
+                    COUNT(CASE WHEN ep.status = 'pending' THEN 1 END)
+                        as extracted_pending,
+                    COUNT(CASE WHEN ep.status = 'reviewed' THEN 1 END)
+                        as extracted_reviewed,
+                    COUNT(CASE WHEN ep.status = 'approved' THEN 1 END)
+                        as extracted_approved,
+                    COUNT(CASE WHEN ep.status = 'rejected' THEN 1 END)
+                        as extracted_rejected,
+                    COUNT(CASE WHEN ep.status = 'converted' THEN 1 END)
+                        as extracted_converted
+                FROM political_parties pp
+                LEFT JOIN extracted_politicians ep ON pp.id = ep.party_id
+                GROUP BY pp.id, pp.name
+            ),
+            politician_stats AS (
+                SELECT
+                    pp.id as party_id,
+                    COUNT(p.id) as politicians_total
+                FROM political_parties pp
+                LEFT JOIN politicians p ON pp.id = p.political_party_id
+                GROUP BY pp.id
+            )
+            SELECT
+                es.party_id,
+                es.party_name,
+                COALESCE(es.extracted_total, 0) as extracted_total,
+                COALESCE(es.extracted_pending, 0) as extracted_pending,
+                COALESCE(es.extracted_reviewed, 0) as extracted_reviewed,
+                COALESCE(es.extracted_approved, 0) as extracted_approved,
+                COALESCE(es.extracted_rejected, 0) as extracted_rejected,
+                COALESCE(es.extracted_converted, 0) as extracted_converted,
+                COALESCE(ps.politicians_total, 0) as politicians_total
+            FROM extracted_stats es
+            LEFT JOIN politician_stats ps ON es.party_id = ps.party_id
+            ORDER BY es.party_name
+        """)
+
+        result = await self.session.execute(query)
+        rows = result.fetchall()
+
+        return [
+            {
+                "party_id": row.party_id,
+                "party_name": row.party_name,
+                "extracted_total": row.extracted_total,
+                "extracted_pending": row.extracted_pending,
+                "extracted_reviewed": row.extracted_reviewed,
+                "extracted_approved": row.extracted_approved,
+                "extracted_rejected": row.extracted_rejected,
+                "extracted_converted": row.extracted_converted,
+                "politicians_total": row.politicians_total,
+            }
+            for row in rows
+        ]
+
+    async def get_party_statistics_by_id(self, party_id: int) -> dict[str, Any] | None:
+        """Get politician statistics for a specific party."""
+        query = text("""
+            WITH extracted_stats AS (
+                SELECT
+                    pp.id as party_id,
+                    pp.name as party_name,
+                    COUNT(ep.id) as extracted_total,
+                    COUNT(CASE WHEN ep.status = 'pending' THEN 1 END)
+                        as extracted_pending,
+                    COUNT(CASE WHEN ep.status = 'reviewed' THEN 1 END)
+                        as extracted_reviewed,
+                    COUNT(CASE WHEN ep.status = 'approved' THEN 1 END)
+                        as extracted_approved,
+                    COUNT(CASE WHEN ep.status = 'rejected' THEN 1 END)
+                        as extracted_rejected,
+                    COUNT(CASE WHEN ep.status = 'converted' THEN 1 END)
+                        as extracted_converted
+                FROM political_parties pp
+                LEFT JOIN extracted_politicians ep ON pp.id = ep.party_id
+                WHERE pp.id = :party_id
+                GROUP BY pp.id, pp.name
+            ),
+            politician_stats AS (
+                SELECT
+                    pp.id as party_id,
+                    COUNT(p.id) as politicians_total
+                FROM political_parties pp
+                LEFT JOIN politicians p ON pp.id = p.political_party_id
+                WHERE pp.id = :party_id
+                GROUP BY pp.id
+            )
+            SELECT
+                es.party_id,
+                es.party_name,
+                COALESCE(es.extracted_total, 0) as extracted_total,
+                COALESCE(es.extracted_pending, 0) as extracted_pending,
+                COALESCE(es.extracted_reviewed, 0) as extracted_reviewed,
+                COALESCE(es.extracted_approved, 0) as extracted_approved,
+                COALESCE(es.extracted_rejected, 0) as extracted_rejected,
+                COALESCE(es.extracted_converted, 0) as extracted_converted,
+                COALESCE(ps.politicians_total, 0) as politicians_total
+            FROM extracted_stats es
+            LEFT JOIN politician_stats ps ON es.party_id = ps.party_id
+        """)
+
+        result = await self.session.execute(query, {"party_id": party_id})
+        row = result.fetchone()
+
+        if row:
+            return {
+                "party_id": row.party_id,
+                "party_name": row.party_name,
+                "extracted_total": row.extracted_total,
+                "extracted_pending": row.extracted_pending,
+                "extracted_reviewed": row.extracted_reviewed,
+                "extracted_approved": row.extracted_approved,
+                "extracted_rejected": row.extracted_rejected,
+                "extracted_converted": row.extracted_converted,
+                "politicians_total": row.politicians_total,
+            }
+
+        return None

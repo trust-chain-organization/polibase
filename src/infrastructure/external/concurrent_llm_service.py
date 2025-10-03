@@ -4,13 +4,13 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any, TypeVar
 
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.types import PoliticianDTO
 from src.domain.types.llm import (
     LLMExtractResult,
     LLMMatchResult,
     LLMSpeakerMatchContext,
 )
-from src.infrastructure.interfaces.llm_service import ILLMService
 
 T = TypeVar("T")
 

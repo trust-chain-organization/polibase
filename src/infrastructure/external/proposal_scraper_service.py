@@ -7,15 +7,15 @@ from typing import Any
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 
+from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.proposal_scraper_service import (
+    IProposalScraperService,
+)
+from src.domain.types.scraper_types import ScrapedProposal
 from src.infrastructure.constants.scraper_prompts import (
     PROPOSAL_EXTRACTION_PROMPT,
     PROPOSAL_EXTRACTION_SYSTEM_PROMPT,
 )
-from src.infrastructure.interfaces.llm_service import ILLMService
-from src.infrastructure.interfaces.proposal_scraper_service import (
-    IProposalScraperService,
-)
-from src.infrastructure.types.scraper_types import ScrapedProposal
 
 
 class ProposalScraperService(IProposalScraperService):

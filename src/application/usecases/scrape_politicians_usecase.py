@@ -13,7 +13,7 @@ from src.domain.repositories.extracted_politician_repository import (
     ExtractedPoliticianRepository,
 )
 from src.domain.repositories.political_party_repository import PoliticalPartyRepository
-from src.infrastructure.interfaces.web_scraper_service import IWebScraperService
+from src.domain.services.interfaces.web_scraper_service import IWebScraperService
 
 
 class ScrapePoliticiansUseCase:

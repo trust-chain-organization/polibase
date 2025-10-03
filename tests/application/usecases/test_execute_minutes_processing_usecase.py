@@ -23,6 +23,8 @@ def mock_repositories():
     conversation_repo = AsyncMock()
     speaker_repo = AsyncMock()
     speaker_service = MagicMock()
+    llm_service = AsyncMock()
+    storage_service = MagicMock()
 
     return {
         "meeting_repo": meeting_repo,
@@ -30,6 +32,8 @@ def mock_repositories():
         "conversation_repo": conversation_repo,
         "speaker_repo": speaker_repo,
         "speaker_service": speaker_service,
+        "llm_service": llm_service,
+        "storage_service": storage_service,
     }
 
 
@@ -42,6 +46,8 @@ def use_case(mock_repositories):
         conversation_repository=mock_repositories["conversation_repo"],
         speaker_repository=mock_repositories["speaker_repo"],
         speaker_domain_service=mock_repositories["speaker_service"],
+        llm_service=mock_repositories["llm_service"],
+        storage_service=mock_repositories["storage_service"],
     )
 
 
@@ -79,87 +85,67 @@ async def test_execute_success(
     mock_repositories["minutes_repo"].create.return_value = sample_minutes
     mock_repositories["conversation_repo"].get_by_minutes.return_value = []
 
-    # GCSStorageをモック
+    # Storage serviceをモック - download_content returns text
+    mock_repositories[
+        "storage_service"
+    ].download_content.return_value = "議事録テキスト"
+
+    # MinutesProcessAgentをモック
     with patch(
-        "src.application.usecases.execute_minutes_processing_usecase.GCSStorage"
-    ) as mock_gcs_patch:
-        mock_gcs = mock_gcs_patch.return_value
-        mock_gcs.download_content.return_value = "議事録テキスト"
+        "src.application.usecases.execute_minutes_processing_usecase.MinutesProcessAgent"
+    ) as mock_agent_patch:
+        mock_agent = mock_agent_patch.return_value
+        mock_agent.run.return_value = [
+            MagicMock(speaker="田中太郎", speech_content="発言1"),
+            MagicMock(speaker="山田花子", speech_content="発言2"),
+        ]
 
-        # MinutesProcessAgentをモック
-        with patch(
-            "src.application.usecases.execute_minutes_processing_usecase.MinutesProcessAgent"
-        ) as mock_agent_patch:
-            mock_agent = mock_agent_patch.return_value
-            mock_agent.run.return_value = [
-                MagicMock(speaker="田中太郎", speech_content="発言1"),
-                MagicMock(speaker="山田花子", speech_content="発言2"),
-            ]
+        # Conversationのバルク作成をモック
+        created_conversations = [
+            Conversation(
+                id=1,
+                minutes_id=1,
+                speaker_name="田中太郎",
+                comment="発言1",
+                sequence_number=1,
+            ),
+            Conversation(
+                id=2,
+                minutes_id=1,
+                speaker_name="山田花子",
+                comment="発言2",
+                sequence_number=2,
+            ),
+        ]
+        mock_repositories[
+            "conversation_repo"
+        ].bulk_create.return_value = created_conversations
 
-            # LLMServiceFactoryをモック
-            with patch(
-                "src.application.usecases.execute_minutes_processing_usecase.LLMServiceFactory"
-            ) as mock_llm_factory:
-                # LLMサービスのモックを設定
-                mock_llm_service = MagicMock()
-                mock_llm_factory.create_gemini_service.return_value = mock_llm_service
+        # Speakerの作成をモック
+        mock_repositories["speaker_service"].extract_party_from_name.side_effect = [
+            ("田中太郎", "自民党"),
+            ("山田花子", "立憲民主党"),
+        ]
+        mock_repositories["speaker_repo"].get_by_name_party_position.return_value = None
+        mock_repositories["speaker_repo"].create.return_value = Mock()
 
-                # 環境変数をモック
-                with patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key"}):
-                    # Conversationのバルク作成をモック
-                    created_conversations = [
-                        Conversation(
-                            id=1,
-                            minutes_id=1,
-                            speaker_name="田中太郎",
-                            comment="発言1",
-                            sequence_number=1,
-                        ),
-                        Conversation(
-                            id=2,
-                            minutes_id=1,
-                            speaker_name="山田花子",
-                            comment="発言2",
-                            sequence_number=2,
-                        ),
-                    ]
-                    mock_repositories[
-                        "conversation_repo"
-                    ].bulk_create.return_value = created_conversations
+        # 実行
+        request = ExecuteMinutesProcessingDTO(meeting_id=1)
+        result = await use_case.execute(request)
 
-                    # Speakerの作成をモック
-                    mock_repositories[
-                        "speaker_service"
-                    ].extract_party_from_name.side_effect = [
-                        ("田中太郎", "自民党"),
-                        ("山田花子", "立憲民主党"),
-                    ]
-                    mock_repositories[
-                        "speaker_repo"
-                    ].get_by_name_party_position.return_value = None
-                    mock_repositories["speaker_repo"].create.return_value = Mock()
+        # 検証
+        assert result.meeting_id == 1
+        assert result.minutes_id == 1
+        assert result.total_conversations == 2
+        assert result.unique_speakers == 2
+        assert result.processing_time_seconds > 0
+        assert result.errors is None
 
-                    # 実行
-                    request = ExecuteMinutesProcessingDTO(meeting_id=1)
-                    result = await use_case.execute(request)
-
-                    # 検証
-                    assert result.meeting_id == 1
-                    assert result.minutes_id == 1
-                    assert result.total_conversations == 2
-                    assert result.unique_speakers == 2
-                    assert result.processing_time_seconds > 0
-                    assert result.errors is None
-
-                    # リポジトリメソッドが呼ばれたことを確認
-                    mock_repositories["meeting_repo"].get_by_id.assert_called_once_with(
-                        1
-                    )
-                    mock_repositories["minutes_repo"].create.assert_called_once()
-                    mock_repositories[
-                        "conversation_repo"
-                    ].bulk_create.assert_called_once()
-                    assert mock_repositories["speaker_repo"].create.call_count == 2
+        # リポジトリメソッドが呼ばれたことを確認
+        mock_repositories["meeting_repo"].get_by_id.assert_called_once_with(1)
+        mock_repositories["minutes_repo"].create.assert_called_once()
+        mock_repositories["conversation_repo"].bulk_create.assert_called_once()
+        assert mock_repositories["speaker_repo"].create.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -216,41 +202,27 @@ async def test_execute_force_reprocess(
         )
     ]
 
-    # GCSStorageをモック
+    # Storage serviceをモック
+    mock_repositories[
+        "storage_service"
+    ].download_content.return_value = "議事録テキスト"
+
+    # MinutesProcessAgentをモック
     with patch(
-        "src.application.usecases.execute_minutes_processing_usecase.GCSStorage"
-    ) as mock_gcs_patch:
-        mock_gcs = mock_gcs_patch.return_value
-        mock_gcs.download_content.return_value = "議事録テキスト"
+        "src.application.usecases.execute_minutes_processing_usecase.MinutesProcessAgent"
+    ) as mock_agent_patch:
+        mock_agent = mock_agent_patch.return_value
+        mock_agent.run.return_value = []
 
-        # MinutesProcessAgentをモック
-        with patch(
-            "src.application.usecases.execute_minutes_processing_usecase.MinutesProcessAgent"
-        ) as mock_agent_patch:
-            mock_agent = mock_agent_patch.return_value
-            mock_agent.run.return_value = []
+        mock_repositories["conversation_repo"].bulk_create.return_value = []
 
-            # LLMServiceFactoryをモック
-            with patch(
-                "src.application.usecases.execute_minutes_processing_usecase.LLMServiceFactory"
-            ) as mock_llm_factory:
-                # LLMサービスのモックを設定
-                mock_llm_service = MagicMock()
-                mock_llm_factory.create_gemini_service.return_value = mock_llm_service
+        # 実行
+        request = ExecuteMinutesProcessingDTO(meeting_id=1, force_reprocess=True)
+        result = await use_case.execute(request)
 
-                # 環境変数をモック
-                with patch.dict("os.environ", {"GOOGLE_API_KEY": "test-key"}):
-                    mock_repositories["conversation_repo"].bulk_create.return_value = []
-
-                    # 実行
-                    request = ExecuteMinutesProcessingDTO(
-                        meeting_id=1, force_reprocess=True
-                    )
-                    result = await use_case.execute(request)
-
-                    # 検証
-                    assert result.meeting_id == 1
-                    assert result.total_conversations == 0
+        # 検証
+        assert result.meeting_id == 1
+        assert result.total_conversations == 0
 
 
 @pytest.mark.asyncio
@@ -274,6 +246,10 @@ async def test_execute_no_gcs_uri(use_case, mock_repositories):
         await use_case.execute(request)
 
 
+@pytest.mark.skip(
+    reason="Legacy test - API key validation no longer happens in UseCase layer. "
+    "LLM service handles API key validation internally."
+)
 @pytest.mark.asyncio
 async def test_execute_api_key_not_set(use_case, mock_repositories, sample_meeting):
     """APIキーが設定されていない場合のエラーテスト"""
@@ -284,19 +260,17 @@ async def test_execute_api_key_not_set(use_case, mock_repositories, sample_meeti
         id=1, meeting_id=1, url="https://example.com"
     )
 
-    # GCSStorageをモック
-    with patch(
-        "src.application.usecases.execute_minutes_processing_usecase.GCSStorage"
-    ) as mock_gcs_patch:
-        mock_gcs = mock_gcs_patch.return_value
-        mock_gcs.download_content.return_value = "議事録テキスト"
+    # Storage serviceをモック
+    mock_repositories[
+        "storage_service"
+    ].download_content.return_value = "議事録テキスト"
 
-        # 環境変数をモック（APIキーなし）
-        with patch.dict("os.environ", {}, clear=True):
-            # 実行と検証
-            request = ExecuteMinutesProcessingDTO(meeting_id=1)
-            with pytest.raises(APIKeyError, match="GOOGLE_API_KEY not set"):
-                await use_case.execute(request)
+    # 環境変数をモック（APIキーなし）
+    with patch.dict("os.environ", {}, clear=True):
+        # 実行と検証
+        request = ExecuteMinutesProcessingDTO(meeting_id=1)
+        with pytest.raises(APIKeyError, match="GOOGLE_API_KEY not set"):
+            await use_case.execute(request)
 
 
 @pytest.mark.asyncio
