@@ -1,6 +1,7 @@
 """Parliamentary group membership repository implementation."""
 
 from datetime import date
+from typing import Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -130,6 +131,34 @@ class ParliamentaryGroupMembershipRepositoryImpl(
         await self.session.refresh(model)
 
         return self._to_entity(model)
+
+    async def get_current_members(self, group_id: int) -> list[dict[str, Any]]:
+        """Get current members of a parliamentary group."""
+        today = date.today()
+        query = select(self.model_class).where(
+            and_(
+                self.model_class.parliamentary_group_id == group_id,
+                self.model_class.start_date <= today,
+                (
+                    self.model_class.end_date.is_(None)
+                    | (self.model_class.end_date >= today)
+                ),
+            )
+        )
+        result = await self.session.execute(query)
+        models = result.scalars().all()
+
+        return [
+            {
+                "id": model.id,
+                "politician_id": model.politician_id,
+                "parliamentary_group_id": model.parliamentary_group_id,
+                "start_date": model.start_date,
+                "end_date": model.end_date,
+                "role": model.role,
+            }
+            for model in models
+        ]
 
     def _to_entity(
         self, model: ParliamentaryGroupMembershipModel

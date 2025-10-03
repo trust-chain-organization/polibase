@@ -2,6 +2,7 @@
 
 from abc import abstractmethod
 from datetime import date
+from typing import Any
 
 from src.domain.entities.parliamentary_group_membership import (
     ParliamentaryGroupMembership,
@@ -88,5 +89,17 @@ class ParliamentaryGroupMembershipRepository(
 
         Returns:
             Updated membership entity or None if not found
+        """
+        pass
+
+    @abstractmethod
+    async def get_current_members(self, group_id: int) -> list[dict[str, Any]]:
+        """Get current members of a parliamentary group.
+
+        Args:
+            group_id: Parliamentary group ID
+
+        Returns:
+            List of dictionaries containing politician_id and other member info
         """
         pass
