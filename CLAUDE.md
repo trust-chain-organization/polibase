@@ -135,6 +135,23 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 # Check extraction and matching status
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase member-status --conference-id 185
 
+# Parliamentary group member extraction (3-step process)
+# Step 1: Extract members from parliamentary group URLs
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-parliamentary-group-members --parliamentary-group-id 1
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-parliamentary-group-members --force  # Re-extract all
+
+# Step 2: Match extracted members with existing politicians
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase match-parliamentary-group-members --parliamentary-group-id 1
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase match-parliamentary-group-members  # Process all pending
+
+# Step 3: Create parliamentary group memberships from matched data
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-parliamentary-group-affiliations --parliamentary-group-id 1
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-parliamentary-group-affiliations --start-date 2024-01-01
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-parliamentary-group-affiliations --min-confidence 0.8  # Higher confidence threshold
+
+# Check extraction and matching status for parliamentary groups
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase parliamentary-group-member-status --parliamentary-group-id 1
+
 # Show coverage statistics for governing bodies
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase coverage
 ```
