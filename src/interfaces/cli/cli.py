@@ -56,7 +56,6 @@ def register_clean_architecture_commands(cli_group: click.Group) -> None:
     # Import database commands individually to maintain compatibility
     from src.interfaces.cli.commands.database import (
         backup,
-        extract_speakers,
         list_backups,
         reset,
         restore,
@@ -69,7 +68,6 @@ def register_clean_architecture_commands(cli_group: click.Group) -> None:
     cli_group.add_command(restore, "restore-database")
     cli_group.add_command(list_backups, "list-backups")
     cli_group.add_command(reset, "reset-database")
-    cli_group.add_command(extract_speakers)
 
     # Register commands from other groups that remain unchanged
     from src.cli_package.commands.minutes_commands import MinutesCommands
