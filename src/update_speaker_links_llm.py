@@ -41,7 +41,7 @@ def main():
     print("\n🎯 Speaker Matchingサービスを初期化中...")
     try:
         # Enable history recording for speaker matching
-        matching_service = SpeakerMatchingService(enable_history=True)
+        _ = SpeakerMatchingService(enable_history=True)
         print("✅ Speaker Matchingサービス初期化完了")
         print("✅ LLM履歴記録機能: 有効")
     except Exception as e:
@@ -91,30 +91,43 @@ def main():
     print("-" * 50)
 
     try:
-        matching_stats = matching_service.batch_update_speaker_links()
-
-        print("\n🎉 マッチング処理完了！")
-        print("=" * 40)
-        print("📈 処理結果:")
-        print(f"   - 処理総数: {matching_stats['total_processed']}件")
-        print(f"   - マッチ成功: {matching_stats['successfully_matched']}件")
-        print(f"   - 高信頼度マッチ: {matching_stats['high_confidence_matches']}件")
-        print(f"   - マッチ失敗: {matching_stats['failed_matches']}件")
-
-        success_rate = (
-            (
-                matching_stats["successfully_matched"]
-                / matching_stats["total_processed"]
-                * 100
-            )
-            if matching_stats["total_processed"] > 0
-            else 0
+        # TODO: Refactor to use MatchSpeakersUseCase instead of legacy service
+        # This method no longer exists on SpeakerMatchingService
+        # Should use: MatchSpeakersUseCase.execute(use_llm=True)
+        print(
+            "❌ この機能は現在メンテナンス中です。"
+            "MatchSpeakersUseCaseへの移行が必要です。"
         )
-        print(f"   - 成功率: {success_rate:.1f}%")
+        print("   代わりに以下のコマンドを使用してください:")
+        print("   polibase update-speakers --use-llm")
+        sys.exit(1)
 
-        if matching_stats["failed_matches"] > 0:
-            print(f"\n⚠️  {matching_stats['failed_matches']}件のマッチに失敗しました。")
-            print("   これらの発言者名は手動での確認が必要かもしれません。")
+        # Legacy code - commented out until migration
+        # matching_stats = matching_service.batch_update_speaker_links()
+        #
+        # print("\n🎉 マッチング処理完了！")
+        # print("=" * 40)
+        # print("📈 処理結果:")
+        # print(f"   - 処理総数: {matching_stats['total_processed']}件")
+        # print(f"   - マッチ成功: {matching_stats['successfully_matched']}件")
+        # print(f"   - 高信頼度マッチ: {matching_stats['high_confidence_matches']}件")
+        # print(f"   - マッチ失敗: {matching_stats['failed_matches']}件")
+        #
+        # success_rate = (
+        #     (
+        #         matching_stats["successfully_matched"]
+        #         / matching_stats["total_processed"]
+        #         * 100
+        #     )
+        #     if matching_stats["total_processed"] > 0
+        #     else 0
+        # )
+        # print(f"   - 成功率: {success_rate:.1f}%")
+        #
+        # if matching_stats["failed_matches"] > 0:
+        #     failed = matching_stats['failed_matches']
+        #     print(f"\n⚠️  {failed}件のマッチに失敗しました。")
+        #     print("   これらの発言者名は手動での確認が必要かもしれません。")
 
     except Exception as e:
         print(f"❌ マッチング処理エラー: {e}")
@@ -131,7 +144,7 @@ def main():
     print(f"   - 改善: +{improvement}件の紐付け完了")
 
 
-def test_single_match():
+async def test_single_match():
     """単一マッチのテスト用関数"""
     print("🧪 単一マッチングテスト")
     print("-" * 30)
@@ -152,7 +165,7 @@ def test_single_match():
 
     for name in test_names:
         print(f"\n🔍 テスト: {name}")
-        result = matching_service.find_best_match(name)
+        result = await matching_service.find_best_match(name)
 
         if result.matched:
             print(f"   ✅ マッチ: {result.speaker_name} (ID: {result.speaker_id})")
@@ -163,7 +176,9 @@ def test_single_match():
 
 
 if __name__ == "__main__":
+    import asyncio
+
     if len(sys.argv) > 1 and sys.argv[1] == "--test":
-        test_single_match()
+        asyncio.run(test_single_match())
     else:
         main()
