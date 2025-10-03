@@ -2,6 +2,8 @@
 
 from unittest.mock import Mock
 
+import pytest
+
 from src.application.queries.politician_statistics_query import (
     PoliticianStatisticsQuery,
 )
@@ -10,7 +12,8 @@ from src.application.queries.politician_statistics_query import (
 class TestPoliticianStatisticsQuery:
     """Test cases for PoliticianStatisticsQuery."""
 
-    def test_get_party_statistics_success(self):
+    @pytest.mark.asyncio
+    async def test_get_party_statistics_success(self):
         """Test successful retrieval of party statistics."""
         # Create mock connection
         mock_conn = Mock()
@@ -44,7 +47,7 @@ class TestPoliticianStatisticsQuery:
 
         # Create query instance and test
         query = PoliticianStatisticsQuery(mock_conn)
-        stats = query.get_party_statistics()
+        stats = await query.get_party_statistics()
 
         # Assertions
         assert len(stats) == 2
@@ -66,7 +69,8 @@ class TestPoliticianStatisticsQuery:
         assert stats[1]["extracted_total"] == 5
         assert stats[1]["politicians_total"] == 8
 
-    def test_get_party_statistics_empty_result(self):
+    @pytest.mark.asyncio
+    async def test_get_party_statistics_empty_result(self):
         """Test when no parties exist."""
         # Create mock connection
         mock_conn = Mock()
@@ -76,12 +80,13 @@ class TestPoliticianStatisticsQuery:
 
         # Create query instance and test
         query = PoliticianStatisticsQuery(mock_conn)
-        stats = query.get_party_statistics()
+        stats = await query.get_party_statistics()
 
         # Assertions
         assert stats == []
 
-    def test_get_party_statistics_by_id_success(self):
+    @pytest.mark.asyncio
+    async def test_get_party_statistics_by_id_success(self):
         """Test successful retrieval of single party statistics."""
         # Create mock connection
         mock_conn = Mock()
@@ -104,7 +109,7 @@ class TestPoliticianStatisticsQuery:
 
         # Create query instance and test
         query = PoliticianStatisticsQuery(mock_conn)
-        stats = query.get_party_statistics_by_id(1)
+        stats = await query.get_party_statistics_by_id(1)
 
         # Assertions
         assert stats is not None
@@ -113,7 +118,8 @@ class TestPoliticianStatisticsQuery:
         assert stats["extracted_total"] == 10
         assert stats["politicians_total"] == 15
 
-    def test_get_party_statistics_by_id_not_found(self):
+    @pytest.mark.asyncio
+    async def test_get_party_statistics_by_id_not_found(self):
         """Test when party ID doesn't exist."""
         # Create mock connection
         mock_conn = Mock()
@@ -123,12 +129,13 @@ class TestPoliticianStatisticsQuery:
 
         # Create query instance and test
         query = PoliticianStatisticsQuery(mock_conn)
-        stats = query.get_party_statistics_by_id(999)
+        stats = await query.get_party_statistics_by_id(999)
 
         # Assertions
         assert stats is None
 
-    def test_statistics_type_hints(self):
+    @pytest.mark.asyncio
+    async def test_statistics_type_hints(self):
         """Test that returned statistics match the expected TypedDict structure."""
         # Create mock connection
         mock_conn = Mock()
@@ -151,7 +158,7 @@ class TestPoliticianStatisticsQuery:
 
         # Create query instance and test
         query = PoliticianStatisticsQuery(mock_conn)
-        stats = query.get_party_statistics()
+        stats = await query.get_party_statistics()
 
         # Verify that the structure matches PartyStatistics TypedDict
         first_stat = stats[0]

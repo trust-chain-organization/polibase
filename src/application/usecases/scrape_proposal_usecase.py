@@ -12,6 +12,7 @@ from src.domain.repositories.proposal_repository import ProposalRepository
 from src.domain.services.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
+from src.infrastructure.types.scraper_types import ScrapedProposal
 
 logger = logging.getLogger(__name__)
 
@@ -56,20 +57,20 @@ class ScrapeProposalUseCase:
 
         # Scrape the proposal information
         try:
-            scraped_data = await self.scraper.scrape_proposal(input_dto.url)
+            scraped_data: ScrapedProposal = await self.scraper.scrape_proposal(
+                input_dto.url
+            )
         except Exception as e:
             logger.error(f"Failed to scrape proposal from {input_dto.url}: {str(e)}")
             raise RuntimeError(f"Failed to scrape proposal: {str(e)}") from e
 
         # Create output DTO with scraped data
         output_dto = ScrapeProposalOutputDTO(
-            content=scraped_data["content"],
-            proposal_number=scraped_data.get("proposal_number"),
-            submission_date=scraped_data.get("submission_date"),
-            summary=scraped_data.get("summary"),
-            detail_url=scraped_data.get(
-                "url"
-            ),  # Default to detail_url for scraped content
+            content=scraped_data.content,
+            proposal_number=scraped_data.proposal_number,
+            submission_date=scraped_data.submission_date,
+            summary=scraped_data.summary,
+            detail_url=scraped_data.url,  # Default to detail_url for scraped content
             status_url=None,  # Status URL can be set separately
             meeting_id=input_dto.meeting_id,
         )

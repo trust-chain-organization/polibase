@@ -23,6 +23,8 @@ def mock_repositories():
     conversation_repo = AsyncMock()
     speaker_repo = AsyncMock()
     speaker_service = MagicMock()
+    llm_service = AsyncMock()
+    storage_service = AsyncMock()
 
     return {
         "meeting_repo": meeting_repo,
@@ -30,6 +32,8 @@ def mock_repositories():
         "conversation_repo": conversation_repo,
         "speaker_repo": speaker_repo,
         "speaker_service": speaker_service,
+        "llm_service": llm_service,
+        "storage_service": storage_service,
     }
 
 
@@ -42,6 +46,8 @@ def use_case(mock_repositories):
         conversation_repository=mock_repositories["conversation_repo"],
         speaker_repository=mock_repositories["speaker_repo"],
         speaker_domain_service=mock_repositories["speaker_service"],
+        llm_service=mock_repositories["llm_service"],
+        storage_service=mock_repositories["storage_service"],
     )
 
 
