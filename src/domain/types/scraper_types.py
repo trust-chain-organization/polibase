@@ -1,4 +1,4 @@
-"""Type definitions for scraper services."""
+"""Type definitions for scraper services - Domain layer."""
 
 from dataclasses import dataclass
 

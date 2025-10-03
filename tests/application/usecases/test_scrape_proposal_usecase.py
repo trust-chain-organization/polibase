@@ -15,7 +15,7 @@ from src.domain.repositories.proposal_repository import ProposalRepository
 from src.domain.services.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
-from src.infrastructure.types.scraper_types import ScrapedProposal
+from src.domain.types.scraper_types import ScrapedProposal
 
 
 class TestScrapeProposalUseCase:

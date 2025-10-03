@@ -11,11 +11,11 @@ from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
+from src.domain.types.scraper_types import ScrapedProposal
 from src.infrastructure.constants.scraper_prompts import (
     PROPOSAL_EXTRACTION_PROMPT,
     PROPOSAL_EXTRACTION_SYSTEM_PROMPT,
 )
-from src.infrastructure.types.scraper_types import ScrapedProposal
 
 
 class ProposalScraperService(IProposalScraperService):
