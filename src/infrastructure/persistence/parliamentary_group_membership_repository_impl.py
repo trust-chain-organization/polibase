@@ -134,30 +134,38 @@ class ParliamentaryGroupMembershipRepositoryImpl(
 
     async def get_current_members(self, group_id: int) -> list[dict[str, Any]]:
         """Get current members of a parliamentary group."""
+        from sqlalchemy import text
+
         today = date.today()
-        query = select(self.model_class).where(
-            and_(
-                self.model_class.parliamentary_group_id == group_id,
-                self.model_class.start_date <= today,
-                (
-                    self.model_class.end_date.is_(None)
-                    | (self.model_class.end_date >= today)
-                ),
-            )
+        query = text("""
+            SELECT
+                id,
+                politician_id,
+                parliamentary_group_id,
+                start_date,
+                end_date,
+                role
+            FROM parliamentary_group_memberships
+            WHERE parliamentary_group_id = :group_id
+                AND start_date <= :today
+                AND (end_date IS NULL OR end_date >= :today)
+        """)
+
+        result = await self.session.execute(
+            query, {"group_id": group_id, "today": today}
         )
-        result = await self.session.execute(query)
-        models = result.scalars().all()
+        rows = result.fetchall()
 
         return [
             {
-                "id": model.id,
-                "politician_id": model.politician_id,
-                "parliamentary_group_id": model.parliamentary_group_id,
-                "start_date": model.start_date,
-                "end_date": model.end_date,
-                "role": model.role,
+                "id": row[0],
+                "politician_id": row[1],
+                "parliamentary_group_id": row[2],
+                "start_date": row[3],
+                "end_date": row[4],
+                "role": row[5],
             }
-            for model in models
+            for row in rows
         ]
 
     def _to_entity(
