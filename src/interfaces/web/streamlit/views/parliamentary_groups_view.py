@@ -527,15 +527,14 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
     with col2:
         # Status filter (multi-select)
         status_options = {
-            "⏳ 未処理": "pending",
+            "⏳ 紐付け未実行": "pending",
             "✅ マッチ済み": "matched",
-            "⚠️ 要確認": "needs_review",
             "❌ マッチなし": "no_match",
         }
         selected_status_labels = st.multiselect(
             "ステータス",
             options=list(status_options.keys()),
-            default=["⏳ 未処理", "⚠️ 要確認"],
+            default=["⏳ 紐付け未実行"],
         )
         selected_statuses = [status_options[label] for label in selected_status_labels]
 
@@ -809,11 +808,11 @@ def render_member_statistics_subtab(presenter: ParliamentaryGroupMemberPresenter
     with col1:
         st.metric("総レコード数", f"{stats['total']}件")
     with col2:
-        st.metric("未処理", f"{stats['pending']}件")
+        st.metric("紐付け未実行", f"{stats['pending']}件")
     with col3:
         st.metric("マッチ済み", f"{stats['matched']}件")
     with col4:
-        st.metric("要確認", f"{stats['needs_review']}件")
+        st.metric("マッチなし", f"{stats['no_match']}件")
 
     # Parliamentary group statistics
     parliamentary_groups = presenter.get_all_parliamentary_groups()
@@ -825,16 +824,15 @@ def render_member_statistics_subtab(presenter: ParliamentaryGroupMemberPresenter
                 group_stats = presenter.get_statistics(group.id)
                 if group_stats["total"] > 0:
                     with st.expander(f"{group.name} (総数: {group_stats['total']}件)"):
-                        col1, col2, col3 = st.columns(3)
+                        col1, col2 = st.columns(2)
                         with col1:
-                            st.metric("未処理", f"{group_stats.get('pending', 0)}件")
+                            st.metric(
+                                "紐付け未実行", f"{group_stats.get('pending', 0)}件"
+                            )
                             st.metric(
                                 "マッチ済み", f"{group_stats.get('matched', 0)}件"
                             )
                         with col2:
-                            st.metric(
-                                "要確認", f"{group_stats.get('needs_review', 0)}件"
-                            )
                             st.metric(
                                 "マッチなし", f"{group_stats.get('no_match', 0)}件"
                             )

@@ -174,7 +174,6 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
             "pending": 0,
             "matched": 0,
             "no_match": 0,
-            "needs_review": 0,
         }
 
         for row in rows:

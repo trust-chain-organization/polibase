@@ -458,9 +458,8 @@ class ParliamentaryGroupMemberPresenter(
 
             # Format status for display
             status_display = {
-                "pending": "⏳ 未処理",
+                "pending": "⏳ 紐付け未実行",
                 "matched": "✅ マッチ済み",
-                "needs_review": "⚠️ 要確認",
                 "no_match": "❌ マッチなし",
             }.get(m.matching_status, m.matching_status)
 
