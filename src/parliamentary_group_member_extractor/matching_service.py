@@ -1,7 +1,7 @@
 """Service for matching extracted parliamentary group members with politicians"""
 
 import logging
-from datetime import date, datetime
+from datetime import date
 from typing import Any, cast
 
 from langchain_core.prompts import PromptTemplate
@@ -196,13 +196,19 @@ class ParliamentaryGroupMemberMatchingService:
 
             if not candidates:
                 # 候補なし
-                self.extracted_repo.update_matching_result(
-                    member_id=extracted_member["id"],
-                    politician_id=None,
-                    confidence=0.0,
-                    status="no_match",
-                    matched_at=None,
-                )
+                member_id = extracted_member["id"]
+                logger.info(f"Calling update_matching_result for member {member_id}")
+                try:
+                    update_result = self.extracted_repo.update_matching_result(
+                        member_id=extracted_member["id"],
+                        politician_id=None,
+                        confidence=0.0,
+                        status="no_match",
+                    )
+                    logger.info(f"Update result: {update_result}")
+                except Exception as update_error:
+                    logger.error(f"Update failed: {update_error}", exc_info=True)
+                    raise
                 result["status"] = "no_match"
                 logger.info(
                     f"No candidates found for '{extracted_member['extracted_name']}'"
@@ -221,7 +227,6 @@ class ParliamentaryGroupMemberMatchingService:
                         politician_id=politician_id,
                         confidence=confidence,
                         status="matched",
-                        matched_at=datetime.now(),
                     )
                     result["status"] = "matched"
                     result["politician_id"] = politician_id
@@ -234,7 +239,6 @@ class ParliamentaryGroupMemberMatchingService:
                         politician_id=politician_id,
                         confidence=confidence,
                         status="needs_review",
-                        matched_at=datetime.now(),
                     )
                     result["status"] = "needs_review"
                     result["politician_id"] = politician_id
@@ -247,7 +251,6 @@ class ParliamentaryGroupMemberMatchingService:
                         politician_id=None,
                         confidence=0.0,
                         status="no_match",
-                        matched_at=None,
                     )
                     result["status"] = "no_match"
 
