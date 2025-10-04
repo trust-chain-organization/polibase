@@ -1,6 +1,5 @@
 """Commands for managing parliamentary group member extraction and matching"""
 
-import asyncio
 import logging
 from datetime import date, datetime
 
@@ -16,9 +15,11 @@ from src.infrastructure.persistence.parliamentary_group_repository_impl import (
     ParliamentaryGroupRepositoryImpl,
 )
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
-from src.parliamentary_group_member_extractor import (
+from src.parliamentary_group_member_extractor.extractor import (
     ParliamentaryGroupMemberExtractor,
-    ParliamentaryGroupMembershipService,
+)
+from src.parliamentary_group_member_extractor.matching_service import (
+    ParliamentaryGroupMemberMatchingService,
 )
 
 logger = logging.getLogger(__name__)
@@ -225,98 +226,20 @@ class ParliamentaryGroupMemberCommands(BaseCommand):
             "🔍 議員情報のマッチングを開始します（ステップ2/3）"
         )
 
-        # リポジトリの初期化
-        extracted_repo = RepositoryAdapter(
-            ExtractedParliamentaryGroupMemberRepositoryImpl
-        )
+        # マッチングサービスを初期化
+        matching_service = ParliamentaryGroupMemberMatchingService()
 
-        # 未処理メンバーを取得
-        pending_members = extracted_repo.get_pending_members(parliamentary_group_id)
-
-        if not pending_members:
-            ParliamentaryGroupMemberCommands.echo_warning(
-                "未処理のメンバーがありません"
-            )
-            extracted_repo.close()
-            return
-
-        ParliamentaryGroupMemberCommands.echo_info(
-            f"処理対象: {len(pending_members)}人のメンバー"
-        )
+        # 処理実行
         ParliamentaryGroupMemberCommands.echo_info(
             "LLMを使用して政治家データとマッチングします..."
         )
 
-        # マッチングサービスを初期化
-        service = ParliamentaryGroupMembershipService()
-
-        # 結果カウンター
-        results: dict[str, int] = {
-            "total": len(pending_members),
-            "matched": 0,
-            "needs_review": 0,
-            "no_match": 0,
-            "error": 0,
-        }
-
         with ProgressTracker(
-            total_steps=len(pending_members), description="マッチング処理中..."
+            total_steps=1, description="マッチング処理中..."
         ) as progress:
-            for member in pending_members:
-                try:
-                    # ExtractedMemberに変換
-                    from src.parliamentary_group_member_extractor.models import (
-                        ExtractedMember,
-                    )
+            results = matching_service.process_pending_members(parliamentary_group_id)
 
-                    extracted_member = ExtractedMember(
-                        name=member.extracted_name,
-                        role=member.extracted_role,
-                        party_name=member.extracted_party_name,
-                        district=member.extracted_district,
-                        additional_info=member.additional_info,
-                    )
-
-                    # マッチング実行
-                    matching_results = asyncio.run(
-                        service.match_politicians([extracted_member])
-                    )
-
-                    if matching_results:
-                        match_result = matching_results[0]
-
-                        # マッチングステータスを決定
-                        if match_result.confidence_score >= 0.7:
-                            status = "matched"
-                        elif match_result.confidence_score >= 0.5:
-                            status = "needs_review"
-                        else:
-                            status = "no_match"
-
-                        # 結果を保存
-                        if member.id:
-                            extracted_repo.update_matching_result(
-                                member_id=member.id,
-                                politician_id=match_result.politician_id,
-                                confidence=match_result.confidence_score,
-                                status=status,
-                                matched_at=(
-                                    datetime.now()
-                                    if match_result.politician_id
-                                    else None
-                                ),
-                            )
-
-                        # カウント更新
-                        results[status] += 1
-
-                except Exception as e:
-                    results["error"] += 1
-                    logger.error(
-                        "Error matching member %s: %s", member.extracted_name, e
-                    )
-
-                progress.update(1)
+            progress.update(1)
 
         # 結果表示
         ParliamentaryGroupMemberCommands.echo_info("\n=== マッチング完了 ===")
@@ -336,7 +259,7 @@ class ParliamentaryGroupMemberCommands(BaseCommand):
                 f"❌ エラー: {results['error']}件"
             )
 
-        extracted_repo.close()
+        matching_service.close()
 
     @staticmethod
     @click.command("create-parliamentary-group-affiliations")
@@ -377,60 +300,32 @@ class ParliamentaryGroupMemberCommands(BaseCommand):
         ParliamentaryGroupMemberCommands.echo_info(f"所属開始日: {start_date_obj}")
         ParliamentaryGroupMemberCommands.echo_info(f"最低信頼度: {min_confidence}")
 
-        # リポジトリの初期化
-        extracted_repo = RepositoryAdapter(
-            ExtractedParliamentaryGroupMemberRepositoryImpl
-        )
+        # マッチングサービスを初期化
+        matching_service = ParliamentaryGroupMemberMatchingService()
 
-        # マッチ済みメンバーを取得
-        matched_members = extracted_repo.get_matched_members(
-            parliamentary_group_id=parliamentary_group_id,
-            min_confidence=min_confidence,
-        )
-
-        if not matched_members:
-            ParliamentaryGroupMemberCommands.echo_warning(
-                f"信頼度{min_confidence}以上のマッチ済みメンバーがありません"
+        # 処理実行
+        with ProgressTracker(
+            total_steps=1, description="メンバーシップ作成中..."
+        ) as progress:
+            results = matching_service.create_memberships_from_matched(
+                parliamentary_group_id, start_date_obj
             )
-            extracted_repo.close()
-            return
 
-        ParliamentaryGroupMemberCommands.echo_info(
-            f"処理対象: {len(matched_members)}人のメンバー"
-        )
-
-        # サービスを初期化
-        service = ParliamentaryGroupMembershipService()
-
-        # メンバーシップ作成
-        creation_result = service.create_memberships(
-            parliamentary_group_id=parliamentary_group_id or 0,
-            matching_results=[],  # 既にマッチング済みなので空
-            start_date=start_date_obj,
-            confidence_threshold=min_confidence,
-            dry_run=False,
-        )
+            progress.update(1)
 
         # 結果表示
         ParliamentaryGroupMemberCommands.echo_info("\n=== メンバーシップ作成完了 ===")
-        ParliamentaryGroupMemberCommands.echo_info(
-            f"処理総数: {creation_result.total_extracted}件"
-        )
+        ParliamentaryGroupMemberCommands.echo_info(f"処理総数: {results['total']}件")
         ParliamentaryGroupMemberCommands.echo_success(
-            f"✅ 新規作成: {creation_result.created_count}件"
+            f"✅ 作成/更新: {results['created']}件"
         )
 
-        if creation_result.skipped_count > 0:
-            ParliamentaryGroupMemberCommands.echo_warning(
-                f"⚠️  スキップ: {creation_result.skipped_count}件"
-            )
-
-        if creation_result.errors:
+        if results["failed"] > 0:
             ParliamentaryGroupMemberCommands.echo_error(
-                f"❌ エラー: {len(creation_result.errors)}件"
+                f"❌ 失敗: {results['failed']}件"
             )
 
-        extracted_repo.close()
+        matching_service.close()
 
     @staticmethod
     @click.command("parliamentary-group-member-status")
