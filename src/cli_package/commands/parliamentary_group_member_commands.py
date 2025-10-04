@@ -262,7 +262,7 @@ class ParliamentaryGroupMemberCommands(BaseCommand):
         with ProgressTracker(
             total_steps=len(pending_members), description="マッチング処理中..."
         ) as progress:
-            for member_dict in pending_members:
+            for member in pending_members:
                 try:
                     # ExtractedMemberに変換
                     from src.parliamentary_group_member_extractor.models import (
@@ -270,11 +270,11 @@ class ParliamentaryGroupMemberCommands(BaseCommand):
                     )
 
                     extracted_member = ExtractedMember(
-                        name=member_dict["extracted_name"],
-                        role=member_dict.get("extracted_role"),
-                        party_name=member_dict.get("extracted_party_name"),
-                        district=member_dict.get("extracted_district"),
-                        additional_info=member_dict.get("additional_info"),
+                        name=member.extracted_name,
+                        role=member.extracted_role,
+                        party_name=member.extracted_party_name,
+                        district=member.extracted_district,
+                        additional_info=member.additional_info,
                     )
 
                     # マッチング実行
@@ -294,15 +294,18 @@ class ParliamentaryGroupMemberCommands(BaseCommand):
                             status = "no_match"
 
                         # 結果を保存
-                        extracted_repo.update_matching_result(
-                            member_id=member_dict["id"],
-                            politician_id=match_result.politician_id,
-                            confidence=match_result.confidence_score,
-                            status=status,
-                            matched_at=(
-                                datetime.now() if match_result.politician_id else None
-                            ),
-                        )
+                        if member.id:
+                            extracted_repo.update_matching_result(
+                                member_id=member.id,
+                                politician_id=match_result.politician_id,
+                                confidence=match_result.confidence_score,
+                                status=status,
+                                matched_at=(
+                                    datetime.now()
+                                    if match_result.politician_id
+                                    else None
+                                ),
+                            )
 
                         # カウント更新
                         results[status] += 1
@@ -310,9 +313,7 @@ class ParliamentaryGroupMemberCommands(BaseCommand):
                 except Exception as e:
                     results["error"] += 1
                     logger.error(
-                        "Error matching member %s: %s",
-                        member_dict["extracted_name"],
-                        e,
+                        "Error matching member %s: %s", member.extracted_name, e
                     )
 
                 progress.update(1)
@@ -481,17 +482,15 @@ class ParliamentaryGroupMemberCommands(BaseCommand):
                 )
                 for member in pending[:10]:  # 最初の10件
                     role = (
-                        f" ({member['extracted_role']})"
-                        if member.get("extracted_role")
-                        else ""
+                        f" ({member.extracted_role})" if member.extracted_role else ""
                     )
                     party = (
-                        f" - {member['extracted_party_name']}"
-                        if member.get("extracted_party_name")
+                        f" - {member.extracted_party_name}"
+                        if member.extracted_party_name
                         else ""
                     )
                     ParliamentaryGroupMemberCommands.echo_info(
-                        f"  • {member['extracted_name']}{role}{party}"
+                        f"  • {member.extracted_name}{role}{party}"
                     )
                 if len(pending) > 10:
                     ParliamentaryGroupMemberCommands.echo_info(
@@ -506,14 +505,14 @@ class ParliamentaryGroupMemberCommands(BaseCommand):
                 )
                 for member in matched[:10]:  # 最初の10件
                     role = (
-                        f" ({member['extracted_role']})"
-                        if member.get("extracted_role")
-                        else ""
+                        f" ({member.extracted_role})" if member.extracted_role else ""
                     )
-                    politician_name = member.get("politician_name", "N/A")
-                    confidence = member.get("matching_confidence", 0.0)
+                    # politician_nameはエンティティに存在しないため、
+                    # matched_politician_idからpolitician名を取得する必要がある
+                    politician_name = "N/A"  # 後で実装
+                    confidence = member.matching_confidence or 0.0
                     ParliamentaryGroupMemberCommands.echo_success(
-                        f"  • {member['extracted_name']}{role} → "
+                        f"  • {member.extracted_name}{role} → "
                         f"{politician_name} "
                         f"(信頼度: {confidence:.2f})"
                     )
