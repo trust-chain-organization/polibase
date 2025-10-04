@@ -277,7 +277,15 @@ class ParliamentaryGroupMemberMatchingService:
 
         logger.info(f"Processing {len(pending_members)} pending members")
 
-        for member in pending_members:
+        for member_entity in pending_members:
+            # Convert entity to dict for processing
+            member = {
+                "id": member_entity.id,
+                "extracted_name": member_entity.extracted_name,
+                "extracted_party_name": member_entity.extracted_party_name,
+                "extracted_role": member_entity.extracted_role,
+                "group_name": getattr(member_entity, "group_name", ""),
+            }
             result = self.process_extracted_member(member)
 
             if result["status"] == "matched":
@@ -312,29 +320,29 @@ class ParliamentaryGroupMemberMatchingService:
 
         logger.info(f"Creating memberships for {len(matched_members)} matched members")
 
-        for member in matched_members:
+        for member_entity in matched_members:
             try:
                 # 議員団所属情報をUPSERT
                 membership_id = self.membership_repo.upsert_membership(
-                    politician_id=member["matched_politician_id"],
-                    parliamentary_group_id=member["parliamentary_group_id"],
+                    politician_id=member_entity.matched_politician_id,
+                    parliamentary_group_id=member_entity.parliamentary_group_id,
                     start_date=start_date,
-                    role=member.get("extracted_role"),
+                    role=member_entity.extracted_role,
                 )
 
                 if membership_id:
                     results["created"] += 1
                     logger.info(
-                        f"Created/Updated membership for politician "
-                        f"{member.get('politician_name', 'unknown')} in "
-                        f"{member.get('group_name', 'unknown')}"
+                        f"Created/Updated membership for politician ID "
+                        f"{member_entity.matched_politician_id} in group ID "
+                        f"{member_entity.parliamentary_group_id}"
                     )
                 else:
                     results["failed"] += 1
 
             except Exception as e:
                 logger.error(
-                    f"Error creating membership for member {member['id']}: {e}"
+                    f"Error creating membership for member {member_entity.id}: {e}"
                 )
                 results["failed"] += 1
 
