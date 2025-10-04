@@ -342,21 +342,21 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
             st.metric("合計", extraction_summary["total"])
         with col2:
             st.metric(
+                "紐付け未実行",
+                extraction_summary["pending"],
+                help="マッチング処理を待っている数",
+            )
+        with col3:
+            st.metric(
                 "マッチ済み",
                 extraction_summary["matched"],
                 help="政治家と正常にマッチングできた数",
             )
-        with col3:
-            st.metric(
-                "未処理",
-                extraction_summary["pending"],
-                help="マッチング処理を待っている数",
-            )
         with col4:
             st.metric(
-                "要確認",
-                extraction_summary["needs_review"],
-                help="手動での確認が必要な数",
+                "マッチなし",
+                extraction_summary["no_match"],
+                help="マッチングを実行したが見つからなかった数",
             )
 
         # Get and display extracted members
