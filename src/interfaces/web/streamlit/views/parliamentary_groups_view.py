@@ -714,16 +714,28 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                 )
 
                             with search_col2:
-                                # Create party filter options
-                                party_filter_options = ["すべて"]
+                                # Get all political parties for filter options
+                                all_political_parties = (
+                                    presenter.get_all_political_parties()
+                                )
+                                party_filter_options = ["すべて", "無所属"] + [
+                                    p.name for p in all_political_parties if p.name
+                                ]
+
+                                # Set default to extracted party if available
+                                default_index = 0
                                 if member.extracted_party_name:
-                                    party_filter_options.append(
-                                        member.extracted_party_name
-                                    )
+                                    try:
+                                        default_index = party_filter_options.index(
+                                            member.extracted_party_name
+                                        )
+                                    except ValueError:
+                                        default_index = 0
 
                                 selected_party_filter = st.selectbox(
                                     "政党で絞り込み",
                                     party_filter_options,
+                                    index=default_index,
                                     key=f"party_filter_{member.id}",
                                 )
 

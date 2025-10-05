@@ -129,6 +129,18 @@ class ParliamentaryGroupMemberPresenter(
             self.logger.error(f"Failed to get parliamentary groups: {e}")
             return []
 
+    def get_all_political_parties(self) -> list[Any]:
+        """Get all political parties.
+
+        Returns:
+            List of political parties
+        """
+        try:
+            return self.political_party_repo.get_all()
+        except Exception as e:
+            self.logger.error(f"Failed to get political parties: {e}")
+            return []
+
     def get_filtered_extracted_members(
         self,
         parliamentary_group_id: int | None = None,
