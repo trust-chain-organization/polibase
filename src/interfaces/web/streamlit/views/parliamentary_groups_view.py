@@ -748,6 +748,11 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                     key=f"party_filter_{member.id}",
                                 )
 
+                            # Initialize search result state
+                            search_key = f"search_results_{member.id}"
+                            if search_key not in st.session_state:
+                                st.session_state[search_key] = None
+
                             if st.button(
                                 "検索", key=f"search_button_{member.id}", type="primary"
                             ):
@@ -774,6 +779,13 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                             filtered_politicians.append(p)
                                     politicians = filtered_politicians
 
+                                # Store search results in session state
+                                st.session_state[search_key] = politicians
+
+                            # Display search results from session state
+                            politicians = st.session_state[search_key]
+
+                            if politicians is not None:
                                 if politicians:
                                     st.markdown(f"**検索結果: {len(politicians)}件**")
 
@@ -822,9 +834,25 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                             key=f"execute_match_{member.id}",
                                             type="primary",
                                         ):
+                                            import logging
+
+                                            logger = logging.getLogger(__name__)
+                                            logger.info(
+                                                f"Match button clicked for "
+                                                f"member {member.id}"
+                                            )
+
                                             politician_id = politician_map[
                                                 selected_politician
                                             ]
+
+                                            logger.info(
+                                                f"Calling review_extracted_member: "
+                                                f"member_id={member.id}, "
+                                                f"politician_id={politician_id}, "
+                                                f"confidence={confidence}"
+                                            )
+
                                             if member.id is not None:
                                                 (
                                                     success,
@@ -835,6 +863,13 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                                     politician_id,
                                                     confidence,
                                                 )
+
+                                                logger.info(
+                                                    f"review_extracted_member "
+                                                    f"returned: success={success}, "
+                                                    f"message={message}"
+                                                )
+
                                                 if success:
                                                     st.session_state[
                                                         "review_success_message"
@@ -842,6 +877,8 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                                     st.session_state[
                                                         f"matching_{member.id}"
                                                     ] = False
+                                                    if search_key in st.session_state:
+                                                        del st.session_state[search_key]
                                                     st.rerun()
                                                 else:
                                                     st.session_state[
@@ -850,6 +887,8 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                                     st.session_state[
                                                         f"matching_{member.id}"
                                                     ] = False
+                                                    if search_key in st.session_state:
+                                                        del st.session_state[search_key]
                                                     st.rerun()
 
                                     with col_cancel:
@@ -860,9 +899,18 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                             st.session_state[
                                                 f"matching_{member.id}"
                                             ] = False
+                                            del st.session_state[search_key]
                                             st.rerun()
                                 else:
                                     st.warning("該当する政治家が見つかりませんでした")
+                                    if st.button(
+                                        "閉じる", key=f"close_no_results_{member.id}"
+                                    ):
+                                        st.session_state[f"matching_{member.id}"] = (
+                                            False
+                                        )
+                                        del st.session_state[search_key]
+                                        st.rerun()
 
 
 def render_member_statistics_subtab(presenter: ParliamentaryGroupMemberPresenter):
