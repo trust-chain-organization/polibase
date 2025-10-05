@@ -87,36 +87,70 @@ class ParliamentaryGroupMembershipRepositoryImpl(
         role: str | None = None,
     ) -> ParliamentaryGroupMembershipEntity:
         """Create a new membership."""
+        from sqlalchemy import text
+
         # Check if already exists
-        existing_query = select(self.model_class).where(
-            and_(
-                self.model_class.politician_id == politician_id,
-                self.model_class.parliamentary_group_id == group_id,
-                self.model_class.start_date == start_date,
-            )
+        check_query = text("""
+            SELECT id, politician_id, parliamentary_group_id, start_date, end_date, role
+            FROM parliamentary_group_memberships
+            WHERE politician_id = :politician_id
+                AND parliamentary_group_id = :group_id
+                AND start_date = :start_date
+        """)
+
+        existing_result = await self.session.execute(
+            check_query,
+            {
+                "politician_id": politician_id,
+                "group_id": group_id,
+                "start_date": start_date,
+            },
         )
-        existing_result = await self.session.execute(existing_query)
-        existing = existing_result.scalar_one_or_none()
+        existing = existing_result.fetchone()
 
         if existing:
-            return self._to_entity(existing)
+            return ParliamentaryGroupMembershipEntity(
+                id=existing[0],
+                politician_id=existing[1],
+                parliamentary_group_id=existing[2],
+                start_date=existing[3],
+                end_date=existing[4],
+                role=existing[5],
+            )
 
         # Create new membership
-        entity = ParliamentaryGroupMembershipEntity(
-            politician_id=politician_id,
-            parliamentary_group_id=group_id,
-            start_date=start_date,
-            role=role,
+        insert_query = text("""
+            INSERT INTO parliamentary_group_memberships (
+                politician_id, parliamentary_group_id, start_date, role
+            )
+            VALUES (:politician_id, :group_id, :start_date, :role)
+            RETURNING id, politician_id, parliamentary_group_id,
+                      start_date, end_date, role
+        """)
+
+        result = await self.session.execute(
+            insert_query,
+            {
+                "politician_id": politician_id,
+                "group_id": group_id,
+                "start_date": start_date,
+                "role": role,
+            },
         )
+        await self.session.commit()
 
-        model = self._to_model(entity)
-        self.session.add(model)
-        await (
-            self.session.flush()
-        )  # Use flush instead of commit for transaction control
-        await self.session.refresh(model)
+        row = result.fetchone()
+        if not row:
+            raise ValueError("Failed to create membership")
 
-        return self._to_entity(model)
+        return ParliamentaryGroupMembershipEntity(
+            id=row[0],
+            politician_id=row[1],
+            parliamentary_group_id=row[2],
+            start_date=row[3],
+            end_date=row[4],
+            role=row[5],
+        )
 
     async def end_membership(
         self, membership_id: int, end_date: date
