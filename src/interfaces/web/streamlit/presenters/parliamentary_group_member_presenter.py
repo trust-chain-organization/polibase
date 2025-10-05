@@ -104,12 +104,12 @@ class ParliamentaryGroupMemberPresenter(
         """
         try:
             # Get all parliamentary groups
-            groups = self._run_async(self.parliamentary_group_repo.get_all())
+            groups = self.parliamentary_group_repo.get_all()
             all_members = []
             for group in groups:
                 if group.id:
-                    members = self._run_async(
-                        self.extracted_member_repo.get_by_parliamentary_group(group.id)
+                    members = self.extracted_member_repo.get_by_parliamentary_group(
+                        group.id
                     )
                     all_members.extend(members)
             return all_members
@@ -124,7 +124,7 @@ class ParliamentaryGroupMemberPresenter(
             List of parliamentary groups
         """
         try:
-            return self._run_async(self.parliamentary_group_repo.get_all())
+            return self.parliamentary_group_repo.get_all()
         except Exception as e:
             self.logger.error(f"Failed to get parliamentary groups: {e}")
             return []
@@ -136,7 +136,7 @@ class ParliamentaryGroupMemberPresenter(
             List of political parties
         """
         try:
-            return self._run_async(self.political_party_repo.get_all())
+            return self.political_party_repo.get_all()
         except Exception as e:
             self.logger.error(f"Failed to get political parties: {e}")
             return []
@@ -164,10 +164,8 @@ class ParliamentaryGroupMemberPresenter(
         try:
             # Get members by parliamentary group
             if parliamentary_group_id:
-                members = self._run_async(
-                    self.extracted_member_repo.get_by_parliamentary_group(
-                        parliamentary_group_id
-                    )
+                members = self.extracted_member_repo.get_by_parliamentary_group(
+                    parliamentary_group_id
                 )
             else:
                 members = self.load_data()
@@ -202,10 +200,8 @@ class ParliamentaryGroupMemberPresenter(
             Dictionary with statistics
         """
         try:
-            summary = self._run_async(
-                self.extracted_member_repo.get_extraction_summary(
-                    parliamentary_group_id
-                )
+            summary = self.extracted_member_repo.get_extraction_summary(
+                parliamentary_group_id
             )
             return summary
         except Exception as e:
@@ -238,7 +234,7 @@ class ParliamentaryGroupMemberPresenter(
         """
         try:
             # Get member
-            member = self._run_async(self.extracted_member_repo.get_by_id(member_id))
+            member = self.extracted_member_repo.get_by_id(member_id)
             if not member:
                 return False, "メンバーが見つかりません"
 
@@ -269,14 +265,12 @@ class ParliamentaryGroupMemberPresenter(
                 return False, f"不明なアクション: {action}"
 
             # Update matching result
-            self._run_async(
-                self.extracted_member_repo.update_matching_result(
-                    member_id=member_id,
-                    politician_id=politician_id,
-                    confidence=confidence,
-                    status=status,
-                    matched_at=matched_at,
-                )
+            self.extracted_member_repo.update_matching_result(
+                member_id=member_id,
+                politician_id=politician_id,
+                confidence=confidence,
+                status=status,
+                matched_at=matched_at,
             )
 
             action_label = {
@@ -403,7 +397,7 @@ class ParliamentaryGroupMemberPresenter(
             Politician or None if not found
         """
         try:
-            return self._run_async(self.politician_repo.get_by_id(politician_id))
+            return self.politician_repo.get_by_id(politician_id)
         except Exception as e:
             self.logger.error(f"Failed to get politician {politician_id}: {e}")
             return None
@@ -418,7 +412,7 @@ class ParliamentaryGroupMemberPresenter(
             Party name or '無所属' if not found
         """
         try:
-            party = self._run_async(self.political_party_repo.get_by_id(party_id))
+            party = self.political_party_repo.get_by_id(party_id)
             return party.name if party else "無所属"
         except Exception as e:
             self.logger.error(f"Failed to get party {party_id}: {e}")
@@ -438,7 +432,7 @@ class ParliamentaryGroupMemberPresenter(
         """
         try:
             # Get all politicians
-            all_politicians = self._run_async(self.politician_repo.get_all())
+            all_politicians = self.politician_repo.get_all()
 
             # Filter by name
             politicians = [p for p in all_politicians if name.lower() in p.name.lower()]
