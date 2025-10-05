@@ -50,6 +50,40 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
             ExtractedParliamentaryGroupMemberModel,
         )
 
+    async def get_by_id(
+        self, entity_id: int
+    ) -> ExtractedParliamentaryGroupMember | None:
+        """Get extracted member by ID."""
+        query = text("""
+            SELECT * FROM extracted_parliamentary_group_members
+            WHERE id = :id
+        """)
+
+        result = await self.session.execute(query, {"id": entity_id})
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        return None
+
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = None
+    ) -> list[ExtractedParliamentaryGroupMember]:
+        """Get all extracted members."""
+        query_str = "SELECT * FROM extracted_parliamentary_group_members"
+
+        if limit is not None or offset is not None:
+            query_str += " LIMIT :limit OFFSET :offset"
+            params = {"limit": limit or 10000, "offset": offset or 0}
+        else:
+            params = {}
+
+        query = text(query_str)
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
+
     async def get_pending_members(
         self, parliamentary_group_id: int | None = None
     ) -> list[ExtractedParliamentaryGroupMember]:
