@@ -3,7 +3,6 @@
 from datetime import date
 from typing import Any
 
-from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.parliamentary_group_membership import (
@@ -40,44 +39,92 @@ class ParliamentaryGroupMembershipRepositoryImpl(
         self, group_id: int
     ) -> list[ParliamentaryGroupMembershipEntity]:
         """Get memberships by group."""
-        query = select(self.model_class).where(
-            self.model_class.parliamentary_group_id == group_id
+        from sqlalchemy import text
+
+        query = text(
+            """
+            SELECT id, politician_id, parliamentary_group_id,
+                   start_date, end_date, role
+            FROM parliamentary_group_memberships
+            WHERE parliamentary_group_id = :group_id
+        """
         )
-        result = await self.session.execute(query)
-        models = result.scalars().all()
-        return [self._to_entity(model) for model in models]
+        result = await self.session.execute(query, {"group_id": group_id})
+        rows = result.fetchall()
+        return [
+            ParliamentaryGroupMembershipEntity(
+                id=row[0],
+                politician_id=row[1],
+                parliamentary_group_id=row[2],
+                start_date=row[3],
+                end_date=row[4],
+                role=row[5],
+            )
+            for row in rows
+        ]
 
     async def get_by_politician(
         self, politician_id: int
     ) -> list[ParliamentaryGroupMembershipEntity]:
         """Get memberships by politician."""
-        query = select(self.model_class).where(
-            self.model_class.politician_id == politician_id
+        from sqlalchemy import text
+
+        query = text(
+            """
+            SELECT id, politician_id, parliamentary_group_id,
+                   start_date, end_date, role
+            FROM parliamentary_group_memberships
+            WHERE politician_id = :politician_id
+        """
         )
-        result = await self.session.execute(query)
-        models = result.scalars().all()
-        return [self._to_entity(model) for model in models]
+        result = await self.session.execute(query, {"politician_id": politician_id})
+        rows = result.fetchall()
+        return [
+            ParliamentaryGroupMembershipEntity(
+                id=row[0],
+                politician_id=row[1],
+                parliamentary_group_id=row[2],
+                start_date=row[3],
+                end_date=row[4],
+                role=row[5],
+            )
+            for row in rows
+        ]
 
     async def get_active_by_group(
         self, group_id: int, as_of_date: date | None = None
     ) -> list[ParliamentaryGroupMembershipEntity]:
         """Get active memberships by group."""
+        from sqlalchemy import text
+
         if as_of_date is None:
             as_of_date = date.today()
 
-        query = select(self.model_class).where(
-            and_(
-                self.model_class.parliamentary_group_id == group_id,
-                self.model_class.start_date <= as_of_date,
-                (
-                    self.model_class.end_date.is_(None)
-                    | (self.model_class.end_date >= as_of_date)
-                ),
-            )
+        query = text(
+            """
+            SELECT id, politician_id, parliamentary_group_id,
+                   start_date, end_date, role
+            FROM parliamentary_group_memberships
+            WHERE parliamentary_group_id = :group_id
+                AND start_date <= :as_of_date
+                AND (end_date IS NULL OR end_date >= :as_of_date)
+        """
         )
-        result = await self.session.execute(query)
-        models = result.scalars().all()
-        return [self._to_entity(model) for model in models]
+        result = await self.session.execute(
+            query, {"group_id": group_id, "as_of_date": as_of_date}
+        )
+        rows = result.fetchall()
+        return [
+            ParliamentaryGroupMembershipEntity(
+                id=row[0],
+                politician_id=row[1],
+                parliamentary_group_id=row[2],
+                start_date=row[3],
+                end_date=row[4],
+                role=row[5],
+            )
+            for row in rows
+        ]
 
     async def create_membership(
         self,
