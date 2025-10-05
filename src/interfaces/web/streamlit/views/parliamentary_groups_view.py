@@ -510,6 +510,15 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
     """Render the member review sub-tab."""
     st.markdown("### 抽出メンバーレビュー")
 
+    # Display success/error messages from session state
+    if "review_success_message" in st.session_state:
+        st.success(st.session_state.review_success_message)
+        del st.session_state.review_success_message
+
+    if "review_error_message" in st.session_state:
+        st.error(st.session_state.review_error_message)
+        del st.session_state.review_error_message
+
     # Get parliamentary groups for filter
     parliamentary_groups = presenter.get_all_parliamentary_groups()
 
@@ -677,10 +686,10 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                     member.id, "approve"
                                 )
                                 if success:
-                                    st.success(message)
-                                    st.rerun()
+                                    st.session_state["review_success_message"] = message
                                 else:
-                                    st.error(message)
+                                    st.session_state["review_error_message"] = message
+                                st.rerun()
 
                     with col_2:
                         if st.button("❌ 却下", key=f"reject_member_{member.id}"):
@@ -689,10 +698,10 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                     member.id, "reject"
                                 )
                                 if success:
-                                    st.success(message)
-                                    st.rerun()
+                                    st.session_state["review_success_message"] = message
                                 else:
-                                    st.error(message)
+                                    st.session_state["review_error_message"] = message
+                                st.rerun()
 
                     with col_3:
                         if st.button("🔗 手動マッチ", key=f"manual_match_{member.id}"):
@@ -827,13 +836,21 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                                                     confidence,
                                                 )
                                                 if success:
-                                                    st.success(message)
+                                                    st.session_state[
+                                                        "review_success_message"
+                                                    ] = message
                                                     st.session_state[
                                                         f"matching_{member.id}"
                                                     ] = False
                                                     st.rerun()
                                                 else:
-                                                    st.error(message)
+                                                    st.session_state[
+                                                        "review_error_message"
+                                                    ] = message
+                                                    st.session_state[
+                                                        f"matching_{member.id}"
+                                                    ] = False
+                                                    st.rerun()
 
                                     with col_cancel:
                                         if st.button(

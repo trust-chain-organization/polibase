@@ -300,9 +300,11 @@ class ParliamentaryGroupMemberPresenter(
                     f"new status: {updated_member.matching_status}"
                 )
             else:
-                self.logger.warning(
-                    f"update_matching_result returned None for member {member_id}"
+                self.logger.error(
+                    f"update_matching_result returned None for member "
+                    f"{member_id} - update failed"
                 )
+                return False, "データベース更新に失敗しました"
 
             action_label = {
                 "approve": "承認",
