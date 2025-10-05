@@ -32,6 +32,9 @@ from src.infrastructure.persistence.parliamentary_group_membership_repository_im
 from src.infrastructure.persistence.parliamentary_group_repository_impl import (
     ParliamentaryGroupRepositoryImpl,
 )
+from src.infrastructure.persistence.political_party_repository_impl import (
+    PoliticalPartyRepositoryImpl,
+)
 from src.infrastructure.persistence.politician_repository_impl import (
     PoliticianRepositoryImpl,
 )
@@ -64,6 +67,7 @@ class ParliamentaryGroupMemberPresenter(
             ParliamentaryGroupRepositoryImpl
         )
         self.politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
+        self.political_party_repo = RepositoryAdapter(PoliticalPartyRepositoryImpl)
 
         # Initialize LLM service
         self.llm_service = GeminiLLMService()
@@ -386,6 +390,22 @@ class ParliamentaryGroupMemberPresenter(
             self.logger.error(f"Failed to get politician {politician_id}: {e}")
             return None
 
+    def get_party_name_by_id(self, party_id: int) -> str:
+        """Get party name by ID.
+
+        Args:
+            party_id: Political party ID
+
+        Returns:
+            Party name or '無所属' if not found
+        """
+        try:
+            party = self.political_party_repo.get_by_id(party_id)
+            return party.name if party else "無所属"
+        except Exception as e:
+            self.logger.error(f"Failed to get party {party_id}: {e}")
+            return "無所属"
+
     def search_politicians(
         self, name: str, party_id: int | None = None
     ) -> list[Politician]:
@@ -463,12 +483,17 @@ class ParliamentaryGroupMemberPresenter(
                 "no_match": "❌ マッチなし",
             }.get(m.matching_status, m.matching_status)
 
-            # Get politician name if matched
+            # Get politician name and party if matched
             politician_name = "-"
             if m.matched_politician_id:
                 politician = self.get_politician_by_id(m.matched_politician_id)
                 if politician:
-                    politician_name = politician.name
+                    party_name = "無所属"
+                    if politician.political_party_id:
+                        party_name = self.get_party_name_by_id(
+                            politician.political_party_id
+                        )
+                    politician_name = f"{politician.name} ({party_name})"
 
             data.append(
                 {

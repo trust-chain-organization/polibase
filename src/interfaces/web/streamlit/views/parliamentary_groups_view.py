@@ -703,30 +703,70 @@ def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
                         with st.container():
                             st.markdown("#### 手動マッチング")
 
-                            # Search for politicians
-                            search_politician_name = st.text_input(
-                                "政治家名で検索",
-                                value=member.extracted_name,
-                                key=f"search_pol_{member.id}",
-                            )
+                            # Search filters
+                            search_col1, search_col2 = st.columns(2)
+
+                            with search_col1:
+                                search_politician_name = st.text_input(
+                                    "政治家名で検索",
+                                    value=member.extracted_name,
+                                    key=f"search_pol_{member.id}",
+                                )
+
+                            with search_col2:
+                                # Create party filter options
+                                party_filter_options = ["すべて"]
+                                if member.extracted_party_name:
+                                    party_filter_options.append(
+                                        member.extracted_party_name
+                                    )
+
+                                selected_party_filter = st.selectbox(
+                                    "政党で絞り込み",
+                                    party_filter_options,
+                                    key=f"party_filter_{member.id}",
+                                )
 
                             if st.button(
                                 "検索", key=f"search_button_{member.id}", type="primary"
                             ):
+                                # Search with name only (party filtering done below)
                                 politicians = presenter.search_politicians(
                                     search_politician_name, None
                                 )
 
+                                # Filter by party name if specified
+                                if selected_party_filter != "すべて" and politicians:
+                                    # Get party names for filtering
+                                    filtered_politicians = []
+                                    for p in politicians:
+                                        if p.political_party_id:
+                                            party_name = presenter.get_party_name_by_id(
+                                                p.political_party_id
+                                            )
+                                            if (
+                                                selected_party_filter.lower()
+                                                in party_name.lower()
+                                            ):
+                                                filtered_politicians.append(p)
+                                        elif selected_party_filter == "無所属":
+                                            filtered_politicians.append(p)
+                                    politicians = filtered_politicians
+
                                 if politicians:
                                     st.markdown(f"**検索結果: {len(politicians)}件**")
 
-                                    # Display politician options
+                                    # Display politician options with party names
                                     def format_politician(
                                         p: Any,
                                     ) -> str:
-                                        party = p.political_party_id or "無所属"
+                                        party_name = "無所属"
+                                        if p.political_party_id:
+                                            party_name = presenter.get_party_name_by_id(
+                                                p.political_party_id
+                                            )
                                         district = p.district or "-"
-                                        return f"{p.name} (ID: {party}) - {district}"
+                                        return f"{p.name} ({party_name}) - {district}"
 
                                     politician_options = [
                                         format_politician(p) for p in politicians
