@@ -233,10 +233,21 @@ class ParliamentaryGroupMemberPresenter(
             Tuple of (success, message)
         """
         try:
+            self.logger.info(
+                f"Starting review for member {member_id}, action={action}, "
+                f"politician_id={politician_id}, confidence={confidence}"
+            )
+
             # Get member
             member = self.extracted_member_repo.get_by_id(member_id)
             if not member:
+                self.logger.warning(f"Member {member_id} not found")
                 return False, "メンバーが見つかりません"
+
+            self.logger.info(
+                f"Found member: {member.extracted_name}, "
+                f"current status: {member.matching_status}"
+            )
 
             if action == "approve":
                 # Approve matched member (status: matched)
@@ -256,6 +267,10 @@ class ParliamentaryGroupMemberPresenter(
             elif action == "match":
                 # Manual match
                 if not politician_id or confidence is None:
+                    self.logger.warning(
+                        f"Missing politician_id or confidence: "
+                        f"politician_id={politician_id}, confidence={confidence}"
+                    )
                     return False, "政治家IDと信頼度が必要です"
 
                 status = "matched"
@@ -264,14 +279,30 @@ class ParliamentaryGroupMemberPresenter(
             else:
                 return False, f"不明なアクション: {action}"
 
+            self.logger.info(
+                f"Updating matching result: member_id={member_id}, "
+                f"politician_id={politician_id}, confidence={confidence}, "
+                f"status={status}, matched_at={matched_at}"
+            )
+
             # Update matching result
-            self.extracted_member_repo.update_matching_result(
+            updated_member = self.extracted_member_repo.update_matching_result(
                 member_id=member_id,
                 politician_id=politician_id,
                 confidence=confidence,
                 status=status,
                 matched_at=matched_at,
             )
+
+            if updated_member:
+                self.logger.info(
+                    f"Successfully updated member {member_id}, "
+                    f"new status: {updated_member.matching_status}"
+                )
+            else:
+                self.logger.warning(
+                    f"update_matching_result returned None for member {member_id}"
+                )
 
             action_label = {
                 "approve": "承認",
@@ -282,7 +313,7 @@ class ParliamentaryGroupMemberPresenter(
             return True, f"{member.extracted_name} を{action_label}しました"
 
         except Exception as e:
-            self.logger.error(f"Error reviewing member {member_id}: {e}")
+            self.logger.error(f"Error reviewing member {member_id}: {e}", exc_info=True)
             return False, f"エラー: {str(e)}"
 
     def bulk_review(self, member_ids: list[int], action: str) -> tuple[int, int, str]:
