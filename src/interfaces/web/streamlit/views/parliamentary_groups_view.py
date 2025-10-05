@@ -23,7 +23,14 @@ def render_parliamentary_groups_page():
 
     # Create tabs
     tabs = st.tabs(
-        ["議員団一覧", "新規登録", "編集・削除", "メンバー抽出", "メンバーレビュー"]
+        [
+            "議員団一覧",
+            "新規登録",
+            "編集・削除",
+            "メンバー抽出",
+            "メンバーレビュー",
+            "メンバーシップ一覧",
+        ]
     )
 
     with tabs[0]:
@@ -40,6 +47,9 @@ def render_parliamentary_groups_page():
 
     with tabs[4]:
         render_member_review_tab()
+
+    with tabs[5]:
+        render_memberships_list_tab(presenter)
 
 
 def render_parliamentary_groups_list_tab(presenter: ParliamentaryGroupPresenter):
@@ -1047,6 +1057,149 @@ def render_create_memberships_subtab(presenter: ParliamentaryGroupMemberPresente
 
                     df_memberships = pd.DataFrame(membership_data)
                     st.dataframe(df_memberships, use_container_width=True)
+
+
+def render_memberships_list_tab(presenter: ParliamentaryGroupPresenter):
+    """Render the memberships list tab."""
+    st.subheader("メンバーシップ一覧")
+
+    # Get all parliamentary groups for filter
+    all_groups = presenter.load_data()
+    conferences = presenter.get_all_conferences()
+
+    # Create conference to groups mapping
+    conf_to_groups: dict[int, list[Any]] = {}
+    for group in all_groups:
+        if group.conference_id not in conf_to_groups:
+            conf_to_groups[group.conference_id] = []
+        conf_to_groups[group.conference_id].append(group)
+
+    # Conference filter
+    def get_conf_display_name(c: Any) -> str:
+        gb_name = (
+            c.governing_body.name
+            if hasattr(c, "governing_body") and c.governing_body
+            else ""
+        )
+        return f"{gb_name} - {c.name}"
+
+    conf_options = ["すべて"] + [get_conf_display_name(c) for c in conferences]
+    conf_map = {get_conf_display_name(c): c.id for c in conferences}
+
+    selected_conf = st.selectbox(
+        "会議体でフィルタ", conf_options, key="membership_conf_filter"
+    )
+
+    # Parliamentary group filter
+    if selected_conf == "すべて":
+        group_options = ["すべて"] + [g.name for g in all_groups]
+        group_map = {g.name: g.id for g in all_groups}
+    else:
+        conf_id = conf_map.get(selected_conf)
+        if conf_id is not None:
+            filtered_groups = conf_to_groups.get(conf_id, [])
+            group_options = ["すべて"] + [g.name for g in filtered_groups]
+            group_map = {g.name: g.id for g in filtered_groups}
+        else:
+            group_options = ["すべて"]
+            group_map = {}
+
+    selected_group = st.selectbox(
+        "議員団でフィルタ", group_options, key="membership_group_filter"
+    )
+
+    # Get memberships
+    try:
+        if selected_group == "すべて":
+            # Get all memberships for selected conference or all
+            all_memberships = []
+            if selected_conf == "すべて":
+                groups_to_query = all_groups
+            else:
+                conf_id = conf_map.get(selected_conf)
+                if conf_id is not None:
+                    groups_to_query = conf_to_groups.get(conf_id, [])
+                else:
+                    groups_to_query = []
+
+            for group in groups_to_query:
+                if group.id:
+                    memberships = presenter.membership_repo.get_by_group(group.id)
+                    all_memberships.extend(memberships)
+        else:
+            # Get memberships for specific group
+            group_id = group_map[selected_group]
+            all_memberships = presenter.membership_repo.get_by_group(group_id)
+
+        if all_memberships:
+            # Prepare data for display
+            membership_data = []
+            for membership in all_memberships:
+                # Get group name
+                group = next(
+                    (
+                        g
+                        for g in all_groups
+                        if g.id == membership.parliamentary_group_id
+                    ),
+                    None,
+                )
+                group_name = group.name if group else "不明"
+
+                # Get politician name
+                try:
+                    politician = presenter.politician_repo.get_by_id(
+                        membership.politician_id
+                    )
+                    politician_name = politician.name if politician else "不明"
+                except Exception:
+                    politician_name = "不明"
+
+                # Format dates
+                start_date_str = (
+                    membership.start_date.strftime("%Y-%m-%d")
+                    if membership.start_date
+                    else "-"
+                )
+                end_date_str = (
+                    membership.end_date.strftime("%Y-%m-%d")
+                    if membership.end_date
+                    else "現在"
+                )
+
+                membership_data.append(
+                    {
+                        "ID": membership.id,
+                        "議員団": group_name,
+                        "政治家": politician_name,
+                        "役職": membership.role or "-",
+                        "開始日": start_date_str,
+                        "終了日": end_date_str,
+                        "状態": "現在" if membership.end_date is None else "過去",
+                    }
+                )
+
+            # Display as DataFrame
+            df = pd.DataFrame(membership_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # Display summary
+            st.markdown("### 統計")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("総メンバーシップ数", len(all_memberships))
+            with col2:
+                active_count = sum(1 for m in all_memberships if m.end_date is None)
+                st.metric("現在のメンバー数", active_count)
+            with col3:
+                past_count = sum(1 for m in all_memberships if m.end_date is not None)
+                st.metric("過去のメンバー数", past_count)
+
+        else:
+            st.info("メンバーシップが登録されていません")
+
+    except Exception as e:
+        st.error(f"メンバーシップの取得中にエラーが発生しました: {e}")
 
 
 def main():
