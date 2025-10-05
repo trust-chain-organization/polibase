@@ -362,36 +362,53 @@ class ParliamentaryGroupMemberPresenter(
             Tuple of (created_count, skipped_count, created_memberships)
         """
         try:
-            result = self._run_async(
-                self.create_memberships_usecase.execute(
-                    parliamentary_group_id=parliamentary_group_id,
-                    min_confidence=min_confidence,
-                    start_date=start_date,
-                )
+            # Get matched members (repository adapter handles sync/async)
+            matched_members = self.extracted_member_repo.get_matched_members(
+                parliamentary_group_id=parliamentary_group_id,
+                min_confidence=min_confidence,
             )
 
-            # Extract values with proper types
-            created_count_raw = result["created_count"]
-            skipped_count_raw = result["skipped_count"]
-            created_memberships_raw = result["created_memberships"]
-
-            # Type narrowing
-            created_count = (
-                created_count_raw if isinstance(created_count_raw, int) else 0
-            )
-            skipped_count = (
-                skipped_count_raw if isinstance(skipped_count_raw, int) else 0
-            )
-
-            # Convert to list of dicts with Any values
             created_memberships: list[dict[str, Any]] = []
-            if isinstance(created_memberships_raw, list):
-                created_memberships = [dict(m) for m in created_memberships_raw]
+            skipped_count = 0
 
-            return (created_count, skipped_count, created_memberships)
+            # Default start date is today
+            if start_date is None:
+                start_date = date.today()
+
+            for member in matched_members:
+                # Check if matched_politician_id is set
+                if member.matched_politician_id is None:
+                    skipped_count += 1
+                    continue
+
+                # Create membership
+                try:
+                    self.membership_repo.create_membership(
+                        politician_id=member.matched_politician_id,
+                        group_id=member.parliamentary_group_id,
+                        start_date=start_date,
+                        role=member.extracted_role,
+                    )
+
+                    created_memberships.append(
+                        {
+                            "politician_id": member.matched_politician_id,
+                            "parliamentary_group_id": member.parliamentary_group_id,
+                            "role": member.extracted_role,
+                            "member_name": member.extracted_name,
+                        }
+                    )
+                except Exception as e:
+                    # Skip on error
+                    self.logger.warning(
+                        f"Failed to create membership for {member.extracted_name}: {e}"
+                    )
+                    skipped_count += 1
+
+            return (len(created_memberships), skipped_count, created_memberships)
 
         except Exception as e:
-            self.logger.error(f"Error creating memberships: {e}")
+            self.logger.error(f"Error creating memberships: {e}", exc_info=True)
             return 0, 0, []
 
     def rematch_members(
@@ -406,9 +423,47 @@ class ParliamentaryGroupMemberPresenter(
             Tuple of (matched_count, total_count, message)
         """
         try:
-            results = self._run_async(
-                self.match_usecase.execute(parliamentary_group_id)
+            # Get pending members (repository adapter handles sync/async)
+            pending_members = self.extracted_member_repo.get_pending_members(
+                parliamentary_group_id
             )
+
+            results: list[dict[str, str | int | float | None]] = []
+
+            for member in pending_members:
+                # Execute matching process
+                (
+                    matched_politician_id,
+                    confidence,
+                    reason,
+                ) = self._run_async(
+                    self.matching_service.find_matching_politician(member)
+                )
+
+                # Determine status
+                status = self.matching_service.determine_matching_status(confidence)
+
+                # Update repository
+                if member.id is not None:
+                    self.extracted_member_repo.update_matching_result(
+                        member_id=member.id,
+                        politician_id=matched_politician_id,
+                        confidence=confidence,
+                        status=status,
+                        matched_at=datetime.now() if status == "matched" else None,
+                    )
+
+                # Record result
+                results.append(
+                    {
+                        "member_id": member.id,
+                        "member_name": member.extracted_name,
+                        "matched_politician_id": matched_politician_id,
+                        "confidence": confidence,
+                        "status": status,
+                        "reason": reason,
+                    }
+                )
 
             matched_count = sum(1 for r in results if r["status"] == "matched")
             total_count = len(results)
@@ -417,7 +472,7 @@ class ParliamentaryGroupMemberPresenter(
             return matched_count, total_count, message
 
         except Exception as e:
-            self.logger.error(f"Error re-matching members: {e}")
+            self.logger.error(f"Error re-matching members: {e}", exc_info=True)
             return 0, 0, f"エラー: {str(e)}"
 
     def get_politician_by_id(self, politician_id: int) -> Politician | None:
