@@ -3,6 +3,7 @@
 from datetime import date
 from typing import Any
 
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.parliamentary_group_membership import (
@@ -12,8 +13,8 @@ from src.domain.repositories.parliamentary_group_membership_repository import (
     ParliamentaryGroupMembershipRepository,
 )
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
-from src.models.parliamentary_group import (
-    ParliamentaryGroupMembership as ParliamentaryGroupMembershipModel,
+from src.infrastructure.persistence.sqlalchemy_models import (
+    ParliamentaryGroupMembershipModel,
 )
 
 
@@ -39,92 +40,44 @@ class ParliamentaryGroupMembershipRepositoryImpl(
         self, group_id: int
     ) -> list[ParliamentaryGroupMembershipEntity]:
         """Get memberships by group."""
-        from sqlalchemy import text
-
-        query = text(
-            """
-            SELECT id, politician_id, parliamentary_group_id,
-                   start_date, end_date, role
-            FROM parliamentary_group_memberships
-            WHERE parliamentary_group_id = :group_id
-        """
+        query = select(self.model_class).where(
+            self.model_class.parliamentary_group_id == group_id
         )
-        result = await self.session.execute(query, {"group_id": group_id})
-        rows = result.fetchall()
-        return [
-            ParliamentaryGroupMembershipEntity(
-                id=row[0],
-                politician_id=row[1],
-                parliamentary_group_id=row[2],
-                start_date=row[3],
-                end_date=row[4],
-                role=row[5],
-            )
-            for row in rows
-        ]
+        result = await self.session.execute(query)
+        models = result.scalars().all()
+        return [self._to_entity(model) for model in models]
 
     async def get_by_politician(
         self, politician_id: int
     ) -> list[ParliamentaryGroupMembershipEntity]:
         """Get memberships by politician."""
-        from sqlalchemy import text
-
-        query = text(
-            """
-            SELECT id, politician_id, parliamentary_group_id,
-                   start_date, end_date, role
-            FROM parliamentary_group_memberships
-            WHERE politician_id = :politician_id
-        """
+        query = select(self.model_class).where(
+            self.model_class.politician_id == politician_id
         )
-        result = await self.session.execute(query, {"politician_id": politician_id})
-        rows = result.fetchall()
-        return [
-            ParliamentaryGroupMembershipEntity(
-                id=row[0],
-                politician_id=row[1],
-                parliamentary_group_id=row[2],
-                start_date=row[3],
-                end_date=row[4],
-                role=row[5],
-            )
-            for row in rows
-        ]
+        result = await self.session.execute(query)
+        models = result.scalars().all()
+        return [self._to_entity(model) for model in models]
 
     async def get_active_by_group(
         self, group_id: int, as_of_date: date | None = None
     ) -> list[ParliamentaryGroupMembershipEntity]:
         """Get active memberships by group."""
-        from sqlalchemy import text
-
         if as_of_date is None:
             as_of_date = date.today()
 
-        query = text(
-            """
-            SELECT id, politician_id, parliamentary_group_id,
-                   start_date, end_date, role
-            FROM parliamentary_group_memberships
-            WHERE parliamentary_group_id = :group_id
-                AND start_date <= :as_of_date
-                AND (end_date IS NULL OR end_date >= :as_of_date)
-        """
-        )
-        result = await self.session.execute(
-            query, {"group_id": group_id, "as_of_date": as_of_date}
-        )
-        rows = result.fetchall()
-        return [
-            ParliamentaryGroupMembershipEntity(
-                id=row[0],
-                politician_id=row[1],
-                parliamentary_group_id=row[2],
-                start_date=row[3],
-                end_date=row[4],
-                role=row[5],
+        query = select(self.model_class).where(
+            and_(
+                self.model_class.parliamentary_group_id == group_id,
+                self.model_class.start_date <= as_of_date,
+                (
+                    self.model_class.end_date.is_(None)
+                    | (self.model_class.end_date >= as_of_date)
+                ),
             )
-            for row in rows
-        ]
+        )
+        result = await self.session.execute(query)
+        models = result.scalars().all()
+        return [self._to_entity(model) for model in models]
 
     async def create_membership(
         self,
@@ -134,70 +87,32 @@ class ParliamentaryGroupMembershipRepositoryImpl(
         role: str | None = None,
     ) -> ParliamentaryGroupMembershipEntity:
         """Create a new membership."""
-        from sqlalchemy import text
-
-        # Check if already exists
-        check_query = text("""
-            SELECT id, politician_id, parliamentary_group_id, start_date, end_date, role
-            FROM parliamentary_group_memberships
-            WHERE politician_id = :politician_id
-                AND parliamentary_group_id = :group_id
-                AND start_date = :start_date
-        """)
-
-        existing_result = await self.session.execute(
-            check_query,
-            {
-                "politician_id": politician_id,
-                "group_id": group_id,
-                "start_date": start_date,
-            },
-        )
-        existing = existing_result.fetchone()
-
-        if existing:
-            return ParliamentaryGroupMembershipEntity(
-                id=existing[0],
-                politician_id=existing[1],
-                parliamentary_group_id=existing[2],
-                start_date=existing[3],
-                end_date=existing[4],
-                role=existing[5],
+        # Check if already exists using ORM
+        existing_query = select(self.model_class).where(
+            and_(
+                self.model_class.politician_id == politician_id,
+                self.model_class.parliamentary_group_id == group_id,
+                self.model_class.start_date == start_date,
             )
-
-        # Create new membership
-        insert_query = text("""
-            INSERT INTO parliamentary_group_memberships (
-                politician_id, parliamentary_group_id, start_date, role
-            )
-            VALUES (:politician_id, :group_id, :start_date, :role)
-            RETURNING id, politician_id, parliamentary_group_id,
-                      start_date, end_date, role
-        """)
-
-        result = await self.session.execute(
-            insert_query,
-            {
-                "politician_id": politician_id,
-                "group_id": group_id,
-                "start_date": start_date,
-                "role": role,
-            },
         )
-        await self.session.commit()
+        result = await self.session.execute(existing_query)
+        existing_model = result.scalars().first()
 
-        row = result.fetchone()
-        if not row:
-            raise ValueError("Failed to create membership")
+        if existing_model:
+            return self._to_entity(existing_model)
 
-        return ParliamentaryGroupMembershipEntity(
-            id=row[0],
-            politician_id=row[1],
-            parliamentary_group_id=row[2],
-            start_date=row[3],
-            end_date=row[4],
-            role=row[5],
+        # Create new membership using ORM
+        new_model = self.model_class(
+            politician_id=politician_id,
+            parliamentary_group_id=group_id,
+            start_date=start_date,
+            role=role,
         )
+        self.session.add(new_model)
+        await self.session.flush()  # Get the ID without committing
+        await self.session.refresh(new_model)  # Refresh to get all fields
+
+        return self._to_entity(new_model)
 
     async def end_membership(
         self, membership_id: int, end_date: date
@@ -215,38 +130,31 @@ class ParliamentaryGroupMembershipRepositoryImpl(
 
     async def get_current_members(self, group_id: int) -> list[dict[str, Any]]:
         """Get current members of a parliamentary group."""
-        from sqlalchemy import text
-
         today = date.today()
-        query = text("""
-            SELECT
-                id,
-                politician_id,
-                parliamentary_group_id,
-                start_date,
-                end_date,
-                role
-            FROM parliamentary_group_memberships
-            WHERE parliamentary_group_id = :group_id
-                AND start_date <= :today
-                AND (end_date IS NULL OR end_date >= :today)
-        """)
-
-        result = await self.session.execute(
-            query, {"group_id": group_id, "today": today}
+        query = select(self.model_class).where(
+            and_(
+                self.model_class.parliamentary_group_id == group_id,
+                self.model_class.start_date <= today,
+                (
+                    self.model_class.end_date.is_(None)
+                    | (self.model_class.end_date >= today)
+                ),
+            )
         )
-        rows = result.fetchall()
+
+        result = await self.session.execute(query)
+        models = result.scalars().all()
 
         return [
             {
-                "id": row[0],
-                "politician_id": row[1],
-                "parliamentary_group_id": row[2],
-                "start_date": row[3],
-                "end_date": row[4],
-                "role": row[5],
+                "id": model.id,
+                "politician_id": model.politician_id,
+                "parliamentary_group_id": model.parliamentary_group_id,
+                "start_date": model.start_date,
+                "end_date": model.end_date,
+                "role": model.role,
             }
-            for row in rows
+            for model in models
         ]
 
     def _to_entity(
