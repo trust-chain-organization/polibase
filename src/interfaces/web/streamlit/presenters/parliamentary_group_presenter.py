@@ -263,16 +263,28 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
         self, parliamentary_groups: list[ParliamentaryGroup]
     ) -> pd.DataFrame | None:
         """Get member counts for parliamentary groups."""
-        # TODO: Implement when membership repository is available
         if not parliamentary_groups:
             return None
 
         member_counts = []
         for group in parliamentary_groups:
+            # Get current members for this group
+            if group.id:
+                try:
+                    current_members = self.membership_repo.get_current_members(group.id)
+                    member_count = len(current_members)
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to get member count for group {group.id}: {e}"
+                    )
+                    member_count = 0
+            else:
+                member_count = 0
+
             member_counts.append(
                 {
                     "議員団名": group.name,
-                    "現在のメンバー数": 0,  # Placeholder
+                    "現在のメンバー数": member_count,
                 }
             )
         return pd.DataFrame(member_counts)

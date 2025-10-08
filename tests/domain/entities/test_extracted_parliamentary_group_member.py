@@ -83,43 +83,51 @@ class TestExtractedParliamentaryGroupMember:
         )
         assert pending_member.is_matched() is False
 
-        # Test with needs_review status
-        review_member = create_extracted_parliamentary_group_member(
-            matching_status="needs_review"
-        )
-        assert review_member.is_matched() is False
-
         # Test with no_match status
         no_match_member = create_extracted_parliamentary_group_member(
             matching_status="no_match"
         )
         assert no_match_member.is_matched() is False
 
-    def test_needs_review_method(self) -> None:
-        """Test needs_review method with different statuses."""
-        # Test with needs_review status
-        review_member = create_extracted_parliamentary_group_member(
-            matching_status="needs_review"
+    def test_is_no_match_method(self) -> None:
+        """Test is_no_match method with different statuses."""
+        # Test with no_match status
+        no_match_member = create_extracted_parliamentary_group_member(
+            matching_status="no_match"
         )
-        assert review_member.needs_review() is True
+        assert no_match_member.is_no_match() is True
 
         # Test with matched status
         matched_member = create_extracted_parliamentary_group_member(
             matching_status="matched"
         )
-        assert matched_member.needs_review() is False
+        assert matched_member.is_no_match() is False
 
         # Test with pending status
         pending_member = create_extracted_parliamentary_group_member(
             matching_status="pending"
         )
-        assert pending_member.needs_review() is False
+        assert pending_member.is_no_match() is False
+
+    def test_is_pending_method(self) -> None:
+        """Test is_pending method with different statuses."""
+        # Test with pending status
+        pending_member = create_extracted_parliamentary_group_member(
+            matching_status="pending"
+        )
+        assert pending_member.is_pending() is True
+
+        # Test with matched status
+        matched_member = create_extracted_parliamentary_group_member(
+            matching_status="matched"
+        )
+        assert matched_member.is_pending() is False
 
         # Test with no_match status
         no_match_member = create_extracted_parliamentary_group_member(
             matching_status="no_match"
         )
-        assert no_match_member.needs_review() is False
+        assert no_match_member.is_pending() is False
 
     def test_str_representation(self) -> None:
         """Test string representation of the entity."""
@@ -132,7 +140,7 @@ class TestExtractedParliamentaryGroupMember:
 
     def test_different_matching_statuses(self) -> None:
         """Test entity with different matching statuses."""
-        statuses = ["pending", "matched", "needs_review", "no_match"]
+        statuses = ["pending", "matched", "no_match"]
 
         for status in statuses:
             member = create_extracted_parliamentary_group_member(matching_status=status)
@@ -194,22 +202,24 @@ class TestExtractedParliamentaryGroupMember:
         )
 
         assert member.is_matched() is True
-        assert member.needs_review() is False
+        assert member.is_no_match() is False
+        assert member.is_pending() is False
         assert member.matching_confidence == 0.95
         assert member.matched_politician_id == 100
         assert member.matched_at == datetime(2023, 1, 15, 10, 30, 0)
 
-    def test_member_needing_review_with_medium_confidence(self) -> None:
-        """Test a member that needs manual review."""
+    def test_member_with_no_match(self) -> None:
+        """Test a member with no match after matching execution."""
         member = create_extracted_parliamentary_group_member(
-            matching_status="needs_review",
-            matching_confidence=0.6,
+            matching_status="no_match",
+            matching_confidence=0.3,
             matched_politician_id=None,
         )
 
         assert member.is_matched() is False
-        assert member.needs_review() is True
-        assert member.matching_confidence == 0.6
+        assert member.is_no_match() is True
+        assert member.is_pending() is False
+        assert member.matching_confidence == 0.3
         assert member.matched_politician_id is None
 
     def test_member_with_district_information(self) -> None:

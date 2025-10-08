@@ -153,12 +153,9 @@ class TestParliamentaryGroupMemberMatchingService:
         assert matching_service.determine_matching_status(0.9) == "matched"
         assert matching_service.determine_matching_status(0.7) == "matched"
 
-    def test_determine_matching_status_needs_review(self, matching_service):
-        """Test status determination for needs_review (0.5-0.7)."""
-        assert matching_service.determine_matching_status(0.6) == "needs_review"
-        assert matching_service.determine_matching_status(0.5) == "needs_review"
-
     def test_determine_matching_status_no_match(self, matching_service):
-        """Test status determination for no_match (<0.5)."""
+        """Test status determination for no_match (<0.7)."""
+        assert matching_service.determine_matching_status(0.6) == "no_match"
+        assert matching_service.determine_matching_status(0.5) == "no_match"
         assert matching_service.determine_matching_status(0.4) == "no_match"
         assert matching_service.determine_matching_status(0.0) == "no_match"

@@ -6,6 +6,9 @@ from typing import Any, cast
 import pandas as pd
 
 import streamlit as st
+from src.interfaces.web.streamlit.presenters.parliamentary_group_member_presenter import (  # noqa: E501
+    ParliamentaryGroupMemberPresenter,
+)
 from src.interfaces.web.streamlit.presenters.parliamentary_group_presenter import (
     ParliamentaryGroupPresenter,
 )
@@ -19,7 +22,16 @@ def render_parliamentary_groups_page():
     presenter = ParliamentaryGroupPresenter()
 
     # Create tabs
-    tabs = st.tabs(["議員団一覧", "新規登録", "編集・削除", "メンバー抽出"])
+    tabs = st.tabs(
+        [
+            "議員団一覧",
+            "新規登録",
+            "編集・削除",
+            "メンバー抽出",
+            "メンバーレビュー",
+            "メンバーシップ一覧",
+        ]
+    )
 
     with tabs[0]:
         render_parliamentary_groups_list_tab(presenter)
@@ -32,6 +44,12 @@ def render_parliamentary_groups_page():
 
     with tabs[3]:
         render_member_extraction_tab(presenter)
+
+    with tabs[4]:
+        render_member_review_tab()
+
+    with tabs[5]:
+        render_memberships_list_tab(presenter)
 
 
 def render_parliamentary_groups_list_tab(presenter: ParliamentaryGroupPresenter):
@@ -334,21 +352,21 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
             st.metric("合計", extraction_summary["total"])
         with col2:
             st.metric(
+                "紐付け未実行",
+                extraction_summary["pending"],
+                help="マッチング処理を待っている数",
+            )
+        with col3:
+            st.metric(
                 "マッチ済み",
                 extraction_summary["matched"],
                 help="政治家と正常にマッチングできた数",
             )
-        with col3:
-            st.metric(
-                "未処理",
-                extraction_summary["pending"],
-                help="マッチング処理を待っている数",
-            )
         with col4:
             st.metric(
-                "要確認",
-                extraction_summary["needs_review"],
-                help="手動での確認が必要な数",
+                "マッチなし",
+                extraction_summary["no_match"],
+                help="マッチングを実行したが見つからなかった数",
             )
 
         # Get and display extracted members
@@ -476,6 +494,712 @@ def render_member_extraction_tab(presenter: ParliamentaryGroupPresenter):
                     st.warning("メンバーが抽出されませんでした")
             else:
                 st.error(f"抽出エラー: {error}")
+
+
+def render_member_review_tab():
+    """Render the member review tab."""
+    st.subheader("議員団メンバーレビュー")
+    st.markdown("抽出された議員団メンバーをレビューして、メンバーシップを作成します")
+
+    presenter = ParliamentaryGroupMemberPresenter()
+
+    # Sub-tabs
+    sub_tabs = st.tabs(["レビュー", "統計", "メンバーシップ作成"])
+
+    with sub_tabs[0]:
+        render_member_review_subtab(presenter)
+
+    with sub_tabs[1]:
+        render_member_statistics_subtab(presenter)
+
+    with sub_tabs[2]:
+        render_create_memberships_subtab(presenter)
+
+
+def render_member_review_subtab(presenter: ParliamentaryGroupMemberPresenter):
+    """Render the member review sub-tab."""
+    st.markdown("### 抽出メンバーレビュー")
+
+    # Display success/error messages from session state
+    if "review_success_message" in st.session_state:
+        st.success(st.session_state.review_success_message)
+        del st.session_state.review_success_message
+
+    if "review_error_message" in st.session_state:
+        st.error(st.session_state.review_error_message)
+        del st.session_state.review_error_message
+
+    # Get parliamentary groups for filter
+    parliamentary_groups = presenter.get_all_parliamentary_groups()
+
+    # Filters section
+    st.markdown("#### フィルター")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        # Parliamentary group filter
+        group_options = ["すべて"] + [g.name for g in parliamentary_groups if g.name]
+        group_map = {g.name: g.id for g in parliamentary_groups if g.id and g.name}
+        selected_group = st.selectbox("議員団", group_options)
+        group_id = group_map.get(selected_group) if selected_group != "すべて" else None
+
+    with col2:
+        # Status filter (multi-select)
+        status_options = {
+            "⏳ 紐付け未実行": "pending",
+            "✅ マッチ済み": "matched",
+            "❌ マッチなし": "no_match",
+        }
+        selected_status_labels = st.multiselect(
+            "ステータス",
+            options=list(status_options.keys()),
+            default=["⏳ 紐付け未実行"],
+        )
+        selected_statuses = [status_options[label] for label in selected_status_labels]
+
+    with col3:
+        # Name search
+        search_name = st.text_input("名前検索", placeholder="例: 山田")
+
+    # Get filtered members
+    members = presenter.get_filtered_extracted_members(
+        parliamentary_group_id=group_id,
+        statuses=selected_statuses,
+        search_name=search_name if search_name else None,
+        limit=100,
+    )
+
+    if not members:
+        st.info("該当するレコードがありません")
+        return
+
+    # Display statistics
+    st.markdown(f"### 検索結果: {len(members)}件")
+
+    # Bulk actions
+    st.markdown("### 一括アクション")
+    col1, col2, col3 = st.columns(3)
+
+    # Initialize session state for selected items
+    if "selected_members" not in st.session_state:
+        st.session_state.selected_members = []
+
+    with col1:
+        if st.button("全選択", key="select_all_members"):
+            st.session_state.selected_members = [m.id for m in members if m.id]
+
+    with col2:
+        if st.button("選択解除", key="deselect_all_members"):
+            st.session_state.selected_members = []
+
+    with col3:
+        selected_count = len(st.session_state.selected_members)
+        st.metric("選択数", f"{selected_count}件")
+
+    # Bulk action buttons
+    if selected_count > 0:
+        st.markdown("#### 選択したレコードに対する操作")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("一括承認", type="primary", key="bulk_approve_members"):
+                with st.spinner("承認処理中..."):
+                    success, failed, message = presenter.bulk_review(
+                        st.session_state.selected_members, "approve"
+                    )
+                    if success > 0:
+                        st.success(f"✅ {success}件を承認しました")
+                    if failed > 0:
+                        st.error(f"❌ {failed}件の承認に失敗しました")
+                    st.session_state.selected_members = []
+                    st.rerun()
+
+        with col2:
+            if st.button("一括却下", key="bulk_reject_members"):
+                with st.spinner("却下処理中..."):
+                    success, failed, message = presenter.bulk_review(
+                        st.session_state.selected_members, "reject"
+                    )
+                    if success > 0:
+                        st.success(f"✅ {success}件を却下しました")
+                    if failed > 0:
+                        st.error(f"❌ {failed}件の却下に失敗しました")
+                    st.session_state.selected_members = []
+                    st.rerun()
+
+    # Display data table
+    st.markdown("### データ一覧")
+
+    # Convert to DataFrame for display
+    df = presenter.to_dataframe(members, parliamentary_groups)
+
+    if df is not None:
+        # Add checkboxes for each row
+        for idx, member in enumerate(members):
+            if member.id is None:
+                continue
+
+            col1, col2 = st.columns([1, 9])
+
+            with col1:
+                selected = st.checkbox(
+                    "選択",
+                    key=f"check_member_{member.id}",
+                    value=member.id in st.session_state.selected_members,
+                    label_visibility="hidden",
+                )
+                if selected and member.id not in st.session_state.selected_members:
+                    st.session_state.selected_members.append(member.id)
+                elif not selected and member.id in st.session_state.selected_members:
+                    st.session_state.selected_members.remove(member.id)
+
+            with col2:
+                status = df.iloc[idx]["ステータス"]
+                group = df.iloc[idx]["議員団"]
+                with st.expander(f"{member.extracted_name} ({group}) - {status}"):
+                    # Display details
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.write(f"**ID:** {member.id}")
+                        st.write(f"**名前:** {member.extracted_name}")
+                        st.write(f"**役職:** {member.extracted_role or '-'}")
+                        st.write(f"**政党:** {member.extracted_party_name or '-'}")
+                        st.write(f"**選挙区:** {member.extracted_district or '-'}")
+
+                    with col_b:
+                        st.write(f"**議員団:** {group}")
+                        st.write(f"**ステータス:** {status}")
+                        st.write(
+                            f"**マッチした政治家:** {df.iloc[idx]['マッチした政治家']}"
+                        )
+                        st.write(f"**信頼度:** {df.iloc[idx]['信頼度']}")
+                        st.write(f"**抽出日時:** {df.iloc[idx]['抽出日時']}")
+
+                    # Individual action buttons
+                    st.markdown("---")
+                    col_1, col_2, col_3 = st.columns(3)
+
+                    with col_1:
+                        if st.button(
+                            "✅ 承認",
+                            key=f"approve_member_{member.id}",
+                            type="primary",
+                            disabled=member.matching_status != "matched",
+                            help=(
+                                "マッチ済みのメンバーのみ承認できます"
+                                if member.matching_status != "matched"
+                                else "このメンバーを承認します"
+                            ),
+                        ):
+                            if member.id is not None:
+                                success, message = presenter.review_extracted_member(
+                                    member.id, "approve"
+                                )
+                                if success:
+                                    st.session_state["review_success_message"] = message
+                                else:
+                                    st.session_state["review_error_message"] = message
+                                st.rerun()
+
+                    with col_2:
+                        if st.button("❌ 却下", key=f"reject_member_{member.id}"):
+                            if member.id is not None:
+                                success, message = presenter.review_extracted_member(
+                                    member.id, "reject"
+                                )
+                                if success:
+                                    st.session_state["review_success_message"] = message
+                                else:
+                                    st.session_state["review_error_message"] = message
+                                st.rerun()
+
+                    with col_3:
+                        if st.button("🔗 手動マッチ", key=f"manual_match_{member.id}"):
+                            st.session_state[f"matching_{member.id}"] = True
+
+                    # Manual matching dialog
+                    if st.session_state.get(f"matching_{member.id}", False):
+                        with st.container():
+                            st.markdown("#### 手動マッチング")
+
+                            # Search filters
+                            search_col1, search_col2 = st.columns(2)
+
+                            with search_col1:
+                                search_politician_name = st.text_input(
+                                    "政治家名で検索",
+                                    value=member.extracted_name,
+                                    key=f"search_pol_{member.id}",
+                                )
+
+                            with search_col2:
+                                # Get all political parties for filter options
+                                all_political_parties = (
+                                    presenter.get_all_political_parties()
+                                )
+                                party_filter_options = ["すべて", "無所属"] + [
+                                    p.name for p in all_political_parties if p.name
+                                ]
+
+                                # Set default to extracted party if available
+                                default_index = 0
+                                if member.extracted_party_name:
+                                    try:
+                                        default_index = party_filter_options.index(
+                                            member.extracted_party_name
+                                        )
+                                    except ValueError:
+                                        default_index = 0
+
+                                selected_party_filter = st.selectbox(
+                                    "政党で絞り込み",
+                                    party_filter_options,
+                                    index=default_index,
+                                    key=f"party_filter_{member.id}",
+                                )
+
+                            # Initialize search result state
+                            search_key = f"search_results_{member.id}"
+                            if search_key not in st.session_state:
+                                st.session_state[search_key] = None
+
+                            if st.button(
+                                "検索", key=f"search_button_{member.id}", type="primary"
+                            ):
+                                # Search with name only (party filtering done below)
+                                politicians = presenter.search_politicians(
+                                    search_politician_name, None
+                                )
+
+                                # Filter by party name if specified
+                                if selected_party_filter != "すべて" and politicians:
+                                    # Get party names for filtering
+                                    filtered_politicians = []
+                                    for p in politicians:
+                                        if p.political_party_id:
+                                            party_name = presenter.get_party_name_by_id(
+                                                p.political_party_id
+                                            )
+                                            if (
+                                                selected_party_filter.lower()
+                                                in party_name.lower()
+                                            ):
+                                                filtered_politicians.append(p)
+                                        elif selected_party_filter == "無所属":
+                                            filtered_politicians.append(p)
+                                    politicians = filtered_politicians
+
+                                # Store search results in session state
+                                st.session_state[search_key] = politicians
+
+                            # Display search results from session state
+                            politicians = st.session_state[search_key]
+
+                            if politicians is not None:
+                                if politicians:
+                                    st.markdown(f"**検索結果: {len(politicians)}件**")
+
+                                    # Display politician options with party names
+                                    def format_politician(
+                                        p: Any,
+                                    ) -> str:
+                                        party_name = "無所属"
+                                        if p.political_party_id:
+                                            party_name = presenter.get_party_name_by_id(
+                                                p.political_party_id
+                                            )
+                                        district = p.district or "-"
+                                        return f"{p.name} ({party_name}) - {district}"
+
+                                    politician_options = [
+                                        format_politician(p) for p in politicians
+                                    ]
+                                    politician_map = {
+                                        format_politician(p): p.id
+                                        for p in politicians
+                                        if p.id
+                                    }
+
+                                    selected_politician = st.selectbox(
+                                        "マッチする政治家を選択",
+                                        politician_options,
+                                        key=f"select_pol_{member.id}",
+                                    )
+
+                                    # Confidence score
+                                    confidence = st.slider(
+                                        "信頼度",
+                                        min_value=0.0,
+                                        max_value=1.0,
+                                        value=0.8,
+                                        step=0.05,
+                                        key=f"confidence_{member.id}",
+                                    )
+
+                                    # Match button
+                                    col_match, col_cancel = st.columns(2)
+                                    with col_match:
+                                        if st.button(
+                                            "マッチング実行",
+                                            key=f"execute_match_{member.id}",
+                                            type="primary",
+                                        ):
+                                            import logging
+
+                                            logger = logging.getLogger(__name__)
+                                            logger.info(
+                                                f"Match button clicked for "
+                                                f"member {member.id}"
+                                            )
+
+                                            politician_id = politician_map[
+                                                selected_politician
+                                            ]
+
+                                            logger.info(
+                                                f"Calling review_extracted_member: "
+                                                f"member_id={member.id}, "
+                                                f"politician_id={politician_id}, "
+                                                f"confidence={confidence}"
+                                            )
+
+                                            if member.id is not None:
+                                                (
+                                                    success,
+                                                    message,
+                                                ) = presenter.review_extracted_member(
+                                                    member.id,
+                                                    "match",
+                                                    politician_id,
+                                                    confidence,
+                                                )
+
+                                                logger.info(
+                                                    f"review_extracted_member "
+                                                    f"returned: success={success}, "
+                                                    f"message={message}"
+                                                )
+
+                                                if success:
+                                                    st.session_state[
+                                                        "review_success_message"
+                                                    ] = message
+                                                    st.session_state[
+                                                        f"matching_{member.id}"
+                                                    ] = False
+                                                    if search_key in st.session_state:
+                                                        del st.session_state[search_key]
+                                                    st.rerun()
+                                                else:
+                                                    st.session_state[
+                                                        "review_error_message"
+                                                    ] = message
+                                                    st.session_state[
+                                                        f"matching_{member.id}"
+                                                    ] = False
+                                                    if search_key in st.session_state:
+                                                        del st.session_state[search_key]
+                                                    st.rerun()
+
+                                    with col_cancel:
+                                        if st.button(
+                                            "キャンセル",
+                                            key=f"cancel_match_{member.id}",
+                                        ):
+                                            st.session_state[
+                                                f"matching_{member.id}"
+                                            ] = False
+                                            del st.session_state[search_key]
+                                            st.rerun()
+                                else:
+                                    st.warning("該当する政治家が見つかりませんでした")
+                                    if st.button(
+                                        "閉じる", key=f"close_no_results_{member.id}"
+                                    ):
+                                        st.session_state[f"matching_{member.id}"] = (
+                                            False
+                                        )
+                                        del st.session_state[search_key]
+                                        st.rerun()
+
+
+def render_member_statistics_subtab(presenter: ParliamentaryGroupMemberPresenter):
+    """Render the member statistics sub-tab."""
+    st.markdown("### 統計情報")
+
+    # Overall statistics
+    stats = presenter.get_statistics()
+
+    st.markdown("#### 全体統計")
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("総レコード数", f"{stats['total']}件")
+    with col2:
+        st.metric("紐付け未実行", f"{stats['pending']}件")
+    with col3:
+        st.metric("マッチ済み", f"{stats['matched']}件")
+    with col4:
+        st.metric("マッチなし", f"{stats['no_match']}件")
+
+    # Parliamentary group statistics
+    parliamentary_groups = presenter.get_all_parliamentary_groups()
+
+    if parliamentary_groups:
+        st.markdown("#### 議員団別統計")
+        for group in parliamentary_groups:
+            if group.id:
+                group_stats = presenter.get_statistics(group.id)
+                if group_stats["total"] > 0:
+                    with st.expander(f"{group.name} (総数: {group_stats['total']}件)"):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric(
+                                "紐付け未実行", f"{group_stats.get('pending', 0)}件"
+                            )
+                            st.metric(
+                                "マッチ済み", f"{group_stats.get('matched', 0)}件"
+                            )
+                        with col2:
+                            st.metric(
+                                "マッチなし", f"{group_stats.get('no_match', 0)}件"
+                            )
+
+
+def render_create_memberships_subtab(presenter: ParliamentaryGroupMemberPresenter):
+    """Render the create memberships sub-tab."""
+    st.markdown("### メンバーシップ作成")
+    st.markdown(
+        "マッチ済み（matched）のメンバーから、議員団メンバーシップ"
+        "（parliamentary_group_memberships）を作成します"
+    )
+
+    # Get parliamentary groups
+    parliamentary_groups = presenter.get_all_parliamentary_groups()
+
+    # Options
+    col1, col2 = st.columns(2)
+
+    with col1:
+        group_options = ["すべて"] + [g.name for g in parliamentary_groups if g.name]
+        group_map = {g.name: g.id for g in parliamentary_groups if g.id and g.name}
+        selected_group = st.selectbox(
+            "対象議員団", group_options, key="memberships_group"
+        )
+        group_id = group_map.get(selected_group) if selected_group != "すべて" else None
+
+    with col2:
+        min_confidence = st.slider(
+            "最小信頼度", min_value=0.5, max_value=1.0, value=0.7, step=0.05
+        )
+
+    # Start date
+    start_date = st.date_input(
+        "メンバーシップ開始日",
+        value=date.today(),
+        help="作成されるメンバーシップの所属開始日",
+    )
+
+    # Get matched count for preview
+    stats = presenter.get_statistics(group_id)
+    st.info(
+        f"作成対象: {stats['matched']}件のマッチ済みメンバー "
+        f"（信頼度 {min_confidence:.2f} 以上）"
+    )
+
+    # Re-match button
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button(
+            "🔄 再マッチング実行",
+            help="未処理のメンバーに対してマッチング処理を再実行します",
+        ):
+            with st.spinner("マッチング処理中..."):
+                matched_count, total_count, message = presenter.rematch_members(
+                    group_id
+                )
+                st.info(message)
+                if matched_count > 0:
+                    st.rerun()
+
+    with col2:
+        # Creation button
+        if st.button("メンバーシップ作成", type="primary"):
+            with st.spinner("メンバーシップを作成中..."):
+                created_count, skipped_count, created_memberships = (
+                    presenter.create_memberships(
+                        parliamentary_group_id=group_id,
+                        min_confidence=min_confidence,
+                        start_date=start_date,
+                    )
+                )
+
+                # Display results
+                if created_count > 0:
+                    st.success(f"✅ {created_count}件のメンバーシップを作成しました")
+                    st.balloons()
+
+                if skipped_count > 0:
+                    st.warning(f"⚠️ {skipped_count}件をスキップしました")
+
+                # Display created memberships
+                if created_memberships:
+                    st.markdown("#### 作成されたメンバーシップ")
+                    membership_data = []
+                    for membership in created_memberships:
+                        membership_data.append(
+                            {
+                                "メンバー名": membership["member_name"],
+                                "政治家ID": membership["politician_id"],
+                                "議員団ID": membership["parliamentary_group_id"],
+                                "役職": membership["role"] or "-",
+                            }
+                        )
+
+                    df_memberships = pd.DataFrame(membership_data)
+                    st.dataframe(df_memberships, use_container_width=True)
+
+
+def render_memberships_list_tab(presenter: ParliamentaryGroupPresenter):
+    """Render the memberships list tab."""
+    st.subheader("メンバーシップ一覧")
+
+    # Get all parliamentary groups for filter
+    all_groups = presenter.load_data()
+    conferences = presenter.get_all_conferences()
+
+    # Create conference to groups mapping
+    conf_to_groups: dict[int, list[Any]] = {}
+    for group in all_groups:
+        if group.conference_id not in conf_to_groups:
+            conf_to_groups[group.conference_id] = []
+        conf_to_groups[group.conference_id].append(group)
+
+    # Conference filter
+    def get_conf_display_name(c: Any) -> str:
+        gb_name = (
+            c.governing_body.name
+            if hasattr(c, "governing_body") and c.governing_body
+            else ""
+        )
+        return f"{gb_name} - {c.name}"
+
+    conf_options = ["すべて"] + [get_conf_display_name(c) for c in conferences]
+    conf_map = {get_conf_display_name(c): c.id for c in conferences}
+
+    selected_conf = st.selectbox(
+        "会議体でフィルタ", conf_options, key="membership_conf_filter"
+    )
+
+    # Parliamentary group filter
+    if selected_conf == "すべて":
+        group_options = ["すべて"] + [g.name for g in all_groups]
+        group_map = {g.name: g.id for g in all_groups}
+    else:
+        conf_id = conf_map.get(selected_conf)
+        if conf_id is not None:
+            filtered_groups = conf_to_groups.get(conf_id, [])
+            group_options = ["すべて"] + [g.name for g in filtered_groups]
+            group_map = {g.name: g.id for g in filtered_groups}
+        else:
+            group_options = ["すべて"]
+            group_map = {}
+
+    selected_group = st.selectbox(
+        "議員団でフィルタ", group_options, key="membership_group_filter"
+    )
+
+    # Get memberships
+    try:
+        if selected_group == "すべて":
+            # Get all memberships for selected conference or all
+            all_memberships = []
+            if selected_conf == "すべて":
+                groups_to_query = all_groups
+            else:
+                conf_id = conf_map.get(selected_conf)
+                if conf_id is not None:
+                    groups_to_query = conf_to_groups.get(conf_id, [])
+                else:
+                    groups_to_query = []
+
+            for group in groups_to_query:
+                if group.id:
+                    memberships = presenter.membership_repo.get_by_group(group.id)
+                    all_memberships.extend(memberships)
+        else:
+            # Get memberships for specific group
+            group_id = group_map[selected_group]
+            all_memberships = presenter.membership_repo.get_by_group(group_id)
+
+        if all_memberships:
+            # Prepare data for display
+            membership_data = []
+            for membership in all_memberships:
+                # Get group name
+                group = next(
+                    (
+                        g
+                        for g in all_groups
+                        if g.id == membership.parliamentary_group_id
+                    ),
+                    None,
+                )
+                group_name = group.name if group else "不明"
+
+                # Get politician name
+                try:
+                    politician = presenter.politician_repo.get_by_id(
+                        membership.politician_id
+                    )
+                    politician_name = politician.name if politician else "不明"
+                except Exception:
+                    politician_name = "不明"
+
+                # Format dates
+                start_date_str = (
+                    membership.start_date.strftime("%Y-%m-%d")
+                    if membership.start_date
+                    else "-"
+                )
+                end_date_str = (
+                    membership.end_date.strftime("%Y-%m-%d")
+                    if membership.end_date
+                    else "現在"
+                )
+
+                membership_data.append(
+                    {
+                        "ID": membership.id,
+                        "議員団": group_name,
+                        "政治家": politician_name,
+                        "役職": membership.role or "-",
+                        "開始日": start_date_str,
+                        "終了日": end_date_str,
+                        "状態": "現在" if membership.end_date is None else "過去",
+                    }
+                )
+
+            # Display as DataFrame
+            df = pd.DataFrame(membership_data)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+
+            # Display summary
+            st.markdown("### 統計")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("総メンバーシップ数", len(all_memberships))
+            with col2:
+                active_count = sum(1 for m in all_memberships if m.end_date is None)
+                st.metric("現在のメンバー数", active_count)
+            with col3:
+                past_count = sum(1 for m in all_memberships if m.end_date is not None)
+                st.metric("過去のメンバー数", past_count)
+
+        else:
+            st.info("メンバーシップが登録されていません")
+
+    except Exception as e:
+        st.error(f"メンバーシップの取得中にエラーが発生しました: {e}")
 
 
 def main():

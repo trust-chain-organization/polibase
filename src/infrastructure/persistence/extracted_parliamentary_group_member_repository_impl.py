@@ -13,28 +13,9 @@ from src.domain.repositories.extracted_parliamentary_group_member_repository imp
     ExtractedParliamentaryGroupMemberRepository as IExtractedParliamentaryGroupMemberRepository,  # noqa: E501
 )
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
-
-
-class ExtractedParliamentaryGroupMemberModel:
-    """Extracted parliamentary group member database model (dynamic)."""
-
-    id: int | None
-    parliamentary_group_id: int
-    extracted_name: str
-    source_url: str
-    extracted_role: str | None
-    extracted_party_name: str | None
-    extracted_district: str | None
-    extracted_at: datetime
-    matched_politician_id: int | None
-    matching_confidence: float | None
-    matching_status: str
-    matched_at: datetime | None
-    additional_info: str | None
-
-    def __init__(self, **kwargs: Any):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+from src.infrastructure.persistence.sqlalchemy_models import (
+    ExtractedParliamentaryGroupMemberModel,
+)
 
 
 class ExtractedParliamentaryGroupMemberRepositoryImpl(
@@ -49,6 +30,33 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
             ExtractedParliamentaryGroupMember,
             ExtractedParliamentaryGroupMemberModel,
         )
+
+    async def get_by_id(
+        self, entity_id: int
+    ) -> ExtractedParliamentaryGroupMember | None:
+        """Get extracted member by ID."""
+        model = await self.session.get(self.model_class, entity_id)
+        if model:
+            return self._to_entity(model)
+        return None
+
+    async def get_all(
+        self, limit: int | None = None, offset: int | None = None
+    ) -> list[ExtractedParliamentaryGroupMember]:
+        """Get all extracted members."""
+        query_str = "SELECT * FROM extracted_parliamentary_group_members"
+
+        if limit is not None or offset is not None:
+            query_str += " LIMIT :limit OFFSET :offset"
+            params = {"limit": limit or 10000, "offset": offset or 0}
+        else:
+            params = {}
+
+        query = text(query_str)
+        result = await self.session.execute(query, params)
+        rows = result.fetchall()
+
+        return [self._row_to_entity(row) for row in rows]
 
     async def get_pending_members(
         self, parliamentary_group_id: int | None = None
@@ -128,7 +136,7 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
                 "matched_at": matched_at or datetime.now(),
             },
         )
-        await self.session.commit()
+        await self.session.flush()  # Flush changes but don't commit
 
         # Return updated entity
         return await self.get_by_id(member_id)
@@ -174,7 +182,6 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
             "pending": 0,
             "matched": 0,
             "no_match": 0,
-            "needs_review": 0,
         }
 
         for row in rows:
@@ -225,7 +232,7 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
             if row:
                 created_members.append(self._row_to_entity(row))
 
-        await self.session.commit()
+        await self.session.flush()  # Flush changes but don't commit
         return created_members
 
     def _row_to_entity(self, row: Any) -> ExtractedParliamentaryGroupMember:

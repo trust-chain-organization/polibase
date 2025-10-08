@@ -42,9 +42,13 @@ class ExtractedParliamentaryGroupMember(BaseEntity):
         """Check if the member has been successfully matched."""
         return self.matching_status == "matched"
 
-    def needs_review(self) -> bool:
-        """Check if the member needs manual review."""
-        return self.matching_status == "needs_review"
+    def is_no_match(self) -> bool:
+        """Check if matching was executed but no politician was found."""
+        return self.matching_status == "no_match"
+
+    def is_pending(self) -> bool:
+        """Check if matching has not been executed yet."""
+        return self.matching_status == "pending"
 
     def __str__(self) -> str:
         return (

@@ -182,11 +182,9 @@ class ParliamentaryGroupMemberMatchingService:
             confidence: 信頼度スコア (0.0-1.0)
 
         Returns:
-            マッチングステータス: "matched", "needs_review", or "no_match"
+            マッチングステータス: "matched" or "no_match"
         """
         if confidence >= 0.7:
             return "matched"
-        elif confidence >= 0.5:
-            return "needs_review"
         else:
             return "no_match"

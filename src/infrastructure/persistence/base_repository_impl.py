@@ -46,7 +46,7 @@ class BaseRepositoryImpl[T: BaseEntity](BaseRepository[T]):
         """Create a new entity."""
         model = self._to_model(entity)
         self.session.add(model)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(model)
         return self._to_entity(model)
 
@@ -63,7 +63,7 @@ class BaseRepositoryImpl[T: BaseEntity](BaseRepository[T]):
         # Update fields
         self._update_model(model, entity)
 
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(model)
         return self._to_entity(model)
 
@@ -74,7 +74,7 @@ class BaseRepositoryImpl[T: BaseEntity](BaseRepository[T]):
             return False
 
         await self.session.delete(model)
-        await self.session.commit()
+        await self.session.flush()
         return True
 
     def _to_entity(self, model: Any) -> T:

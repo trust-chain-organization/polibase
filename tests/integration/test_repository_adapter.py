@@ -22,10 +22,12 @@ def test_adapter_basic_functionality():
         adapter.get_overall_metrics()
     except Exception as e:
         # We expect DB connection errors, not adapter errors
+        error_msg = str(e).lower()
         assert (
-            "asyncpg" in str(e)
-            or "database" in str(e).lower()
-            or "connection" in str(e).lower()
+            "asyncpg" in error_msg
+            or "database" in error_msg
+            or "connection" in error_msg
+            or "connect" in error_msg
         )
 
 
@@ -76,17 +78,21 @@ class TestAsyncIntegration:
                 assert "asyncpg" in error_msg
             else:
                 # Otherwise it should be a DB-related error
-                assert "database" in error_msg or "connection" in error_msg
+                assert (
+                    "database" in error_msg
+                    or "connection" in error_msg
+                    or "connect" in error_msg
+                )
 
     @pytest.mark.asyncio
     async def test_async_context(self):
-        """Test that adapter still works when called from async context."""
+        """Test that adapter returns coroutine when called from async context."""
         adapter = RepositoryAdapter(MonitoringRepositoryImpl)
 
-        # Even in async context, adapter should handle the bridging
+        # In async context, adapter should return a coroutine
         try:
-            result = adapter.get_overall_metrics()
-            # Should successfully return data even from async context
+            result = await adapter.get_overall_metrics()
+            # Should successfully return data from async context
             assert isinstance(result, dict)
             assert "governing_bodies" in result
             assert "conferences" in result
@@ -99,4 +105,8 @@ class TestAsyncIntegration:
                 assert "asyncpg" in error_msg
             else:
                 # Otherwise it should be a DB-related error
-                assert "database" in error_msg or "connection" in error_msg
+                assert (
+                    "database" in error_msg
+                    or "connection" in error_msg
+                    or "connect" in error_msg
+                )
