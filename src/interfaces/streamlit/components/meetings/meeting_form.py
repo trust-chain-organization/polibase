@@ -6,7 +6,7 @@ import pandas as pd
 
 import streamlit as st
 from src.domain.entities.conference import Conference
-from src.exceptions import DatabaseError, SaveError
+from src.infrastructure.exceptions import DatabaseError, SaveError
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
 )

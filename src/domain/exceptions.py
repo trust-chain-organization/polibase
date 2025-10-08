@@ -38,6 +38,19 @@ class PolibaseException(Exception):  # noqa: N818
         return self.message
 
 
+# Backward compatibility wrapper
+class PolibaseError(PolibaseException):
+    """Backward compatibility wrapper for the old PolibaseError signature"""
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
+        """
+        Args:
+            message: エラーメッセージ
+            details: 追加の詳細情報
+        """
+        super().__init__(message=message, error_code=None, details=details)
+
+
 class DomainException(PolibaseException):
     """ドメイン層の基底例外クラス
 

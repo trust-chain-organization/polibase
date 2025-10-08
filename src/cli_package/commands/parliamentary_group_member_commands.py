@@ -7,7 +7,7 @@ import click
 
 from src.cli_package.base import BaseCommand
 from src.cli_package.progress import ProgressTracker
-from src.exceptions import DatabaseError, ScrapingError
+from src.infrastructure.exceptions import DatabaseError, ScrapingError
 from src.infrastructure.persistence.extracted_parliamentary_group_member_repository_impl import (  # noqa: E501
     ExtractedParliamentaryGroupMemberRepositoryImpl,
 )

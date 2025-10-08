@@ -11,13 +11,13 @@ from typing import Any, TypeVar
 
 import src.config.config as config
 from src.config.database import test_connection
-from src.exceptions import (
+from src.infrastructure.exceptions import (
     ConfigurationError,
     DatabaseError,
     PDFProcessingError,
     ProcessingError,
 )
-from src.exceptions import FileNotFoundError as PolibaseFileNotFoundError
+from src.infrastructure.exceptions import FileNotFoundError as PolibaseFileNotFoundError
 from src.utils.text_extractor import extract_text_from_pdf
 
 logger = logging.getLogger(__name__)

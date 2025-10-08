@@ -17,7 +17,7 @@ from src.common.instrumentation import measure_time
 from src.common.logging import get_logger
 from src.common.metrics import CommonMetrics, setup_metrics
 from src.config import config
-from src.exceptions import (
+from src.infrastructure.exceptions import (
     APIKeyError,
     DatabaseError,
     PDFProcessingError,

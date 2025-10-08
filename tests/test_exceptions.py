@@ -55,7 +55,9 @@ class TestExceptionHierarchy:
         """Test base PolibaseError with details"""
         details = {"key": "value", "count": 42}
         error = PolibaseError("Test error", details)
-        assert str(error) == "Test error | Details: {'key': 'value', 'count': 42}"
+        # Note: New exception format shows error_code in brackets if present,
+        # otherwise just message. Details stored but not shown in str()
+        assert str(error) == "Test error"
         assert error.details == details
 
     def test_inheritance(self):

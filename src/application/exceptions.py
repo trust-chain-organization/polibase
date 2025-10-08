@@ -187,6 +187,25 @@ class ConcurrencyException(ApplicationException):
         )
 
 
+class ConfigurationError(ApplicationException):
+    """設定エラー（後方互換性のため）
+
+    旧来のConfigurationErrorとの互換性を保つための例外クラス
+    """
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
+        """
+        Args:
+            message: エラーメッセージ
+            details: 追加の詳細情報
+        """
+        super().__init__(
+            message=message,
+            error_code="APP-CFG",
+            details=details or {},
+        )
+
+
 class ConfigurationException(ApplicationException):
     """設定エラー
 
@@ -220,6 +239,53 @@ class ConfigurationException(ApplicationException):
         )
 
 
+class MissingConfigException(ConfigurationException):
+    """必須設定が不足しているエラー
+
+    必要な設定値が見つからない場合に発生
+    """
+
+    def __init__(self, config_key: str, message: str | None = None):
+        """
+        Args:
+            config_key: 不足している設定キー
+            message: カスタムエラーメッセージ
+        """
+        reason = message or f"必須設定 '{config_key}' が設定されていません"
+        super().__init__(
+            config_key=config_key,
+            reason=reason,
+        )
+
+
+class InvalidConfigException(ConfigurationException):
+    """設定値が不正なエラー
+
+    設定値が期待される形式や値でない場合に発生
+    """
+
+    def __init__(
+        self,
+        config_key: str,
+        actual_value: Any,
+        reason: str,
+        expected_value: Any | None = None,
+    ):
+        """
+        Args:
+            config_key: 設定キー
+            actual_value: 実際の値
+            reason: 不正な理由
+            expected_value: 期待される値
+        """
+        super().__init__(
+            config_key=config_key,
+            reason=reason,
+            expected_value=expected_value,
+            actual_value=actual_value,
+        )
+
+
 class DataProcessingException(ApplicationException):
     """データ処理エラー
 
@@ -250,4 +316,147 @@ class DataProcessingException(ApplicationException):
                 "reason": reason,
                 "input_data": str(input_data)[:200] if input_data else None,
             },
+        )
+
+
+class ProcessingError(ApplicationException):
+    """一般的な処理エラー（後方互換性のため）
+
+    旧来のProcessingErrorとの互換性を保つための例外クラス
+    """
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
+        """
+        Args:
+            message: エラーメッセージ
+            details: 追加の詳細情報
+        """
+        super().__init__(
+            message=message,
+            error_code="APP-PROC",
+            details=details or {},
+        )
+
+
+class ProcessingException(ApplicationException):
+    """一般的な処理エラー
+
+    ユースケース内での処理中に発生する一般的なエラー
+    """
+
+    def __init__(
+        self, process: str, reason: str, details: dict[str, Any] | None = None
+    ):
+        """
+        Args:
+            process: 処理名
+            reason: エラーの理由
+            details: 追加の詳細情報
+        """
+        message = f"処理 '{process}' でエラーが発生: {reason}"
+        super().__init__(
+            message=message,
+            error_code="APP-009",
+            details={"process": process, "reason": reason, **(details or {})},
+        )
+
+
+class PDFProcessingError(DataProcessingException):
+    """PDF処理エラー（後方互換性のため）
+
+    旧来のPDFProcessingErrorとの互換性を保つための例外クラス
+    """
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
+        """
+        Args:
+            message: エラーメッセージ
+            details: 追加の詳細情報
+        """
+        super().__init__(
+            process="PDF処理",
+            data_type="PDF",
+            reason=message,
+            input_data=details.get("file_path") if details else None,
+        )
+
+
+class PDFProcessingException(DataProcessingException):
+    """PDF処理エラー
+
+    PDF文書の処理中に発生するエラー
+    """
+
+    def __init__(self, file_path: str, reason: str):
+        """
+        Args:
+            file_path: PDFファイルのパス
+            reason: エラーの理由
+        """
+        super().__init__(
+            process="PDF処理",
+            data_type="PDF",
+            reason=reason,
+            input_data=file_path,
+        )
+
+
+class TextExtractionError(DataProcessingException):
+    """テキスト抽出エラー（後方互換性のため）
+
+    旧来のTextExtractionErrorとの互換性を保つための例外クラス
+    """
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
+        """
+        Args:
+            message: エラーメッセージ
+            details: 追加の詳細情報
+        """
+        super().__init__(
+            process="テキスト抽出",
+            data_type="テキスト",
+            reason=message,
+            input_data=details.get("source") if details else None,
+        )
+
+
+class TextExtractionException(DataProcessingException):
+    """テキスト抽出エラー
+
+    文書からのテキスト抽出中に発生するエラー
+    """
+
+    def __init__(self, source: str, reason: str):
+        """
+        Args:
+            source: 抽出元
+            reason: エラーの理由
+        """
+        super().__init__(
+            process="テキスト抽出",
+            data_type="テキスト",
+            reason=reason,
+            input_data=source,
+        )
+
+
+class ParsingException(DataProcessingException):
+    """パース処理エラー
+
+    データのパース中に発生するエラー
+    """
+
+    def __init__(self, data_format: str, reason: str, raw_data: Any | None = None):
+        """
+        Args:
+            data_format: データフォーマット（JSON, XML等）
+            reason: エラーの理由
+            raw_data: パース対象の生データ
+        """
+        super().__init__(
+            process="パース",
+            data_type=data_format,
+            reason=reason,
+            input_data=raw_data,
         )

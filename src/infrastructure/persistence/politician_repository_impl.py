@@ -268,7 +268,7 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
 
     async def update(self, entity: Politician) -> Politician:
         """Update an existing politician."""
-        from src.exceptions import UpdateError
+        from src.infrastructure.exceptions import UpdateError
 
         query = text("""
             UPDATE politicians

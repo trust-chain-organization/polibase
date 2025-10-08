@@ -11,7 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.conference import Conference
 from src.domain.repositories.conference_repository import ConferenceRepository
-from src.exceptions import DatabaseError, RecordNotFoundError, UpdateError
+from src.infrastructure.exceptions import (
+    DatabaseError,
+    RecordNotFoundError,
+    UpdateError,
+)
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 logger = logging.getLogger(__name__)

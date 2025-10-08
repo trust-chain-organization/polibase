@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.interfaces.llm_service import ILLMService
-from src.exceptions import LLMError
+from src.infrastructure.exceptions import LLMError
 
 if TYPE_CHECKING:
     pass

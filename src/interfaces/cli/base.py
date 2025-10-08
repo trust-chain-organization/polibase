@@ -9,13 +9,11 @@ from typing import Any, ParamSpec, TypeVar
 
 import click
 
-from src.exceptions import (
-    APIKeyError,
-    ConfigurationError,
-    PolibaseError,
-    RecordNotFoundError,
-    ValidationError,
-)
+from src.domain.exceptions import PolibaseError
+from src.application.exceptions import ConfigurationError, ProcessingError
+from src.infrastructure.exceptions import APIKeyError, RecordNotFoundError
+
+ValidationError = ProcessingError  # Alias for backward compatibility
 
 # Type variables for methods that still need them
 P = ParamSpec("P")

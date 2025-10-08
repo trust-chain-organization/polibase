@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.services.interfaces.llm_service import ILLMService
-from src.exceptions import LLMError
+from src.infrastructure.exceptions import LLMError
 
 logger = logging.getLogger(__name__)
 

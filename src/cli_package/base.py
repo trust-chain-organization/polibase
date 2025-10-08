@@ -8,19 +8,19 @@ from typing import ParamSpec, TypeVar
 
 import click
 
-from src.exceptions import (
+from src.domain.exceptions import PolibaseError
+from src.application.exceptions import ConfigurationError, ProcessingError
+from src.infrastructure.exceptions import (
     APIKeyError,
-    ConfigurationError,
     ConnectionError,
     DatabaseError,
     LLMError,
-    PolibaseError,
-    ProcessingError,
     RecordNotFoundError,
     ScrapingError,
     StorageError,
-    ValidationError,
 )
+
+ValidationError = ProcessingError  # Alias for backward compatibility
 
 P = ParamSpec("P")
 T = TypeVar("T")

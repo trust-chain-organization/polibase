@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any
 
 from src.application.dtos.minutes_processing_dto import MinutesProcessingResultDTO
+from src.application.exceptions import ProcessingError
 from src.common.logging import get_logger
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.meeting import Meeting
@@ -23,7 +24,6 @@ from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.interfaces.storage_service import IStorageService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
-from src.exceptions import ProcessingError
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
 
 logger = get_logger(__name__)
