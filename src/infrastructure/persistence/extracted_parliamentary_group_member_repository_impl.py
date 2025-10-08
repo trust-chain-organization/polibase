@@ -136,7 +136,7 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
                 "matched_at": matched_at or datetime.now(),
             },
         )
-        await self.session.commit()
+        await self.session.flush()  # Flush changes but don't commit
 
         # Return updated entity
         return await self.get_by_id(member_id)
@@ -232,7 +232,7 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
             if row:
                 created_members.append(self._row_to_entity(row))
 
-        await self.session.commit()
+        await self.session.flush()  # Flush changes but don't commit
         return created_members
 
     def _row_to_entity(self, row: Any) -> ExtractedParliamentaryGroupMember:

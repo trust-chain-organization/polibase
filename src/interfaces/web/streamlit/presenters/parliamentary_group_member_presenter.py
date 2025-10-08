@@ -11,6 +11,10 @@ from src.application.usecases.create_parliamentary_group_memberships_usecase imp
 from src.application.usecases.match_parliamentary_group_members_usecase import (
     MatchParliamentaryGroupMembersUseCase,
 )
+from src.application.usecases.review_extracted_member_usecase import (
+    ReviewExtractedMemberInputDto,
+    ReviewExtractedMemberUseCase,
+)
 from src.common.logging import get_logger
 from src.domain.entities.extracted_parliamentary_group_member import (
     ExtractedParliamentaryGroupMember,
@@ -91,6 +95,10 @@ class ParliamentaryGroupMemberPresenter(
         self.create_memberships_usecase = CreateParliamentaryGroupMembershipsUseCase(
             member_repository=self.extracted_member_repo,  # type: ignore
             membership_repository=self.membership_repo,  # type: ignore
+        )
+
+        self.review_member_usecase = ReviewExtractedMemberUseCase(
+            member_repository=self.extracted_member_repo,  # type: ignore
         )
 
         self.session = SessionManager()
@@ -238,85 +246,28 @@ class ParliamentaryGroupMemberPresenter(
                 f"politician_id={politician_id}, confidence={confidence}"
             )
 
-            # Get member
-            member = self.extracted_member_repo.get_by_id(member_id)
-            if not member:
-                self.logger.warning(f"Member {member_id} not found")
-                return False, "メンバーが見つかりません"
-
-            self.logger.info(
-                f"Found member: {member.extracted_name}, "
-                f"current status: {member.matching_status}"
-            )
-
-            if action == "approve":
-                # Approve matched member (status: matched)
-                if member.matching_status != "matched":
-                    return False, "マッチ済みのメンバーのみ承認できます"
-
-                status = "matched"
-                matched_at = datetime.now()
-
-            elif action == "reject":
-                # Reject member (status: no_match)
-                status = "no_match"
-                politician_id = None
-                confidence = None
-                matched_at = None
-
-            elif action == "match":
-                # Manual match
-                if not politician_id or confidence is None:
-                    self.logger.warning(
-                        f"Missing politician_id or confidence: "
-                        f"politician_id={politician_id}, confidence={confidence}"
-                    )
-                    return False, "政治家IDと信頼度が必要です"
-
-                status = "matched"
-                matched_at = datetime.now()
-
-            else:
-                return False, f"不明なアクション: {action}"
-
-            self.logger.info(
-                f"Updating matching result: member_id={member_id}, "
-                f"politician_id={politician_id}, confidence={confidence}, "
-                f"status={status}, matched_at={matched_at}"
-            )
-
-            # Update matching result
-            updated_member = self.extracted_member_repo.update_matching_result(
+            # Use the use case to review the member
+            input_dto = ReviewExtractedMemberInputDto(
                 member_id=member_id,
+                action=action,
                 politician_id=politician_id,
                 confidence=confidence,
-                status=status,
-                matched_at=matched_at,
             )
 
-            if updated_member:
-                self.logger.info(
-                    f"Successfully updated member {member_id}, "
-                    f"new status: {updated_member.matching_status}"
-                )
+            result = self._run_async(self.review_member_usecase.execute(input_dto))
+
+            if result.success:
+                self.logger.info(f"Successfully reviewed member {member_id}")
             else:
-                self.logger.error(
-                    f"update_matching_result returned None for member "
-                    f"{member_id} - update failed"
+                self.logger.warning(
+                    f"Review failed for member {member_id}: {result.message}"
                 )
-                return False, "データベース更新に失敗しました"
 
-            action_label = {
-                "approve": "承認",
-                "reject": "却下",
-                "match": "マッチング",
-            }.get(action, action)
-
-            return True, f"{member.extracted_name} を{action_label}しました"
+            return result.success, result.message
 
         except Exception as e:
             self.logger.error(f"Error reviewing member {member_id}: {e}", exc_info=True)
-            return False, f"エラー: {str(e)}"
+            return False, f"エラーが発生しました: {str(e)}"
 
     def bulk_review(self, member_ids: list[int], action: str) -> tuple[int, int, str]:
         """Bulk review members.
@@ -362,50 +313,25 @@ class ParliamentaryGroupMemberPresenter(
             Tuple of (created_count, skipped_count, created_memberships)
         """
         try:
-            # Get matched members (repository adapter handles sync/async)
-            matched_members = self.extracted_member_repo.get_matched_members(
-                parliamentary_group_id=parliamentary_group_id,
-                min_confidence=min_confidence,
+            # Use the use case to create memberships
+            result = self._run_async(
+                self.create_memberships_usecase.execute(
+                    parliamentary_group_id=parliamentary_group_id,
+                    min_confidence=min_confidence,
+                    start_date=start_date,
+                )
             )
 
-            created_memberships: list[dict[str, Any]] = []
-            skipped_count = 0
+            # Type narrowing for pyright
+            created = result["created_count"]
+            skipped = result["skipped_count"]
+            memberships = result["created_memberships"]
 
-            # Default start date is today
-            if start_date is None:
-                start_date = date.today()
+            assert isinstance(created, int)
+            assert isinstance(skipped, int)
+            assert isinstance(memberships, list)
 
-            for member in matched_members:
-                # Check if matched_politician_id is set
-                if member.matched_politician_id is None:
-                    skipped_count += 1
-                    continue
-
-                # Create membership
-                try:
-                    self.membership_repo.create_membership(
-                        politician_id=member.matched_politician_id,
-                        group_id=member.parliamentary_group_id,
-                        start_date=start_date,
-                        role=member.extracted_role,
-                    )
-
-                    created_memberships.append(
-                        {
-                            "politician_id": member.matched_politician_id,
-                            "parliamentary_group_id": member.parliamentary_group_id,
-                            "role": member.extracted_role,
-                            "member_name": member.extracted_name,
-                        }
-                    )
-                except Exception as e:
-                    # Skip on error
-                    self.logger.warning(
-                        f"Failed to create membership for {member.extracted_name}: {e}"
-                    )
-                    skipped_count += 1
-
-            return (len(created_memberships), skipped_count, created_memberships)
+            return (created, skipped, memberships)
 
         except Exception as e:
             self.logger.error(f"Error creating memberships: {e}", exc_info=True)

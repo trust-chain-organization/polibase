@@ -20,6 +20,11 @@ class CreateParliamentaryGroupMembershipsUseCase:
         member_repository: 抽出メンバーリポジトリ
         membership_repository: メンバーシップリポジトリ
 
+    Transaction Management:
+        各メンバーシップ作成は個別にコミットされます。
+        エラーが発生した場合は該当メンバーのみスキップされ、
+        他のメンバーシップ作成は継続されます。
+
     Example:
         >>> use_case = CreateParliamentaryGroupMembershipsUseCase(
         ...     member_repo, membership_repo
@@ -60,6 +65,12 @@ class CreateParliamentaryGroupMembershipsUseCase:
             - created_count: 作成されたメンバーシップ数
             - skipped_count: スキップされたメンバー数
             - created_memberships: 作成されたメンバーシップの詳細リスト
+
+        Transaction Boundary:
+            各メンバーシップ作成は個別のトランザクションで実行されます。
+            これにより、1つのメンバーシップ作成が失敗しても、
+            他のメンバーシップ作成は継続されます。
+            エラーが発生したメンバーはskipped_countに計上されます。
         """
         # matched状態のメンバーを取得
         matched_members = await self.member_repo.get_matched_members(
