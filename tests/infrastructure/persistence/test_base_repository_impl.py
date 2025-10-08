@@ -187,7 +187,7 @@ class TestBaseRepositoryImpl:
         assert result.id == 5
         assert result.name == "New Entity"
         mock_session.add.assert_called_once()
-        mock_session.commit.assert_called_once()
+        mock_session.flush.assert_called_once()
         mock_session.refresh.assert_called_once()
 
     @pytest.mark.asyncio
@@ -205,7 +205,7 @@ class TestBaseRepositoryImpl:
         assert result.id == 1
         assert result.name == "Updated Entity"
         assert existing_model.name == "Updated Entity"  # Model was updated
-        mock_session.commit.assert_called_once()
+        mock_session.flush.assert_called_once()
         mock_session.refresh.assert_called_once()
 
     @pytest.mark.asyncio
@@ -246,7 +246,7 @@ class TestBaseRepositoryImpl:
         # Verify
         assert result is True
         mock_session.delete.assert_called_once_with(model)
-        mock_session.commit.assert_called_once()
+        mock_session.flush.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_delete_not_found(self, repository, mock_session):
@@ -260,4 +260,4 @@ class TestBaseRepositoryImpl:
         # Verify
         assert result is False
         mock_session.delete.assert_not_called()
-        mock_session.commit.assert_not_called()
+        mock_session.flush.assert_not_called()

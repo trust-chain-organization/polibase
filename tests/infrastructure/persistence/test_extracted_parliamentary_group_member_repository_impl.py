@@ -193,7 +193,7 @@ class TestExtractedParliamentaryGroupMemberRepositoryImpl:
             assert result.matched_politician_id == 1
             assert result.matching_confidence == 0.95
             mock_session.execute.assert_called_once()
-            mock_session.commit.assert_called_once()
+            mock_session.flush.assert_called_once()
 
     async def test_update_matching_result_with_custom_timestamp(
         self, repository, mock_session
@@ -226,7 +226,7 @@ class TestExtractedParliamentaryGroupMemberRepositoryImpl:
             assert result is not None
             assert result.matched_at == custom_time
             mock_session.execute.assert_called_once()
-            mock_session.commit.assert_called_once()
+            mock_session.flush.assert_called_once()
 
     async def test_update_matching_result_with_none_values(
         self, repository, mock_session
@@ -304,7 +304,6 @@ class TestExtractedParliamentaryGroupMemberRepositoryImpl:
             MagicMock(matching_status="pending", count=2),
             MagicMock(matching_status="matched", count=3),
             MagicMock(matching_status="no_match", count=1),
-            MagicMock(matching_status="needs_review", count=1),
         ]
 
         mock_result = MagicMock()
@@ -315,11 +314,10 @@ class TestExtractedParliamentaryGroupMemberRepositoryImpl:
         summary = await repository.get_extraction_summary()
 
         # Assert
-        assert summary["total"] == 7
+        assert summary["total"] == 6
         assert summary["pending"] == 2
         assert summary["matched"] == 3
         assert summary["no_match"] == 1
-        assert summary["needs_review"] == 1
         mock_session.execute.assert_called_once()
 
     async def test_bulk_create(self, repository, mock_session) -> None:
@@ -384,4 +382,4 @@ class TestExtractedParliamentaryGroupMemberRepositoryImpl:
         assert created[1].id == 2
         assert created[1].extracted_name == "田中花子"
         assert mock_session.execute.call_count == 2
-        mock_session.commit.assert_called_once()
+        mock_session.flush.assert_called_once()
