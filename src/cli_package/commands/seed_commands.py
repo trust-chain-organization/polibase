@@ -8,7 +8,6 @@ from click import Command
 from src.cli_package.base import BaseCommand
 from src.infrastructure.exceptions import (
     DatabaseError,
-    FileNotFoundException,
     PermissionError,
 )
 from src.seed_generator import generate_all_seeds

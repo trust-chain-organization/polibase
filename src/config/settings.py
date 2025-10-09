@@ -61,8 +61,9 @@ class Settings:
         except ValueError as e:
             logger.error(f"Invalid LLM_TEMPERATURE value: {e}")
             raise InvalidConfigError(
-                "Invalid LLM_TEMPERATURE configuration",
-                {"value": os.getenv("LLM_TEMPERATURE"), "error": str(e)},
+                "LLM_TEMPERATURE",
+                os.getenv("LLM_TEMPERATURE") or "",
+                f"Invalid temperature value: {str(e)}",
             ) from e
 
         # GCS Configuration
@@ -103,14 +104,13 @@ class Settings:
         """
         # Validate database URL
         if not self.database_url:
-            raise MissingConfigError(
-                "DATABASE_URL is required", {"env_var": "DATABASE_URL"}
-            )
+            raise MissingConfigError("DATABASE_URL", "DATABASE_URL is required")
 
         if not self.database_url.startswith(("postgresql://", "postgres://")):
             raise InvalidConfigError(
-                "DATABASE_URL must be a valid PostgreSQL connection string",
-                {"current_value": self.database_url[:30] + "..."},
+                "DATABASE_URL",
+                self.database_url[:30] + "...",
+                "must be a valid PostgreSQL connection string",
             )
 
         # Warn about missing API keys (not required for all operations)
@@ -129,8 +129,9 @@ class Settings:
         except Exception as e:
             logger.error(f"Failed to create output directory: {e}")
             raise InvalidConfigError(
-                f"Invalid output directory: {self.output_dir}",
-                {"path": self.output_dir, "error": str(e)},
+                "output_dir",
+                self.output_dir,
+                f"Failed to create output directory: {str(e)}",
             ) from e
 
     def get_database_url(self) -> str:
@@ -182,9 +183,7 @@ class Settings:
         """
         value = getattr(self, key, None)
         if not value:
-            raise MissingConfigError(
-                f"Required configuration '{key}' is not set", {"key": key}
-            )
+            raise MissingConfigError(key, f"Required configuration '{key}' is not set")
         return value
 
 

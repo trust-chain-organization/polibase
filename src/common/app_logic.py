@@ -10,14 +10,16 @@ from collections.abc import Callable
 from typing import Any, TypeVar
 
 import src.config.config as config
-from src.config.database import test_connection
-from src.infrastructure.exceptions import (
+from src.application.exceptions import (
     ConfigurationError,
-    DatabaseError,
     PDFProcessingError,
     ProcessingError,
 )
-from src.infrastructure.exceptions import FileNotFoundError as PolibaseFileNotFoundError
+from src.config.database import test_connection
+from src.infrastructure.exceptions import DatabaseError
+from src.infrastructure.exceptions import (
+    FileNotFoundException as PolibaseFileNotFoundError,
+)
 from src.utils.text_extractor import extract_text_from_pdf
 
 logger = logging.getLogger(__name__)
@@ -60,9 +62,7 @@ def load_pdf_text(file_path: str = "data/minutes.pdf") -> str:
     """
     if not os.path.exists(file_path):
         logger.error(f"PDF file not found: {file_path}")
-        raise PolibaseFileNotFoundError(
-            f"PDF file not found: {file_path}", {"file_path": file_path}
-        )
+        raise PolibaseFileNotFoundError(file_path)
 
     try:
         logger.info(f"Loading PDF from: {file_path}")
