@@ -757,6 +757,9 @@ class SaveError(RepositoryException):
             entity_type=details.get("entity_type", "Unknown") if details else "Unknown",
             reason=message,
         )
+        # Merge input details with the standard details from RepositoryException
+        if details:
+            self.details.update(details)
 
 
 class SaveException(RepositoryException):
