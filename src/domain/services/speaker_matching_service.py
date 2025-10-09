@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from src.domain.exceptions import ExternalServiceException
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.interfaces.llm_service import ILLMService
-from src.infrastructure.exceptions import LLMError
 
 if TYPE_CHECKING:
     pass
@@ -127,15 +127,16 @@ class SpeakerMatchingService:
 
             return match_result
 
-        except LLMError:
-            # LLM specific errors are already properly handled, re-raise
+        except ExternalServiceException:
+            # External service errors are already properly handled, re-raise
             raise
         except Exception as e:
             logger.error(f"LLMマッチング中の予期しないエラー: {e}")
             # Wrap unexpected errors as LLMError
-            raise LLMError(
-                "Unexpected error during LLM matching",
-                {"error": str(e)},
+            raise ExternalServiceException(
+                service_name="LLM",
+                operation="speaker_matching",
+                reason=f"Unexpected error during speaker matching: {str(e)}",
             ) from e
 
     def _rule_based_matching(

@@ -9,9 +9,15 @@ from typing import Any, ParamSpec, TypeVar
 
 import click
 
-from src.domain.exceptions import PolibaseError
 from src.application.exceptions import ConfigurationError, ProcessingError
-from src.infrastructure.exceptions import APIKeyError, RecordNotFoundError
+from src.domain.exceptions import PolibaseError
+from src.infrastructure.exceptions import (
+    APIKeyError,
+    RecordNotFoundError,
+)
+from src.infrastructure.exceptions import (
+    ConnectionError as InfraConnectionError,
+)
 
 ValidationError = ProcessingError  # Alias for backward compatibility
 
@@ -61,7 +67,7 @@ class BaseCommand:
                 click.echo(f"Configuration Error: {str(e)}", err=True)
                 click.echo("Please check your configuration settings.", err=True)
                 sys.exit(2)
-            except ConnectionError as e:
+            except InfraConnectionError as e:
                 click.echo(f"Connection Error: {str(e)}", err=True)
                 click.echo(
                     "Please check your network connection and database settings.",
