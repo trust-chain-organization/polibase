@@ -1,6 +1,6 @@
 """Tests for ProcessMinutesUseCase."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -18,25 +18,25 @@ class TestProcessMinutesUseCase:
     @pytest.fixture
     def mock_meeting_repo(self):
         """Create mock meeting repository."""
-        repo = MagicMock()
+        repo = AsyncMock()
         return repo
 
     @pytest.fixture
     def mock_minutes_repo(self):
         """Create mock minutes repository."""
-        repo = MagicMock()
+        repo = AsyncMock()
         return repo
 
     @pytest.fixture
     def mock_conversation_repo(self):
         """Create mock conversation repository."""
-        repo = MagicMock()
+        repo = AsyncMock()
         return repo
 
     @pytest.fixture
     def mock_speaker_repo(self):
         """Create mock speaker repository."""
-        repo = MagicMock()
+        repo = AsyncMock()
         return repo
 
     @pytest.fixture
@@ -57,13 +57,13 @@ class TestProcessMinutesUseCase:
     @pytest.fixture
     def mock_pdf_processor(self):
         """Create mock PDF processor."""
-        processor = MagicMock()
+        processor = AsyncMock()
         return processor
 
     @pytest.fixture
     def mock_text_extractor(self):
         """Create mock text extractor."""
-        extractor = MagicMock()
+        extractor = AsyncMock()
         return extractor
 
     @pytest.fixture
@@ -90,7 +90,8 @@ class TestProcessMinutesUseCase:
             text_extractor=mock_text_extractor,
         )
 
-    def test_execute_success_with_pdf(
+    @pytest.mark.asyncio
+    async def test_execute_success_with_pdf(
         self,
         use_case,
         mock_meeting_repo,
@@ -159,7 +160,7 @@ class TestProcessMinutesUseCase:
         ]
 
         # Execute
-        result = use_case.execute(request)
+        result = await use_case.execute(request)
 
         # Verify
         assert result.minutes_id == 10
@@ -174,7 +175,8 @@ class TestProcessMinutesUseCase:
         mock_conversation_repo.bulk_create.assert_called_once()
         mock_minutes_repo.mark_processed.assert_called_once_with(10)
 
-    def test_execute_with_existing_processed_minutes(
+    @pytest.mark.asyncio
+    async def test_execute_with_existing_processed_minutes(
         self, use_case, mock_meeting_repo, mock_minutes_repo, mock_minutes_service
     ):
         """Test error when minutes are already processed."""
@@ -189,11 +191,12 @@ class TestProcessMinutesUseCase:
 
         # Execute and verify
         with pytest.raises(ValueError) as exc_info:
-            use_case.execute(request)
+            await use_case.execute(request)
 
         assert "already processed" in str(exc_info.value)
 
-    def test_execute_force_reprocess(
+    @pytest.mark.asyncio
+    async def test_execute_force_reprocess(
         self,
         use_case,
         mock_meeting_repo,
@@ -219,14 +222,15 @@ class TestProcessMinutesUseCase:
         mock_conversation_repo.bulk_create.return_value = []
 
         # Execute
-        result = use_case.execute(request)
+        result = await use_case.execute(request)
 
         # Verify
         assert result.minutes_id == 10
         # Should not create new minutes
         mock_minutes_repo.create.assert_not_called()
 
-    def test_execute_meeting_not_found(self, use_case, mock_meeting_repo):
+    @pytest.mark.asyncio
+    async def test_execute_meeting_not_found(self, use_case, mock_meeting_repo):
         """Test error when meeting not found."""
         # Setup
         request = ProcessMinutesDTO(meeting_id=999)
@@ -234,11 +238,12 @@ class TestProcessMinutesUseCase:
 
         # Execute and verify
         with pytest.raises(ValueError) as exc_info:
-            use_case.execute(request)
+            await use_case.execute(request)
 
         assert "Meeting 999 not found" in str(exc_info.value)
 
-    def test_execute_with_gcs_text(
+    @pytest.mark.asyncio
+    async def test_execute_with_gcs_text(
         self,
         use_case,
         mock_meeting_repo,
@@ -265,7 +270,7 @@ class TestProcessMinutesUseCase:
         mock_conversation_repo.bulk_create.return_value = []
 
         # Execute
-        use_case.execute(request)
+        await use_case.execute(request)
 
         # Verify
         mock_text_extractor.extract_from_gcs.assert_called_once_with(
@@ -273,7 +278,8 @@ class TestProcessMinutesUseCase:
         )
         mock_text_extractor.parse_speeches.assert_called_once()
 
-    def test_execute_no_valid_source(
+    @pytest.mark.asyncio
+    async def test_execute_no_valid_source(
         self, use_case, mock_meeting_repo, mock_minutes_repo
     ):
         """Test error when no valid source is provided."""
@@ -287,11 +293,12 @@ class TestProcessMinutesUseCase:
 
         # Execute and verify
         with pytest.raises(ValueError) as exc_info:
-            use_case.execute(request)
+            await use_case.execute(request)
 
         assert "No valid source" in str(exc_info.value)
 
-    def test_extract_and_create_speakers(
+    @pytest.mark.asyncio
+    async def test_extract_and_create_speakers(
         self, use_case, mock_speaker_repo, mock_speaker_service
     ):
         """Test speaker extraction and creation."""
@@ -328,13 +335,14 @@ class TestProcessMinutesUseCase:
         mock_speaker_repo.get_by_name_party_position.return_value = None
 
         # Execute
-        created_count = use_case._extract_and_create_speakers(conversations)
+        created_count = await use_case._extract_and_create_speakers(conversations)
 
         # Verify
         assert created_count == 2  # Two unique speakers
         assert mock_speaker_repo.create.call_count == 2
 
-    def test_extract_and_create_speakers_existing(
+    @pytest.mark.asyncio
+    async def test_extract_and_create_speakers_existing(
         self, use_case, mock_speaker_repo, mock_speaker_service
     ):
         """Test speaker extraction when speaker already exists."""
@@ -353,7 +361,7 @@ class TestProcessMinutesUseCase:
         mock_speaker_repo.get_by_name_party_position.return_value = existing_speaker
 
         # Execute
-        created_count = use_case._extract_and_create_speakers(conversations)
+        created_count = await use_case._extract_and_create_speakers(conversations)
 
         # Verify
         assert created_count == 0  # No new speakers created
