@@ -265,95 +265,77 @@ class PoliticianCommands(BaseCommand):
         from src.application.dtos.convert_extracted_politician_dto import (
             ConvertExtractedPoliticianInputDTO,
         )
-        from src.application.usecases.convert_extracted_politician_usecase import (
-            ConvertExtractedPoliticianUseCase,
+        from src.infrastructure.di.container import get_container, init_container
+
+        # Initialize and get dependencies from DI container
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        use_case = container.use_cases.convert_extracted_politician_usecase()
+
+        # Create input DTO
+        input_dto = ConvertExtractedPoliticianInputDTO(
+            party_id=party_id, batch_size=batch_size, dry_run=dry_run
         )
-        from src.config.async_database import get_async_session
-        from src.infrastructure.persistence import (
-            extracted_politician_repository_impl as extracted_repo,
-        )
-        from src.infrastructure.persistence.politician_repository_impl import (
-            PoliticianRepositoryImpl,
-        )
-        from src.infrastructure.persistence.speaker_repository_impl import (
-            SpeakerRepositoryImpl,
-        )
 
-        async with get_async_session() as session:
-            # Initialize repositories
-            extracted_politician_impl = extracted_repo.ExtractedPoliticianRepositoryImpl
-            extracted_politician_repo = extracted_politician_impl(session)
-            politician_repo = PoliticianRepositoryImpl(session)
-            speaker_repo = SpeakerRepositoryImpl(session)
-
-            # Create use case
-            use_case = ConvertExtractedPoliticianUseCase(
-                extracted_politician_repo, politician_repo, speaker_repo
-            )
-
-            # Create input DTO
-            input_dto = ConvertExtractedPoliticianInputDTO(
-                party_id=party_id, batch_size=batch_size, dry_run=dry_run
-            )
-
-            # Show what will be processed
-            if dry_run:
-                PoliticianCommands.show_progress(
-                    "Running in DRY-RUN mode - no changes will be saved"
-                )
-
-            with spinner("Processing approved extracted politicians..."):
-                result = await use_case.execute(input_dto)
-
-            # Display results
-            PoliticianCommands.show_progress("\n=== Conversion Results ===")
+        # Show what will be processed
+        if dry_run:
             PoliticianCommands.show_progress(
-                f"Total processed: {result.total_processed}"
-            )
-            PoliticianCommands.show_progress(
-                f"Successfully converted: {result.converted_count}"
+                "Running in DRY-RUN mode - no changes will be saved"
             )
 
-            if result.converted_count > 0:
-                PoliticianCommands.show_progress("\nConverted politicians:")
-                for politician in result.converted_politicians[:10]:
-                    PoliticianCommands.show_progress(
-                        f"  ✓ {politician.name} (ID: {politician.politician_id})"
-                    )
-                if len(result.converted_politicians) > 10:
-                    PoliticianCommands.show_progress(
-                        f"  ... and {len(result.converted_politicians) - 10} more"
-                    )
+        with spinner("Processing approved extracted politicians..."):
+            result = await use_case.execute(input_dto)
 
-            if result.skipped_count > 0:
-                PoliticianCommands.show_progress(f"\nSkipped: {result.skipped_count}")
-                for name in result.skipped_names[:5]:
-                    PoliticianCommands.show_progress(f"  - {name}")
-                if len(result.skipped_names) > 5:
-                    PoliticianCommands.show_progress(
-                        f"  ... and {len(result.skipped_names) - 5} more"
-                    )
+        # Display results
+        PoliticianCommands.show_progress("\n=== Conversion Results ===")
+        PoliticianCommands.show_progress(f"Total processed: {result.total_processed}")
+        PoliticianCommands.show_progress(
+            f"Successfully converted: {result.converted_count}"
+        )
 
-            if result.error_count > 0:
-                PoliticianCommands.show_progress(f"\nErrors: {result.error_count}")
-                for msg in result.error_messages[:5]:
-                    PoliticianCommands.show_progress(f"  ✗ {msg}")
-                if len(result.error_messages) > 5:
-                    PoliticianCommands.show_progress(
-                        f"  ... and {len(result.error_messages) - 5} more"
-                    )
-
-            if not dry_run and result.converted_count > 0:
-                PoliticianCommands.success(
-                    f"Successfully converted {result.converted_count} politicians"
-                )
-            elif dry_run:
+        if result.converted_count > 0:
+            PoliticianCommands.show_progress("\nConverted politicians:")
+            for politician in result.converted_politicians[:10]:
                 PoliticianCommands.show_progress(
-                    f"\nDRY-RUN completed: {result.converted_count} politicians "
-                    f"would be converted"
+                    f"  ✓ {politician.name} (ID: {politician.politician_id})"
                 )
-            else:
-                PoliticianCommands.show_progress("No politicians were converted")
+            if len(result.converted_politicians) > 10:
+                PoliticianCommands.show_progress(
+                    f"  ... and {len(result.converted_politicians) - 10} more"
+                )
+
+        if result.skipped_count > 0:
+            PoliticianCommands.show_progress(f"\nSkipped: {result.skipped_count}")
+            for name in result.skipped_names[:5]:
+                PoliticianCommands.show_progress(f"  - {name}")
+            if len(result.skipped_names) > 5:
+                PoliticianCommands.show_progress(
+                    f"  ... and {len(result.skipped_names) - 5} more"
+                )
+
+        if result.error_count > 0:
+            PoliticianCommands.show_progress(f"\nErrors: {result.error_count}")
+            for msg in result.error_messages[:5]:
+                PoliticianCommands.show_progress(f"  ✗ {msg}")
+            if len(result.error_messages) > 5:
+                PoliticianCommands.show_progress(
+                    f"  ... and {len(result.error_messages) - 5} more"
+                )
+
+        if not dry_run and result.converted_count > 0:
+            PoliticianCommands.success(
+                f"Successfully converted {result.converted_count} politicians"
+            )
+        elif dry_run:
+            PoliticianCommands.show_progress(
+                f"\nDRY-RUN completed: {result.converted_count} politicians "
+                f"would be converted"
+            )
+        else:
+            PoliticianCommands.show_progress("No politicians were converted")
 
         # 少し待機してから終了
         time.sleep(0.5)

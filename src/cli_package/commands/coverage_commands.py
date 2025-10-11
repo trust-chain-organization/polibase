@@ -3,7 +3,7 @@
 import click
 from sqlalchemy import text
 
-from src.config.database import get_db_engine
+from src.infrastructure.di.container import get_container, init_container
 
 
 def get_coverage_commands() -> list[click.Command]:
@@ -18,7 +18,13 @@ def get_coverage_commands() -> list[click.Command]:
 @click.command()
 def coverage():
     """Show data coverage statistics for governing bodies."""
-    engine = get_db_engine()
+    # Initialize and get dependencies from DI container
+    try:
+        container = get_container()
+    except RuntimeError:
+        container = init_container()
+
+    engine = container.database.engine()
 
     with engine.connect() as conn:
         # Total governing bodies
