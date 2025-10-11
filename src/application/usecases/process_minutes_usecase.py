@@ -78,7 +78,7 @@ class ProcessMinutesUseCase:
         self.pdf_processor = pdf_processor
         self.text_extractor = text_extractor
 
-    def execute(self, request: ProcessMinutesDTO) -> MinutesProcessingResultDTO:
+    async def execute(self, request: ProcessMinutesDTO) -> MinutesProcessingResultDTO:
         """議事録を処理する
 
         以下の手順で議事録を処理します：
@@ -113,14 +113,14 @@ class ProcessMinutesUseCase:
         errors: list[str] = []
 
         # Get meeting
-        meeting = self.meeting_repo.get_by_id(request.meeting_id)
+        meeting = await self.meeting_repo.get_by_id(request.meeting_id)
         if not meeting:
             raise ValueError(f"Meeting {request.meeting_id} not found")
 
         # Check if minutes already exist
         if meeting.id is None:
             raise ValueError("Meeting must have an ID")
-        existing_minutes = self.minutes_repo.get_by_meeting(meeting.id)
+        existing_minutes = await self.minutes_repo.get_by_meeting(meeting.id)
         if existing_minutes and not request.force_reprocess:
             if self.minutes_service.is_minutes_processed(existing_minutes):
                 raise ValueError(f"Minutes for meeting {meeting.id} already processed")
@@ -133,13 +133,13 @@ class ProcessMinutesUseCase:
                 meeting_id=meeting.id,
                 url=request.pdf_url or meeting.url,
             )
-            minutes = self.minutes_repo.create(minutes)
+            minutes = await self.minutes_repo.create(minutes)
         else:
             minutes = existing_minutes
 
         try:
             # Extract speeches from minutes
-            speeches = self._extract_speeches(
+            speeches = await self._extract_speeches(
                 meeting, request.pdf_url, request.gcs_text_uri
             )
 
@@ -151,15 +151,19 @@ class ProcessMinutesUseCase:
             )
 
             # Save conversations
-            saved_conversations = self.conversation_repo.bulk_create(conversations)
+            saved_conversations = await self.conversation_repo.bulk_create(
+                conversations
+            )
 
             # Extract and create speakers
-            unique_speakers = self._extract_and_create_speakers(saved_conversations)
+            unique_speakers = await self._extract_and_create_speakers(
+                saved_conversations
+            )
 
             # Mark minutes as processed
             if minutes.id is None:
                 raise ValueError("Minutes must have an ID")
-            self.minutes_repo.mark_processed(minutes.id)
+            await self.minutes_repo.mark_processed(minutes.id)
             # Calculate processing time
             end_time = datetime.now()
             processing_time = self.minutes_service.calculate_processing_duration(
@@ -180,7 +184,7 @@ class ProcessMinutesUseCase:
             errors.append(str(e))
             raise
 
-    def _extract_speeches(
+    async def _extract_speeches(
         self,
         meeting: Meeting,
         pdf_url: str | None,
@@ -206,28 +210,31 @@ class ProcessMinutesUseCase:
         """
         if gcs_text_uri:
             # Extract from GCS text
-            text_content = self.text_extractor.extract_from_gcs(gcs_text_uri)
+            text_content = await self.text_extractor.extract_from_gcs(gcs_text_uri)
             speeches = self.text_extractor.parse_speeches(text_content)
         elif pdf_url or meeting.gcs_pdf_uri:
             # Extract from PDF
             url = pdf_url or meeting.gcs_pdf_uri
             if url is None:
                 raise ValueError("No PDF URL available")
-            speeches = self.pdf_processor.process_pdf(url)
+            speeches = await self.pdf_processor.process_pdf(url)
         else:
             raise ValueError("No valid source for minutes processing")
 
         # Convert to DTOs
+        speeches_list = speeches if isinstance(speeches, list) else await speeches
         return [
             ExtractedSpeechDTO(
                 speaker_name=s.get("speaker", ""),
                 content=s.get("content", ""),
                 sequence_number=idx + 1,
             )
-            for idx, s in enumerate(speeches)
+            for idx, s in enumerate(speeches_list)
         ]
 
-    def _extract_and_create_speakers(self, conversations: list[Conversation]) -> int:
+    async def _extract_and_create_speakers(
+        self, conversations: list[Conversation]
+    ) -> int:
         """発言から一意な発言者を抽出し、発言者レコードを作成する
 
         Args:
@@ -250,7 +257,7 @@ class ProcessMinutesUseCase:
         created_count = 0
         for name, party_info in speaker_names:
             # Check if speaker exists
-            existing = self.speaker_repo.get_by_name_party_position(
+            existing = await self.speaker_repo.get_by_name_party_position(
                 name, party_info, None
             )
 
@@ -263,7 +270,7 @@ class ProcessMinutesUseCase:
                     political_party_name=party_info,
                     is_politician=bool(party_info),  # Assume politician if has party
                 )
-                self.speaker_repo.create(speaker)
+                await self.speaker_repo.create(speaker)
                 created_count += 1
 
         return created_count

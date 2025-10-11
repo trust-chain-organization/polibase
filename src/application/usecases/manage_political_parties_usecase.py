@@ -90,7 +90,7 @@ class ManagePoliticalPartiesUseCase:
         self.repository = repository
         self.logger = get_logger(self.__class__.__name__)
 
-    def list_parties(
+    async def list_parties(
         self, input_dto: PoliticalPartyListInputDto
     ) -> PoliticalPartyListOutputDto:
         """List political parties with optional filtering.
@@ -103,7 +103,7 @@ class ManagePoliticalPartiesUseCase:
         """
         try:
             # Get all parties
-            all_parties = self.repository.get_all()
+            all_parties = await self.repository.get_all()
             # Sort by name
             all_parties.sort(key=lambda p: p.name or "")
 
@@ -132,7 +132,7 @@ class ManagePoliticalPartiesUseCase:
             self.logger.error(f"Error listing political parties: {e}", exc_info=True)
             raise
 
-    def update_party_url(
+    async def update_party_url(
         self, input_dto: UpdatePoliticalPartyUrlInputDto
     ) -> UpdatePoliticalPartyUrlOutputDto:
         """Update political party members list URL.
@@ -145,7 +145,7 @@ class ManagePoliticalPartiesUseCase:
         """
         try:
             # Get the party
-            party = self.repository.get_by_id(input_dto.party_id)
+            party = await self.repository.get_by_id(input_dto.party_id)
             if not party:
                 return UpdatePoliticalPartyUrlOutputDto(
                     success=False,
@@ -154,7 +154,7 @@ class ManagePoliticalPartiesUseCase:
 
             # Update the URL
             party.members_list_url = input_dto.members_list_url
-            updated_party = self.repository.update(party)
+            updated_party = await self.repository.update(party)
             return UpdatePoliticalPartyUrlOutputDto(
                 success=True, message="URLを更新しました", party=updated_party
             )
