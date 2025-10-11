@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.infrastructure.external.llm_service import GeminiLLMService
 from src.parliamentary_group_member_extractor.models import (
     ExtractedMember,
@@ -23,7 +24,7 @@ from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
 class ParliamentaryGroupMemberExtractor:
     """議員団メンバー抽出器"""
 
-    def __init__(self, llm_service: GeminiLLMService | None = None):
+    def __init__(self, llm_service: GeminiLLMService | ILLMService | None = None):
         """初期化
 
         Args:

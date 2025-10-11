@@ -30,7 +30,10 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
         super().__init__(container)
         # Initialize repositories and use case
         self.governing_body_repo = RepositoryAdapter(GoverningBodyRepositoryImpl)
-        self.use_case = ManageGoverningBodiesUseCase(self.governing_body_repo)
+        # Type: ignore - RepositoryAdapter duck-types as repository protocol
+        self.use_case = ManageGoverningBodiesUseCase(
+            self.governing_body_repo  # type: ignore[arg-type]
+        )
         self.session = SessionManager()
         self.form_state = self._get_or_create_form_state()
         self.logger = get_logger(__name__)
@@ -51,8 +54,14 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
 
     def load_data(self) -> list[GoverningBody]:
         """Load all governing bodies."""
+        return self._run_async(self._load_data_async())
+
+    async def _load_data_async(self) -> list[GoverningBody]:
+        """Load all governing bodies (async implementation)."""
         try:
-            result = self.use_case.list_governing_bodies(GoverningBodyListInputDto())
+            result = await self.use_case.list_governing_bodies(
+                GoverningBodyListInputDto()
+            )
             return result.governing_bodies
         except Exception as e:
             self.logger.error(f"Failed to load governing bodies: {e}")
@@ -62,8 +71,18 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
         self, type_filter: str | None = None, conference_filter: str | None = None
     ) -> tuple[list[GoverningBody], Any]:
         """Load governing bodies with filters and statistics."""
+        return self._run_async(
+            self._load_governing_bodies_with_filters_async(
+                type_filter, conference_filter
+            )
+        )
+
+    async def _load_governing_bodies_with_filters_async(
+        self, type_filter: str | None = None, conference_filter: str | None = None
+    ) -> tuple[list[GoverningBody], Any]:
+        """Load governing bodies with filters and statistics (async implementation)."""
         try:
-            result = self.use_case.list_governing_bodies(
+            result = await self.use_case.list_governing_bodies(
                 GoverningBodyListInputDto(
                     type_filter=type_filter, conference_filter=conference_filter
                 )
@@ -89,8 +108,20 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
         organization_type: str | None = None,
     ) -> tuple[bool, str | None]:
         """Create a new governing body."""
+        return self._run_async(
+            self._create_async(name, type, organization_code, organization_type)
+        )
+
+    async def _create_async(
+        self,
+        name: str,
+        type: str,
+        organization_code: str | None = None,
+        organization_type: str | None = None,
+    ) -> tuple[bool, str | None]:
+        """Create a new governing body (async implementation)."""
         try:
-            result = self.use_case.create_governing_body(
+            result = await self.use_case.create_governing_body(
                 CreateGoverningBodyInputDto(
                     name=name,
                     type=type,
@@ -116,8 +147,21 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
         organization_type: str | None = None,
     ) -> tuple[bool, str | None]:
         """Update an existing governing body."""
+        return self._run_async(
+            self._update_async(id, name, type, organization_code, organization_type)
+        )
+
+    async def _update_async(
+        self,
+        id: int,
+        name: str,
+        type: str,
+        organization_code: str | None = None,
+        organization_type: str | None = None,
+    ) -> tuple[bool, str | None]:
+        """Update an existing governing body (async implementation)."""
         try:
-            result = self.use_case.update_governing_body(
+            result = await self.use_case.update_governing_body(
                 UpdateGoverningBodyInputDto(
                     id=id,
                     name=name,
@@ -137,8 +181,12 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
 
     def delete(self, id: int) -> tuple[bool, str | None]:
         """Delete a governing body."""
+        return self._run_async(self._delete_async(id))
+
+    async def _delete_async(self, id: int) -> tuple[bool, str | None]:
+        """Delete a governing body (async implementation)."""
         try:
-            result = self.use_case.delete_governing_body(
+            result = await self.use_case.delete_governing_body(
                 DeleteGoverningBodyInputDto(id=id)
             )
             if result.success:
@@ -152,8 +200,12 @@ class GoverningBodyPresenter(BasePresenter[list[GoverningBody]]):
 
     def generate_seed_file(self) -> tuple[bool, str | None, str | None]:
         """Generate seed file for governing bodies."""
+        return self._run_async(self._generate_seed_file_async())
+
+    async def _generate_seed_file_async(self) -> tuple[bool, str | None, str | None]:
+        """Generate seed file for governing bodies (async implementation)."""
         try:
-            result = self.use_case.generate_seed_file()
+            result = await self.use_case.generate_seed_file()
             if result.success:
                 return True, result.seed_content, result.file_path
             else:

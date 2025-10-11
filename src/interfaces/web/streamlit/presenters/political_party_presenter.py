@@ -39,7 +39,10 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         """
         super().__init__(container)
         self.repository = RepositoryAdapter(PoliticalPartyRepositoryImpl)
-        self.use_case = ManagePoliticalPartiesUseCase(self.repository)
+        # Type: ignore - RepositoryAdapter duck-types as repository protocol
+        self.use_case = ManagePoliticalPartiesUseCase(
+            self.repository  # type: ignore[arg-type]
+        )
         self.session = SessionManager(namespace="political_party")
         self.form_state = self._get_or_create_form_state()
 
@@ -80,9 +83,15 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         Returns:
             Political party list with statistics
         """
+        return self._run_async(self._load_data_filtered_async(filter_type))
+
+    async def _load_data_filtered_async(
+        self, filter_type: str = "all"
+    ) -> PoliticalPartyListOutputDto:
+        """Load political parties data with filter (async implementation)."""
         try:
             input_dto = PoliticalPartyListInputDto(filter_type=filter_type)
-            return self.use_case.list_parties(input_dto)
+            return await self.use_case.list_parties(input_dto)
         except Exception as e:
             self.logger.error(f"Error loading political parties: {e}", exc_info=True)
             raise
@@ -111,6 +120,10 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         Returns:
             Update result DTO
         """
+        return self._run_async(self._update_async(**kwargs))
+
+    async def _update_async(self, **kwargs: Any) -> UpdatePoliticalPartyUrlOutputDto:
+        """Update political party URL (async implementation)."""
         party_id = kwargs.get("party_id")
         members_list_url = kwargs.get("members_list_url")
 
@@ -120,7 +133,7 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         input_dto = UpdatePoliticalPartyUrlInputDto(
             party_id=party_id, members_list_url=members_list_url
         )
-        return self.use_case.update_party_url(input_dto)
+        return await self.use_case.update_party_url(input_dto)
 
     def delete(self, **kwargs: Any) -> Any:
         """Delete is not supported for political parties (master data)."""

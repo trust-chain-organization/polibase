@@ -12,6 +12,8 @@ from langchain_core.prompts import PromptTemplate
 from sqlalchemy import text
 
 from src.config.database import get_db_session
+from src.domain.repositories.politician_repository import PoliticianRepository
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.infrastructure.persistence.parliamentary_group_repository_impl import (
     ParliamentaryGroupMembershipRepositoryImpl,
     ParliamentaryGroupRepositoryImpl,
@@ -44,8 +46,10 @@ class ParliamentaryGroupMembershipService:
 
     def __init__(
         self,
-        llm_service: LLMService | None = None,
-        politician_repo: PoliticianRepositorySyncImpl | None = None,
+        llm_service: ILLMService | LLMService | None = None,
+        politician_repo: PoliticianRepository
+        | PoliticianRepositorySyncImpl
+        | None = None,
         group_repo: Any | None = None,
         membership_repo: Any | None = None,
     ):
@@ -248,7 +252,8 @@ JSONで回答してください。
         try:
             # Use LLM service's llm property to invoke directly
             if hasattr(self.llm_service, "llm"):
-                response = self.llm_service.llm.invoke(formatted_prompt)
+                # type: ignore - optional llm attribute not in protocol
+                response = self.llm_service.llm.invoke(formatted_prompt)  # type: ignore[attr-defined]
             else:
                 raise AttributeError("LLM service does not have llm property")
 

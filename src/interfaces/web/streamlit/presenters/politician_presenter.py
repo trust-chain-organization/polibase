@@ -35,14 +35,21 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
         # Initialize repositories and use case
         self.politician_repo = RepositoryAdapter(PoliticianRepositoryImpl)
         self.party_repo = RepositoryAdapter(PoliticalPartyRepositoryImpl)
-        self.use_case = ManagePoliticiansUseCase(self.politician_repo)
+        # Type: ignore - RepositoryAdapter duck-types as repository protocol
+        self.use_case = ManagePoliticiansUseCase(
+            self.politician_repo  # type: ignore[arg-type]
+        )
         self.session = SessionManager()
         self.logger = get_logger(__name__)
 
     def load_data(self) -> list[Politician]:
         """Load all politicians."""
+        return self._run_async(self._load_data_async())
+
+    async def _load_data_async(self) -> list[Politician]:
+        """Load all politicians (async implementation)."""
         try:
-            result = self.use_case.list_politicians(PoliticianListInputDto())
+            result = await self.use_case.list_politicians(PoliticianListInputDto())
             return result.politicians
         except Exception as e:
             self.logger.error(f"Failed to load politicians: {e}")
@@ -52,8 +59,16 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
         self, party_id: int | None = None, search_name: str | None = None
     ) -> list[Politician]:
         """Load politicians with filters."""
+        return self._run_async(
+            self._load_politicians_with_filters_async(party_id, search_name)
+        )
+
+    async def _load_politicians_with_filters_async(
+        self, party_id: int | None = None, search_name: str | None = None
+    ) -> list[Politician]:
+        """Load politicians with filters (async implementation)."""
         try:
-            result = self.use_case.list_politicians(
+            result = await self.use_case.list_politicians(
                 PoliticianListInputDto(party_id=party_id, search_name=search_name)
             )
             return result.politicians
@@ -63,8 +78,12 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
 
     def get_all_parties(self) -> list[PoliticalParty]:
         """Get all political parties."""
+        return self._run_async(self._get_all_parties_async())
+
+    async def _get_all_parties_async(self) -> list[PoliticalParty]:
+        """Get all political parties (async implementation)."""
         try:
-            return self.party_repo.get_all()
+            return await self.party_repo.get_all()
         except Exception as e:
             self.logger.error(f"Failed to get parties: {e}")
             return []
@@ -78,8 +97,21 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
         image_url: str | None = None,
     ) -> tuple[bool, int | None, str | None]:
         """Create a new politician."""
+        return self._run_async(
+            self._create_async(name, party_id, district, profile_url, image_url)
+        )
+
+    async def _create_async(
+        self,
+        name: str,
+        party_id: int | None = None,
+        district: str | None = None,
+        profile_url: str | None = None,
+        image_url: str | None = None,
+    ) -> tuple[bool, int | None, str | None]:
+        """Create a new politician (async implementation)."""
         try:
-            result = self.use_case.create_politician(
+            result = await self.use_case.create_politician(
                 CreatePoliticianInputDto(
                     name=name,
                     party_id=party_id,
@@ -106,8 +138,21 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
         profile_url: str | None = None,
     ) -> tuple[bool, str | None]:
         """Update an existing politician."""
+        return self._run_async(
+            self._update_async(id, name, party_id, district, profile_url)
+        )
+
+    async def _update_async(
+        self,
+        id: int,
+        name: str,
+        party_id: int | None = None,
+        district: str | None = None,
+        profile_url: str | None = None,
+    ) -> tuple[bool, str | None]:
+        """Update an existing politician (async implementation)."""
         try:
-            result = self.use_case.update_politician(
+            result = await self.use_case.update_politician(
                 UpdatePoliticianInputDto(
                     id=id,
                     name=name,
@@ -127,8 +172,14 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
 
     def delete(self, id: int) -> tuple[bool, str | None]:
         """Delete a politician."""
+        return self._run_async(self._delete_async(id))
+
+    async def _delete_async(self, id: int) -> tuple[bool, str | None]:
+        """Delete a politician (async implementation)."""
         try:
-            result = self.use_case.delete_politician(DeletePoliticianInputDto(id=id))
+            result = await self.use_case.delete_politician(
+                DeletePoliticianInputDto(id=id)
+            )
             if result.success:
                 return True, None
             else:
@@ -140,8 +191,14 @@ class PoliticianPresenter(BasePresenter[list[Politician]]):
 
     def merge(self, source_id: int, target_id: int) -> tuple[bool, str | None]:
         """Merge two politicians."""
+        return self._run_async(self._merge_async(source_id, target_id))
+
+    async def _merge_async(
+        self, source_id: int, target_id: int
+    ) -> tuple[bool, str | None]:
+        """Merge two politicians (async implementation)."""
         try:
-            result = self.use_case.merge_politicians(
+            result = await self.use_case.merge_politicians(
                 MergePoliticiansInputDto(source_id=source_id, target_id=target_id)
             )
             if result.success:

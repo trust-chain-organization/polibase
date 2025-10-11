@@ -1,6 +1,5 @@
 """Use case for managing parliamentary groups."""
 
-import asyncio
 from dataclasses import dataclass
 from datetime import date
 
@@ -205,17 +204,17 @@ class ManageParliamentaryGroupsUseCase:
         else:
             self.membership_service = None
 
-    def list_parliamentary_groups(
+    async def list_parliamentary_groups(
         self, input_dto: ParliamentaryGroupListInputDto
     ) -> ParliamentaryGroupListOutputDto:
         """List parliamentary groups with optional filters."""
         try:
             if input_dto.conference_id:
-                groups = self.parliamentary_group_repository.get_by_conference_id(
+                groups = await self.parliamentary_group_repository.get_by_conference_id(
                     input_dto.conference_id, input_dto.active_only
                 )
             else:
-                groups = self.parliamentary_group_repository.get_all()
+                groups = await self.parliamentary_group_repository.get_all()
                 if input_dto.active_only:
                     groups = [g for g in groups if g.is_active]
 
@@ -224,14 +223,16 @@ class ManageParliamentaryGroupsUseCase:
             logger.error(f"Failed to list parliamentary groups: {e}")
             raise
 
-    def create_parliamentary_group(
+    async def create_parliamentary_group(
         self, input_dto: CreateParliamentaryGroupInputDto
     ) -> CreateParliamentaryGroupOutputDto:
         """Create a new parliamentary group."""
         try:
             # Check for duplicates
-            existing = self.parliamentary_group_repository.get_by_name_and_conference(
-                input_dto.name, input_dto.conference_id
+            existing = (
+                await self.parliamentary_group_repository.get_by_name_and_conference(
+                    input_dto.name, input_dto.conference_id
+                )
             )
             if existing:
                 return CreateParliamentaryGroupOutputDto(
@@ -249,7 +250,9 @@ class ManageParliamentaryGroupsUseCase:
                 is_active=input_dto.is_active,
             )
 
-            created = self.parliamentary_group_repository.create(parliamentary_group)
+            created = await self.parliamentary_group_repository.create(
+                parliamentary_group
+            )
             return CreateParliamentaryGroupOutputDto(
                 success=True, parliamentary_group=created
             )
@@ -259,13 +262,13 @@ class ManageParliamentaryGroupsUseCase:
                 success=False, error_message=str(e)
             )
 
-    def update_parliamentary_group(
+    async def update_parliamentary_group(
         self, input_dto: UpdateParliamentaryGroupInputDto
     ) -> UpdateParliamentaryGroupOutputDto:
         """Update an existing parliamentary group."""
         try:
             # Get existing parliamentary group
-            existing = self.parliamentary_group_repository.get_by_id(input_dto.id)
+            existing = await self.parliamentary_group_repository.get_by_id(input_dto.id)
             if not existing:
                 return UpdateParliamentaryGroupOutputDto(
                     success=False, error_message="議員団が見つかりません。"
@@ -277,7 +280,7 @@ class ManageParliamentaryGroupsUseCase:
             existing.description = input_dto.description
             existing.is_active = input_dto.is_active
 
-            self.parliamentary_group_repository.update(existing)
+            await self.parliamentary_group_repository.update(existing)
             return UpdateParliamentaryGroupOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to update parliamentary group: {e}")
@@ -285,13 +288,13 @@ class ManageParliamentaryGroupsUseCase:
                 success=False, error_message=str(e)
             )
 
-    def delete_parliamentary_group(
+    async def delete_parliamentary_group(
         self, input_dto: DeleteParliamentaryGroupInputDto
     ) -> DeleteParliamentaryGroupOutputDto:
         """Delete a parliamentary group."""
         try:
             # Check if parliamentary group exists
-            existing = self.parliamentary_group_repository.get_by_id(input_dto.id)
+            existing = await self.parliamentary_group_repository.get_by_id(input_dto.id)
             if not existing:
                 return DeleteParliamentaryGroupOutputDto(
                     success=False, error_message="議員団が見つかりません。"
@@ -307,7 +310,7 @@ class ManageParliamentaryGroupsUseCase:
             # TODO: Check if it has members
             # This would require a membership repository
 
-            self.parliamentary_group_repository.delete(input_dto.id)
+            await self.parliamentary_group_repository.delete(input_dto.id)
             return DeleteParliamentaryGroupOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to delete parliamentary group: {e}")
@@ -315,7 +318,7 @@ class ManageParliamentaryGroupsUseCase:
                 success=False, error_message=str(e)
             )
 
-    def extract_members(
+    async def extract_members(
         self, input_dto: ExtractMembersInputDto
     ) -> ExtractMembersOutputDto:
         """Extract members from parliamentary group URL."""
@@ -328,11 +331,9 @@ class ManageParliamentaryGroupsUseCase:
                 )
 
             # Extract members from URL using async extractor
-            extraction_result = asyncio.run(
-                self.extractor.extract_members(
-                    parliamentary_group_id=input_dto.parliamentary_group_id,
-                    url=input_dto.url,
-                )
+            extraction_result = await self.extractor.extract_members(
+                parliamentary_group_id=input_dto.parliamentary_group_id,
+                url=input_dto.url,
             )
 
             if extraction_result.error:
@@ -373,20 +374,10 @@ class ManageParliamentaryGroupsUseCase:
                 # Bulk create in database
                 try:
                     if hasattr(self.extracted_member_repository, "bulk_create"):
-                        # If it's a RepositoryAdapter, it will handle async conversion
-                        # If it's a direct async repository, we need asyncio.run
-                        if hasattr(self.extracted_member_repository, "_run_async"):
-                            # It's a RepositoryAdapter - call directly
-                            self.extracted_member_repository.bulk_create(
-                                entities_to_save
-                            )
-                        else:
-                            # It's a direct async repository
-                            asyncio.run(
-                                self.extracted_member_repository.bulk_create(
-                                    entities_to_save
-                                )
-                            )
+                        # Use await for async repositories
+                        await self.extracted_member_repository.bulk_create(
+                            entities_to_save
+                        )
                     logger.info(
                         f"Saved {len(entities_to_save)} extracted members to database"
                     )
@@ -403,8 +394,8 @@ class ManageParliamentaryGroupsUseCase:
                 )
 
             # Match politicians with extracted members
-            matching_results_from_service = asyncio.run(
-                self.membership_service.match_politicians(
+            matching_results_from_service = (
+                await self.membership_service.match_politicians(
                     extracted_members=extraction_result.extracted_members,
                     conference_id=None,  # Can be set if needed to narrow search
                 )
@@ -460,11 +451,11 @@ class ManageParliamentaryGroupsUseCase:
             logger.error(f"Failed to extract members: {e}")
             return ExtractMembersOutputDto(success=False, error_message=str(e))
 
-    def generate_seed_file(self) -> GenerateSeedFileOutputDto:
+    async def generate_seed_file(self) -> GenerateSeedFileOutputDto:
         """Generate seed file for parliamentary groups."""
         try:
             # Get all parliamentary groups
-            all_groups = self.parliamentary_group_repository.get_all()
+            all_groups = await self.parliamentary_group_repository.get_all()
 
             # Generate SQL content
             seed_content = "-- Parliamentary Groups Seed Data\n"
