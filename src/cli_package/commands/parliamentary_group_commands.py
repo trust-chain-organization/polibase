@@ -7,12 +7,7 @@ from typing import Any
 import click
 
 from src.cli_package.progress import ProgressTracker
-from src.config.database import get_db_session
-from src.infrastructure.persistence.parliamentary_group_repository_impl import (
-    ParliamentaryGroupMembershipRepositoryImpl,
-    ParliamentaryGroupRepositoryImpl,
-)
-from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+from src.infrastructure.di.container import get_container, init_container
 from src.parliamentary_group_member_extractor import (
     ParliamentaryGroupMemberExtractor,
     ParliamentaryGroupMembershipService,
@@ -60,7 +55,20 @@ def extract_group_members(
     start_date: datetime | None,
 ):
     """議員団メンバーをURLから抽出してメンバーシップを作成"""
-    session = get_db_session()
+    # Initialize and get dependencies from DI container
+    try:
+        container = get_container()
+    except RuntimeError:
+        container = init_container()
+
+    session = container.database.session()
+
+    # Import repository implementations
+    from src.infrastructure.persistence.parliamentary_group_repository_impl import (
+        ParliamentaryGroupRepositoryImpl,
+    )
+    from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+
     group_repo = RepositoryAdapter(ParliamentaryGroupRepositoryImpl, session)
 
     # 処理対象の議員団を取得
@@ -263,7 +271,21 @@ def list_parliamentary_groups(
     active_only: bool,
 ):
     """議員団の一覧を表示"""
-    session = get_db_session()
+    # Initialize and get dependencies from DI container
+    try:
+        container = get_container()
+    except RuntimeError:
+        container = init_container()
+
+    session = container.database.session()
+
+    # Import repository implementations
+    from src.infrastructure.persistence.parliamentary_group_repository_impl import (
+        ParliamentaryGroupMembershipRepositoryImpl,
+        ParliamentaryGroupRepositoryImpl,
+    )
+    from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+
     group_repo = RepositoryAdapter(ParliamentaryGroupRepositoryImpl, session)
     membership_repo = RepositoryAdapter(
         ParliamentaryGroupMembershipRepositoryImpl, session

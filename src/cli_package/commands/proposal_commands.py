@@ -5,70 +5,20 @@ import logging
 
 import click
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from src.application.dtos.proposal_judge_dto import (
     CreateProposalJudgesInputDTO,
     ExtractProposalJudgesInputDTO,
     MatchProposalJudgesInputDTO,
 )
-from src.application.usecases.extract_proposal_judges_usecase import (
-    ExtractProposalJudgesUseCase,
-)
 from src.cli_package.base import BaseCommand
-from src.infrastructure.external.llm_service import GeminiLLMService
-from src.infrastructure.external.web_scraper_service import PlaywrightScraperService
-from src.infrastructure.persistence.async_session_adapter import AsyncSessionAdapter
-from src.infrastructure.persistence.extracted_proposal_judge_repository_impl import (
-    ExtractedProposalJudgeRepositoryImpl,
-)
-from src.infrastructure.persistence.politician_repository_impl import (
-    PoliticianRepositoryImpl,
-)
-from src.infrastructure.persistence.proposal_judge_repository_impl import (
-    ProposalJudgeRepositoryImpl,
-)
-from src.infrastructure.persistence.proposal_repository_impl import (
-    ProposalRepositoryImpl,
-)
+from src.infrastructure.di.container import get_container, init_container
 
 logger = logging.getLogger(__name__)
 
 
 class ProposalCommands(BaseCommand):
     """Commands for proposal judge extraction and matching"""
-
-    @staticmethod
-    def _create_use_case(session: Session) -> ExtractProposalJudgesUseCase:
-        """Create and initialize the ExtractProposalJudgesUseCase with all dependencies.
-
-        Args:
-            session: Database session
-
-        Returns:
-            Configured ExtractProposalJudgesUseCase instance
-        """
-        async_session = AsyncSessionAdapter(session)
-
-        # Initialize repositories
-        proposal_repo = ProposalRepositoryImpl(async_session)
-        politician_repo = PoliticianRepositoryImpl(async_session)
-        extracted_repo = ExtractedProposalJudgeRepositoryImpl(async_session)
-        judge_repo = ProposalJudgeRepositoryImpl(async_session)
-
-        # Initialize services
-        llm_service = GeminiLLMService()
-        scraper_service = PlaywrightScraperService(llm_service=llm_service)
-
-        # Create use case
-        return ExtractProposalJudgesUseCase(
-            proposal_repository=proposal_repo,
-            politician_repository=politician_repo,
-            extracted_proposal_judge_repository=extracted_repo,
-            proposal_judge_repository=judge_repo,
-            web_scraper_service=scraper_service,
-            llm_service=llm_service,
-        )
 
     @staticmethod
     def echo_info(message: str):
@@ -135,48 +85,37 @@ class ProposalCommands(BaseCommand):
         click.echo("📋 議案賛否情報の抽出を開始します（ステップ1/3）")
 
         async def run_extract():
-            # Initialize database session
-            from sqlalchemy.orm import sessionmaker
-
-            from src.config.database import get_db_engine
-
-            engine = get_db_engine()
-            session_local = sessionmaker(bind=engine)
-            session = session_local()
-
+            # Initialize and get dependencies from DI container
             try:
-                # Create use case with common initialization
-                use_case = ProposalCommands._create_use_case(session)
+                container = get_container()
+            except RuntimeError:
+                container = init_container()
 
-                # Execute extraction
-                input_dto = ExtractProposalJudgesInputDTO(
-                    url=url,
-                    proposal_id=proposal_id,
-                    conference_id=conference_id,
-                    force=force,
+            use_case = container.use_cases.extract_proposal_judges_usecase()
+
+            # Execute extraction
+            input_dto = ExtractProposalJudgesInputDTO(
+                url=url,
+                proposal_id=proposal_id,
+                conference_id=conference_id,
+                force=force,
+            )
+
+            result = await use_case.extract_judges(input_dto)
+
+            ProposalCommands.echo_success(
+                f"抽出完了: {result.extracted_count}件の賛否情報を抽出しました"
+            )
+
+            # Show extracted judges
+            for judge in result.judges[:5]:  # Show first 5
+                party = judge.extracted_party_name or "無所属"
+                ProposalCommands.echo_info(
+                    f"  - {judge.extracted_name} ({party}): {judge.extracted_judgment}"
                 )
 
-                result = await use_case.extract_judges(input_dto)
-
-                ProposalCommands.echo_success(
-                    f"抽出完了: {result.extracted_count}件の賛否情報を抽出しました"
-                )
-
-                # Show extracted judges
-                for judge in result.judges[:5]:  # Show first 5
-                    party = judge.extracted_party_name or "無所属"
-                    ProposalCommands.echo_info(
-                        f"  - {judge.extracted_name} ({party}): "
-                        f"{judge.extracted_judgment}"
-                    )
-
-                if result.extracted_count > 5:
-                    ProposalCommands.echo_info(
-                        f"  ... 他 {result.extracted_count - 5}件"
-                    )
-
-            finally:
-                session.close()
+            if result.extracted_count > 5:
+                ProposalCommands.echo_info(f"  ... 他 {result.extracted_count - 5}件")
 
         # Run async function
         asyncio.run(run_extract())
@@ -206,68 +145,58 @@ class ProposalCommands(BaseCommand):
         click.echo("🔍 議案賛否情報と政治家のマッチングを開始します（ステップ2/3）")
 
         async def run_match():
-            # Initialize database session
-            from sqlalchemy.orm import sessionmaker
-
-            from src.config.database import get_db_engine
-
-            engine = get_db_engine()
-            session_local = sessionmaker(bind=engine)
-            session = session_local()
-
+            # Initialize and get dependencies from DI container
             try:
-                # Create use case with common initialization
-                use_case = ProposalCommands._create_use_case(session)
+                container = get_container()
+            except RuntimeError:
+                container = init_container()
 
-                # Execute matching
-                input_dto = MatchProposalJudgesInputDTO(
-                    proposal_id=proposal_id,
-                    judge_ids=list(judge_ids) if judge_ids else None,
-                )
+            use_case = container.use_cases.extract_proposal_judges_usecase()
 
-                result = await use_case.match_judges(input_dto)
+            # Execute matching
+            input_dto = MatchProposalJudgesInputDTO(
+                proposal_id=proposal_id,
+                judge_ids=list(judge_ids) if judge_ids else None,
+            )
 
-                ProposalCommands.echo_success(
-                    f"マッチング完了: "
-                    f"matched={result.matched_count}, "
-                    f"needs_review={result.needs_review_count}, "
-                    f"no_match={result.no_match_count}"
-                )
+            result = await use_case.match_judges(input_dto)
 
-                # Show results
-                if result.matched_count > 0:
-                    ProposalCommands.echo_info("\n✅ マッチ成功:")
-                    matched = [
-                        r for r in result.results if r.matching_status == "matched"
-                    ]
-                    for r in matched[:5]:
-                        ProposalCommands.echo_info(
-                            f"  {r.judge_name} → {r.matched_politician_name} "
-                            f"(信頼度: {r.confidence_score:.2f})"
-                        )
+            ProposalCommands.echo_success(
+                f"マッチング完了: "
+                f"matched={result.matched_count}, "
+                f"needs_review={result.needs_review_count}, "
+                f"no_match={result.no_match_count}"
+            )
 
-                if result.needs_review_count > 0:
-                    ProposalCommands.echo_warning("\n⚠️ 要確認:")
-                    needs_review = [
-                        r for r in result.results if r.matching_status == "needs_review"
-                    ]
-                    for r in needs_review[:5]:
-                        politician = r.matched_politician_name or "候補なし"
-                        ProposalCommands.echo_warning(
-                            f"  {r.judge_name} → {politician} "
-                            f"(信頼度: {r.confidence_score:.2f})"
-                        )
+            # Show results
+            if result.matched_count > 0:
+                ProposalCommands.echo_info("\n✅ マッチ成功:")
+                matched = [r for r in result.results if r.matching_status == "matched"]
+                for r in matched[:5]:
+                    ProposalCommands.echo_info(
+                        f"  {r.judge_name} → {r.matched_politician_name} "
+                        f"(信頼度: {r.confidence_score:.2f})"
+                    )
 
-                if result.no_match_count > 0:
-                    ProposalCommands.echo_error("\n❌ マッチなし:")
-                    no_match = [
-                        r for r in result.results if r.matching_status == "no_match"
-                    ]
-                    for r in no_match[:5]:
-                        ProposalCommands.echo_error(f"  {r.judge_name}")
+            if result.needs_review_count > 0:
+                ProposalCommands.echo_warning("\n⚠️ 要確認:")
+                needs_review = [
+                    r for r in result.results if r.matching_status == "needs_review"
+                ]
+                for r in needs_review[:5]:
+                    politician = r.matched_politician_name or "候補なし"
+                    ProposalCommands.echo_warning(
+                        f"  {r.judge_name} → {politician} "
+                        f"(信頼度: {r.confidence_score:.2f})"
+                    )
 
-            finally:
-                session.close()
+            if result.no_match_count > 0:
+                ProposalCommands.echo_error("\n❌ マッチなし:")
+                no_match = [
+                    r for r in result.results if r.matching_status == "no_match"
+                ]
+                for r in no_match[:5]:
+                    ProposalCommands.echo_error(f"  {r.judge_name}")
 
         # Run async function
         asyncio.run(run_match())
@@ -296,44 +225,36 @@ class ProposalCommands(BaseCommand):
         click.echo("✍️ 議案賛否レコードの作成を開始します（ステップ3/3）")
 
         async def run_create():
-            # Initialize database session
-            from sqlalchemy.orm import sessionmaker
-
-            from src.config.database import get_db_engine
-
-            engine = get_db_engine()
-            session_local = sessionmaker(bind=engine)
-            session = session_local()
-
+            # Initialize and get dependencies from DI container
             try:
-                # Create use case with common initialization
-                use_case = ProposalCommands._create_use_case(session)
+                container = get_container()
+            except RuntimeError:
+                container = init_container()
 
-                # Execute creation
-                input_dto = CreateProposalJudgesInputDTO(
-                    proposal_id=proposal_id,
-                    judge_ids=list(judge_ids) if judge_ids else None,
+            use_case = container.use_cases.extract_proposal_judges_usecase()
+
+            # Execute creation
+            input_dto = CreateProposalJudgesInputDTO(
+                proposal_id=proposal_id,
+                judge_ids=list(judge_ids) if judge_ids else None,
+            )
+
+            result = await use_case.create_judges(input_dto)
+
+            ProposalCommands.echo_success(
+                f"作成完了: "
+                f"{result.created_count}件の賛否レコードを作成、"
+                f"{result.skipped_count}件をスキップ"
+            )
+
+            # Show created judges
+            for judge in result.judges[:10]:
+                ProposalCommands.echo_info(
+                    f"  ✓ {judge.politician_name}: {judge.judgment}"
                 )
 
-                result = await use_case.create_judges(input_dto)
-
-                ProposalCommands.echo_success(
-                    f"作成完了: "
-                    f"{result.created_count}件の賛否レコードを作成、"
-                    f"{result.skipped_count}件をスキップ"
-                )
-
-                # Show created judges
-                for judge in result.judges[:10]:
-                    ProposalCommands.echo_info(
-                        f"  ✓ {judge.politician_name}: {judge.judgment}"
-                    )
-
-                if len(result.judges) > 10:
-                    ProposalCommands.echo_info(f"  ... 他 {len(result.judges) - 10}件")
-
-            finally:
-                session.close()
+            if len(result.judges) > 10:
+                ProposalCommands.echo_info(f"  ... 他 {len(result.judges) - 10}件")
 
         # Run async function
         asyncio.run(run_create())
@@ -352,13 +273,13 @@ class ProposalCommands(BaseCommand):
         """
         click.echo("📊 議案賛否情報の処理状況")
 
-        from sqlalchemy.orm import sessionmaker
+        # Initialize and get dependencies from DI container
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
 
-        from src.config.database import get_db_engine
-
-        engine = get_db_engine()
-        session_local = sessionmaker(bind=engine)
-        session = session_local()
+        session = container.database.session()
 
         try:
             # Get statistics from database

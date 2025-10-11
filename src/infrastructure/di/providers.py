@@ -14,6 +14,9 @@ from src.application.usecases.convert_extracted_politician_usecase import (
 from src.application.usecases.execute_speaker_extraction_usecase import (
     ExecuteSpeakerExtractionUseCase,
 )
+from src.application.usecases.extract_proposal_judges_usecase import (
+    ExtractProposalJudgesUseCase,
+)
 from src.application.usecases.manage_conference_members_usecase import (
     ManageConferenceMembersUseCase,
 )
@@ -66,6 +69,7 @@ from src.infrastructure.persistence.monitoring_repository_impl import (
     MonitoringRepositoryImpl,
 )
 from src.infrastructure.persistence.parliamentary_group_repository_impl import (
+    ParliamentaryGroupMembershipRepositoryImpl,
     ParliamentaryGroupRepositoryImpl,
 )
 from src.infrastructure.persistence.political_party_repository_impl import (
@@ -79,6 +83,12 @@ from src.infrastructure.persistence.politician_repository_impl import (
 )
 from src.infrastructure.persistence.prompt_version_repository_impl import (
     PromptVersionRepositoryImpl,
+)
+from src.infrastructure.persistence.proposal_judge_repository_impl import (
+    ProposalJudgeRepositoryImpl,
+)
+from src.infrastructure.persistence.proposal_repository_impl import (
+    ProposalRepositoryImpl,
 )
 from src.infrastructure.persistence.speaker_repository_impl import SpeakerRepositoryImpl
 
@@ -276,6 +286,11 @@ class RepositoryContainer(containers.DeclarativeContainer):
         session=database.async_session,
     )
 
+    parliamentary_group_membership_repository = providers.Factory(
+        ParliamentaryGroupMembershipRepositoryImpl,
+        session=database.async_session,
+    )
+
     monitoring_repository = providers.Factory(
         MonitoringRepositoryImpl,
         session=database.async_session,
@@ -288,6 +303,16 @@ class RepositoryContainer(containers.DeclarativeContainer):
 
     prompt_version_repository = providers.Factory(
         PromptVersionRepositoryImpl,
+        session=database.async_session,
+    )
+
+    proposal_repository = providers.Factory(
+        ProposalRepositoryImpl,
+        session=database.async_session,
+    )
+
+    proposal_judge_repository = providers.Factory(
+        ProposalJudgeRepositoryImpl,
         session=database.async_session,
     )
 
@@ -404,4 +429,14 @@ class UseCaseContainer(containers.DeclarativeContainer):
         conversation_repository=repositories.conversation_repository,
         speaker_repository=repositories.speaker_repository,
         speaker_domain_service=services.speaker_domain_service,
+    )
+
+    extract_proposal_judges_usecase = providers.Factory(
+        ExtractProposalJudgesUseCase,
+        proposal_repository=repositories.proposal_repository,
+        politician_repository=repositories.politician_repository,
+        extracted_proposal_judge_repository=repositories.extracted_proposal_judge_repository,
+        proposal_judge_repository=repositories.proposal_judge_repository,
+        web_scraper_service=services.web_scraper_service,
+        llm_service=services.llm_service,
     )
