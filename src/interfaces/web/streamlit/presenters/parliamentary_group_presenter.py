@@ -58,12 +58,13 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
         self.llm_service = GeminiLLMService()
 
         # Initialize use case with all required dependencies
+        # Type: ignore - RepositoryAdapter duck-types as repository protocol
         self.use_case = ManageParliamentaryGroupsUseCase(
-            parliamentary_group_repository=self.parliamentary_group_repo,
-            politician_repository=self.politician_repo,
-            membership_repository=self.membership_repo,
+            parliamentary_group_repository=self.parliamentary_group_repo,  # type: ignore[arg-type]
+            politician_repository=self.politician_repo,  # type: ignore[arg-type]
+            membership_repository=self.membership_repo,  # type: ignore[arg-type]
             llm_service=self.llm_service,
-            extracted_member_repository=self.extracted_member_repo,
+            extracted_member_repository=self.extracted_member_repo,  # type: ignore[arg-type]
         )
         self.session = SessionManager()
         self.form_state = self._get_or_create_form_state()
@@ -87,8 +88,12 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
 
     def load_data(self) -> list[ParliamentaryGroup]:
         """Load all parliamentary groups."""
+        return self._run_async(self._load_data_async())
+
+    async def _load_data_async(self) -> list[ParliamentaryGroup]:
+        """Load all parliamentary groups (async implementation)."""
         try:
-            result = self.use_case.list_parliamentary_groups(
+            result = await self.use_case.list_parliamentary_groups(
                 ParliamentaryGroupListInputDto()
             )
             return result.parliamentary_groups
@@ -100,8 +105,18 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
         self, conference_id: int | None = None, active_only: bool = False
     ) -> list[ParliamentaryGroup]:
         """Load parliamentary groups with filters."""
+        return self._run_async(
+            self._load_parliamentary_groups_with_filters_async(
+                conference_id, active_only
+            )
+        )
+
+    async def _load_parliamentary_groups_with_filters_async(
+        self, conference_id: int | None = None, active_only: bool = False
+    ) -> list[ParliamentaryGroup]:
+        """Load parliamentary groups with filters (async implementation)."""
         try:
-            result = self.use_case.list_parliamentary_groups(
+            result = await self.use_case.list_parliamentary_groups(
                 ParliamentaryGroupListInputDto(
                     conference_id=conference_id, active_only=active_only
                 )
@@ -113,8 +128,12 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
 
     def get_all_conferences(self) -> list[Conference]:
         """Get all conferences."""
+        return self._run_async(self._get_all_conferences_async())
+
+    async def _get_all_conferences_async(self) -> list[Conference]:
+        """Get all conferences (async implementation)."""
         try:
-            return self.conference_repo.get_all()
+            return await self.conference_repo.get_all()
         except Exception as e:
             self.logger.error(f"Failed to get conferences: {e}")
             return []
@@ -128,8 +147,21 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
         is_active: bool = True,
     ) -> tuple[bool, ParliamentaryGroup | None, str | None]:
         """Create a new parliamentary group."""
+        return self._run_async(
+            self._create_async(name, conference_id, url, description, is_active)
+        )
+
+    async def _create_async(
+        self,
+        name: str,
+        conference_id: int,
+        url: str | None = None,
+        description: str | None = None,
+        is_active: bool = True,
+    ) -> tuple[bool, ParliamentaryGroup | None, str | None]:
+        """Create a new parliamentary group (async implementation)."""
         try:
-            result = self.use_case.create_parliamentary_group(
+            result = await self.use_case.create_parliamentary_group(
                 CreateParliamentaryGroupInputDto(
                     name=name,
                     conference_id=conference_id,
@@ -156,8 +188,21 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
         is_active: bool = True,
     ) -> tuple[bool, str | None]:
         """Update an existing parliamentary group."""
+        return self._run_async(
+            self._update_async(id, name, url, description, is_active)
+        )
+
+    async def _update_async(
+        self,
+        id: int,
+        name: str,
+        url: str | None = None,
+        description: str | None = None,
+        is_active: bool = True,
+    ) -> tuple[bool, str | None]:
+        """Update an existing parliamentary group (async implementation)."""
         try:
-            result = self.use_case.update_parliamentary_group(
+            result = await self.use_case.update_parliamentary_group(
                 UpdateParliamentaryGroupInputDto(
                     id=id,
                     name=name,
@@ -177,8 +222,12 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
 
     def delete(self, id: int) -> tuple[bool, str | None]:
         """Delete a parliamentary group."""
+        return self._run_async(self._delete_async(id))
+
+    async def _delete_async(self, id: int) -> tuple[bool, str | None]:
+        """Delete a parliamentary group (async implementation)."""
         try:
-            result = self.use_case.delete_parliamentary_group(
+            result = await self.use_case.delete_parliamentary_group(
                 DeleteParliamentaryGroupInputDto(id=id)
             )
             if result.success:
@@ -199,8 +248,23 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
         dry_run: bool = True,
     ) -> tuple[bool, Any, str | None]:
         """Extract members from parliamentary group URL."""
+        return self._run_async(
+            self._extract_members_async(
+                parliamentary_group_id, url, confidence_threshold, start_date, dry_run
+            )
+        )
+
+    async def _extract_members_async(
+        self,
+        parliamentary_group_id: int,
+        url: str,
+        confidence_threshold: float = 0.7,
+        start_date: date | None = None,
+        dry_run: bool = True,
+    ) -> tuple[bool, Any, str | None]:
+        """Extract members from parliamentary group URL (async implementation)."""
         try:
-            result = self.use_case.extract_members(
+            result = await self.use_case.extract_members(
                 ExtractMembersInputDto(
                     parliamentary_group_id=parliamentary_group_id,
                     url=url,
@@ -220,8 +284,12 @@ class ParliamentaryGroupPresenter(BasePresenter[list[ParliamentaryGroup]]):
 
     def generate_seed_file(self) -> tuple[bool, str | None, str | None]:
         """Generate seed file for parliamentary groups."""
+        return self._run_async(self._generate_seed_file_async())
+
+    async def _generate_seed_file_async(self) -> tuple[bool, str | None, str | None]:
+        """Generate seed file for parliamentary groups (async implementation)."""
         try:
-            result = self.use_case.generate_seed_file()
+            result = await self.use_case.generate_seed_file()
             if result.success:
                 return True, result.seed_content, result.file_path
             else:
