@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.proposal import Proposal
 from src.domain.repositories.proposal_repository import ProposalRepository
-from src.exceptions import DatabaseError
+from src.infrastructure.exceptions import DatabaseError
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 logger = logging.getLogger(__name__)

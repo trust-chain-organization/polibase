@@ -19,7 +19,12 @@ from src.domain.services.meeting_processing_status_service import (
     MeetingProcessingStatusService,
 )
 from src.domain.services.speaker_domain_service import SpeakerDomainService
-from src.exceptions import DatabaseError, RecordNotFoundError, SaveError, UpdateError
+from src.infrastructure.exceptions import (
+    DatabaseError,
+    RecordNotFoundError,
+    SaveError,
+    UpdateError,
+)
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
 )

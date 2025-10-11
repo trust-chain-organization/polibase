@@ -13,7 +13,7 @@ from src.conference_member_extractor.extractor import ConferenceMemberExtractor
 from src.conference_member_extractor.matching_service import (
     ConferenceMemberMatchingService,
 )
-from src.exceptions import DatabaseError, ScrapingError
+from src.infrastructure.exceptions import DatabaseError, ScrapingError
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
 )

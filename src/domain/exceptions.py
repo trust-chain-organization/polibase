@@ -38,6 +38,19 @@ class PolibaseException(Exception):  # noqa: N818
         return self.message
 
 
+# Backward compatibility wrapper
+class PolibaseError(PolibaseException):
+    """Backward compatibility wrapper for the old PolibaseError signature"""
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
+        """
+        Args:
+            message: エラーメッセージ
+            details: 追加の詳細情報
+        """
+        super().__init__(message=message, error_code=None, details=details)
+
+
 class DomainException(PolibaseException):
     """ドメイン層の基底例外クラス
 
@@ -198,4 +211,30 @@ class DataIntegrityException(DomainException):
             message=message,
             error_code="DOM-006",
             details={"constraint": constraint, "violation": violation_details},
+        )
+
+
+class ExternalServiceException(DomainException):
+    """外部サービス操作失敗の例外
+
+    ドメインロジックで必要な外部サービス操作が失敗した場合に発生
+    インフラ層の例外をドメイン層で扱うためのラッパー
+    """
+
+    def __init__(self, service_name: str, operation: str, reason: str):
+        """
+        Args:
+            service_name: サービス名（例: "LLM", "Storage", "ExternalAPI"）
+            operation: 実行しようとした操作
+            reason: 失敗理由
+        """
+        message = f"{service_name}サービス操作が失敗しました ({operation}): {reason}"
+        super().__init__(
+            message=message,
+            error_code="DOM-007",
+            details={
+                "service_name": service_name,
+                "operation": operation,
+                "reason": reason,
+            },
         )

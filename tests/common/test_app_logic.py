@@ -60,7 +60,8 @@ class TestLoadPdfText:
         with pytest.raises(PolibaseFileNotFoundError) as exc_info:
             load_pdf_text("/nonexistent.pdf")
 
-        assert "PDF file not found" in str(exc_info.value)
+        # Check that the error message contains the file path
+        assert "/nonexistent.pdf" in str(exc_info.value)
 
     @patch("os.path.exists")
     @patch("builtins.open")

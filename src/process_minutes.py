@@ -8,6 +8,7 @@ import argparse
 import os
 import sys
 
+from src.application.exceptions import PDFProcessingError, ProcessingError
 from src.common.app_logic import (
     load_pdf_text,
     print_completion_message,
@@ -17,12 +18,7 @@ from src.common.instrumentation import measure_time
 from src.common.logging import get_logger
 from src.common.metrics import CommonMetrics, setup_metrics
 from src.config import config
-from src.exceptions import (
-    APIKeyError,
-    DatabaseError,
-    PDFProcessingError,
-    ProcessingError,
-)
+from src.infrastructure.exceptions import APIKeyError, DatabaseError
 from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl,

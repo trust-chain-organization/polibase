@@ -90,12 +90,9 @@ def validate_config() -> None:
     # Validate DATABASE_URL format
     if not DATABASE_URL.startswith(("postgresql://", "postgres://")):
         raise InvalidConfigError(
-            "DATABASE_URL must be a valid PostgreSQL connection string",
-            {
-                "current_value": DATABASE_URL[:30] + "..."
-                if len(DATABASE_URL) > 30
-                else DATABASE_URL
-            },
+            "DATABASE_URL",
+            DATABASE_URL[:30] + "..." if len(DATABASE_URL) > 30 else DATABASE_URL,
+            "must be a valid PostgreSQL connection string",
         )
 
 
@@ -131,7 +128,5 @@ def get_required_config(key: str) -> str:
     """
     value = globals().get(key)
     if value is None:
-        raise MissingConfigError(
-            f"Required configuration '{key}' is not set", {"key": key}
-        )
+        raise MissingConfigError(key, f"Required configuration '{key}' is not set")
     return value

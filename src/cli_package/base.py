@@ -8,19 +8,19 @@ from typing import ParamSpec, TypeVar
 
 import click
 
-from src.exceptions import (
+from src.application.exceptions import ConfigurationError, ProcessingError
+from src.domain.exceptions import PolibaseError
+from src.infrastructure.exceptions import (
     APIKeyError,
-    ConfigurationError,
     ConnectionError,
     DatabaseError,
     LLMError,
-    PolibaseError,
-    ProcessingError,
     RecordNotFoundError,
     ScrapingError,
     StorageError,
-    ValidationError,
 )
+
+ValidationError = ProcessingError  # Alias for backward compatibility
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -149,6 +149,8 @@ def with_error_handling(func: Callable[P, T]) -> Callable[P, T]:  # noqa: UP047
             sys.exit(4)
         except ValidationError as e:
             click.echo(f"\nValidation Error: {str(e)}", err=True)
+            if e.details:
+                click.echo(f"Details: {e.details}", err=True)
             sys.exit(5)
         except DatabaseError as e:
             click.echo(f"\nDatabase Error: {str(e)}", err=True)
@@ -160,11 +162,6 @@ def with_error_handling(func: Callable[P, T]) -> Callable[P, T]:  # noqa: UP047
             if e.details:
                 click.echo(f"Details: {e.details}", err=True)
             sys.exit(11)
-        except ProcessingError as e:
-            click.echo(f"\nProcessing Error: {str(e)}", err=True)
-            if e.details:
-                click.echo(f"Details: {e.details}", err=True)
-            sys.exit(12)
         except LLMError as e:
             click.echo(f"\nLLM Error: {str(e)}", err=True)
             if e.details:

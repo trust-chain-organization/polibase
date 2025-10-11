@@ -226,7 +226,7 @@ class GoverningBodyRepositoryImpl(
         Returns:
             Updated GoverningBody entity
         """
-        from src.exceptions import UpdateError
+        from src.infrastructure.exceptions import UpdateError
 
         query = text("""
             UPDATE governing_bodies

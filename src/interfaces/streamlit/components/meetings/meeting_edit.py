@@ -3,7 +3,11 @@
 from datetime import date
 
 import streamlit as st
-from src.exceptions import DatabaseError, RecordNotFoundError, UpdateError
+from src.infrastructure.exceptions import (
+    DatabaseError,
+    RecordNotFoundError,
+    UpdateError,
+)
 from src.infrastructure.persistence.meeting_repository_impl import (
     MeetingRepositoryImpl,
 )

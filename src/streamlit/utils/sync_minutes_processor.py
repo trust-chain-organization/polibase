@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from src.application.exceptions import ProcessingError
 from src.common.logging import get_logger
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.minutes import Minutes
 from src.domain.entities.speaker import Speaker
-from src.exceptions import APIKeyError, ProcessingError
+from src.infrastructure.exceptions import APIKeyError
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl as AsyncConversationRepo,
 )

@@ -104,9 +104,7 @@ class GCSStorage:
         local_path = Path(local_path)
 
         if not local_path.exists():
-            raise PolibaseFileNotFoundError(
-                f"Local file not found: {local_path}", {"file_path": str(local_path)}
-            )
+            raise PolibaseFileNotFoundError(str(local_path))
 
         try:
             blob: Any = self.bucket.blob(gcs_path)
@@ -192,10 +190,7 @@ class GCSStorage:
 
             exists: bool = blob.exists()
             if not exists:
-                raise PolibaseFileNotFoundError(
-                    f"File not found in GCS: {gcs_path}",
-                    {"bucket": self.bucket_name, "path": gcs_path},
-                )
+                raise PolibaseFileNotFoundError(f"gs://{self.bucket_name}/{gcs_path}")
 
             blob.download_to_filename(str(local_path))
             logger.info(
@@ -204,8 +199,7 @@ class GCSStorage:
 
         except NotFound:
             raise PolibaseFileNotFoundError(
-                f"File not found in GCS: {gcs_path}",
-                {"bucket": self.bucket_name, "path": gcs_path},
+                f"gs://{self.bucket_name}/{gcs_path}"
             ) from None
         except GoogleCloudError as e:
             if HAS_GCS and isinstance(e, Forbidden):

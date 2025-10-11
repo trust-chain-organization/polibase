@@ -8,9 +8,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from src.domain.exceptions import ExternalServiceException
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.services.interfaces.llm_service import ILLMService
-from src.exceptions import LLMError
 
 logger = logging.getLogger(__name__)
 
@@ -125,15 +125,16 @@ class PoliticianMatchingService:
 
             return match_result
 
-        except LLMError:
-            # LLM specific errors are already properly handled, re-raise
+        except ExternalServiceException:
+            # External service errors are already properly handled, re-raise
             raise
         except Exception as e:
             logger.error(f"LLM政治家マッチング中の予期しないエラー: {e}")
             # Wrap unexpected errors as LLMError
-            raise LLMError(
-                "Unexpected error during LLM politician matching",
-                {"speaker_name": speaker_name, "error": str(e)},
+            raise ExternalServiceException(
+                service_name="LLM",
+                operation="politician_matching",
+                reason=f"Unexpected error during politician matching: {str(e)}",
             ) from e
 
     def _rule_based_matching(
