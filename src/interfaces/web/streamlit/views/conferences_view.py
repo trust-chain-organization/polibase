@@ -29,7 +29,8 @@ def render_conferences_page():
     governing_body_repo = RepositoryAdapter(GoverningBodyRepositoryImpl)
 
     # Initialize use case and presenter
-    use_case = ManageConferencesUseCase(conference_repo)
+    # Type: ignore - RepositoryAdapter duck-types as repository protocol
+    use_case = ManageConferencesUseCase(conference_repo)  # type: ignore[arg-type]
     presenter = ConferencePresenter(use_case)
 
     # Create tabs

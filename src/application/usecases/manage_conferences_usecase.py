@@ -1,10 +1,10 @@
 """Use case for managing conferences."""
 
 from dataclasses import dataclass
-from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import Conference
+from src.domain.repositories.conference_repository import ConferenceRepository
 
 logger = get_logger(__name__)
 
@@ -92,7 +92,7 @@ class GenerateSeedFileOutputDto:
 class ManageConferencesUseCase:
     """Use case for managing conferences."""
 
-    def __init__(self, conference_repository: Any):
+    def __init__(self, conference_repository: ConferenceRepository):
         """Initialize the use case.
 
         Args:
@@ -100,17 +100,17 @@ class ManageConferencesUseCase:
         """
         self.conference_repository = conference_repository
 
-    def list_conferences(
+    async def list_conferences(
         self, input_dto: ConferenceListInputDto
     ) -> ConferenceListOutputDto:
         """List conferences with optional filters."""
         try:
             if input_dto.governing_body_id:
-                conferences = self.conference_repository.get_by_governing_body(
+                conferences = await self.conference_repository.get_by_governing_body(
                     input_dto.governing_body_id
                 )
             else:
-                conferences = self.conference_repository.get_all()
+                conferences = await self.conference_repository.get_all()
             # Apply URL filter if specified
             if input_dto.with_members_url is not None:
                 if input_dto.with_members_url:
@@ -121,7 +121,7 @@ class ManageConferencesUseCase:
                     ]
 
             # Count statistics
-            all_conferences = self.conference_repository.get_all()
+            all_conferences = await self.conference_repository.get_all()
             with_url_count = len(
                 [c for c in all_conferences if c.members_introduction_url]
             )
@@ -135,15 +135,17 @@ class ManageConferencesUseCase:
             logger.error(f"Failed to list conferences: {e}")
             raise
 
-    def create_conference(
+    async def create_conference(
         self, input_dto: CreateConferenceInputDto
     ) -> CreateConferenceOutputDto:
         """Create a new conference."""
         try:
             # Check for duplicates
             if input_dto.governing_body_id is not None:
-                existing = self.conference_repository.get_by_name_and_governing_body(
-                    input_dto.name, input_dto.governing_body_id
+                existing = (
+                    await self.conference_repository.get_by_name_and_governing_body(
+                        input_dto.name, input_dto.governing_body_id
+                    )
                 )
             else:
                 existing = None
@@ -165,19 +167,19 @@ class ManageConferencesUseCase:
                 members_introduction_url=input_dto.members_introduction_url,
             )
 
-            created = self.conference_repository.create(conference)
+            created = await self.conference_repository.create(conference)
             return CreateConferenceOutputDto(success=True, conference_id=created.id)
         except Exception as e:
             logger.error(f"Failed to create conference: {e}")
             return CreateConferenceOutputDto(success=False, error_message=str(e))
 
-    def update_conference(
+    async def update_conference(
         self, input_dto: UpdateConferenceInputDto
     ) -> UpdateConferenceOutputDto:
         """Update an existing conference."""
         try:
             # Get existing conference
-            existing = self.conference_repository.get_by_id(input_dto.id)
+            existing = await self.conference_repository.get_by_id(input_dto.id)
             if not existing:
                 return UpdateConferenceOutputDto(
                     success=False, error_message="会議体が見つかりません。"
@@ -189,19 +191,19 @@ class ManageConferencesUseCase:
                 existing.governing_body_id = input_dto.governing_body_id
             existing.type = input_dto.type
             existing.members_introduction_url = input_dto.members_introduction_url
-            self.conference_repository.update(existing)
+            await self.conference_repository.update(existing)
             return UpdateConferenceOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to update conference: {e}")
             return UpdateConferenceOutputDto(success=False, error_message=str(e))
 
-    def delete_conference(
+    async def delete_conference(
         self, input_dto: DeleteConferenceInputDto
     ) -> DeleteConferenceOutputDto:
         """Delete a conference."""
         try:
             # Check if conference exists
-            existing = self.conference_repository.get_by_id(input_dto.id)
+            existing = await self.conference_repository.get_by_id(input_dto.id)
             if not existing:
                 return DeleteConferenceOutputDto(
                     success=False, error_message="会議体が見つかりません。"
@@ -210,17 +212,17 @@ class ManageConferencesUseCase:
             # TODO: Check if conference has related meetings
             # This would require a meeting repository
 
-            self.conference_repository.delete(input_dto.id)
+            await self.conference_repository.delete(input_dto.id)
             return DeleteConferenceOutputDto(success=True)
         except Exception as e:
             logger.error(f"Failed to delete conference: {e}")
             return DeleteConferenceOutputDto(success=False, error_message=str(e))
 
-    def generate_seed_file(self) -> GenerateSeedFileOutputDto:
+    async def generate_seed_file(self) -> GenerateSeedFileOutputDto:
         """Generate seed file for conferences."""
         try:
             # Get all conferences
-            all_conferences = self.conference_repository.get_all()
+            all_conferences = await self.conference_repository.get_all()
             # Generate SQL content
             seed_content = "-- Conferences Seed Data\n"
             seed_content += "-- Generated from current database\n\n"
