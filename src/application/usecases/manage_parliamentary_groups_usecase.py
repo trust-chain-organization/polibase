@@ -3,13 +3,23 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import date
-from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import ParliamentaryGroup
 from src.domain.entities.extracted_parliamentary_group_member import (
     ExtractedParliamentaryGroupMember,
 )
+from src.domain.repositories.extracted_parliamentary_group_member_repository import (
+    ExtractedParliamentaryGroupMemberRepository,
+)
+from src.domain.repositories.parliamentary_group_membership_repository import (
+    ParliamentaryGroupMembershipRepository,
+)
+from src.domain.repositories.parliamentary_group_repository import (
+    ParliamentaryGroupRepository,
+)
+from src.domain.repositories.politician_repository import PoliticianRepository
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.parliamentary_group_member_extractor.extractor import (
     ParliamentaryGroupMemberExtractor,
 )
@@ -150,11 +160,12 @@ class ManageParliamentaryGroupsUseCase:
 
     def __init__(
         self,
-        parliamentary_group_repository: Any,
-        politician_repository: Any | None = None,
-        membership_repository: Any | None = None,
-        llm_service: Any | None = None,
-        extracted_member_repository: Any | None = None,
+        parliamentary_group_repository: ParliamentaryGroupRepository,
+        politician_repository: PoliticianRepository | None = None,
+        membership_repository: ParliamentaryGroupMembershipRepository | None = None,
+        llm_service: ILLMService | None = None,
+        extracted_member_repository: ExtractedParliamentaryGroupMemberRepository
+        | None = None,
     ):
         """Initialize the use case.
 

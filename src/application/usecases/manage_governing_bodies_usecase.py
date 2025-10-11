@@ -1,10 +1,10 @@
 """Use case for managing governing bodies."""
 
 from dataclasses import dataclass
-from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import GoverningBody
+from src.domain.repositories.governing_body_repository import GoverningBodyRepository
 
 logger = get_logger(__name__)
 
@@ -103,7 +103,7 @@ class GenerateSeedFileOutputDto:
 class ManageGoverningBodiesUseCase:
     """Use case for managing governing bodies."""
 
-    def __init__(self, governing_body_repository: Any):
+    def __init__(self, governing_body_repository: GoverningBodyRepository):
         """Initialize the use case.
 
         Args:

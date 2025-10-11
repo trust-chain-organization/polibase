@@ -1,10 +1,10 @@
 """Use case for managing conferences."""
 
 from dataclasses import dataclass
-from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities import Conference
+from src.domain.repositories.conference_repository import ConferenceRepository
 
 logger = get_logger(__name__)
 
@@ -92,7 +92,7 @@ class GenerateSeedFileOutputDto:
 class ManageConferencesUseCase:
     """Use case for managing conferences."""
 
-    def __init__(self, conference_repository: Any):
+    def __init__(self, conference_repository: ConferenceRepository):
         """Initialize the use case.
 
         Args:

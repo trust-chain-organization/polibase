@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 from src.application.dtos.convert_extracted_politician_dto import (
     ConvertedPoliticianDTO,
@@ -7,6 +6,9 @@ from src.application.dtos.convert_extracted_politician_dto import (
     ConvertExtractedPoliticianOutputDTO,
 )
 from src.domain.entities.politician import Politician
+from src.domain.entities.politician_party_extracted_politician import (
+    PoliticianPartyExtractedPolitician,
+)
 from src.domain.entities.speaker import Speaker
 from src.domain.repositories.extracted_politician_repository import (
     ExtractedPoliticianRepository,
@@ -196,7 +198,9 @@ class ConvertExtractedPoliticianUseCase:
             error_messages=error_messages,
         )
 
-    async def _convert_to_politician(self, extracted: Any) -> Politician | None:
+    async def _convert_to_politician(
+        self, extracted: PoliticianPartyExtractedPolitician
+    ) -> Politician | None:
         """抽出済み政治家を正式な政治家に変換する
 
         Args:
@@ -253,7 +257,9 @@ class ConvertExtractedPoliticianUseCase:
             logger.error(f"Error converting {extracted.name}: {e}")
             raise  # Re-raise exception to be caught by caller
 
-    async def _get_or_create_speaker(self, extracted: Any) -> Speaker | None:
+    async def _get_or_create_speaker(
+        self, extracted: PoliticianPartyExtractedPolitician
+    ) -> Speaker | None:
         """抽出済み政治家に対応するスピーカーを取得または作成する
 
         Args:

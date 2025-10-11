@@ -1,7 +1,6 @@
 """Use case for processing meeting minutes."""
 
 from datetime import datetime
-from typing import Any
 
 from src.application.dtos.minutes_dto import (
     ExtractedSpeechDTO,
@@ -11,6 +10,12 @@ from src.application.dtos.minutes_dto import (
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
+from src.domain.repositories.conversation_repository import ConversationRepository
+from src.domain.repositories.meeting_repository import MeetingRepository
+from src.domain.repositories.minutes_repository import MinutesRepository
+from src.domain.repositories.speaker_repository import SpeakerRepository
+from src.domain.services.interfaces.pdf_processor_service import IPDFProcessorService
+from src.domain.services.interfaces.text_extractor_service import ITextExtractorService
 from src.domain.services.minutes_domain_service import MinutesDomainService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 
@@ -43,14 +48,14 @@ class ProcessMinutesUseCase:
 
     def __init__(
         self,
-        meeting_repository: Any,
-        minutes_repository: Any,
-        conversation_repository: Any,
-        speaker_repository: Any,
+        meeting_repository: MeetingRepository,
+        minutes_repository: MinutesRepository,
+        conversation_repository: ConversationRepository,
+        speaker_repository: SpeakerRepository,
         minutes_domain_service: MinutesDomainService,
         speaker_domain_service: SpeakerDomainService,
-        pdf_processor: Any,  # Mock service for now
-        text_extractor: Any,  # Mock service for now
+        pdf_processor: IPDFProcessorService,
+        text_extractor: ITextExtractorService,
     ):
         """議事録処理ユースケースを初期化する
 

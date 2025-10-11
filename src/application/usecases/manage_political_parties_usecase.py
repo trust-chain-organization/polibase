@@ -5,10 +5,10 @@ listing, updating URLs, and generating seed files.
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 from src.common.logging import get_logger
 from src.domain.entities.political_party import PoliticalParty
+from src.domain.repositories.political_party_repository import PoliticalPartyRepository
 from src.seed_generator import SeedGenerator
 
 
@@ -81,7 +81,7 @@ class GenerateSeedFileOutputDto:
 class ManagePoliticalPartiesUseCase:
     """Use case for managing political parties."""
 
-    def __init__(self, repository: Any):
+    def __init__(self, repository: PoliticalPartyRepository):
         """Initialize the use case.
 
         Args:

@@ -1,9 +1,11 @@
 """Use case for matching speakers to politicians."""
 
-from typing import Any
-
 from src.application.dtos.speaker_dto import SpeakerMatchingDTO
 from src.domain.entities.speaker import Speaker
+from src.domain.repositories.conversation_repository import ConversationRepository
+from src.domain.repositories.politician_repository import PoliticianRepository
+from src.domain.repositories.speaker_repository import SpeakerRepository
+from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.domain.types.llm import LLMSpeakerMatchContext
 
@@ -34,11 +36,11 @@ class MatchSpeakersUseCase:
 
     def __init__(
         self,
-        speaker_repository: Any,
-        politician_repository: Any,
-        conversation_repository: Any,
+        speaker_repository: SpeakerRepository,
+        politician_repository: PoliticianRepository,
+        conversation_repository: ConversationRepository,
         speaker_domain_service: SpeakerDomainService,
-        llm_service: Any,  # LLMServiceAdapter for sync usage
+        llm_service: ILLMService,  # LLMServiceAdapter for sync usage
     ):
         """発言者マッチングユースケースを初期化する
 
