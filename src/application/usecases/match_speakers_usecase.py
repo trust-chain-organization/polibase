@@ -88,15 +88,11 @@ class MatchSpeakersUseCase:
         # Get speakers to process
         speakers: list[Speaker] = []
         if speaker_ids:
-            # Batch fetch speakers if repository supports it
-            if hasattr(self.speaker_repo, "batch_get_by_ids"):
-                speakers = await self.speaker_repo.batch_get_by_ids(speaker_ids)
-            else:
-                # Fallback to individual fetches
-                for speaker_id in speaker_ids:
-                    speaker = await self.speaker_repo.get_by_id(speaker_id)
-                    if speaker:
-                        speakers.append(speaker)
+            # Fetch speakers individually
+            for speaker_id in speaker_ids:
+                speaker = await self.speaker_repo.get_by_id(speaker_id)
+                if speaker:
+                    speakers.append(speaker)
         else:
             # Get all politician speakers
             speakers = await self.speaker_repo.get_politicians()
@@ -213,13 +209,8 @@ class MatchSpeakersUseCase:
         Returns:
             マッチング結果DTO（マッチなしの場合None）
         """
-        # Get potential candidates - check if repository supports caching
-        if hasattr(self.politician_repo, "get_all_cached"):
-            # Use cached version if available (avoids repeated DB queries)
-            candidates = await self.politician_repo.get_all_cached()
-        else:
-            # Fallback to regular get_all with limit
-            candidates = await self.politician_repo.get_all(limit=100)
+        # Get potential candidates
+        candidates = await self.politician_repo.get_all(limit=100)
         if not candidates:
             return None
 
@@ -243,10 +234,10 @@ class MatchSpeakersUseCase:
         # Add metadata for history recording (metadata passed via set_input_reference)
 
         # Set input reference for history tracking if supported
-        # Check if llm_service is an InstrumentedLLMService
+        # Runtime check - ILLMService doesn't require this method
         if hasattr(self.llm_service, "set_input_reference"):
-            # Use type: ignore since ILLMService doesn't have this method
-            self.llm_service.set_input_reference(
+            # type: ignore - optional method not in protocol
+            self.llm_service.set_input_reference(  # type: ignore[attr-defined]
                 reference_type="speaker",
                 reference_id=speaker.id if speaker.id else 0,
             )
