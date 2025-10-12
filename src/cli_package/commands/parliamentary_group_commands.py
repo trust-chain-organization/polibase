@@ -90,28 +90,10 @@ def extract_group_members(
             return
         groups_to_process = [group]
     elif all_groups or conference_id:
-        # 全議員団または特定会議体の議員団を取得
-        all_groups_data = []
-        if conference_id:
-            all_groups_data = group_repo.get_parliamentary_groups_by_conference(
-                conference_id, active_only=True
-            )
-        else:
-            # 全議員団を取得するクエリ
-            query = """
-            SELECT pg.*, c.name as conference_name
-            FROM parliamentary_groups pg
-            JOIN conferences c ON pg.conference_id = c.id
-            WHERE pg.is_active = true AND pg.url IS NOT NULL
-            ORDER BY pg.conference_id, pg.name
-            """
-            result = group_repo.execute_query(query)
-            rows = result.fetchall()
-            all_groups_data = [
-                group_repo.row_to_dict(row, result.keys()) for row in rows
-            ]
-
-        groups_to_process = [g for g in all_groups_data if g.get("url")]
+        # 全議員団または特定会議体の議員団を取得（URLが設定されているもののみ）
+        groups_to_process = group_repo.get_all_with_details(
+            conference_id=conference_id, active_only=True, with_url_only=True
+        )
 
         if not groups_to_process:
             click.echo(
@@ -291,27 +273,10 @@ def list_parliamentary_groups(
         ParliamentaryGroupMembershipRepositoryImpl, session
     )
 
-    # 議員団を取得
-    if conference_id:
-        groups = group_repo.get_parliamentary_groups_by_conference(
-            conference_id, active_only=active_only
-        )
-    else:
-        # 全議員団を取得
-        query = """
-        SELECT pg.*, c.name as conference_name, gb.name as governing_body_name
-        FROM parliamentary_groups pg
-        JOIN conferences c ON pg.conference_id = c.id
-        JOIN governing_bodies gb ON c.governing_body_id = gb.id
-        WHERE 1=1
-        """
-        if active_only:
-            query += " AND pg.is_active = true"
-        query += " ORDER BY gb.id, c.id, pg.name"
-
-        result = group_repo.execute_query(query)
-        rows = result.fetchall()
-        groups = [group_repo.row_to_dict(row, result.keys()) for row in rows]
+    # 議員団を取得（会議体・行政機関情報も含む）
+    groups = group_repo.get_all_with_details(
+        conference_id=conference_id, active_only=active_only
+    )
 
     if not groups:
         click.echo(click.style("議員団が見つかりません", fg="yellow"))
