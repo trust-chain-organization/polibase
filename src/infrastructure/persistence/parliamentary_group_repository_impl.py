@@ -116,6 +116,55 @@ class ParliamentaryGroupRepositoryImpl(
 
         return [self._row_to_entity(row) for row in rows]
 
+    async def get_all_with_details(
+        self,
+        conference_id: int | None = None,
+        active_only: bool = True,
+        with_url_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        """
+        Get all parliamentary groups with conference and governing body details.
+
+        Returns dictionary format for CLI display purposes.
+
+        Args:
+            conference_id: Filter to specific conference (optional)
+            active_only: Filter to only active groups
+            with_url_only: Filter to only groups with URL set
+
+        Returns:
+            List of dictionaries with parliamentary group details
+        """
+        query_text = """
+            SELECT pg.*, c.name as conference_name, gb.name as governing_body_name
+            FROM parliamentary_groups pg
+            JOIN conferences c ON pg.conference_id = c.id
+            JOIN governing_bodies gb ON c.governing_body_id = gb.id
+            WHERE 1=1
+        """
+        params: dict[str, Any] = {}
+
+        if conference_id is not None:
+            query_text += " AND pg.conference_id = :conference_id"
+            params["conference_id"] = conference_id
+
+        if active_only:
+            query_text += " AND pg.is_active = true"
+
+        if with_url_only:
+            query_text += " AND pg.url IS NOT NULL"
+
+        query_text += " ORDER BY gb.id, c.id, pg.name"
+
+        result = await self.session.execute(text(query_text), params or None)
+        rows = result.fetchall()
+
+        # Convert rows to dictionaries
+        if rows:
+            keys = result.keys()
+            return [dict(zip(keys, row, strict=False)) for row in rows]
+        return []
+
     async def get_by_id(self, entity_id: int) -> ParliamentaryGroup | None:
         """Get parliamentary group by ID."""
         query = text("SELECT * FROM parliamentary_groups WHERE id = :id")
