@@ -160,7 +160,8 @@ def create_engine_with_config(database_url: str | None):
         import os
 
         logger = logging.getLogger(__name__)
-        logger.warning("database_url is None, using default value")
+        # Use debug level as this is expected behavior during initial container setup
+        logger.debug("database_url is None, using default value based on environment")
 
         # Check if running in Docker
         if os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER"):

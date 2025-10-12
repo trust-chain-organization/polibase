@@ -297,17 +297,23 @@ def get_container() -> ApplicationContainer:
 def init_container(
     environment: Environment | str | None = None,
     settings: Settings | None = None,
+    force_reinit: bool = False,
 ) -> ApplicationContainer:
     """Initialize the global container.
 
     Args:
         environment: Environment to use. If None, detects from env var.
         settings: Settings object to use. If None, loads from environment.
+        force_reinit: If True, force re-initialization even if container exists.
 
     Returns:
         The initialized ApplicationContainer instance.
     """
     global _container
+
+    # Return existing container if already initialized and not forcing re-init
+    if _container is not None and not force_reinit:
+        return _container
 
     if settings is not None:
         _container = ApplicationContainer.create_from_settings(settings)
