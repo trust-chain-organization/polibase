@@ -58,7 +58,6 @@ class GeminiLLMService(ILLMService):
             model=model_name,
             temperature=temperature,
             google_api_key=self.api_key,
-            convert_system_message_to_human=True,
         )
 
     @property
