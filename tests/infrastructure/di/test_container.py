@@ -151,18 +151,20 @@ class TestApplicationContainer:
         assert politician_repo is not None
 
     @patch("src.infrastructure.external.llm_service.GeminiLLMService")
-    @patch("src.infrastructure.external.storage_service.GCSStorageService")
+    @patch("src.infrastructure.external.gcs_storage_service.GCSStorage")
     def test_service_container_provides_services(
-        self, mock_storage_service_class: MagicMock, mock_llm_service_class: MagicMock
+        self, mock_gcs_storage_class: MagicMock, mock_llm_service_class: MagicMock
     ):
         """Test that service container provides service instances."""
         container = ApplicationContainer.create_for_environment(Environment.TESTING)
 
         # Mock service instances
         mock_llm_service = MagicMock()
-        mock_storage_service = MagicMock()
         mock_llm_service_class.return_value = mock_llm_service
-        mock_storage_service_class.return_value = mock_storage_service
+
+        # Mock GCSStorage instance that GCSStorageService will create
+        mock_gcs_instance = MagicMock()
+        mock_gcs_storage_class.return_value = mock_gcs_instance
 
         # Get service instances
         llm_service = container.services.llm_service()
