@@ -24,7 +24,7 @@ def mock_repositories():
     speaker_repo = AsyncMock()
     speaker_service = MagicMock()
     llm_service = AsyncMock()
-    storage_service = MagicMock()
+    storage_service = AsyncMock()
 
     return {
         "meeting_repo": meeting_repo,
@@ -85,10 +85,10 @@ async def test_execute_success(
     mock_repositories["minutes_repo"].create.return_value = sample_minutes
     mock_repositories["conversation_repo"].get_by_minutes.return_value = []
 
-    # Storage serviceをモック - download_content returns text
+    # Storage serviceをモック - download_file returns bytes
     mock_repositories[
         "storage_service"
-    ].download_content.return_value = "議事録テキスト"
+    ].download_file.return_value = "議事録テキスト".encode()
 
     # MinutesProcessAgentをモック
     with patch(
@@ -202,10 +202,10 @@ async def test_execute_force_reprocess(
         )
     ]
 
-    # Storage serviceをモック
+    # Storage serviceをモック - download_file returns bytes
     mock_repositories[
         "storage_service"
-    ].download_content.return_value = "議事録テキスト"
+    ].download_file.return_value = "議事録テキスト".encode()
 
     # MinutesProcessAgentをモック
     with patch(
@@ -260,10 +260,10 @@ async def test_execute_api_key_not_set(use_case, mock_repositories, sample_meeti
         id=1, meeting_id=1, url="https://example.com"
     )
 
-    # Storage serviceをモック
+    # Storage serviceをモック - download_file returns bytes
     mock_repositories[
         "storage_service"
-    ].download_content.return_value = "議事録テキスト"
+    ].download_file.return_value = "議事録テキスト".encode()
 
     # 環境変数をモック（APIキーなし）
     with patch.dict("os.environ", {}, clear=True):

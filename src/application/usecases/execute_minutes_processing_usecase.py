@@ -180,8 +180,9 @@ class ExecuteMinutesProcessingUseCase:
         if meeting.gcs_text_uri:
             # GCSからテキストを取得
             try:
-                text = self.storage_service.download_content(meeting.gcs_text_uri)
-                if text:
+                data = await self.storage_service.download_file(meeting.gcs_text_uri)
+                if data:
+                    text = data.decode("utf-8")
                     logger.info(
                         f"Downloaded text from GCS ({len(text)} characters)",
                         meeting_id=meeting.id,
