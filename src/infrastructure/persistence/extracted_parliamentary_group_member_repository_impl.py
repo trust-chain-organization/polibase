@@ -196,41 +196,50 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
     async def bulk_create(
         self, members: list[ExtractedParliamentaryGroupMember]
     ) -> list[ExtractedParliamentaryGroupMember]:
-        """Create multiple extracted members at once."""
+        """Create multiple extracted members at once, skipping duplicates."""
+        from sqlalchemy.exc import IntegrityError
+
         # SQLAlchemy models are not used directly here, we use raw SQL
         created_members = []
         for member in members:
-            query = text("""
-                INSERT INTO extracted_parliamentary_group_members (
-                    parliamentary_group_id, extracted_name, source_url,
-                    extracted_role, extracted_party_name, extracted_district,
-                    extracted_at, matching_status, additional_info
-                )
-                VALUES (
-                    :group_id, :name, :url,
-                    :role, :party, :district,
-                    :extracted_at, :status, :info
-                )
-                RETURNING *
-            """)
+            try:
+                query = text("""
+                    INSERT INTO extracted_parliamentary_group_members (
+                        parliamentary_group_id, extracted_name, source_url,
+                        extracted_role, extracted_party_name, extracted_district,
+                        extracted_at, matching_status, additional_info
+                    )
+                    VALUES (
+                        :group_id, :name, :url,
+                        :role, :party, :district,
+                        :extracted_at, :status, :info
+                    )
+                    ON CONFLICT (parliamentary_group_id, extracted_name)
+                    DO NOTHING
+                    RETURNING *
+                """)
 
-            result = await self.session.execute(
-                query,
-                {
-                    "group_id": member.parliamentary_group_id,
-                    "name": member.extracted_name,
-                    "url": member.source_url,
-                    "role": member.extracted_role,
-                    "party": member.extracted_party_name,
-                    "district": member.extracted_district,
-                    "extracted_at": member.extracted_at,
-                    "status": member.matching_status,
-                    "info": member.additional_info,
-                },
-            )
-            row = result.fetchone()
-            if row:
-                created_members.append(self._row_to_entity(row))
+                result = await self.session.execute(
+                    query,
+                    {
+                        "group_id": member.parliamentary_group_id,
+                        "name": member.extracted_name,
+                        "url": member.source_url,
+                        "role": member.extracted_role,
+                        "party": member.extracted_party_name,
+                        "district": member.extracted_district,
+                        "extracted_at": member.extracted_at,
+                        "status": member.matching_status,
+                        "info": member.additional_info,
+                    },
+                )
+                row = result.fetchone()
+                if row:
+                    created_members.append(self._row_to_entity(row))
+
+            except IntegrityError:
+                # In case of any integrity error, just skip this member
+                continue
 
         await self.session.flush()  # Flush changes but don't commit
         return created_members
