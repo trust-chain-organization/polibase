@@ -23,9 +23,11 @@ class ParliamentaryGroupMembershipModel(Base):
     __tablename__ = "parliamentary_group_memberships"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    politician_id: Mapped[int] = mapped_column(ForeignKey("politicians.id"))
+    politician_id: Mapped[int] = mapped_column(
+        ForeignKey("politicians.id", use_alter=True, name="fk_pgm_politician")
+    )
     parliamentary_group_id: Mapped[int] = mapped_column(
-        ForeignKey("parliamentary_groups.id")
+        ForeignKey("parliamentary_groups.id", use_alter=True, name="fk_pgm_group")
     )
     start_date: Mapped[date] = mapped_column()
     end_date: Mapped[date | None] = mapped_column()
@@ -63,7 +65,7 @@ class ExtractedParliamentaryGroupMemberModel(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     parliamentary_group_id: Mapped[int] = mapped_column(
-        ForeignKey("parliamentary_groups.id")
+        ForeignKey("parliamentary_groups.id", use_alter=True, name="fk_epgm_group")
     )
     extracted_name: Mapped[str] = mapped_column(String(200))
     source_url: Mapped[str] = mapped_column(String(500))
@@ -72,7 +74,7 @@ class ExtractedParliamentaryGroupMemberModel(Base):
     extracted_district: Mapped[str | None] = mapped_column(String(200))
     extracted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     matched_politician_id: Mapped[int | None] = mapped_column(
-        ForeignKey("politicians.id")
+        ForeignKey("politicians.id", use_alter=True, name="fk_epgm_politician")
     )
     matching_confidence: Mapped[float | None] = mapped_column()  # 0.0-1.0
     matching_status: Mapped[str] = mapped_column(String(20), default="pending")
