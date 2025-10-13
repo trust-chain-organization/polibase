@@ -7,7 +7,6 @@ GCSまたはPDFから議事録テキストを取得し、MinutesProcessingServic
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from src.application.dtos.minutes_processing_dto import MinutesProcessingResultDTO
 from src.application.exceptions import ProcessingError
@@ -25,6 +24,7 @@ from src.domain.services.interfaces.minutes_processing_service import (
 )
 from src.domain.services.interfaces.storage_service import IStorageService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
+from src.domain.value_objects.speaker_speech import SpeakerSpeech
 
 logger = get_logger(__name__)
 
@@ -200,7 +200,7 @@ class ExecuteMinutesProcessingUseCase:
 
         raise ValueError(f"No valid source found for meeting {meeting.id}")
 
-    async def _process_minutes(self, text: str, meeting_id: int) -> list[Any]:
+    async def _process_minutes(self, text: str, meeting_id: int) -> list[SpeakerSpeech]:
         """議事録を処理して発言を抽出する
 
         Args:
@@ -208,7 +208,7 @@ class ExecuteMinutesProcessingUseCase:
             meeting_id: 会議ID
 
         Returns:
-            list: 抽出された発言リスト
+            list[SpeakerSpeech]: 抽出された発言リスト（ドメイン値オブジェクト）
         """
         if not text:
             raise ProcessingError("No text provided for processing", {"text_length": 0})
@@ -222,12 +222,12 @@ class ExecuteMinutesProcessingUseCase:
         return results
 
     async def _save_conversations(
-        self, results: list[Any], minutes_id: int
+        self, results: list[SpeakerSpeech], minutes_id: int
     ) -> list[Conversation]:
         """発言をデータベースに保存する
 
         Args:
-            results: 抽出された発言データ
+            results: 抽出された発言データ（ドメイン値オブジェクト）
             minutes_id: 議事録ID
 
         Returns:

@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from src.minutes_divide_processor.models import SpeakerAndSpeechContent
+from src.domain.value_objects.speaker_speech import SpeakerSpeech
 
 
 class IMinutesProcessingService(Protocol):
@@ -13,9 +13,7 @@ class IMinutesProcessingService(Protocol):
     core business capability for extracting speeches from meeting minutes text.
     """
 
-    async def process_minutes(
-        self, original_minutes: str
-    ) -> list[SpeakerAndSpeechContent]:
+    async def process_minutes(self, original_minutes: str) -> list[SpeakerSpeech]:
         """Process meeting minutes text and extract speeches.
 
         Args:

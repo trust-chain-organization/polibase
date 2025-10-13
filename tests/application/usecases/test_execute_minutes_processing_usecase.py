@@ -12,6 +12,7 @@ from src.application.usecases.execute_minutes_processing_usecase import (
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
+from src.domain.value_objects.speaker_speech import SpeakerSpeech
 from src.exceptions import APIKeyError
 
 
@@ -90,10 +91,10 @@ async def test_execute_success(
         "storage_service"
     ].download_file.return_value = "議事録テキスト".encode()
 
-    # MinutesProcessingServiceをモック
+    # MinutesProcessingServiceをモック - ドメイン値オブジェクトを返す
     mock_repositories["minutes_processing_service"].process_minutes.return_value = [
-        MagicMock(speaker="田中太郎", speech_content="発言1"),
-        MagicMock(speaker="山田花子", speech_content="発言2"),
+        SpeakerSpeech(speaker="田中太郎", speech_content="発言1"),
+        SpeakerSpeech(speaker="山田花子", speech_content="発言2"),
     ]
 
     # Conversationのバルク作成をモック

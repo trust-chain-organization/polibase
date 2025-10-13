@@ -6,8 +6,8 @@ from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.interfaces.minutes_processing_service import (
     IMinutesProcessingService,
 )
+from src.domain.value_objects.speaker_speech import SpeakerSpeech
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
-from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 
 
 class MinutesProcessAgentService(IMinutesProcessingService):
@@ -28,16 +28,17 @@ class MinutesProcessAgentService(IMinutesProcessingService):
         self.llm_service = llm_service
         self.agent = MinutesProcessAgent(llm_service=llm_service)
 
-    async def process_minutes(
-        self, original_minutes: str
-    ) -> list[SpeakerAndSpeechContent]:
+    async def process_minutes(self, original_minutes: str) -> list[SpeakerSpeech]:
         """Process meeting minutes text and extract speeches.
+
+        This method wraps the synchronous MinutesProcessAgent and converts
+        infrastructure-specific models to domain value objects.
 
         Args:
             original_minutes: Raw meeting minutes text content
 
         Returns:
-            List of extracted speeches with speaker information
+            List of extracted speeches with speaker information as domain value objects
 
         Raises:
             ValueError: If processing fails or invalid input is provided
@@ -45,5 +46,20 @@ class MinutesProcessAgentService(IMinutesProcessingService):
         """
         # The agent's run method is synchronous, so we run it in an executor
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, self.agent.run, original_minutes)
-        return result
+        infrastructure_results = await loop.run_in_executor(
+            None, self.agent.run, original_minutes
+        )
+
+        # Convert infrastructure models to domain value objects
+        domain_results = [
+            SpeakerSpeech(
+                speaker=result.speaker,
+                speech_content=result.speech_content,
+                chapter_number=result.chapter_number,
+                sub_chapter_number=result.sub_chapter_number,
+                speech_order=result.speech_order,
+            )
+            for result in infrastructure_results
+        ]
+
+        return domain_results
