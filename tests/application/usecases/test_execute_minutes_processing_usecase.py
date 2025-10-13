@@ -12,6 +12,7 @@ from src.application.usecases.execute_minutes_processing_usecase import (
 from src.domain.entities.conversation import Conversation
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
+from src.domain.value_objects.speaker_speech import SpeakerSpeech
 from src.exceptions import APIKeyError
 
 
@@ -23,7 +24,7 @@ def mock_repositories():
     conversation_repo = AsyncMock()
     speaker_repo = AsyncMock()
     speaker_service = MagicMock()
-    llm_service = AsyncMock()
+    minutes_processing_service = AsyncMock()
     storage_service = AsyncMock()
 
     return {
@@ -32,7 +33,7 @@ def mock_repositories():
         "conversation_repo": conversation_repo,
         "speaker_repo": speaker_repo,
         "speaker_service": speaker_service,
-        "llm_service": llm_service,
+        "minutes_processing_service": minutes_processing_service,
         "storage_service": storage_service,
     }
 
@@ -46,7 +47,7 @@ def use_case(mock_repositories):
         conversation_repository=mock_repositories["conversation_repo"],
         speaker_repository=mock_repositories["speaker_repo"],
         speaker_domain_service=mock_repositories["speaker_service"],
-        llm_service=mock_repositories["llm_service"],
+        minutes_processing_service=mock_repositories["minutes_processing_service"],
         storage_service=mock_repositories["storage_service"],
     )
 
@@ -90,62 +91,58 @@ async def test_execute_success(
         "storage_service"
     ].download_file.return_value = "議事録テキスト".encode()
 
-    # MinutesProcessAgentをモック
-    with patch(
-        "src.application.usecases.execute_minutes_processing_usecase.MinutesProcessAgent"
-    ) as mock_agent_patch:
-        mock_agent = mock_agent_patch.return_value
-        mock_agent.run.return_value = [
-            MagicMock(speaker="田中太郎", speech_content="発言1"),
-            MagicMock(speaker="山田花子", speech_content="発言2"),
-        ]
+    # MinutesProcessingServiceをモック - ドメイン値オブジェクトを返す
+    mock_repositories["minutes_processing_service"].process_minutes.return_value = [
+        SpeakerSpeech(speaker="田中太郎", speech_content="発言1"),
+        SpeakerSpeech(speaker="山田花子", speech_content="発言2"),
+    ]
 
-        # Conversationのバルク作成をモック
-        created_conversations = [
-            Conversation(
-                id=1,
-                minutes_id=1,
-                speaker_name="田中太郎",
-                comment="発言1",
-                sequence_number=1,
-            ),
-            Conversation(
-                id=2,
-                minutes_id=1,
-                speaker_name="山田花子",
-                comment="発言2",
-                sequence_number=2,
-            ),
-        ]
-        mock_repositories[
-            "conversation_repo"
-        ].bulk_create.return_value = created_conversations
+    # Conversationのバルク作成をモック
+    created_conversations = [
+        Conversation(
+            id=1,
+            minutes_id=1,
+            speaker_name="田中太郎",
+            comment="発言1",
+            sequence_number=1,
+        ),
+        Conversation(
+            id=2,
+            minutes_id=1,
+            speaker_name="山田花子",
+            comment="発言2",
+            sequence_number=2,
+        ),
+    ]
+    mock_repositories[
+        "conversation_repo"
+    ].bulk_create.return_value = created_conversations
 
-        # Speakerの作成をモック
-        mock_repositories["speaker_service"].extract_party_from_name.side_effect = [
-            ("田中太郎", "自民党"),
-            ("山田花子", "立憲民主党"),
-        ]
-        mock_repositories["speaker_repo"].get_by_name_party_position.return_value = None
-        mock_repositories["speaker_repo"].create.return_value = Mock()
+    # Speakerの作成をモック
+    mock_repositories["speaker_service"].extract_party_from_name.side_effect = [
+        ("田中太郎", "自民党"),
+        ("山田花子", "立憲民主党"),
+    ]
+    mock_repositories["speaker_repo"].get_by_name_party_position.return_value = None
+    mock_repositories["speaker_repo"].create.return_value = Mock()
 
-        # 実行
-        request = ExecuteMinutesProcessingDTO(meeting_id=1)
-        result = await use_case.execute(request)
+    # 実行
+    request = ExecuteMinutesProcessingDTO(meeting_id=1)
+    result = await use_case.execute(request)
 
-        # 検証
-        assert result.meeting_id == 1
-        assert result.minutes_id == 1
-        assert result.total_conversations == 2
-        assert result.unique_speakers == 2
-        assert result.processing_time_seconds > 0
-        assert result.errors is None
+    # 検証
+    assert result.meeting_id == 1
+    assert result.minutes_id == 1
+    assert result.total_conversations == 2
+    assert result.unique_speakers == 2
+    assert result.processing_time_seconds > 0
+    assert result.errors is None
 
-        # リポジトリメソッドが呼ばれたことを確認
-        mock_repositories["meeting_repo"].get_by_id.assert_called_once_with(1)
-        mock_repositories["minutes_repo"].create.assert_called_once()
-        mock_repositories["conversation_repo"].bulk_create.assert_called_once()
-        assert mock_repositories["speaker_repo"].create.call_count == 2
+    # リポジトリメソッドが呼ばれたことを確認
+    mock_repositories["meeting_repo"].get_by_id.assert_called_once_with(1)
+    mock_repositories["minutes_repo"].create.assert_called_once()
+    mock_repositories["conversation_repo"].bulk_create.assert_called_once()
+    assert mock_repositories["speaker_repo"].create.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -207,22 +204,18 @@ async def test_execute_force_reprocess(
         "storage_service"
     ].download_file.return_value = "議事録テキスト".encode()
 
-    # MinutesProcessAgentをモック
-    with patch(
-        "src.application.usecases.execute_minutes_processing_usecase.MinutesProcessAgent"
-    ) as mock_agent_patch:
-        mock_agent = mock_agent_patch.return_value
-        mock_agent.run.return_value = []
+    # MinutesProcessingServiceをモック
+    mock_repositories["minutes_processing_service"].process_minutes.return_value = []
 
-        mock_repositories["conversation_repo"].bulk_create.return_value = []
+    mock_repositories["conversation_repo"].bulk_create.return_value = []
 
-        # 実行
-        request = ExecuteMinutesProcessingDTO(meeting_id=1, force_reprocess=True)
-        result = await use_case.execute(request)
+    # 実行
+    request = ExecuteMinutesProcessingDTO(meeting_id=1, force_reprocess=True)
+    result = await use_case.execute(request)
 
-        # 検証
-        assert result.meeting_id == 1
-        assert result.total_conversations == 0
+    # 検証
+    assert result.meeting_id == 1
+    assert result.total_conversations == 0
 
 
 @pytest.mark.asyncio

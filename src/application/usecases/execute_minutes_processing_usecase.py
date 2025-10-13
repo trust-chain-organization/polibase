@@ -1,14 +1,12 @@
 """議事録処理実行ユースケース
 
 議事録一覧画面から発言抽出処理を実行するためのユースケース。
-GCSまたはPDFから議事録テキストを取得し、MinutesProcessAgentを使用して
+GCSまたはPDFから議事録テキストを取得し、MinutesProcessingServiceを使用して
 発言を抽出してデータベースに保存します。
 """
 
-import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from src.application.dtos.minutes_processing_dto import MinutesProcessingResultDTO
 from src.application.exceptions import ProcessingError
@@ -21,10 +19,12 @@ from src.domain.repositories.conversation_repository import ConversationReposito
 from src.domain.repositories.meeting_repository import MeetingRepository
 from src.domain.repositories.minutes_repository import MinutesRepository
 from src.domain.repositories.speaker_repository import SpeakerRepository
-from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.minutes_processing_service import (
+    IMinutesProcessingService,
+)
 from src.domain.services.interfaces.storage_service import IStorageService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
-from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
+from src.domain.value_objects.speaker_speech import SpeakerSpeech
 
 logger = get_logger(__name__)
 
@@ -51,7 +51,7 @@ class ExecuteMinutesProcessingUseCase:
         conversation_repository: ConversationRepository,
         speaker_repository: SpeakerRepository,
         speaker_domain_service: SpeakerDomainService,
-        llm_service: ILLMService,
+        minutes_processing_service: IMinutesProcessingService,
         storage_service: IStorageService,
     ):
         """ユースケースを初期化する
@@ -62,7 +62,7 @@ class ExecuteMinutesProcessingUseCase:
             conversation_repository: 発言リポジトリ
             speaker_repository: 発言者リポジトリ
             speaker_domain_service: 発言者ドメインサービス
-            llm_service: LLMサービス
+            minutes_processing_service: 議事録処理サービス
             storage_service: ストレージサービス
         """
         self.meeting_repo = meeting_repository
@@ -70,7 +70,7 @@ class ExecuteMinutesProcessingUseCase:
         self.conversation_repo = conversation_repository
         self.speaker_repo = speaker_repository
         self.speaker_service = speaker_domain_service
-        self.llm_service = llm_service
+        self.minutes_processing_service = minutes_processing_service
         self.storage_service = storage_service
 
     async def execute(
@@ -200,7 +200,7 @@ class ExecuteMinutesProcessingUseCase:
 
         raise ValueError(f"No valid source found for meeting {meeting.id}")
 
-    async def _process_minutes(self, text: str, meeting_id: int) -> list[Any]:
+    async def _process_minutes(self, text: str, meeting_id: int) -> list[SpeakerSpeech]:
         """議事録を処理して発言を抽出する
 
         Args:
@@ -208,30 +208,26 @@ class ExecuteMinutesProcessingUseCase:
             meeting_id: 会議ID
 
         Returns:
-            list: 抽出された発言リスト
+            list[SpeakerSpeech]: 抽出された発言リスト（ドメイン値オブジェクト）
         """
         if not text:
             raise ProcessingError("No text provided for processing", {"text_length": 0})
 
-        # MinutesProcessAgentを使用して処理（注入されたLLMサービスを使用）
-        agent = MinutesProcessAgent(llm_service=self.llm_service)
-
         logger.info(f"Processing minutes (text length: {len(text)})")
 
-        # 同期的なagent.runを非同期で実行
-        loop = asyncio.get_event_loop()
-        results = await loop.run_in_executor(None, agent.run, text)
+        # 注入された議事録処理サービスを使用
+        results = await self.minutes_processing_service.process_minutes(text)
 
         logger.info(f"Extracted {len(results)} conversations")
         return results
 
     async def _save_conversations(
-        self, results: list[Any], minutes_id: int
+        self, results: list[SpeakerSpeech], minutes_id: int
     ) -> list[Conversation]:
         """発言をデータベースに保存する
 
         Args:
-            results: 抽出された発言データ
+            results: 抽出された発言データ（ドメイン値オブジェクト）
             minutes_id: 議事録ID
 
         Returns:
