@@ -253,58 +253,54 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
         """
         from datetime import datetime
 
+        from sqlalchemy.exc import IntegrityError
+
         saved_count = 0
 
         for member in members:
-            # Check if member already exists
-            check_query = text("""
-                SELECT id FROM extracted_parliamentary_group_members
-                WHERE parliamentary_group_id = :group_id
-                AND extracted_name = :name
-                LIMIT 1
-            """)
+            try:
+                # Use INSERT ... ON CONFLICT DO NOTHING to handle race conditions
+                insert_query = text("""
+                    INSERT INTO extracted_parliamentary_group_members (
+                        parliamentary_group_id, extracted_name, source_url,
+                        extracted_role, extracted_party_name, extracted_district,
+                        extracted_at, matching_status, additional_info
+                    )
+                    VALUES (
+                        :group_id, :name, :url,
+                        :role, :party, :district,
+                        :extracted_at, :status, :info
+                    )
+                    ON CONFLICT (parliamentary_group_id, extracted_name)
+                    DO NOTHING
+                    RETURNING id
+                """)
 
-            result = await self.session.execute(
-                check_query,
-                {"group_id": parliamentary_group_id, "name": member.name},
-            )
-            existing = result.fetchone()
+                result = await self.session.execute(
+                    insert_query,
+                    {
+                        "group_id": parliamentary_group_id,
+                        "name": member.name,
+                        "url": url,
+                        "role": member.role,
+                        "party": member.party_name,
+                        "district": member.district,
+                        "extracted_at": datetime.now(),
+                        "status": "pending",
+                        "info": member.additional_info
+                        if hasattr(member, "additional_info")
+                        else None,
+                    },
+                )
 
-            if existing:
-                # Skip duplicate
+                # Check if a row was actually inserted
+                inserted = result.fetchone()
+                if inserted:
+                    saved_count += 1
+
+            except IntegrityError:
+                # In case of any integrity error, just skip this member
                 continue
-
-            # Insert new member
-            insert_query = text("""
-                INSERT INTO extracted_parliamentary_group_members (
-                    parliamentary_group_id, extracted_name, source_url,
-                    extracted_role, extracted_party_name, extracted_district,
-                    extracted_at, matching_status, additional_info
-                )
-                VALUES (
-                    :group_id, :name, :url,
-                    :role, :party, :district,
-                    :extracted_at, :status, :info
-                )
-            """)
-
-            await self.session.execute(
-                insert_query,
-                {
-                    "group_id": parliamentary_group_id,
-                    "name": member.name,
-                    "url": url,
-                    "role": member.role,
-                    "party": member.party_name,
-                    "district": member.district,
-                    "extracted_at": datetime.now(),
-                    "status": "pending",
-                    "info": member.additional_info
-                    if hasattr(member, "additional_info")
-                    else None,
-                },
-            )
-            saved_count += 1
 
         await self.session.flush()
         return saved_count

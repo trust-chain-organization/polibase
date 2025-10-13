@@ -34,9 +34,9 @@ async def test_save_extracted_members_prevents_duplicates():
     session = AsyncMock(spec=AsyncSession)
     repo = ExtractedParliamentaryGroupMemberRepositoryImpl(session)
 
-    # Mock the database query to return an existing member
+    # Mock the database query to return no rows (ON CONFLICT DO NOTHING)
     mock_result = Mock()
-    mock_result.fetchone.return_value = Mock(id=1)  # Existing member found
+    mock_result.fetchone.return_value = None  # No row inserted due to conflict
     session.execute = AsyncMock(return_value=mock_result)
 
     # Create test data
@@ -62,10 +62,13 @@ async def test_save_extracted_members_saves_new_members():
     session = AsyncMock(spec=AsyncSession)
     repo = ExtractedParliamentaryGroupMemberRepositoryImpl(session)
 
-    # Mock the database query to return no existing members
-    mock_result = Mock()
-    mock_result.fetchone.return_value = None  # No existing member found
-    session.execute = AsyncMock(return_value=mock_result)
+    # Mock the database query to return inserted IDs (successful inserts)
+    def side_effect(*args, **kwargs):
+        mock_result = Mock()
+        mock_result.fetchone.return_value = Mock(id=1)  # Row inserted
+        return mock_result
+
+    session.execute = AsyncMock(side_effect=side_effect)
 
     # Create test data
     members = [
@@ -80,7 +83,7 @@ async def test_save_extracted_members_saves_new_members():
 
     # Assert
     assert saved_count == 2  # Both members are new, so 2 saved
-    assert session.execute.call_count == 4  # 2 checks + 2 inserts
+    assert session.execute.call_count == 2  # 2 inserts (no separate checks)
     assert session.flush.called
 
 
@@ -91,10 +94,10 @@ async def test_save_extracted_members_mixed_duplicates():
     session = AsyncMock(spec=AsyncSession)
     repo = ExtractedParliamentaryGroupMemberRepositoryImpl(session)
 
-    # Mock the database query to return existing member for first, but not second
+    # Mock the database query: first insert conflicts (None), second succeeds (id=1)
     results = [
-        Mock(id=1),  # First check: member exists
-        None,  # Second check: member doesn't exist
+        None,  # First insert: conflict (duplicate)
+        Mock(id=1),  # Second insert: success (new member)
     ]
 
     def side_effect(*args, **kwargs):
