@@ -33,13 +33,11 @@ from src.application.usecases.review_extracted_politician_usecase import (
 )
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
 from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.storage_service import IStorageService
 from src.domain.services.politician_domain_service import PoliticianDomainService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
+from src.infrastructure.external.gcs_storage_service import GCSStorageService
 from src.infrastructure.external.llm_service import GeminiLLMService
-from src.infrastructure.external.storage_service import (
-    GCSStorageService,
-    IStorageService,
-)
 from src.infrastructure.external.web_scraper_service import (
     IWebScraperService,
     PlaywrightScraperService,
