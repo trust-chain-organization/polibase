@@ -235,6 +235,80 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
         await self.session.flush()  # Flush changes but don't commit
         return created_members
 
+    async def save_extracted_members(
+        self,
+        parliamentary_group_id: int,
+        members: list[Any],
+        url: str,
+    ) -> int:
+        """Save extracted members, preventing duplicates based on group + name.
+
+        Args:
+            parliamentary_group_id: The parliamentary group ID
+            members: List of ExtractedMember objects from extraction
+            url: Source URL for the extraction
+
+        Returns:
+            Number of members actually saved (excluding duplicates)
+        """
+        from datetime import datetime
+
+        saved_count = 0
+
+        for member in members:
+            # Check if member already exists
+            check_query = text("""
+                SELECT id FROM extracted_parliamentary_group_members
+                WHERE parliamentary_group_id = :group_id
+                AND extracted_name = :name
+                LIMIT 1
+            """)
+
+            result = await self.session.execute(
+                check_query,
+                {"group_id": parliamentary_group_id, "name": member.name},
+            )
+            existing = result.fetchone()
+
+            if existing:
+                # Skip duplicate
+                continue
+
+            # Insert new member
+            insert_query = text("""
+                INSERT INTO extracted_parliamentary_group_members (
+                    parliamentary_group_id, extracted_name, source_url,
+                    extracted_role, extracted_party_name, extracted_district,
+                    extracted_at, matching_status, additional_info
+                )
+                VALUES (
+                    :group_id, :name, :url,
+                    :role, :party, :district,
+                    :extracted_at, :status, :info
+                )
+            """)
+
+            await self.session.execute(
+                insert_query,
+                {
+                    "group_id": parliamentary_group_id,
+                    "name": member.name,
+                    "url": url,
+                    "role": member.role,
+                    "party": member.party_name,
+                    "district": member.district,
+                    "extracted_at": datetime.now(),
+                    "status": "pending",
+                    "info": member.additional_info
+                    if hasattr(member, "additional_info")
+                    else None,
+                },
+            )
+            saved_count += 1
+
+        await self.session.flush()
+        return saved_count
+
     def _row_to_entity(self, row: Any) -> ExtractedParliamentaryGroupMember:
         """Convert database row to domain entity."""
         return ExtractedParliamentaryGroupMember(

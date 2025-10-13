@@ -55,7 +55,7 @@ class RepositoryAdapter:
         self._async_session_factory = None
         self._shared_session: AsyncSession | None = None
 
-    def _get_async_session_factory(self):
+    def get_async_session_factory(self):
         """Get or create an async session factory."""
         if self._async_session_factory is None:
             # Convert sync database URL to async
@@ -113,7 +113,7 @@ class RepositoryAdapter:
         Yields:
             AsyncSession: Shared session for the transaction
         """
-        session_factory = self._get_async_session_factory()
+        session_factory = self.get_async_session_factory()
         async with session_factory() as session:
             self._shared_session = session
             try:
@@ -168,7 +168,7 @@ class RepositoryAdapter:
             else:
                 # Create session and auto-commit for single operations
                 # Note: For multi-operation atomicity, use transaction() context
-                session_factory = self._get_async_session_factory()
+                session_factory = self.get_async_session_factory()
                 async with session_factory() as session:
                     repo = self.async_repository_class(session)
                     method = getattr(repo, name)
