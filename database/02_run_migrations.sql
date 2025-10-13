@@ -36,5 +36,6 @@
 \i /docker-entrypoint-initdb.d/02_migrations/031_make_speaker_id_nullable_in_politicians.sql
 \i /docker-entrypoint-initdb.d/02_migrations/032_normalize_speaker_politician_relationship.sql
 \i /docker-entrypoint-initdb.d/02_migrations/033_add_furigana_to_politicians.sql
+\i /docker-entrypoint-initdb.d/02_migrations/034_add_unique_constraint_extracted_parliamentary_group_members.sql
 
 \echo 'Migrations completed.'

@@ -383,3 +383,48 @@ class TestExtractedParliamentaryGroupMemberRepositoryImpl:
         assert created[1].extracted_name == "田中花子"
         assert mock_session.execute.call_count == 2
         mock_session.flush.assert_called_once()
+
+    async def test_bulk_create_skips_duplicates(self, repository, mock_session) -> None:
+        """Test bulk_create skips duplicates using ON CONFLICT."""
+        members = [
+            create_extracted_parliamentary_group_member(
+                id=None, extracted_name="山田太郎"
+            ),
+            create_extracted_parliamentary_group_member(
+                id=None, extracted_name="田中花子"
+            ),
+        ]
+
+        # First insert succeeds, second is duplicate (returns None)
+        mock_row1 = MagicMock(
+            id=1,
+            parliamentary_group_id=1,
+            extracted_name="山田太郎",
+            source_url="https://example.com/group-members",
+            extracted_role="団長",
+            extracted_party_name="自由民主党",
+            extracted_district="東京1区",
+            extracted_at=datetime.now(),
+            matching_status="pending",
+            matched_politician_id=None,
+            matching_confidence=None,
+            matched_at=None,
+            additional_info=None,
+        )
+
+        mock_result1 = MagicMock()
+        mock_result1.fetchone.return_value = mock_row1
+        mock_result2 = MagicMock()
+        mock_result2.fetchone.return_value = None  # Duplicate - ON CONFLICT DO NOTHING
+
+        mock_session.execute = AsyncMock(side_effect=[mock_result1, mock_result2])
+
+        # Execute
+        created = await repository.bulk_create(members)
+
+        # Assert - only first member was created
+        assert len(created) == 1
+        assert created[0].id == 1
+        assert created[0].extracted_name == "山田太郎"
+        assert mock_session.execute.call_count == 2
+        mock_session.flush.assert_called_once()
