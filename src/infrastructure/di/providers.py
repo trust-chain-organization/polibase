@@ -33,11 +33,17 @@ from src.application.usecases.review_extracted_politician_usecase import (
 )
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
 from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.minutes_processing_service import (
+    IMinutesProcessingService,
+)
 from src.domain.services.interfaces.storage_service import IStorageService
 from src.domain.services.politician_domain_service import PoliticianDomainService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.infrastructure.external.gcs_storage_service import GCSStorageService
 from src.infrastructure.external.llm_service import GeminiLLMService
+from src.infrastructure.external.minutes_processing_service import (
+    MinutesProcessAgentService,
+)
 from src.infrastructure.external.web_scraper_service import (
     IWebScraperService,
     PlaywrightScraperService,
@@ -349,6 +355,13 @@ class ServiceContainer(containers.DeclarativeContainer):
         headless=True,
     )
 
+    minutes_processing_service: providers.Provider[IMinutesProcessingService] = (
+        providers.Factory(
+            MinutesProcessAgentService,
+            llm_service=llm_service,
+        )
+    )
+
     # Domain services
     politician_domain_service = providers.Factory(PoliticianDomainService)
     speaker_domain_service = providers.Factory(SpeakerDomainService)
@@ -440,7 +453,7 @@ class UseCaseContainer(containers.DeclarativeContainer):
         conversation_repository=repositories.conversation_repository,
         speaker_repository=repositories.speaker_repository,
         speaker_domain_service=services.speaker_domain_service,
-        llm_service=services.llm_service,
+        minutes_processing_service=services.minutes_processing_service,
         storage_service=services.storage_service,
     )
 

@@ -1,6 +1,9 @@
 """Domain service interfaces."""
 
 from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.minutes_processing_service import (
+    IMinutesProcessingService,
+)
 from src.domain.services.interfaces.proposal_scraper_service import (
     IProposalScraperService,
 )
@@ -8,6 +11,7 @@ from src.domain.services.interfaces.web_scraper_service import IWebScraperServic
 
 __all__ = [
     "ILLMService",
+    "IMinutesProcessingService",
     "IProposalScraperService",
     "IWebScraperService",
 ]
