@@ -54,8 +54,6 @@ class GeminiLLMService(ILLMService):
         self._history_repository: LLMProcessingHistoryRepository | None = None
 
         # Initialize Gemini client
-        # Note: convert_system_message_to_human is deprecated
-        # Gemini now natively supports system messages
         self._llm = ChatGoogleGenerativeAI(
             model=model_name,
             temperature=temperature,
