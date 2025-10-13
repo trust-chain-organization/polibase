@@ -114,6 +114,35 @@ class ParliamentaryGroupMembershipRepositoryImpl(
 
         return self._to_entity(new_model)
 
+    async def add_membership(
+        self,
+        politician_id: int,
+        parliamentary_group_id: int,
+        start_date: date,
+        role: str | None = None,
+        end_date: date | None = None,
+    ) -> ParliamentaryGroupMembershipEntity:
+        """Add a new parliamentary group membership.
+
+        This is a convenience method that delegates to create_membership.
+
+        Args:
+            politician_id: Politician ID
+            parliamentary_group_id: Parliamentary group ID
+            start_date: Membership start date
+            role: Member role (optional)
+            end_date: Membership end date (optional, not used in creation)
+
+        Returns:
+            Created membership entity
+        """
+        return await self.create_membership(
+            politician_id=politician_id,
+            group_id=parliamentary_group_id,
+            start_date=start_date,
+            role=role,
+        )
+
     async def end_membership(
         self, membership_id: int, end_date: date
     ) -> ParliamentaryGroupMembershipEntity | None:
