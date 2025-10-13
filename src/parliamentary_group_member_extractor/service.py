@@ -5,6 +5,7 @@
 """
 
 import json
+import re
 from datetime import date
 from typing import Any, TypedDict
 
@@ -39,6 +40,27 @@ class PoliticianCandidate(TypedDict):
     party_name: str | None
     district: str | None
     profile: str | None
+
+
+def _clean_json_response(response_text: str) -> str:
+    """LLMのレスポンスからJSON文字列を抽出してクリーニングする
+
+    Args:
+        response_text: LLMからの生のレスポンステキスト
+
+    Returns:
+        クリーニングされたJSON文字列
+    """
+    # Remove markdown code blocks if present
+    # Pattern: ```json ... ``` or ``` ... ```
+    cleaned = re.sub(r"```(?:json)?\s*\n?", "", response_text)
+    cleaned = cleaned.strip()
+
+    # If still wrapped in backticks, remove them
+    if cleaned.startswith("`") and cleaned.endswith("`"):
+        cleaned = cleaned[1:-1].strip()
+
+    return cleaned
 
 
 class ParliamentaryGroupMembershipService:
@@ -249,21 +271,30 @@ JSONで回答してください。
             candidates=candidates_text,
         )
 
+        content: str = ""  # Initialize for error logging
         try:
             # Use LLM service's llm property to invoke directly
             if hasattr(self.llm_service, "llm"):
-                # type: ignore - optional llm attribute not in protocol
                 response = self.llm_service.llm.invoke(formatted_prompt)  # type: ignore[attr-defined]
             else:
                 raise AttributeError("LLM service does not have llm property")
 
             # レスポンスをパース
             if hasattr(response, "content"):
-                content = response.content
-                if isinstance(content, str):
-                    result = json.loads(content)
+                raw_content = response.content
+                if isinstance(raw_content, str):
+                    content = raw_content
+                    # Check if content is empty
+                    if not content.strip():
+                        raise ValueError("Empty response from LLM")
+
+                    # Clean the JSON response (remove markdown code blocks, etc.)
+                    cleaned_content = _clean_json_response(content)
+
+                    # Parse JSON
+                    result = json.loads(cleaned_content)
                 else:
-                    raise ValueError(f"Unexpected content type: {type(content)}")
+                    raise ValueError(f"Unexpected content type: {type(raw_content)}")
             else:
                 # 予期しない形式の場合はエラーとして扱う
                 raise ValueError("Unexpected response format from LLM")
@@ -299,6 +330,19 @@ JSONで回答してください。
                     matching_reason="Invalid match ID returned",
                 )
 
+        except json.JSONDecodeError as e:
+            print(f"LLM matching JSON parse error: {e}")
+            print(
+                f"Raw response content: {content if 'content' in locals() else 'N/A'}"
+            )
+            # エラー時は信頼度0で返す
+            return MatchingResult(
+                extracted_member=extracted_member,
+                politician_id=None,
+                politician_name=None,
+                confidence_score=0.0,
+                matching_reason=f"JSON parsing error: {str(e)}",
+            )
         except Exception as e:
             print(f"LLM matching error: {e}")
             # エラー時は信頼度0で返す
