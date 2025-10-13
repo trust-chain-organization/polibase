@@ -166,3 +166,48 @@ class LLMServiceAdapter:
             self._llm_service.set_input_reference(  # type: ignore[attr-defined]
                 reference_type, reference_id
             )
+
+    def get_structured_llm(self, schema: Any) -> Any:
+        """Get a structured LLM instance configured with the given schema.
+
+        Args:
+            schema: Pydantic model or schema definition
+
+        Returns:
+            Configured LLM instance
+        """
+        return self._llm_service.get_structured_llm(schema)
+
+    def get_prompt(self, prompt_name: str) -> Any:
+        """Get a prompt template by name.
+
+        Args:
+            prompt_name: Name identifier of the prompt
+
+        Returns:
+            Prompt template instance
+        """
+        return self._llm_service.get_prompt(prompt_name)
+
+    def invoke_with_retry(self, chain: Any, inputs: dict[str, Any]) -> Any:
+        """Invoke an LLM chain with retry logic.
+
+        Args:
+            chain: LangChain runnable to invoke
+            inputs: Input dictionary for the chain
+
+        Returns:
+            Result from the chain invocation
+        """
+        return self._llm_service.invoke_with_retry(chain, inputs)
+
+    def invoke_llm(self, messages: list[dict[str, str]]) -> str:
+        """Invoke the LLM with messages and return the response content.
+
+        Args:
+            messages: List of message dictionaries with 'role' and 'content' keys
+
+        Returns:
+            The response content from the LLM
+        """
+        return self._llm_service.invoke_llm(messages)

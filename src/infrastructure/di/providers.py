@@ -11,6 +11,9 @@ from sqlalchemy.orm import sessionmaker
 from src.application.usecases.convert_extracted_politician_usecase import (
     ConvertExtractedPoliticianUseCase,
 )
+from src.application.usecases.execute_minutes_processing_usecase import (
+    ExecuteMinutesProcessingUseCase,
+)
 from src.application.usecases.execute_speaker_extraction_usecase import (
     ExecuteSpeakerExtractionUseCase,
 )
@@ -30,12 +33,11 @@ from src.application.usecases.review_extracted_politician_usecase import (
 )
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
 from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.storage_service import IStorageService
 from src.domain.services.politician_domain_service import PoliticianDomainService
+from src.domain.services.speaker_domain_service import SpeakerDomainService
+from src.infrastructure.external.gcs_storage_service import GCSStorageService
 from src.infrastructure.external.llm_service import GeminiLLMService
-from src.infrastructure.external.storage_service import (
-    GCSStorageService,
-    IStorageService,
-)
 from src.infrastructure.external.web_scraper_service import (
     IWebScraperService,
     PlaywrightScraperService,
@@ -349,11 +351,10 @@ class ServiceContainer(containers.DeclarativeContainer):
 
     # Domain services
     politician_domain_service = providers.Factory(PoliticianDomainService)
+    speaker_domain_service = providers.Factory(SpeakerDomainService)
 
     # Mock services for testing (these may not have real implementations yet)
     minutes_domain_service = providers.Factory(lambda: MockDomainService("minutes"))
-
-    speaker_domain_service = providers.Factory(lambda: MockDomainService("speaker"))
 
     pdf_processor_service = providers.Factory(lambda: MockService("pdf_processor"))
 
@@ -430,6 +431,17 @@ class UseCaseContainer(containers.DeclarativeContainer):
         conversation_repository=repositories.conversation_repository,
         speaker_repository=repositories.speaker_repository,
         speaker_domain_service=services.speaker_domain_service,
+    )
+
+    minutes_processing_usecase = providers.Factory(
+        ExecuteMinutesProcessingUseCase,
+        meeting_repository=repositories.meeting_repository,
+        minutes_repository=repositories.minutes_repository,
+        conversation_repository=repositories.conversation_repository,
+        speaker_repository=repositories.speaker_repository,
+        speaker_domain_service=services.speaker_domain_service,
+        llm_service=services.llm_service,
+        storage_service=services.storage_service,
     )
 
     extract_proposal_judges_usecase = providers.Factory(
