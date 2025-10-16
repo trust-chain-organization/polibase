@@ -17,38 +17,37 @@ from src.exceptions import APIKeyError
 
 
 @pytest.fixture
-def mock_repositories():
-    """モックリポジトリのフィクスチャ"""
-    meeting_repo = AsyncMock()
-    minutes_repo = AsyncMock()
-    conversation_repo = AsyncMock()
-    speaker_repo = AsyncMock()
-    speaker_service = MagicMock()
-    minutes_processing_service = AsyncMock()
-    storage_service = AsyncMock()
+def mock_unit_of_work():
+    """モックUnit of Workのフィクスチャ"""
+    uow = AsyncMock()
+    uow.meeting_repository = AsyncMock()
+    uow.minutes_repository = AsyncMock()
+    uow.conversation_repository = AsyncMock()
+    uow.speaker_repository = AsyncMock()
+    uow.commit = AsyncMock()
+    uow.rollback = AsyncMock()
+    uow.flush = AsyncMock()
+    return uow
 
+
+@pytest.fixture
+def mock_services():
+    """モックサービスのフィクスチャ"""
     return {
-        "meeting_repo": meeting_repo,
-        "minutes_repo": minutes_repo,
-        "conversation_repo": conversation_repo,
-        "speaker_repo": speaker_repo,
-        "speaker_service": speaker_service,
-        "minutes_processing_service": minutes_processing_service,
-        "storage_service": storage_service,
+        "speaker_service": MagicMock(),
+        "minutes_processing_service": AsyncMock(),
+        "storage_service": AsyncMock(),
     }
 
 
 @pytest.fixture
-def use_case(mock_repositories):
+def use_case(mock_unit_of_work, mock_services):
     """ユースケースのフィクスチャ"""
     return ExecuteMinutesProcessingUseCase(
-        meeting_repository=mock_repositories["meeting_repo"],
-        minutes_repository=mock_repositories["minutes_repo"],
-        conversation_repository=mock_repositories["conversation_repo"],
-        speaker_repository=mock_repositories["speaker_repo"],
-        speaker_domain_service=mock_repositories["speaker_service"],
-        minutes_processing_service=mock_repositories["minutes_processing_service"],
-        storage_service=mock_repositories["storage_service"],
+        speaker_domain_service=mock_services["speaker_service"],
+        minutes_processing_service=mock_services["minutes_processing_service"],
+        storage_service=mock_services["storage_service"],
+        unit_of_work=mock_unit_of_work,
     )
 
 
@@ -77,22 +76,22 @@ def sample_minutes():
 
 @pytest.mark.asyncio
 async def test_execute_success(
-    use_case, mock_repositories, sample_meeting, sample_minutes
+    use_case, mock_unit_of_work, mock_services, sample_meeting, sample_minutes
 ):
     """正常に議事録処理が実行されることをテスト"""
     # モックの設定
-    mock_repositories["meeting_repo"].get_by_id.return_value = sample_meeting
-    mock_repositories["minutes_repo"].get_by_meeting.return_value = None
-    mock_repositories["minutes_repo"].create.return_value = sample_minutes
-    mock_repositories["conversation_repo"].get_by_minutes.return_value = []
+    mock_unit_of_work.meeting_repository.get_by_id.return_value = sample_meeting
+    mock_unit_of_work.minutes_repository.get_by_meeting.return_value = None
+    mock_unit_of_work.minutes_repository.create.return_value = sample_minutes
+    mock_unit_of_work.conversation_repository.get_by_minutes.return_value = []
 
     # Storage serviceをモック - download_file returns bytes
-    mock_repositories[
+    mock_services[
         "storage_service"
     ].download_file.return_value = "議事録テキスト".encode()
 
     # MinutesProcessingServiceをモック - ドメイン値オブジェクトを返す
-    mock_repositories["minutes_processing_service"].process_minutes.return_value = [
+    mock_services["minutes_processing_service"].process_minutes.return_value = [
         SpeakerSpeech(speaker="田中太郎", speech_content="発言1"),
         SpeakerSpeech(speaker="山田花子", speech_content="発言2"),
     ]
@@ -114,17 +113,17 @@ async def test_execute_success(
             sequence_number=2,
         ),
     ]
-    mock_repositories[
-        "conversation_repo"
-    ].bulk_create.return_value = created_conversations
+    mock_unit_of_work.conversation_repository.bulk_create.return_value = (
+        created_conversations
+    )
 
     # Speakerの作成をモック
-    mock_repositories["speaker_service"].extract_party_from_name.side_effect = [
+    mock_services["speaker_service"].extract_party_from_name.side_effect = [
         ("田中太郎", "自民党"),
         ("山田花子", "立憲民主党"),
     ]
-    mock_repositories["speaker_repo"].get_by_name_party_position.return_value = None
-    mock_repositories["speaker_repo"].create.return_value = Mock()
+    mock_unit_of_work.speaker_repository.get_by_name_party_position.return_value = None
+    mock_unit_of_work.speaker_repository.create.return_value = Mock()
 
     # 実行
     request = ExecuteMinutesProcessingDTO(meeting_id=1)
@@ -139,17 +138,20 @@ async def test_execute_success(
     assert result.errors is None
 
     # リポジトリメソッドが呼ばれたことを確認
-    mock_repositories["meeting_repo"].get_by_id.assert_called_once_with(1)
-    mock_repositories["minutes_repo"].create.assert_called_once()
-    mock_repositories["conversation_repo"].bulk_create.assert_called_once()
-    assert mock_repositories["speaker_repo"].create.call_count == 2
+    mock_unit_of_work.meeting_repository.get_by_id.assert_called_once_with(1)
+    mock_unit_of_work.minutes_repository.create.assert_called_once()
+    mock_unit_of_work.conversation_repository.bulk_create.assert_called_once()
+    assert mock_unit_of_work.speaker_repository.create.call_count == 2
+    # Unit of Workのcommitが呼ばれたことを確認
+    mock_unit_of_work.commit.assert_called_once()
+    mock_unit_of_work.flush.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_execute_meeting_not_found(use_case, mock_repositories):
+async def test_execute_meeting_not_found(use_case, mock_unit_of_work):
     """会議が見つからない場合のエラーテスト"""
     # モックの設定
-    mock_repositories["meeting_repo"].get_by_id.return_value = None
+    mock_unit_of_work.meeting_repository.get_by_id.return_value = None
 
     # 実行と検証
     request = ExecuteMinutesProcessingDTO(meeting_id=999)
@@ -159,13 +161,13 @@ async def test_execute_meeting_not_found(use_case, mock_repositories):
 
 @pytest.mark.asyncio
 async def test_execute_already_has_conversations(
-    use_case, mock_repositories, sample_meeting, sample_minutes
+    use_case, mock_unit_of_work, sample_meeting, sample_minutes
 ):
     """既にConversationsが存在する場合のエラーテスト"""
     # モックの設定
-    mock_repositories["meeting_repo"].get_by_id.return_value = sample_meeting
-    mock_repositories["minutes_repo"].get_by_meeting.return_value = sample_minutes
-    mock_repositories["conversation_repo"].get_by_minutes.return_value = [
+    mock_unit_of_work.meeting_repository.get_by_id.return_value = sample_meeting
+    mock_unit_of_work.minutes_repository.get_by_meeting.return_value = sample_minutes
+    mock_unit_of_work.conversation_repository.get_by_minutes.return_value = [
         Conversation(
             id=1,
             minutes_id=1,
@@ -183,13 +185,13 @@ async def test_execute_already_has_conversations(
 
 @pytest.mark.asyncio
 async def test_execute_force_reprocess(
-    use_case, mock_repositories, sample_meeting, sample_minutes
+    use_case, mock_unit_of_work, mock_services, sample_meeting, sample_minutes
 ):
     """強制再処理の場合、既存のConversationsがあっても処理されることをテスト"""
     # モックの設定
-    mock_repositories["meeting_repo"].get_by_id.return_value = sample_meeting
-    mock_repositories["minutes_repo"].get_by_meeting.return_value = sample_minutes
-    mock_repositories["conversation_repo"].get_by_minutes.return_value = [
+    mock_unit_of_work.meeting_repository.get_by_id.return_value = sample_meeting
+    mock_unit_of_work.minutes_repository.get_by_meeting.return_value = sample_minutes
+    mock_unit_of_work.conversation_repository.get_by_minutes.return_value = [
         Conversation(
             id=1,
             minutes_id=1,
@@ -200,14 +202,14 @@ async def test_execute_force_reprocess(
     ]
 
     # Storage serviceをモック - download_file returns bytes
-    mock_repositories[
+    mock_services[
         "storage_service"
     ].download_file.return_value = "議事録テキスト".encode()
 
     # MinutesProcessingServiceをモック
-    mock_repositories["minutes_processing_service"].process_minutes.return_value = []
+    mock_services["minutes_processing_service"].process_minutes.return_value = []
 
-    mock_repositories["conversation_repo"].bulk_create.return_value = []
+    mock_unit_of_work.conversation_repository.bulk_create.return_value = []
 
     # 実行
     request = ExecuteMinutesProcessingDTO(meeting_id=1, force_reprocess=True)
@@ -219,7 +221,7 @@ async def test_execute_force_reprocess(
 
 
 @pytest.mark.asyncio
-async def test_execute_no_gcs_uri(use_case, mock_repositories):
+async def test_execute_no_gcs_uri(use_case, mock_unit_of_work):
     """GCS URIがない場合のエラーテスト"""
     # モックの設定
     meeting_without_gcs = Meeting(
@@ -230,8 +232,8 @@ async def test_execute_no_gcs_uri(use_case, mock_repositories):
         gcs_text_uri=None,
         gcs_pdf_uri=None,
     )
-    mock_repositories["meeting_repo"].get_by_id.return_value = meeting_without_gcs
-    mock_repositories["minutes_repo"].get_by_meeting.return_value = None
+    mock_unit_of_work.meeting_repository.get_by_id.return_value = meeting_without_gcs
+    mock_unit_of_work.minutes_repository.get_by_meeting.return_value = None
 
     # 実行と検証
     request = ExecuteMinutesProcessingDTO(meeting_id=1)
@@ -267,7 +269,7 @@ async def test_execute_api_key_not_set(use_case, mock_repositories, sample_meeti
 
 
 @pytest.mark.asyncio
-async def test_extract_and_create_speakers(use_case, mock_repositories):
+async def test_extract_and_create_speakers(use_case, mock_unit_of_work, mock_services):
     """発言者の抽出と作成のテスト"""
     # テストデータ
     conversations = [
@@ -295,16 +297,16 @@ async def test_extract_and_create_speakers(use_case, mock_repositories):
     ]
 
     # モックの設定
-    mock_repositories["speaker_service"].extract_party_from_name.side_effect = [
+    mock_services["speaker_service"].extract_party_from_name.side_effect = [
         ("田中太郎", "自民党"),
         ("山田花子", None),
         ("田中太郎", "自民党"),  # 重複
     ]
-    mock_repositories["speaker_repo"].get_by_name_party_position.return_value = None
+    mock_unit_of_work.speaker_repository.get_by_name_party_position.return_value = None
 
     # 実行
     created_count = await use_case._extract_and_create_speakers(conversations)
 
     # 検証
     assert created_count == 2  # 重複を除いた数
-    assert mock_repositories["speaker_repo"].create.call_count == 2
+    assert mock_unit_of_work.speaker_repository.create.call_count == 2

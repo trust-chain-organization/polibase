@@ -99,6 +99,7 @@ from src.infrastructure.persistence.proposal_repository_impl import (
     ProposalRepositoryImpl,
 )
 from src.infrastructure.persistence.speaker_repository_impl import SpeakerRepositoryImpl
+from src.infrastructure.persistence.unit_of_work_impl import UnitOfWorkImpl
 
 
 # Mock SQLAlchemy model classes for repositories that don't have them yet
@@ -379,6 +380,7 @@ class UseCaseContainer(containers.DeclarativeContainer):
 
     repositories = providers.DependenciesContainer()
     services = providers.DependenciesContainer()
+    database = providers.DependenciesContainer()
 
     process_minutes_usecase = providers.Factory(
         ProcessMinutesUseCase,
@@ -446,15 +448,18 @@ class UseCaseContainer(containers.DeclarativeContainer):
         speaker_domain_service=services.speaker_domain_service,
     )
 
+    # Unit of Work for transaction management
+    unit_of_work = providers.Factory(
+        UnitOfWorkImpl,
+        session=database.async_session,
+    )
+
     minutes_processing_usecase = providers.Factory(
         ExecuteMinutesProcessingUseCase,
-        meeting_repository=repositories.meeting_repository,
-        minutes_repository=repositories.minutes_repository,
-        conversation_repository=repositories.conversation_repository,
-        speaker_repository=repositories.speaker_repository,
         speaker_domain_service=services.speaker_domain_service,
         minutes_processing_service=services.minutes_processing_service,
         storage_service=services.storage_service,
+        unit_of_work=unit_of_work,
     )
 
     extract_proposal_judges_usecase = providers.Factory(

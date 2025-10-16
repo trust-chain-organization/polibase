@@ -62,6 +62,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
         UseCaseContainer,
         repositories=repositories,
         services=services,
+        database=database,
     )
 
     @classmethod

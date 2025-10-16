@@ -15,14 +15,11 @@ from src.domain.entities.conversation import Conversation
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
 from src.domain.entities.speaker import Speaker
-from src.domain.repositories.conversation_repository import ConversationRepository
-from src.domain.repositories.meeting_repository import MeetingRepository
-from src.domain.repositories.minutes_repository import MinutesRepository
-from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.interfaces.minutes_processing_service import (
     IMinutesProcessingService,
 )
 from src.domain.services.interfaces.storage_service import IStorageService
+from src.domain.services.interfaces.unit_of_work import IUnitOfWork
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.domain.value_objects.speaker_speech import SpeakerSpeech
 
@@ -46,32 +43,23 @@ class ExecuteMinutesProcessingUseCase:
 
     def __init__(
         self,
-        meeting_repository: MeetingRepository,
-        minutes_repository: MinutesRepository,
-        conversation_repository: ConversationRepository,
-        speaker_repository: SpeakerRepository,
         speaker_domain_service: SpeakerDomainService,
         minutes_processing_service: IMinutesProcessingService,
         storage_service: IStorageService,
+        unit_of_work: IUnitOfWork,
     ):
         """ユースケースを初期化する
 
         Args:
-            meeting_repository: 会議リポジトリ
-            minutes_repository: 議事録リポジトリ
-            conversation_repository: 発言リポジトリ
-            speaker_repository: 発言者リポジトリ
             speaker_domain_service: 発言者ドメインサービス
             minutes_processing_service: 議事録処理サービス
             storage_service: ストレージサービス
+            unit_of_work: Unit of Work for transaction management
         """
-        self.meeting_repo = meeting_repository
-        self.minutes_repo = minutes_repository
-        self.conversation_repo = conversation_repository
-        self.speaker_repo = speaker_repository
         self.speaker_service = speaker_domain_service
         self.minutes_processing_service = minutes_processing_service
         self.storage_service = storage_service
+        self.uow = unit_of_work
 
     async def execute(
         self, request: ExecuteMinutesProcessingDTO
@@ -94,7 +82,7 @@ class ExecuteMinutesProcessingUseCase:
 
         try:
             # 会議情報を取得
-            meeting = await self.meeting_repo.get_by_id(request.meeting_id)
+            meeting = await self.uow.meeting_repository.get_by_id(request.meeting_id)
             if not meeting:
                 raise ValueError(f"Meeting {request.meeting_id} not found")
 
@@ -102,13 +90,17 @@ class ExecuteMinutesProcessingUseCase:
             if meeting.id is None:
                 raise ValueError("Meeting must have an ID")
 
-            existing_minutes = await self.minutes_repo.get_by_meeting(meeting.id)
+            existing_minutes = await self.uow.minutes_repository.get_by_meeting(
+                meeting.id
+            )
 
             # 強制再処理でない場合、既存のConversationsをチェック
             if existing_minutes and not request.force_reprocess:
                 if existing_minutes.id:
-                    conversations = await self.conversation_repo.get_by_minutes(
-                        existing_minutes.id
+                    conversations = (
+                        await self.uow.conversation_repository.get_by_minutes(
+                            existing_minutes.id
+                        )
                     )
                     if conversations:
                         raise ValueError(
@@ -124,7 +116,10 @@ class ExecuteMinutesProcessingUseCase:
                     meeting_id=meeting.id,
                     url=meeting.url,
                 )
-                minutes = await self.minutes_repo.create(minutes)
+                minutes = await self.uow.minutes_repository.create(minutes)
+                # Flush to make foreign key available for conversations
+                await self.uow.flush()
+                logger.info(f"Minutes created and flushed: id={minutes.id}")
             else:
                 minutes = existing_minutes
 
@@ -141,6 +136,10 @@ class ExecuteMinutesProcessingUseCase:
             unique_speakers = await self._extract_and_create_speakers(
                 saved_conversations
             )
+
+            # トランザクションをコミット（単一コミット）
+            await self.uow.commit()
+            logger.info("Transaction committed successfully")
 
             # 処理完了時間を計算
             end_time = datetime.now()
@@ -159,6 +158,9 @@ class ExecuteMinutesProcessingUseCase:
         except Exception as e:
             errors.append(str(e))
             logger.error(f"Minutes processing failed: {e}", exc_info=True)
+            # エラー時はロールバック
+            await self.uow.rollback()
+            logger.info("Transaction rolled back")
             raise
 
     async def _fetch_minutes_text(self, meeting: Meeting) -> str:
@@ -244,7 +246,7 @@ class ExecuteMinutesProcessingUseCase:
             conversations.append(conv)
 
         # バルク作成
-        saved = await self.conversation_repo.bulk_create(conversations)
+        saved = await self.uow.conversation_repository.bulk_create(conversations)
         logger.info(
             f"Saved {len(saved)} conversations to database", minutes_id=minutes_id
         )
@@ -275,7 +277,7 @@ class ExecuteMinutesProcessingUseCase:
         created_count = 0
         for name, party_info in speaker_names:
             # 既存の発言者をチェック
-            existing = await self.speaker_repo.get_by_name_party_position(
+            existing = await self.uow.speaker_repository.get_by_name_party_position(
                 name, party_info, None
             )
 
@@ -286,7 +288,7 @@ class ExecuteMinutesProcessingUseCase:
                     political_party_name=party_info,
                     is_politician=bool(party_info),  # 政党があれば政治家と仮定
                 )
-                await self.speaker_repo.create(speaker)
+                await self.uow.speaker_repository.create(speaker)
                 created_count += 1
 
         logger.info(f"Created {created_count} new speakers")
