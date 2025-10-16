@@ -78,6 +78,12 @@ class ExecuteMinutesProcessingUseCase:
         self.storage_service = storage_service
         self.session = session
 
+        # Ensure all repositories use the same session for transaction consistency
+        self.meeting_repo.session = session  # type: ignore[attr-defined]
+        self.minutes_repo.session = session  # type: ignore[attr-defined]
+        self.conversation_repo.session = session  # type: ignore[attr-defined]
+        self.speaker_repo.session = session  # type: ignore[attr-defined]
+
     async def execute(
         self, request: ExecuteMinutesProcessingDTO
     ) -> MinutesProcessingResultDTO:
