@@ -40,6 +40,10 @@ class AsyncSessionAdapter(AsyncSession):  # type: ignore[misc]
         """Add instance to session."""
         self.sync_session.add(instance)
 
+    def add_all(self, instances: list[Any]) -> None:
+        """Add multiple instances to session."""
+        self.sync_session.add_all(instances)
+
     async def flush(self) -> None:
         """Flush synchronously but return as if async."""
         self.sync_session.flush()
