@@ -118,6 +118,12 @@ class ScraperService:
 
     def _get_scraper_for_url(self, url: str) -> BaseScraper | None:
         """URLに基づいて適切なスクレーパーを選択"""
+        # 直接PDF URLの場合
+        if url.lower().endswith(".pdf"):
+            from .pdf_scraper import PDFScraper
+
+            return PDFScraper()
+
         # kaigiroku.netシステムの場合
         if "kaigiroku.net/tenant/" in url:
             return KaigirokuNetScraper()

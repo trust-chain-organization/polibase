@@ -2,7 +2,7 @@
 
 import asyncio
 import threading
-import time  # noqa: F401
+import time
 from datetime import date
 from typing import Any, cast
 
@@ -548,8 +548,6 @@ def show_meetings_list():
                     else:
                         # 処理中は自動リロード
                         st.caption("🔄 処理中... (自動的に更新されます)")
-                        import time
-
                         time.sleep(2)
                         st.rerun()
 
@@ -606,8 +604,6 @@ def show_meetings_list():
                     else:
                         # 処理中は自動リロード
                         st.caption("🔄 処理中... (自動的に更新されます)")
-                        import time
-
                         time.sleep(2)
                         st.rerun()
 
