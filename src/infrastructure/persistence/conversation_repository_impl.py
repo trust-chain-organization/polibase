@@ -4,11 +4,11 @@ import logging
 from datetime import datetime
 from typing import Any, TypedDict
 
-from sqlalchemy import text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text, text
 from sqlalchemy.exc import IntegrityError as SQLIntegrityError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, registry
 
 from src.domain.entities.conversation import Conversation
 from src.domain.repositories.conversation_repository import ConversationRepository
@@ -18,6 +18,9 @@ from src.infrastructure.persistence.base_repository_impl import BaseRepositoryIm
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 
 logger = logging.getLogger(__name__)
+
+# Create a mapper registry for this table
+mapper_registry = registry()
 
 
 class ConversationModelDict(TypedDict, total=False):
@@ -35,8 +38,35 @@ class ConversationModelDict(TypedDict, total=False):
     updated_at: datetime
 
 
+# Define conversations table
+conversations_table = Table(
+    "conversations",
+    mapper_registry.metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("minutes_id", Integer, ForeignKey("minutes.id"), nullable=True),
+    Column("speaker_id", Integer, ForeignKey("speakers.id"), nullable=True),
+    Column("speaker_name", String(255), nullable=True),
+    Column("comment", Text, nullable=False),
+    Column("sequence_number", Integer, nullable=False),
+    Column("chapter_number", Integer, nullable=True),
+    Column("sub_chapter_number", Integer, nullable=True),
+    Column(
+        "created_at",
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    ),
+    Column(
+        "updated_at",
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    ),
+)
+
+
 class ConversationModel:
-    """Conversation database model (dynamic)."""
+    """Conversation database model (SQLAlchemy mapped class)."""
 
     id: int
     minutes_id: int | None
@@ -49,9 +79,9 @@ class ConversationModel:
     created_at: datetime
     updated_at: datetime
 
-    def __init__(self, **kwargs: Any):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+
+# Map the class to the table
+mapper_registry.map_imperatively(ConversationModel, conversations_table)
 
 
 class ConversationRepositoryImpl(
@@ -185,55 +215,24 @@ class ConversationRepositoryImpl(
     async def bulk_create(
         self, conversations: list[Conversation]
     ) -> list[Conversation]:
-        """Create multiple conversations at once."""
+        """Create multiple conversations at once using ORM."""
         if not conversations:
             return []
 
-        if self.async_session is not None or hasattr(self, "session"):
-            # Async bulk insert - use session set by UseCase if available
-            session_to_use = getattr(self, "session", self.async_session)  # type: ignore[arg-type]
+        if self.async_session is not None:
+            # Use ORM add_all for proper transaction handling
+            models = [self._to_model(conv) for conv in conversations]
+            self.async_session.add_all(models)
 
-            values: list[dict[str, Any]] = [
-                {
-                    "minutes_id": conv.minutes_id,
-                    "speaker_id": conv.speaker_id,
-                    "speaker_name": conv.speaker_name,
-                    "comment": conv.comment,
-                    "sequence_number": conv.sequence_number,
-                    "chapter_number": conv.chapter_number,
-                    "sub_chapter_number": conv.sub_chapter_number,
-                }
-                for conv in conversations
-            ]
+            # Flush to assign IDs without committing
+            await self.async_session.flush()
 
-            query = text("""
-                INSERT INTO conversations
-                (minutes_id, speaker_id, speaker_name, comment, sequence_number,
-                 chapter_number, sub_chapter_number)
-                VALUES
-                (:minutes_id, :speaker_id, :speaker_name, :comment, :sequence_number,
-                 :chapter_number, :sub_chapter_number)
-                RETURNING id
-            """)
+            # Refresh to get assigned IDs
+            for model in models:
+                await self.async_session.refresh(model)
 
-            created: list[Conversation] = []
-            for value in values:
-                result = await session_to_use.execute(query, value)  # type: ignore[union-attr]
-                conv_id = result.scalar()
-                # Create new conversation with ID
-                conv = Conversation(
-                    id=conv_id,
-                    comment=value["comment"],
-                    sequence_number=value["sequence_number"],
-                    minutes_id=value["minutes_id"],
-                    speaker_id=value["speaker_id"],
-                    speaker_name=value["speaker_name"],
-                    chapter_number=value["chapter_number"],
-                    sub_chapter_number=value["sub_chapter_number"],
-                )
-                created.append(conv)
-
-            # Do not commit here - let UseCase manage transaction
+            # Convert back to entities with IDs
+            created = [self._to_entity(model) for model in models]
             return created
         elif self.sync_session is not None:
             # Sync implementation
