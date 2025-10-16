@@ -189,8 +189,10 @@ class ConversationRepositoryImpl(
         if not conversations:
             return []
 
-        if self.async_session is not None:
-            # Async bulk insert
+        if self.async_session is not None or hasattr(self, "session"):
+            # Async bulk insert - use session set by UseCase if available
+            session_to_use = getattr(self, "session", self.async_session)  # type: ignore[arg-type]
+
             values: list[dict[str, Any]] = [
                 {
                     "minutes_id": conv.minutes_id,
@@ -216,7 +218,7 @@ class ConversationRepositoryImpl(
 
             created: list[Conversation] = []
             for value in values:
-                result = await self.async_session.execute(query, value)
+                result = await session_to_use.execute(query, value)  # type: ignore[union-attr]
                 conv_id = result.scalar()
                 # Create new conversation with ID
                 conv = Conversation(
