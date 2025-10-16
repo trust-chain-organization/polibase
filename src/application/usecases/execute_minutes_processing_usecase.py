@@ -130,6 +130,8 @@ class ExecuteMinutesProcessingUseCase:
                     url=meeting.url,
                 )
                 minutes = await self.minutes_repo.create(minutes)
+                # Flush to ensure minutes.id is available for foreign key references
+                await self.session.flush()
             else:
                 minutes = existing_minutes
 
