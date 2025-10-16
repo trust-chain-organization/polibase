@@ -379,6 +379,7 @@ class UseCaseContainer(containers.DeclarativeContainer):
 
     repositories = providers.DependenciesContainer()
     services = providers.DependenciesContainer()
+    database = providers.DependenciesContainer()
 
     process_minutes_usecase = providers.Factory(
         ProcessMinutesUseCase,
@@ -455,6 +456,7 @@ class UseCaseContainer(containers.DeclarativeContainer):
         speaker_domain_service=services.speaker_domain_service,
         minutes_processing_service=services.minutes_processing_service,
         storage_service=services.storage_service,
+        session=database.async_session,
     )
 
     extract_proposal_judges_usecase = providers.Factory(

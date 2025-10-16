@@ -26,6 +26,7 @@ def mock_repositories():
     speaker_service = MagicMock()
     minutes_processing_service = AsyncMock()
     storage_service = AsyncMock()
+    session = AsyncMock()
 
     return {
         "meeting_repo": meeting_repo,
@@ -35,6 +36,7 @@ def mock_repositories():
         "speaker_service": speaker_service,
         "minutes_processing_service": minutes_processing_service,
         "storage_service": storage_service,
+        "session": session,
     }
 
 
@@ -49,6 +51,7 @@ def use_case(mock_repositories):
         speaker_domain_service=mock_repositories["speaker_service"],
         minutes_processing_service=mock_repositories["minutes_processing_service"],
         storage_service=mock_repositories["storage_service"],
+        session=mock_repositories["session"],
     )
 
 

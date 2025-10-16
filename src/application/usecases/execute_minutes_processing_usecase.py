@@ -8,6 +8,8 @@ GCSまたはPDFから議事録テキストを取得し、MinutesProcessingServic
 from dataclasses import dataclass
 from datetime import datetime
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.application.dtos.minutes_processing_dto import MinutesProcessingResultDTO
 from src.application.exceptions import ProcessingError
 from src.common.logging import get_logger
@@ -53,6 +55,7 @@ class ExecuteMinutesProcessingUseCase:
         speaker_domain_service: SpeakerDomainService,
         minutes_processing_service: IMinutesProcessingService,
         storage_service: IStorageService,
+        session: AsyncSession,
     ):
         """ユースケースを初期化する
 
@@ -64,6 +67,7 @@ class ExecuteMinutesProcessingUseCase:
             speaker_domain_service: 発言者ドメインサービス
             minutes_processing_service: 議事録処理サービス
             storage_service: ストレージサービス
+            session: データベースセッション
         """
         self.meeting_repo = meeting_repository
         self.minutes_repo = minutes_repository
@@ -72,6 +76,7 @@ class ExecuteMinutesProcessingUseCase:
         self.speaker_service = speaker_domain_service
         self.minutes_processing_service = minutes_processing_service
         self.storage_service = storage_service
+        self.session = session
 
     async def execute(
         self, request: ExecuteMinutesProcessingDTO
@@ -142,6 +147,10 @@ class ExecuteMinutesProcessingUseCase:
                 saved_conversations
             )
 
+            # トランザクションをコミット
+            await self.session.commit()
+            logger.info("Transaction committed successfully")
+
             # 処理完了時間を計算
             end_time = datetime.now()
             processing_time = (end_time - start_time).total_seconds()
@@ -159,6 +168,12 @@ class ExecuteMinutesProcessingUseCase:
         except Exception as e:
             errors.append(str(e))
             logger.error(f"Minutes processing failed: {e}", exc_info=True)
+            # エラー時はロールバック
+            try:
+                await self.session.rollback()
+                logger.info("Transaction rolled back")
+            except Exception as rollback_error:
+                logger.error(f"Rollback failed: {rollback_error}")
             raise
 
     async def _fetch_minutes_text(self, meeting: Meeting) -> str:
