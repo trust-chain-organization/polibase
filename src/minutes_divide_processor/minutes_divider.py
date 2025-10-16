@@ -549,6 +549,22 @@ class MinutesDivider:
             )
             return "", minutes_text
 
+        # 境界位置の妥当性を検証
+        # 境界がテキストの末尾付近にある場合は無効とみなす
+        text_length = len(minutes_text)
+        remaining_length = text_length - split_index
+
+        # 末尾から100文字以内、かつテキスト全体の20%以内の場合は無効
+        # (ANDにすることで、短いテキストで有効な境界を誤って拒否することを防ぐ)
+        if remaining_length < 100 and remaining_length < text_length * 0.2:
+            logger.warning(
+                f"Boundary is too close to the end of text "
+                f"(remaining: {remaining_length} chars, "
+                f"{remaining_length / text_length * 100:.1f}% of total). "
+                f"Treating entire text as speech content."
+            )
+            return "", minutes_text
+
         # テキストを分割
         attendee_part = minutes_text[:split_index].strip()
         speech_part = minutes_text[split_index:].strip()
