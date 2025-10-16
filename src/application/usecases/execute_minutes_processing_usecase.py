@@ -84,6 +84,13 @@ class ExecuteMinutesProcessingUseCase:
         self.conversation_repo.session = session  # type: ignore[attr-defined]
         self.speaker_repo.session = session  # type: ignore[attr-defined]
 
+        # Log session IDs for debugging
+        logger.debug(
+            f"UseCase session: {id(session)}, "
+            f"Minutes repo session: {id(self.minutes_repo.session)}, "  # type: ignore[attr-defined]
+            f"Conversation repo session: {id(self.conversation_repo.session)}"  # type: ignore[attr-defined]
+        )
+
     async def execute(
         self, request: ExecuteMinutesProcessingDTO
     ) -> MinutesProcessingResultDTO:
@@ -136,8 +143,12 @@ class ExecuteMinutesProcessingUseCase:
                     url=meeting.url,
                 )
                 minutes = await self.minutes_repo.create(minutes)
-                # Flush to ensure minutes.id is available for foreign key references
-                await self.session.flush()
+                # Commit immediately to make minutes available for raw SQL FK references
+                await self.session.commit()
+                logger.info(
+                    f"Minutes created and committed: id={minutes.id}, "
+                    f"session={id(self.session)}"
+                )
             else:
                 minutes = existing_minutes
 

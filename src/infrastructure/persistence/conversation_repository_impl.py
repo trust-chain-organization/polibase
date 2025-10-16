@@ -231,7 +231,7 @@ class ConversationRepositoryImpl(
                 )
                 created.append(conv)
 
-            await self.async_session.commit()
+            # Do not commit here - let UseCase manage transaction
             return created
         elif self.sync_session is not None:
             # Sync implementation
@@ -262,7 +262,7 @@ class ConversationRepositoryImpl(
                 conv.id = conv_id
                 created.append(conv)
 
-            self.sync_session.commit()
+            # Do not commit here - let UseCase manage transaction
             return created
         else:
             # This should never happen
