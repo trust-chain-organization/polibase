@@ -131,7 +131,7 @@ async def test_get_unlinked_async(conversation_repo_async, mock_async_session):
 
 @pytest.mark.asyncio
 async def test_bulk_create_async(conversation_repo_async, mock_async_session):
-    """Test bulk_create with async session."""
+    """Test bulk_create with async session (ORM version with flush)."""
     # Setup
     conversations = [
         Conversation(
@@ -148,9 +148,26 @@ async def test_bulk_create_async(conversation_repo_async, mock_async_session):
         ),
     ]
 
-    mock_result = MagicMock()
-    mock_result.scalar.side_effect = [1, 2]  # Return IDs for created conversations
-    mock_async_session.execute.return_value = mock_result
+    # Mock add_all to track added models
+    added_models = []
+
+    def mock_add_all(models):
+        added_models.extend(models)
+
+    mock_async_session.add_all.side_effect = mock_add_all
+
+    # Mock flush to assign IDs to models
+    async def mock_flush():
+        for i, model in enumerate(added_models, start=1):
+            model.id = i
+
+    mock_async_session.flush.side_effect = mock_flush
+
+    # Mock refresh to simulate database refresh (no-op in test)
+    async def mock_refresh(model):
+        pass
+
+    mock_async_session.refresh.side_effect = mock_refresh
 
     # Execute
     created = await conversation_repo_async.bulk_create(conversations)
@@ -159,8 +176,10 @@ async def test_bulk_create_async(conversation_repo_async, mock_async_session):
     assert len(created) == 2
     assert created[0].id == 1
     assert created[1].id == 2
-    assert mock_async_session.execute.call_count == 2
-    mock_async_session.commit.assert_called_once()
+    mock_async_session.add_all.assert_called_once()
+    mock_async_session.flush.assert_called_once()
+    # Note: commit() should NOT be called - UseCase manages transaction
+    mock_async_session.commit.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -348,7 +367,7 @@ def test_get_by_minutes_sync(conversation_repo_sync, mock_sync_session):
 
 
 def test_bulk_create_sync(conversation_repo_sync, mock_sync_session):
-    """Test bulk_create with sync session."""
+    """Test bulk_create with sync session (no commit - UseCase manages transaction)."""
     # Setup
     conversations = [
         Conversation(
@@ -373,7 +392,8 @@ def test_bulk_create_sync(conversation_repo_sync, mock_sync_session):
     assert len(created) == 1
     assert created[0].id == 1
     mock_sync_session.execute.assert_called()
-    mock_sync_session.commit.assert_called_once()
+    # Note: commit() should NOT be called - UseCase manages transaction
+    mock_sync_session.commit.assert_not_called()
 
 
 def test_empty_bulk_create():
