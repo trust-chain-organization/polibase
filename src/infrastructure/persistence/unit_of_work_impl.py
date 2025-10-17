@@ -7,9 +7,9 @@ using SQLAlchemy's session, ensuring all operations share the same transaction.
 from src.domain.repositories.conversation_repository import ConversationRepository
 from src.domain.repositories.meeting_repository import MeetingRepository
 from src.domain.repositories.minutes_repository import MinutesRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.interfaces.unit_of_work import IUnitOfWork
-from src.infrastructure.persistence.async_session_adapter import ISessionAdapter
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl,
 )

@@ -10,6 +10,7 @@ from sqlalchemy.orm import declarative_base
 
 from src.domain.entities.minutes import Minutes
 from src.domain.repositories.minutes_repository import MinutesRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 Base = declarative_base()
@@ -29,7 +30,7 @@ class MinutesModel(Base):
 class MinutesRepositoryImpl(BaseRepositoryImpl[Minutes], MinutesRepository):
     """Implementation of MinutesRepository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession | Any):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         """Initialize repository with async session or session adapter."""
         super().__init__(session, Minutes, MinutesModel)
 

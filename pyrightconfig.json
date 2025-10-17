@@ -16,6 +16,7 @@
   "reportCallIssue": "warning",
   "reportOptionalMemberAccess": "error",
   "reportOptionalOperand": "error",
+  "reportAttributeAccessIssue": "warning",
   "strictParameterNoneValue": true,
   "reportUnnecessaryTypeIgnoreComment": "warning",
   "reportImplicitStringConcatenation": "none"

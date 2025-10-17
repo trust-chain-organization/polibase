@@ -1,9 +1,7 @@
 """Persistence layer package."""
 
-from src.infrastructure.persistence.async_session_adapter import (
-    AsyncSessionAdapter,
-    ISessionAdapter,
-)
+from src.domain.repositories.session_adapter import ISessionAdapter
+from src.infrastructure.persistence.async_session_adapter import AsyncSessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 from src.infrastructure.persistence.llm_processing_history_repository_impl import (
     LLMProcessingHistoryRepositoryImpl,
