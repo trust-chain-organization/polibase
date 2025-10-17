@@ -5,15 +5,12 @@ from datetime import datetime
 from typing import Any, TypedDict
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text, text
-from sqlalchemy.exc import IntegrityError as SQLIntegrityError
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, registry
 
 from src.domain.entities.conversation import Conversation
 from src.domain.repositories.conversation_repository import ConversationRepository
 from src.domain.services.speaker_matching_service import SpeakerMatchingService
-from src.infrastructure.exceptions import IntegrityError, SaveError
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 
@@ -282,90 +279,42 @@ class ConversationRepositoryImpl(
     async def save_speaker_and_speech_content_list(
         self, speaker_and_speech_content_list: list[Any], minutes_id: int | None = None
     ) -> list[int]:
-        """Save speaker and speech content list."""
+        """Save speaker and speech content list.
+
+        Note: This method has been refactored to use bulk_create() internally,
+        following the Unit of Work pattern. Transaction management (commit/rollback)
+        should be handled by the caller (UseCase or application code).
+        """
         if not speaker_and_speech_content_list:
             logger.warning("No conversations to save")
-            if self.async_session is not None:
-                await self.async_session.commit()
-            elif self.sync_session is not None:
-                self.sync_session.commit()
             return []
 
-        saved_ids: list[int] = []
-        failed_count = 0
+        # Convert SpeakerAndSpeechContent to Conversation entities
+        conversations: list[Conversation] = []
+        for item in speaker_and_speech_content_list:
+            # Find speaker_id if speaker matching service is available
+            speaker_id = await self._find_speaker_id(item.speaker)
 
-        try:
-            for i, speaker_and_speech_content in enumerate(
-                speaker_and_speech_content_list
-            ):
-                try:
-                    conversation_id = await self._save_conversation(
-                        speaker_and_speech_content, minutes_id
-                    )
-                    if conversation_id:
-                        saved_ids.append(conversation_id)
-                except Exception as e:
-                    logger.warning(f"Failed to save conversation {i + 1}: {e}")
-                    failed_count += 1
+            conv = Conversation(
+                minutes_id=minutes_id,
+                speaker_id=speaker_id,
+                speaker_name=item.speaker,
+                comment=item.speech_content,
+                sequence_number=item.speech_order,
+                chapter_number=getattr(item, "chapter_number", None),
+                sub_chapter_number=getattr(item, "sub_chapter_number", None),
+            )
+            conversations.append(conv)
 
-            if self.async_session is not None:
-                await self.async_session.commit()
-            elif self.sync_session is not None:
-                self.sync_session.commit()
+        # Use bulk_create() which follows Unit of Work pattern
+        created = await self.bulk_create(conversations)
 
-            if saved_ids:
-                print(f"✅ {len(saved_ids)}件の発言データをデータベースに保存しました")
-                logger.info(f"Saved {len(saved_ids)} conversations successfully")
+        # Log success
+        saved_ids = [c.id for c in created if c.id is not None]
+        if saved_ids:
+            logger.info(f"Saved {len(saved_ids)} conversations successfully")
 
-            if failed_count > 0:
-                logger.warning(f"Failed to save {failed_count} conversations")
-                if failed_count == len(speaker_and_speech_content_list):
-                    raise SaveError(
-                        f"Failed to save all {failed_count} conversations",
-                        {"failed_count": failed_count},
-                    )
-
-            return saved_ids
-
-        except SQLIntegrityError as e:
-            if self.async_session is not None:
-                await self.async_session.rollback()
-            elif self.sync_session is not None:
-                self.sync_session.rollback()
-            logger.error(f"Integrity error while saving conversations: {e}")
-            raise IntegrityError(
-                "Data integrity constraint violated while saving conversations",
-                {"saved_count": len(saved_ids), "error": str(e)},
-            ) from e
-        except SQLAlchemyError as e:
-            if self.async_session is not None:
-                await self.async_session.rollback()
-            elif self.sync_session is not None:
-                self.sync_session.rollback()
-            logger.error(f"Database error while saving conversations: {e}")
-            raise SaveError(
-                "Failed to save conversations to database",
-                {
-                    "saved_count": len(saved_ids),
-                    "total_count": len(speaker_and_speech_content_list),
-                    "error": str(e),
-                },
-            ) from e
-        except Exception as e:
-            if self.async_session is not None:
-                await self.async_session.rollback()
-            elif self.sync_session is not None:
-                self.sync_session.rollback()
-            logger.error(f"Unexpected error while saving conversations: {e}")
-            raise SaveError(
-                "Unexpected error occurred while saving conversations",
-                {"saved_count": len(saved_ids), "error": str(e)},
-            ) from e
-        finally:
-            if self.async_session is not None:
-                await self.async_session.close()
-            elif self.sync_session is not None:
-                self.sync_session.close()
+        return saved_ids
 
     async def _save_conversation(
         self,

@@ -199,21 +199,41 @@ async def test_save_speaker_and_speech_content_list_async(
     ]
 
     # Mock _find_speaker_id to return None (no matching speaker)
+    # Mock bulk_create to return conversations with IDs
     with patch.object(conversation_repo_async, "_find_speaker_id", return_value=None):
-        # Mock the insert result
-        mock_result = MagicMock()
-        mock_result.scalar.return_value = 1
-        mock_async_session.execute.return_value = mock_result
+        with patch.object(conversation_repo_async, "bulk_create") as mock_bulk_create:
+            # Create mock conversations with IDs
+            from src.domain.entities.conversation import Conversation
 
-        # Execute
-        saved_ids = await conversation_repo_async.save_speaker_and_speech_content_list(
-            speech_list, minutes_id=100
-        )
+            mock_conversation = Conversation(
+                id=1,
+                minutes_id=100,
+                speaker_id=None,
+                speaker_name="Speaker 1",
+                comment="Content 1",
+                sequence_number=1,
+                chapter_number=1,
+                sub_chapter_number=1,
+            )
+            mock_bulk_create.return_value = [mock_conversation]
 
-        # Verify
-        assert saved_ids == [1]
-        mock_async_session.commit.assert_called_once()
-        mock_async_session.close.assert_called_once()
+            # Execute
+            saved_ids = (
+                await conversation_repo_async.save_speaker_and_speech_content_list(
+                    speech_list, minutes_id=100
+                )
+            )
+
+            # Verify
+            assert saved_ids == [1]
+            # Note: commit/close are NOT called - following Unit of Work pattern
+            mock_bulk_create.assert_called_once()
+            # Verify the created conversation entities have correct attributes
+            created_conversations = mock_bulk_create.call_args[0][0]
+            assert len(created_conversations) == 1
+            assert created_conversations[0].speaker_name == "Speaker 1"
+            assert created_conversations[0].comment == "Content 1"
+            assert created_conversations[0].sequence_number == 1
 
 
 @pytest.mark.asyncio
