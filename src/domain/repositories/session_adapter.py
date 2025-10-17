@@ -110,3 +110,28 @@ class ISessionAdapter(ABC):
         any uncommitted changes to that instance.
         """
         pass
+
+    @abstractmethod
+    async def get(self, entity_type: Any, entity_id: Any) -> Any | None:
+        """Get an entity by its primary key.
+
+        Args:
+            entity_type: The entity class or table to query
+            entity_id: The primary key value
+
+        Returns:
+            The entity instance if found, None otherwise
+        """
+        pass
+
+    @abstractmethod
+    async def delete(self, instance: Any) -> None:
+        """Delete an instance from the session.
+
+        Args:
+            instance: The entity instance to delete
+
+        Note:
+            The deletion is not persisted until commit() is called.
+        """
+        pass

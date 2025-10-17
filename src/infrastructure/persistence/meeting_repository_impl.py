@@ -18,7 +18,28 @@ logger = logging.getLogger(__name__)
 
 
 class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
-    """Meeting repository implementation."""
+    """Meeting repository implementation.
+
+    This repository uses raw SQL for most operations to handle dynamic model
+    classes and maintain backward compatibility with sync sessions. This is a
+    transitional pattern during the async migration, providing support for
+    AsyncSession, sync Session, and ISessionAdapter.
+
+    The implementation prioritizes:
+    - Compatibility with multiple session types (async/sync/adapter)
+    - Proper handling of GCS URIs for meeting documents
+    - Support for filtering and pagination
+    - Transaction safety with explicit commit/rollback
+
+    TODO: Once sync session support is removed, consider migrating to use
+    BaseRepositoryImpl's ORM-based methods for consistency with other
+    repositories.
+
+    Attributes:
+        sync_session: Legacy sync session (will be removed)
+        async_session: Modern async session
+        session_adapter: ISessionAdapter for abstracted access
+    """
 
     def __init__(
         self,

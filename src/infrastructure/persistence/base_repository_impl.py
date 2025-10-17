@@ -11,7 +11,29 @@ from src.domain.repositories.session_adapter import ISessionAdapter
 
 
 class BaseRepositoryImpl[T: BaseEntity](BaseRepository[T]):
-    """Base implementation of repository using SQLAlchemy."""
+    """Base repository implementation using ISessionAdapter.
+
+    This class provides generic CRUD operations using the ISessionAdapter
+    interface, enabling dependency inversion and testability. All operations
+    use the session adapter methods, avoiding direct SQLAlchemy dependencies.
+
+    The ISessionAdapter interface allows for flexible session management,
+    supporting both async and sync sessions through adapters. This design
+    follows the Dependency Inversion Principle, where the domain defines
+    the interface and infrastructure provides implementations.
+
+    Type Parameters:
+        T: Domain entity type that extends BaseEntity
+
+    Attributes:
+        session: Database session (AsyncSession or ISessionAdapter)
+        entity_class: Domain entity class for type conversions
+        model_class: Database model class for ORM operations
+
+    Note:
+        Subclasses must implement the conversion methods:
+        _to_entity(), _to_model(), and _update_model()
+    """
 
     def __init__(
         self,
