@@ -102,14 +102,14 @@ class ConversationRepositoryImpl(
 
     def __init__(
         self,
-        session: AsyncSession | Session,
+        session: AsyncSession | Session | Any,
         model_class: type[Any] | None = None,
         speaker_matching_service: SpeakerMatchingService | None = None,
     ):
         """Initialize repository.
 
         Args:
-            session: Database session (async or sync)
+            session: Database session (async, sync, or session adapter)
             model_class: Optional model class for compatibility
             speaker_matching_service: Optional speaker matching service
         """

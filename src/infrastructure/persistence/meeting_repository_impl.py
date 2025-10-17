@@ -21,13 +21,13 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
 
     def __init__(
         self,
-        session: AsyncSession | Session,
+        session: AsyncSession | Session | Any,
         model_class: type[Any] | None = None,
     ):
         """Initialize repository.
 
         Args:
-            session: Database session (async or sync)
+            session: Database session (async, sync, or session adapter)
             model_class: Optional model class for compatibility
         """
         # Use dynamic model if no model class provided

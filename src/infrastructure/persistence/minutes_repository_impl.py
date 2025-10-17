@@ -29,8 +29,8 @@ class MinutesModel(Base):
 class MinutesRepositoryImpl(BaseRepositoryImpl[Minutes], MinutesRepository):
     """Implementation of MinutesRepository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
-        """Initialize repository with async session."""
+    def __init__(self, session: AsyncSession | Any):
+        """Initialize repository with async session or session adapter."""
         super().__init__(session, Minutes, MinutesModel)
 
     async def get_by_meeting(self, meeting_id: int) -> Minutes | None:

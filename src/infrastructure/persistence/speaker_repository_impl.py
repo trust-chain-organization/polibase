@@ -29,7 +29,8 @@ class SpeakerModel:
 class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
     """Implementation of speaker repository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | Any):
+        """Initialize repository with async session or session adapter."""
         super().__init__(session, Speaker, SpeakerModel)
 
     async def get_by_name_party_position(
