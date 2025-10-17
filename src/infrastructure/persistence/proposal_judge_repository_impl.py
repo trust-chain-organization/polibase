@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.proposal_judge import ProposalJudge
 from src.domain.repositories.proposal_judge_repository import ProposalJudgeRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.exceptions import DatabaseError
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
@@ -37,7 +38,7 @@ class ProposalJudgeRepositoryImpl(
 ):
     """ProposalJudge repository implementation using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         """Initialize repository with database session.
 
         Args:

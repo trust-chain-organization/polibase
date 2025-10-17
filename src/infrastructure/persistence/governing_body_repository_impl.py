@@ -9,6 +9,7 @@ from src.domain.entities.governing_body import GoverningBody
 from src.domain.repositories.governing_body_repository import (
     GoverningBodyRepository as IGoverningBodyRepository,
 )
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
@@ -31,7 +32,7 @@ class GoverningBodyRepositoryImpl(
 ):
     """Implementation of GoverningBodyRepository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(session, GoverningBody, GoverningBodyModel)
 
     async def get_all(

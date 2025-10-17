@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, registry
 
 from src.domain.entities.conversation import Conversation
 from src.domain.repositories.conversation_repository import ConversationRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.domain.services.speaker_matching_service import SpeakerMatchingService
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
@@ -96,20 +97,20 @@ class ConversationRepositoryImpl(
 ):
     """Implementation of conversation repository using SQLAlchemy."""
 
-    sync_session: Session | None
+    sync_session: Session | ISessionAdapter | None
     async_session: AsyncSession | None
     speaker_matching_service: SpeakerMatchingService | None
 
     def __init__(
         self,
-        session: AsyncSession | Session,
+        session: AsyncSession | Session | ISessionAdapter,
         model_class: type[Any] | None = None,
         speaker_matching_service: SpeakerMatchingService | None = None,
     ):
         """Initialize repository.
 
         Args:
-            session: Database session (async or sync)
+            session: Database session (async, sync, or session adapter)
             model_class: Optional model class for compatibility
             speaker_matching_service: Optional speaker matching service
         """

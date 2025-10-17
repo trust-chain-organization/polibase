@@ -12,6 +12,7 @@ from src.domain.entities.politician_party_extracted_politician import (
 from src.domain.repositories.extracted_politician_repository import (
     ExtractedPoliticianRepository as IExtractedPoliticianRepository,
 )
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
@@ -41,7 +42,7 @@ class ExtractedPoliticianRepositoryImpl(
 ):
     """Implementation of ExtractedPoliticianRepository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(
             session,
             PoliticianPartyExtractedPolitician,

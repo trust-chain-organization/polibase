@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.dtos.speaker_dto import SpeakerWithConversationCountDTO
 from src.domain.entities.speaker import Speaker
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
@@ -29,7 +30,8 @@ class SpeakerModel:
 class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
     """Implementation of speaker repository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
+        """Initialize repository with async session or session adapter."""
         super().__init__(session, Speaker, SpeakerModel)
 
     async def get_by_name_party_position(

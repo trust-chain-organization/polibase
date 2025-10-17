@@ -9,6 +9,7 @@ from src.domain.entities.political_party import PoliticalParty
 from src.domain.repositories.political_party_repository import (
     PoliticalPartyRepository as IPoliticalPartyRepository,
 )
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
@@ -29,7 +30,7 @@ class PoliticalPartyRepositoryImpl(
 ):
     """Implementation of PoliticalPartyRepository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(session, PoliticalParty, PoliticalPartyModel)
 
     async def get_by_name(self, name: str) -> PoliticalParty | None:

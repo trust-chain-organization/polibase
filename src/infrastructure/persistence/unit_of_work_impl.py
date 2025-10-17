@@ -7,9 +7,9 @@ using SQLAlchemy's session, ensuring all operations share the same transaction.
 from src.domain.repositories.conversation_repository import ConversationRepository
 from src.domain.repositories.meeting_repository import MeetingRepository
 from src.domain.repositories.minutes_repository import MinutesRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.domain.repositories.speaker_repository import SpeakerRepository
 from src.domain.services.interfaces.unit_of_work import IUnitOfWork
-from src.infrastructure.persistence.async_session_adapter import AsyncSessionAdapter
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl,
 )
@@ -25,11 +25,11 @@ class UnitOfWorkImpl(IUnitOfWork):
     that all share this session, ensuring transactional consistency.
     """
 
-    def __init__(self, session: AsyncSessionAdapter):
+    def __init__(self, session: ISessionAdapter):
         """Initialize Unit of Work with a database session.
 
         Args:
-            session: The database session to use for all repository operations
+            session: The database session adapter to use for all repository operations
         """
         self._session = session
 

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from src.domain.entities.meeting import Meeting
 from src.domain.repositories.meeting_repository import MeetingRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 logger = logging.getLogger(__name__)
@@ -21,13 +22,13 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
 
     def __init__(
         self,
-        session: AsyncSession | Session,
+        session: AsyncSession | Session | ISessionAdapter,
         model_class: type[Any] | None = None,
     ):
         """Initialize repository.
 
         Args:
-            session: Database session (async or sync)
+            session: Database session (async, sync, or session adapter)
             model_class: Optional model class for compatibility
         """
         # Use dynamic model if no model class provided

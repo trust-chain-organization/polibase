@@ -16,6 +16,7 @@ from src.domain.entities.llm_processing_history import (
 from src.domain.repositories.llm_processing_history_repository import (
     LLMProcessingHistoryRepository,
 )
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 Base = declarative_base()
@@ -52,7 +53,7 @@ class LLMProcessingHistoryRepositoryImpl(
 ):
     """Implementation of LLM processing history repository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(session, LLMProcessingHistory, LLMProcessingHistoryModel)
 
     async def get_by_processing_type(
