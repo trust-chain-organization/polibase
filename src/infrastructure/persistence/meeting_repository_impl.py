@@ -5,7 +5,7 @@ import logging
 from datetime import date
 from typing import Any
 
-from sqlalchemy import and_, select, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -43,33 +43,54 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
 
             model_class = MeetingModel
 
-        # Handle both async and sync sessions
+        # Handle async session, sync session, and session adapter
         if isinstance(session, AsyncSession):
             super().__init__(session, Meeting, model_class)
             self.sync_session = None
             self.async_session = session
+            self.session_adapter = None
+        elif isinstance(session, ISessionAdapter):
+            # For ISessionAdapter, use it as async session
+            self.sync_session = None
+            self.async_session = None
+            self.session_adapter = session
+            self.session = session
+            self.entity_class = Meeting
+            self.model_class = model_class
         else:
             # For sync session, create a wrapper
             self.sync_session = session
             self.async_session = None
+            self.session_adapter = None
             self.session = session
             self.entity_class = Meeting
             self.model_class = model_class
+
+    def _get_async_executor(self) -> AsyncSession | ISessionAdapter | None:
+        """Get the async executor (either AsyncSession or ISessionAdapter)."""
+        return self.async_session or self.session_adapter
 
     async def get_by_conference_and_date(
         self, conference_id: int, meeting_date: date
     ) -> Meeting | None:
         """Get meeting by conference and date."""
-        if self.async_session:
-            query = select(self.model_class).where(
-                and_(
-                    self.model_class.conference_id == conference_id,
-                    self.model_class.date == meeting_date,
-                )
+        async_executor = self._get_async_executor()
+        if async_executor:
+            from sqlalchemy import text
+
+            # Use raw SQL to work with both AsyncSession and ISessionAdapter
+            sql = (
+                "SELECT * FROM meetings WHERE conference_id = :conference_id "
+                "AND date = :date LIMIT 1"
             )
-            result = await self.async_session.execute(query)
-            model = result.scalar_one_or_none()
-            return self._to_entity(model) if model else None
+            result = await async_executor.execute(
+                text(sql), {"conference_id": conference_id, "date": meeting_date}
+            )
+            row = result.first()
+            if row:
+                meeting_dict = dict(row._mapping)  # type: ignore
+                return self._dict_to_entity(meeting_dict)
+            return None
         else:
             # Use raw SQL for sync session
             if self.sync_session:
@@ -92,14 +113,15 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         self, conference_id: int, limit: int | None = None
     ) -> list[Meeting]:
         """Get all meetings for a conference."""
-        if self.async_session:
+        async_executor = self._get_async_executor()
+        if async_executor:
             query = select(self.model_class).where(
                 self.model_class.conference_id == conference_id
             )
             if limit:
                 query = query.limit(limit)
             query = query.order_by(self.model_class.date.desc())
-            result = await self.async_session.execute(query)
+            result = await async_executor.execute(query)
             models = result.scalars().all()
             return [self._to_entity(model) for model in models]
         else:
@@ -125,7 +147,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
 
         A meeting is considered unprocessed if it has no associated minutes.
         """
-        if self.async_session:
+        async_executor = self._get_async_executor()
+        if async_executor:
             # Subquery to find meetings with minutes
             from sqlalchemy import exists, text
 
@@ -139,7 +162,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             if limit:
                 query = query.limit(limit)
             query = query.order_by(self.model_class.date.desc())
-            result = await self.async_session.execute(query)
+            result = await async_executor.execute(query)
             models = result.scalars().all()
             return [self._to_entity(model) for model in models]
         else:
@@ -170,7 +193,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         text_uri: str | None = None,
     ) -> bool:
         """Update GCS URIs for a meeting."""
-        if self.async_session:
+        async_executor = self._get_async_executor()
+        if async_executor:
             update_data = {}
             if pdf_uri is not None:
                 update_data["gcs_pdf_uri"] = pdf_uri
@@ -185,8 +209,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 .where(self.model_class.id == meeting_id)
                 .values(**update_data)
             )
-            result = await self.async_session.execute(stmt)
-            await self.async_session.commit()
+            result = await async_executor.execute(stmt)
+            await async_executor.commit()
             return result.rowcount > 0
         else:
             # Use raw SQL for sync session
@@ -229,7 +253,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         limit: int = 10,
     ) -> tuple[list[dict[str, Any]], int]:
         """Get meetings with filters and pagination."""
-        if self.async_session:
+        async_executor = self._get_async_executor()
+        if async_executor:
             # Build the base query with joins
             base_query = """
             SELECT
@@ -279,10 +304,10 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             # Execute queries
             from sqlalchemy import text
 
-            result = await self.async_session.execute(text(base_query), params)
+            result = await async_executor.execute(text(base_query), params)
             meetings = [dict(row._mapping) for row in result]  # type: ignore
 
-            count_result = await self.async_session.execute(text(count_query), params)
+            count_result = await async_executor.execute(text(count_query), params)
             total_count = count_result.scalar() or 0
 
             return meetings, total_count
@@ -353,7 +378,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         self, meeting_id: int
     ) -> dict[str, Any] | None:
         """Get meeting by ID with conference and governing body info."""
-        if self.async_session:
+        async_executor = self._get_async_executor()
+        if async_executor:
             query = """
             SELECT
                 m.id,
@@ -375,7 +401,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             """
             from sqlalchemy import text
 
-            result = await self.async_session.execute(
+            result = await async_executor.execute(
                 text(query), {"meeting_id": meeting_id}
             )
             row = result.first()
@@ -414,7 +440,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
     # Override base methods to handle both async and sync
     async def create(self, entity: Meeting) -> Meeting:
         """Create a new meeting."""
-        if self.async_session:
+        async_executor = self._get_async_executor()
+        if async_executor:
             # Use raw SQL for async session to avoid model_class issues
             from datetime import datetime
 
@@ -445,8 +472,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 "created_at": datetime.now(),
                 "updated_at": datetime.now(),
             }
-            result = await self.async_session.execute(text(sql), params)
-            await self.async_session.commit()
+            result = await async_executor.execute(text(sql), params)
+            await async_executor.commit()
             row = result.first()
             if row:
                 return self._dict_to_entity(dict(row._mapping))  # type: ignore
@@ -492,7 +519,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
 
     async def update(self, entity: Meeting) -> Meeting:
         """Update a meeting."""
-        if self.async_session:
+        async_executor = self._get_async_executor()
+        if async_executor:
             # Use raw SQL for async session to avoid model_class issues
             from datetime import datetime
 
@@ -524,8 +552,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 else None,
                 "updated_at": datetime.now(),
             }
-            result = await self.async_session.execute(text(sql), params)
-            await self.async_session.commit()
+            result = await async_executor.execute(text(sql), params)
+            await async_executor.commit()
             row = result.first()
             if row:
                 return self._dict_to_entity(dict(row._mapping))  # type: ignore
@@ -572,13 +600,14 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
 
     async def delete(self, entity_id: int) -> bool:
         """Delete a meeting."""
-        if self.async_session:
+        async_executor = self._get_async_executor()
+        if async_executor:
             # Use raw SQL for async session to avoid model_class issues
             from sqlalchemy import text
 
             # First check if there are related minutes
             check_sql = "SELECT COUNT(*) FROM minutes WHERE meeting_id = :meeting_id"
-            result = await self.async_session.execute(
+            result = await async_executor.execute(
                 text(check_sql), {"meeting_id": entity_id}
             )
             count = result.scalar()
@@ -586,8 +615,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 return False
 
             sql = "DELETE FROM meetings WHERE id = :id"
-            result = await self.async_session.execute(text(sql), {"id": entity_id})
-            await self.async_session.commit()
+            result = await async_executor.execute(text(sql), {"id": entity_id})
+            await async_executor.commit()
             return getattr(result, "rowcount", 0) > 0  # type: ignore
         else:
             # Use raw SQL for sync session
@@ -613,12 +642,13 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
 
     async def get_by_id(self, entity_id: int) -> Meeting | None:
         """Get meeting by ID."""
-        if self.async_session:
-            # Use raw SQL for async session to avoid model_class issues
-            from sqlalchemy import text
+        from sqlalchemy import text
 
+        async_executor = self._get_async_executor()
+        if async_executor:
+            # Use raw SQL for async session to avoid model_class issues
             sql = "SELECT * FROM meetings WHERE id = :id"
-            result = await self.async_session.execute(text(sql), {"id": entity_id})
+            result = await async_executor.execute(text(sql), {"id": entity_id})
             row = result.first()
             if row:
                 return self._dict_to_entity(dict(row._mapping))  # type: ignore
@@ -626,8 +656,6 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         else:
             # Use raw SQL for sync session
             if self.sync_session:
-                from sqlalchemy import text
-
                 sql = "SELECT * FROM meetings WHERE id = :id"
                 result = self.sync_session.execute(text(sql), {"id": entity_id})
                 row = result.first()
@@ -639,7 +667,8 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
         self, limit: int | None = None, offset: int | None = 0
     ) -> list[Meeting]:
         """Get all meetings."""
-        if self.async_session:
+        async_executor = self._get_async_executor()
+        if async_executor:
             # Use raw SQL for async session to avoid model_class issues
             from sqlalchemy import text
 
@@ -651,7 +680,7 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
             if offset:
                 sql += " OFFSET :offset"
                 params["offset"] = offset
-            result = await self.async_session.execute(text(sql), params)
+            result = await async_executor.execute(text(sql), params)
             return [self._dict_to_entity(dict(row._mapping)) for row in result]  # type: ignore
         else:
             # Use raw SQL for sync session
