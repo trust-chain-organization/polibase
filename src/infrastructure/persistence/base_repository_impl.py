@@ -7,13 +7,17 @@ from sqlalchemy.future import select
 
 from src.domain.entities.base import BaseEntity
 from src.domain.repositories.base import BaseRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 
 
 class BaseRepositoryImpl[T: BaseEntity](BaseRepository[T]):
     """Base implementation of repository using SQLAlchemy."""
 
     def __init__(
-        self, session: AsyncSession, entity_class: type[T], model_class: type[Any]
+        self,
+        session: AsyncSession | ISessionAdapter,
+        entity_class: type[T],
+        model_class: type[Any],
     ):
         self.session = session
         self.entity_class = entity_class

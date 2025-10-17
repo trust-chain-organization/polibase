@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.proposal import Proposal
 from src.domain.repositories.proposal_repository import ProposalRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.exceptions import DatabaseError
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
@@ -40,11 +41,11 @@ class ProposalModel(PydanticBaseModel):
 class ProposalRepositoryImpl(BaseRepositoryImpl[Proposal], ProposalRepository):
     """Proposal repository implementation using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         """Initialize repository with database session.
 
         Args:
-            session: AsyncSession for database operations
+            session: AsyncSession or ISessionAdapter for database operations
         """
         super().__init__(
             session=session,

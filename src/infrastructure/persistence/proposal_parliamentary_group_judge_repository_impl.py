@@ -12,6 +12,7 @@ from src.domain.entities.proposal_parliamentary_group_judge import (
 from src.domain.repositories.proposal_parliamentary_group_judge_repository import (
     ProposalParliamentaryGroupJudgeRepository,
 )
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
@@ -35,7 +36,7 @@ class ProposalParliamentaryGroupJudgeRepositoryImpl(
 ):
     """Implementation of ProposalParliamentaryGroupJudgeRepository."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(
             session,
             ProposalParliamentaryGroupJudge,

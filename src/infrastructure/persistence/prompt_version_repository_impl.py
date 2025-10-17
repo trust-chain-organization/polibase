@@ -20,6 +20,7 @@ from sqlalchemy.orm import declarative_base
 
 from src.domain.entities.prompt_version import PromptVersion
 from src.domain.repositories.prompt_version_repository import PromptVersionRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 Base = declarative_base()
@@ -50,7 +51,7 @@ class PromptVersionRepositoryImpl(
 ):
     """Implementation of prompt version repository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(session, PromptVersion, PromptVersionModel)
 
     async def get_active_version(self, prompt_key: str) -> PromptVersion | None:

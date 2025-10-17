@@ -12,6 +12,7 @@ from src.domain.entities.extracted_parliamentary_group_member import (
 from src.domain.repositories.extracted_parliamentary_group_member_repository import (
     ExtractedParliamentaryGroupMemberRepository as IExtractedParliamentaryGroupMemberRepository,  # noqa: E501
 )
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 from src.infrastructure.persistence.sqlalchemy_models import (
     ExtractedParliamentaryGroupMemberModel,
@@ -24,7 +25,7 @@ class ExtractedParliamentaryGroupMemberRepositoryImpl(
 ):
     """ExtractedParliamentaryGroupMemberRepository implementation using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(
             session,
             ExtractedParliamentaryGroupMember,

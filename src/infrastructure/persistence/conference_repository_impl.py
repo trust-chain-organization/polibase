@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.conference import Conference
 from src.domain.repositories.conference_repository import ConferenceRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.exceptions import (
     DatabaseError,
     RecordNotFoundError,
@@ -39,7 +40,7 @@ class ConferenceModel(PydanticBaseModel):
 class ConferenceRepositoryImpl(BaseRepositoryImpl[Conference], ConferenceRepository):
     """Conference repository implementation using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         """Initialize repository with database session.
 
         Args:

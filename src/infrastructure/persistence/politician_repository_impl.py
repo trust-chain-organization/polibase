@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.politician import Politician
 from src.domain.repositories.politician_repository import PoliticianRepository
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 logger = logging.getLogger(__name__)
@@ -28,13 +29,13 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
 
     def __init__(
         self,
-        session: AsyncSession,
+        session: AsyncSession | ISessionAdapter,
         model_class: type[Any] | None = None,
     ):
         """Initialize repository.
 
         Args:
-            session: Async database session
+            session: AsyncSession or ISessionAdapter for database operations
             model_class: Optional model class for compatibility
         """
         # Use dynamic model if no model class provided

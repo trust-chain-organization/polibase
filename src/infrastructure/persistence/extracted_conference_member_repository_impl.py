@@ -10,6 +10,7 @@ from src.domain.entities.extracted_conference_member import ExtractedConferenceM
 from src.domain.repositories.extracted_conference_member_repository import (
     ExtractedConferenceMemberRepository as IExtractedConferenceMemberRepository,
 )
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
@@ -39,7 +40,7 @@ class ExtractedConferenceMemberRepositoryImpl(
 ):
     """Implementation of ExtractedConferenceMemberRepository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(
             session, ExtractedConferenceMember, ExtractedConferenceMemberModel
         )

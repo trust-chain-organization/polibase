@@ -10,6 +10,7 @@ from src.domain.entities.politician_affiliation import PoliticianAffiliation
 from src.domain.repositories.politician_affiliation_repository import (
     PoliticianAffiliationRepository as IPoliticianAffiliationRepository,
 )
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
@@ -33,7 +34,7 @@ class PoliticianAffiliationRepositoryImpl(
 ):
     """Implementation of PoliticianAffiliationRepository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(session, PoliticianAffiliation, PoliticianAffiliationModel)
 
     async def get_by_politician_and_conference(

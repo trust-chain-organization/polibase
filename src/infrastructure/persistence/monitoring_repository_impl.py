@@ -5,6 +5,8 @@ from typing import Any, TypedDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.domain.repositories.session_adapter import ISessionAdapter
+
 
 class ActivityDetails(TypedDict, total=False):
     """Type definition for activity details."""
@@ -90,7 +92,7 @@ class CommitteeType(TypedDict):
 class MonitoringRepositoryImpl:
     """Implementation of monitoring repository using AsyncSession."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         self.session = session
 
     async def get_overall_metrics(self) -> dict[str, Any]:

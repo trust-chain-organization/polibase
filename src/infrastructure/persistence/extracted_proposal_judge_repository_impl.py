@@ -12,6 +12,7 @@ from src.domain.entities.proposal_judge import ProposalJudge
 from src.domain.repositories.extracted_proposal_judge_repository import (
     ExtractedProposalJudgeRepository as IExtractedProposalJudgeRepository,
 )
+from src.domain.repositories.session_adapter import ISessionAdapter
 from src.infrastructure.persistence.base_repository_impl import BaseRepositoryImpl
 
 
@@ -42,7 +43,7 @@ class ExtractedProposalJudgeRepositoryImpl(
 ):
     """Implementation of ExtractedProposalJudgeRepository using SQLAlchemy."""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(session, ExtractedProposalJudge, ExtractedProposalJudgeModel)
 
     async def get_by_id(self, entity_id: int) -> ExtractedProposalJudge | None:
