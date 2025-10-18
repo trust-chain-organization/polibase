@@ -32,7 +32,7 @@ from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.infrastructure.di.container import Container
 from src.infrastructure.external.gcs_storage_service import GCSStorageService
 from src.infrastructure.external.minutes_processing_service import (
-    MinutesProcessingServiceImpl,
+    MinutesProcessAgentService,
 )
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
@@ -496,7 +496,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             )
             llm_service = LLMService()  # Use concrete implementation
             minutes_processing_service: IMinutesProcessingService = (
-                MinutesProcessingServiceImpl(llm_service=llm_service)
+                MinutesProcessAgentService(llm_service=llm_service)
             )
             speaker_domain_service = SpeakerDomainService()
 
