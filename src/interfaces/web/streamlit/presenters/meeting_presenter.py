@@ -550,36 +550,47 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             Response with extraction result
         """
         try:
-            # Initialize repositories
-            minutes_repo = RepositoryAdapter(MinutesRepositoryImpl)
-            conversation_repo = RepositoryAdapter(ConversationRepositoryImpl)
-            speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl)
-            speaker_domain_service = SpeakerDomainService()
+            # Initialize shared repository adapter for transaction
+            adapter = RepositoryAdapter(MinutesRepositoryImpl)
 
-            # Initialize use case
-            speaker_usecase = ExecuteSpeakerExtractionUseCase(
-                minutes_repository=minutes_repo,  # type: ignore[arg-type]
-                conversation_repository=conversation_repo,  # type: ignore[arg-type]
-                speaker_repository=speaker_repo,  # type: ignore[arg-type]
-                speaker_domain_service=speaker_domain_service,
-            )
+            # Execute within transaction to ensure all changes are committed
+            async with adapter.transaction():
+                # Create repositories sharing the same session
+                minutes_repo = RepositoryAdapter(MinutesRepositoryImpl)
+                minutes_repo._shared_session = adapter._shared_session  # type: ignore[attr-defined]
 
-            # Execute extraction
-            request = ExecuteSpeakerExtractionDTO(
-                meeting_id=meeting_id, force_reprocess=force_reprocess
-            )
-            result = await speaker_usecase.execute(request)
+                conversation_repo = RepositoryAdapter(ConversationRepositoryImpl)
+                conversation_repo._shared_session = adapter._shared_session  # type: ignore[attr-defined]
 
-            return WebResponseDTO.success_response(
-                {
-                    "total_conversations": result.total_conversations,
-                    "unique_speakers": result.unique_speakers,
-                    "new_speakers": result.new_speakers,
-                    "existing_speakers": result.existing_speakers,
-                    "processing_time": result.processing_time_seconds,
-                },
-                f"会議 {meeting_id} の発言者抽出が完了しました",
-            )
+                speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl)
+                speaker_repo._shared_session = adapter._shared_session  # type: ignore[attr-defined]
+
+                speaker_domain_service = SpeakerDomainService()
+
+                # Initialize use case
+                speaker_usecase = ExecuteSpeakerExtractionUseCase(
+                    minutes_repository=minutes_repo,  # type: ignore[arg-type]
+                    conversation_repository=conversation_repo,  # type: ignore[arg-type]
+                    speaker_repository=speaker_repo,  # type: ignore[arg-type]
+                    speaker_domain_service=speaker_domain_service,
+                )
+
+                # Execute extraction
+                request = ExecuteSpeakerExtractionDTO(
+                    meeting_id=meeting_id, force_reprocess=force_reprocess
+                )
+                result = await speaker_usecase.execute(request)
+
+                return WebResponseDTO.success_response(
+                    {
+                        "total_conversations": result.total_conversations,
+                        "unique_speakers": result.unique_speakers,
+                        "new_speakers": result.new_speakers,
+                        "existing_speakers": result.existing_speakers,
+                        "processing_time": result.processing_time_seconds,
+                    },
+                    f"会議 {meeting_id} の発言者抽出が完了しました",
+                )
 
         except Exception as e:
             self.logger.error(
