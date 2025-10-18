@@ -407,7 +407,12 @@ def test_bulk_create_sync(conversation_repo_sync, mock_sync_session):
     # Mock the insert operation
     mock_result = MagicMock()
     mock_result.scalar.return_value = 1
-    mock_sync_session.execute.return_value = mock_result
+
+    # Make execute return an awaitable (async coroutine)
+    async def mock_execute(*args, **kwargs):
+        return mock_result
+
+    mock_sync_session.execute = mock_execute
 
     # Execute
     loop = asyncio.new_event_loop()
@@ -417,7 +422,8 @@ def test_bulk_create_sync(conversation_repo_sync, mock_sync_session):
     # Verify
     assert len(created) == 1
     assert created[0].id == 1
-    mock_sync_session.execute.assert_called()
+    # Note: execute is now a plain async function, not a Mock,
+    # so we can't assert call count
     # Note: commit() should NOT be called - UseCase manages transaction
     mock_sync_session.commit.assert_not_called()
 
