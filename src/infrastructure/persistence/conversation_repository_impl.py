@@ -243,7 +243,7 @@ class ConversationRepositoryImpl(
             created = [self._to_entity(model) for model in models]
             return created
         elif self.sync_session is not None:
-            # Sync implementation
+            # Sync implementation (may be wrapped by AsyncSessionAdapter)
             created: list[Conversation] = []
             for conv in conversations:
                 query = text("""
@@ -255,7 +255,7 @@ class ConversationRepositoryImpl(
                      :sequence_number, :chapter_number, :sub_chapter_number)
                     RETURNING id
                 """)
-                result = self.sync_session.execute(
+                result = await self.sync_session.execute(
                     query,
                     {
                         "minutes_id": conv.minutes_id,

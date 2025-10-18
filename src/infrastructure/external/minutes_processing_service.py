@@ -2,12 +2,16 @@
 
 import asyncio
 
+import structlog
+
 from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.interfaces.minutes_processing_service import (
     IMinutesProcessingService,
 )
 from src.domain.value_objects.speaker_speech import SpeakerSpeech
 from src.minutes_divide_processor.minutes_process_agent import MinutesProcessAgent
+
+logger = structlog.get_logger(__name__)
 
 
 class MinutesProcessAgentService(IMinutesProcessingService):
@@ -38,7 +42,8 @@ class MinutesProcessAgentService(IMinutesProcessingService):
             original_minutes: Raw meeting minutes text content
 
         Returns:
-            List of extracted speeches with speaker information as domain value objects
+            List of extracted speeches with speaker information as domain value objects.
+            Empty speeches (with empty speaker or speech_content) are filtered out.
 
         Raises:
             ValueError: If processing fails or invalid input is provided
@@ -50,16 +55,48 @@ class MinutesProcessAgentService(IMinutesProcessingService):
             None, self.agent.run, original_minutes
         )
 
-        # Convert infrastructure models to domain value objects
-        domain_results = [
-            SpeakerSpeech(
-                speaker=result.speaker,
-                speech_content=result.speech_content,
-                chapter_number=result.chapter_number,
-                sub_chapter_number=result.sub_chapter_number,
-                speech_order=result.speech_order,
+        # Filter out invalid results and convert to domain value objects
+        domain_results: list[SpeakerSpeech] = []
+        filtered_count = 0
+
+        for result in infrastructure_results:
+            # Skip entries with empty speaker or speech_content
+            if not result.speaker or not result.speaker.strip():
+                logger.warning(
+                    "Skipping speech with empty speaker",
+                    speech_order=result.speech_order,
+                    chapter_number=result.chapter_number,
+                )
+                filtered_count += 1
+                continue
+
+            if not result.speech_content or not result.speech_content.strip():
+                logger.warning(
+                    "Skipping speech with empty content",
+                    speaker=result.speaker,
+                    speech_order=result.speech_order,
+                    chapter_number=result.chapter_number,
+                )
+                filtered_count += 1
+                continue
+
+            # Create domain value object for valid speeches
+            domain_results.append(
+                SpeakerSpeech(
+                    speaker=result.speaker,
+                    speech_content=result.speech_content,
+                    chapter_number=result.chapter_number,
+                    sub_chapter_number=result.sub_chapter_number,
+                    speech_order=result.speech_order,
+                )
             )
-            for result in infrastructure_results
-        ]
+
+        if filtered_count > 0:
+            logger.info(
+                "Filtered out invalid speeches",
+                total_results=len(infrastructure_results),
+                filtered_count=filtered_count,
+                valid_count=len(domain_results),
+            )
 
         return domain_results
