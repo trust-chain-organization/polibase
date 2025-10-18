@@ -558,9 +558,9 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
 
             # Initialize use case
             speaker_usecase = ExecuteSpeakerExtractionUseCase(
-                minutes_repository=minutes_repo.repository,
-                conversation_repository=conversation_repo.repository,
-                speaker_repository=speaker_repo.repository,
+                minutes_repository=minutes_repo,  # type: ignore[arg-type]
+                conversation_repository=conversation_repo,  # type: ignore[arg-type]
+                speaker_repository=speaker_repo,  # type: ignore[arg-type]
                 speaker_domain_service=speaker_domain_service,
             )
 
