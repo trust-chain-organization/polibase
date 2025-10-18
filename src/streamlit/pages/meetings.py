@@ -369,12 +369,21 @@ def show_meetings_list():
                         execute_minutes_processing_new(meeting_id)
                         st.rerun()
                 elif has_conversations:
-                    st.button(
-                        "抽出済",
+                    # 再発言抽出を可能にする
+                    if st.button(
+                        "再発言抽出",
                         key=f"extract_{row['id']}",
-                        disabled=True,
-                        help="既に発言が抽出されています",
-                    )
+                        type="secondary",
+                        help="発言を再抽出します（上書き）",
+                    ):
+                        # 処理中フラグを設定
+                        st.session_state[processing_key] = True
+                        # ログ表示用のコンテナを作成
+                        st.session_state[f"show_log_{meeting_id}"] = True
+                        st.session_state[f"log_{meeting_id}"] = []
+                        # バックグラウンドで処理を実行（force_reprocess=True）
+                        execute_minutes_processing_new(meeting_id, force_reprocess=True)
+                        st.rerun()
                 else:
                     st.button(
                         "発言抽出",
@@ -418,12 +427,19 @@ def show_meetings_list():
                         execute_speaker_extraction(meeting_id)
                         st.rerun()
                 elif has_speakers:
-                    st.button(
-                        "抽出済",
+                    if st.button(
+                        "再発言者抽出",
                         key=f"extract_speaker_{row['id']}",
-                        disabled=True,
-                        help="既に発言者が抽出されています",
-                    )
+                        type="secondary",
+                        help="発言者を再抽出します（上書き）",
+                    ):
+                        # 処理中フラグを設定
+                        st.session_state[speaker_processing_key] = True
+                        # ログ表示用のコンテナを作成
+                        st.session_state[f"show_speaker_log_{meeting_id}"] = True
+                        # バックグラウンドで処理を実行（force_reprocess=True）
+                        execute_speaker_extraction(meeting_id, force_reprocess=True)
+                        st.rerun()
                 elif not has_conversations:
                     st.button(
                         "発言者抽出",
@@ -474,12 +490,24 @@ def show_meetings_list():
                         execute_minutes_scraping(meeting_id, url)
                         st.rerun()
                 elif gcs_text_uri_check:
-                    st.button(
-                        "スクレイピング済",
+                    if st.button(
+                        "再スクレイピング",
                         key=f"scrape_{row['id']}",
-                        disabled=True,
-                        help="既に議事録がスクレイピングされています",
-                    )
+                        type="secondary",
+                        help="議事録を再スクレイピングします（上書き）",
+                    ):
+                        if url:
+                            # 処理中フラグを設定
+                            st.session_state[scraping_processing_key] = True
+                            # ログ表示用のコンテナを作成
+                            st.session_state[f"show_scraping_log_{meeting_id}"] = True
+                            # バックグラウンドで処理を実行（force_rescrape=True）
+                            execute_minutes_scraping(
+                                meeting_id, url, force_rescrape=True
+                            )
+                            st.rerun()
+                        else:
+                            st.error("URLが設定されていません")
                 else:
                     st.button(
                         "スクレイピング",
@@ -961,11 +989,12 @@ def edit_meeting():
     conf_repo.close()
 
 
-def execute_minutes_processing_new(meeting_id: int):
+def execute_minutes_processing_new(meeting_id: int, force_reprocess: bool = False):
     """議事録処理をバックグラウンドで実行する（新版）
 
     Args:
         meeting_id: 処理対象の会議ID
+        force_reprocess: 既存の発言を上書きして再処理するか
     """
     from src.streamlit.utils.processing_logger import ProcessingLogger
 
@@ -987,7 +1016,9 @@ def execute_minutes_processing_new(meeting_id: int):
 
         try:
             # 同期的なプロセッサを使用
-            processor = SyncMinutesProcessor(meeting_id)
+            processor = SyncMinutesProcessor(
+                meeting_id, force_reprocess=force_reprocess
+            )
             result = processor.process()
 
             # 処理完了フラグを更新
@@ -1167,11 +1198,12 @@ def execute_minutes_processing_old(meeting_id: int):
     st.caption("処理には数分かかる場合があります。完了後、自動的に画面が更新されます。")
 
 
-def execute_speaker_extraction(meeting_id: int):
+def execute_speaker_extraction(meeting_id: int, force_reprocess: bool = False):
     """発言者抽出処理をバックグラウンドで実行する
 
     Args:
         meeting_id: 処理対象の会議ID
+        force_reprocess: 既存データを上書きして再処理するか
     """
     from src.streamlit.utils.processing_logger import ProcessingLogger
 
@@ -1193,7 +1225,9 @@ def execute_speaker_extraction(meeting_id: int):
 
         try:
             # 同期的なプロセッサを使用
-            extractor = SyncSpeakerExtractor(meeting_id)
+            extractor = SyncSpeakerExtractor(
+                meeting_id, force_reprocess=force_reprocess
+            )
             result = extractor.process()
 
             # 処理完了フラグを更新
@@ -1222,12 +1256,13 @@ def execute_speaker_extraction(meeting_id: int):
     st.caption("処理には数秒かかる場合があります。完了後、自動的に画面が更新されます。")
 
 
-def execute_minutes_scraping(meeting_id: int, url: str):
+def execute_minutes_scraping(meeting_id: int, url: str, force_rescrape: bool = False):
     """議事録スクレイピング処理をバックグラウンドで実行する
 
     Args:
         meeting_id: 処理対象の会議ID
         url: スクレイピング対象のURL
+        force_rescrape: 既存データを上書きして再スクレイピングするか
     """
     from src.streamlit.utils.processing_logger import ProcessingLogger
 
@@ -1278,7 +1313,7 @@ def execute_minutes_scraping(meeting_id: int, url: str):
             from src.streamlit.utils.async_helper import run_async_in_streamlit
 
             minutes = run_async_in_streamlit(
-                service.fetch_from_url(url, use_cache=False)
+                service.fetch_from_url(url, use_cache=not force_rescrape)
             )
 
             if not minutes:
