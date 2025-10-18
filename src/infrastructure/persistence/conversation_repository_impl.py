@@ -147,13 +147,13 @@ class ConversationRepositoryImpl(
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
         elif self.sync_session is not None:
-            # Sync implementation
+            # ISessionAdapter implementation - execute is always async
             query = text("""
                 SELECT * FROM conversations
                 WHERE minutes_id = :minutes_id
                 ORDER BY sequence_number
             """)
-            result = self.sync_session.execute(query, {"minutes_id": minutes_id})
+            result = await self.sync_session.execute(query, {"minutes_id": minutes_id})
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
         else:
@@ -176,7 +176,7 @@ class ConversationRepositoryImpl(
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
         elif self.sync_session is not None:
-            # Sync implementation
+            # ISessionAdapter implementation - execute is always async
             query = text("""
                 SELECT * FROM conversations
                 WHERE speaker_id = :speaker_id
@@ -184,7 +184,7 @@ class ConversationRepositoryImpl(
                 LIMIT :limit
             """)
             params = {"speaker_id": speaker_id, "limit": limit or 999999}
-            result = self.sync_session.execute(query, params)
+            result = await self.sync_session.execute(query, params)
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
         else:
@@ -205,7 +205,7 @@ class ConversationRepositoryImpl(
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
         elif self.sync_session is not None:
-            # Sync implementation
+            # ISessionAdapter implementation - execute is always async
             query = text("""
                 SELECT * FROM conversations
                 WHERE speaker_id IS NULL
@@ -213,7 +213,7 @@ class ConversationRepositoryImpl(
                 LIMIT :limit
             """)
             params = {"limit": limit or 999999}
-            result = self.sync_session.execute(query, params)
+            result = await self.sync_session.execute(query, params)
             rows = result.fetchall()
             return [self._row_to_entity(row) for row in rows]
         else:

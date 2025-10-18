@@ -30,13 +30,15 @@ class SyncMinutesProcessingResult:
 class SyncMinutesProcessor:
     """同期的に議事録処理を実行するクラス"""
 
-    def __init__(self, meeting_id: int):
+    def __init__(self, meeting_id: int, force_reprocess: bool = False):
         """初期化
 
         Args:
             meeting_id: 処理対象の会議ID
+            force_reprocess: 既存データを上書きして再処理するか
         """
         self.meeting_id = meeting_id
+        self.force_reprocess = force_reprocess
         self.logger = ProcessingLogger()
 
     def process(self) -> SyncMinutesProcessingResult:
@@ -73,7 +75,7 @@ class SyncMinutesProcessor:
 
             # リクエストDTOを作成
             request = ExecuteMinutesProcessingDTO(
-                meeting_id=self.meeting_id, force_reprocess=False
+                meeting_id=self.meeting_id, force_reprocess=self.force_reprocess
             )
 
             # ユースケースを実行（非同期処理を同期的に実行）

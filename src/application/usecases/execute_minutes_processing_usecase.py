@@ -94,18 +94,28 @@ class ExecuteMinutesProcessingUseCase:
                 meeting.id
             )
 
-            # 強制再処理でない場合、既存のConversationsをチェック
-            if existing_minutes and not request.force_reprocess:
-                if existing_minutes.id:
-                    conversations = (
-                        await self.uow.conversation_repository.get_by_minutes(
-                            existing_minutes.id
-                        )
-                    )
-                    if conversations:
+            # 既存のConversationsをチェック・削除
+            if existing_minutes and existing_minutes.id:
+                conversations = await self.uow.conversation_repository.get_by_minutes(
+                    existing_minutes.id
+                )
+                if conversations:
+                    if not request.force_reprocess:
                         raise ValueError(
                             f"Meeting {meeting.id} already has conversations"
                         )
+                    else:
+                        # 強制再処理の場合は既存conversationsを削除
+                        logger.info(
+                            f"Deleting {len(conversations)} existing conversations "
+                            f"for force reprocessing"
+                        )
+                        for conv in conversations:
+                            if conv.id:
+                                await self.uow.conversation_repository.delete(conv.id)
+                        # Flush to ensure deletions are applied
+                        await self.uow.flush()
+                        logger.info("Existing conversations deleted")
 
             # 議事録テキストを取得
             extracted_text = await self._fetch_minutes_text(meeting)
