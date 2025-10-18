@@ -9,11 +9,36 @@ from typing import Any
 
 import pandas as pd
 
+from src.application.usecases.execute_minutes_processing_usecase import (
+    ExecuteMinutesProcessingDTO,
+    ExecuteMinutesProcessingUseCase,
+)
+from src.application.usecases.execute_scrape_meeting_usecase import (
+    ExecuteScrapeMeetingDTO,
+    ExecuteScrapeMeetingUseCase,
+)
+from src.application.usecases.execute_speaker_extraction_usecase import (
+    ExecuteSpeakerExtractionDTO,
+    ExecuteSpeakerExtractionUseCase,
+)
 from src.common.logging import get_logger
 from src.domain.entities.meeting import Meeting
+from src.domain.services.interfaces.minutes_processing_service import (
+    IMinutesProcessingService,
+)
+from src.domain.services.interfaces.storage_service import IStorageService
+from src.domain.services.interfaces.unit_of_work import IUnitOfWork
+from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.infrastructure.di.container import Container
+from src.infrastructure.external.gcs_storage_service import GCSStorageService
+from src.infrastructure.external.minutes_processing_service import (
+    MinutesProcessingServiceImpl,
+)
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceRepositoryImpl,
+)
+from src.infrastructure.persistence.conversation_repository_impl import (
+    ConversationRepositoryImpl,
 )
 from src.infrastructure.persistence.governing_body_repository_impl import (
     GoverningBodyRepositoryImpl,
@@ -21,7 +46,14 @@ from src.infrastructure.persistence.governing_body_repository_impl import (
 from src.infrastructure.persistence.meeting_repository_impl import (
     MeetingRepositoryImpl,
 )
+from src.infrastructure.persistence.minutes_repository_impl import (
+    MinutesRepositoryImpl,
+)
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+from src.infrastructure.persistence.speaker_repository_impl import (
+    SpeakerRepositoryImpl,
+)
+from src.infrastructure.persistence.unit_of_work_impl import UnitOfWorkImpl
 from src.interfaces.web.streamlit.dto.base import FormStateDTO, WebResponseDTO
 from src.interfaces.web.streamlit.presenters.base import CRUDPresenter
 from src.interfaces.web.streamlit.utils.session_manager import SessionManager
@@ -392,3 +424,224 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
                 self.form_state.is_editing and self.form_state.current_id == meeting_id
             )
         return self.form_state.is_editing
+
+    async def scrape_meeting(
+        self, meeting_id: int, force_rescrape: bool = False
+    ) -> WebResponseDTO[dict[str, Any]]:
+        """Execute scraping for a meeting.
+
+        Args:
+            meeting_id: Meeting ID to scrape
+            force_rescrape: Whether to force re-scraping
+
+        Returns:
+            Response with scraping result
+        """
+        try:
+            # Initialize use case
+            scrape_usecase = ExecuteScrapeMeetingUseCase(
+                meeting_repository=self.meeting_repo.repository,
+                enable_gcs=True,
+            )
+
+            # Execute scraping
+            request = ExecuteScrapeMeetingDTO(
+                meeting_id=meeting_id,
+                force_rescrape=force_rescrape,
+                upload_to_gcs=True,
+            )
+            result = await scrape_usecase.execute(request)
+
+            return WebResponseDTO.success_response(
+                {
+                    "title": result.title,
+                    "speakers_count": result.speakers_count,
+                    "content_length": result.content_length,
+                    "gcs_text_uri": result.gcs_text_uri,
+                    "processing_time": result.processing_time_seconds,
+                },
+                f"会議 {meeting_id} のスクレイピングが完了しました",
+            )
+
+        except Exception as e:
+            self.logger.error(
+                f"Error scraping meeting {meeting_id}: {e}", exc_info=True
+            )
+            return WebResponseDTO.error_response(
+                f"スクレイピングに失敗しました: {str(e)}"
+            )
+
+    async def extract_minutes(
+        self, meeting_id: int, force_reprocess: bool = False
+    ) -> WebResponseDTO[dict[str, Any]]:
+        """Execute minutes processing (conversation extraction) for a meeting.
+
+        Args:
+            meeting_id: Meeting ID to process
+            force_reprocess: Whether to force re-processing
+
+        Returns:
+            Response with processing result
+        """
+        try:
+            # Get services from DI container
+            import os
+
+            from src.infrastructure.external.llm_service import LLMService
+
+            # Initialize services
+            bucket_name = os.getenv("GCS_BUCKET_NAME", "polibase-bucket")
+            storage_service: IStorageService = GCSStorageService(
+                bucket_name=bucket_name
+            )
+            llm_service = LLMService()  # Use concrete implementation
+            minutes_processing_service: IMinutesProcessingService = (
+                MinutesProcessingServiceImpl(llm_service=llm_service)
+            )
+            speaker_domain_service = SpeakerDomainService()
+
+            # Initialize Unit of Work
+            from src.config.database import AsyncSessionLocal
+
+            async with AsyncSessionLocal() as session:
+                uow: IUnitOfWork = UnitOfWorkImpl(session=session)
+
+                # Initialize use case
+                minutes_usecase = ExecuteMinutesProcessingUseCase(
+                    speaker_domain_service=speaker_domain_service,
+                    minutes_processing_service=minutes_processing_service,
+                    storage_service=storage_service,
+                    unit_of_work=uow,
+                )
+
+                # Execute processing
+                request = ExecuteMinutesProcessingDTO(
+                    meeting_id=meeting_id, force_reprocess=force_reprocess
+                )
+                result = await minutes_usecase.execute(request)
+
+                return WebResponseDTO.success_response(
+                    {
+                        "minutes_id": result.minutes_id,
+                        "total_conversations": result.total_conversations,
+                        "unique_speakers": result.unique_speakers,
+                        "processing_time": result.processing_time_seconds,
+                    },
+                    f"会議 {meeting_id} の発言抽出が完了しました",
+                )
+
+        except Exception as e:
+            self.logger.error(
+                f"Error extracting minutes for meeting {meeting_id}: {e}",
+                exc_info=True,
+            )
+            return WebResponseDTO.error_response(f"発言抽出に失敗しました: {str(e)}")
+
+    async def extract_speakers(
+        self, meeting_id: int, force_reprocess: bool = False
+    ) -> WebResponseDTO[dict[str, Any]]:
+        """Execute speaker extraction for a meeting.
+
+        Args:
+            meeting_id: Meeting ID to process
+            force_reprocess: Whether to force re-processing
+
+        Returns:
+            Response with extraction result
+        """
+        try:
+            # Initialize repositories
+            minutes_repo = RepositoryAdapter(MinutesRepositoryImpl)
+            conversation_repo = RepositoryAdapter(ConversationRepositoryImpl)
+            speaker_repo = RepositoryAdapter(SpeakerRepositoryImpl)
+            speaker_domain_service = SpeakerDomainService()
+
+            # Initialize use case
+            speaker_usecase = ExecuteSpeakerExtractionUseCase(
+                minutes_repository=minutes_repo.repository,
+                conversation_repository=conversation_repo.repository,
+                speaker_repository=speaker_repo.repository,
+                speaker_domain_service=speaker_domain_service,
+            )
+
+            # Execute extraction
+            request = ExecuteSpeakerExtractionDTO(
+                meeting_id=meeting_id, force_reprocess=force_reprocess
+            )
+            result = await speaker_usecase.execute(request)
+
+            return WebResponseDTO.success_response(
+                {
+                    "total_conversations": result.total_conversations,
+                    "unique_speakers": result.unique_speakers,
+                    "new_speakers": result.new_speakers,
+                    "existing_speakers": result.existing_speakers,
+                    "processing_time": result.processing_time_seconds,
+                },
+                f"会議 {meeting_id} の発言者抽出が完了しました",
+            )
+
+        except Exception as e:
+            self.logger.error(
+                f"Error extracting speakers for meeting {meeting_id}: {e}",
+                exc_info=True,
+            )
+            return WebResponseDTO.error_response(f"発言者抽出に失敗しました: {str(e)}")
+
+    async def check_meeting_status(self, meeting_id: int) -> dict[str, bool]:
+        """Check processing status for a meeting.
+
+        Args:
+            meeting_id: Meeting ID to check
+
+        Returns:
+            Dictionary with status flags:
+                - is_scraped: Whether meeting has been scraped
+                - has_conversations: Whether conversations have been extracted
+                - has_speakers_linked: Whether speakers have been linked
+        """
+        try:
+            # Get meeting
+            meeting = await self.meeting_repo.get_by_id(meeting_id)
+            if not meeting:
+                return {
+                    "is_scraped": False,
+                    "has_conversations": False,
+                    "has_speakers_linked": False,
+                }
+
+            # Check if scraped (has GCS URIs)
+            is_scraped = bool(meeting.gcs_text_uri or meeting.gcs_pdf_uri)
+
+            # Check if conversations exist
+            minutes_repo = RepositoryAdapter(MinutesRepositoryImpl)
+            minutes = await minutes_repo.get_by_meeting(meeting_id)
+            has_conversations = False
+            has_speakers_linked = False
+
+            if minutes and minutes.id:
+                conversation_repo = RepositoryAdapter(ConversationRepositoryImpl)
+                conversations = await conversation_repo.get_by_minutes(minutes.id)
+                has_conversations = len(conversations) > 0
+
+                # Check if any conversation has speaker_id linked
+                if conversations:
+                    has_speakers_linked = any(
+                        conv.speaker_id is not None for conv in conversations
+                    )
+
+            return {
+                "is_scraped": is_scraped,
+                "has_conversations": has_conversations,
+                "has_speakers_linked": has_speakers_linked,
+            }
+
+        except Exception as e:
+            self.logger.error(
+                f"Error checking status for meeting {meeting_id}: {e}", exc_info=True
+            )
+            return {
+                "is_scraped": False,
+                "has_conversations": False,
+                "has_speakers_linked": False,
+            }

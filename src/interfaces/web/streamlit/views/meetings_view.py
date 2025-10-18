@@ -149,6 +149,51 @@ def render_meeting_row(
                 ):
                     delete_meeting(presenter, display_row["ID"])
 
+    # Show processing status and action buttons
+    import asyncio
+
+    meeting_id = display_row["ID"]
+
+    # Get processing status
+    status = asyncio.run(presenter.check_meeting_status(meeting_id))
+
+    # Processing status indicators
+    col_status1, col_status2, col_status3 = st.columns(3)
+
+    with col_status1:
+        scrape_status = "✓ 済" if status["is_scraped"] else "未実行"
+        st.caption(f"スクレイピング: {scrape_status}")
+
+    with col_status2:
+        minutes_status = "✓ 済" if status["has_conversations"] else "未実行"
+        st.caption(f"発言抽出: {minutes_status}")
+
+    with col_status3:
+        speaker_status = "✓ 済" if status["has_speakers_linked"] else "未実行"
+        st.caption(f"発言者抽出: {speaker_status}")
+
+    # Action buttons for processing
+    col_action1, col_action2, col_action3 = st.columns(3)
+
+    with col_action1:
+        scrape_label = "再スクレイピング" if status["is_scraped"] else "スクレイピング"
+        if st.button(scrape_label, key=f"scrape_{meeting_id}"):
+            execute_scrape(presenter, meeting_id, status["is_scraped"])
+
+    with col_action2:
+        minutes_label = "再発言抽出" if status["has_conversations"] else "発言抽出"
+        if st.button(minutes_label, key=f"extract_minutes_{meeting_id}"):
+            execute_extract_minutes(presenter, meeting_id, status["has_conversations"])
+
+    with col_action3:
+        speaker_label = (
+            "再発言者抽出" if status["has_speakers_linked"] else "発言者抽出"
+        )
+        if st.button(speaker_label, key=f"extract_speakers_{meeting_id}"):
+            execute_extract_speakers(
+                presenter, meeting_id, status["has_speakers_linked"]
+            )
+
     # Show edit form if this meeting is being edited
     if presenter.is_editing(display_row["ID"]):
         render_edit_form(presenter, meeting_data)
@@ -404,6 +449,114 @@ def delete_meeting(presenter: MeetingPresenter, meeting_id: int):
 
     except Exception as e:
         handle_ui_error(e, "会議の削除")
+
+
+def execute_scrape(
+    presenter: MeetingPresenter, meeting_id: int, is_already_scraped: bool
+):
+    """Execute scraping for a meeting.
+
+    Args:
+        presenter: Meeting presenter
+        meeting_id: Meeting ID
+        is_already_scraped: Whether the meeting has already been scraped
+    """
+    import asyncio
+
+    try:
+        with st.spinner("スクレイピング中..."):
+            result = asyncio.run(
+                presenter.scrape_meeting(meeting_id, force_rescrape=is_already_scraped)
+            )
+
+            if result.success:
+                st.success(result.message)
+                if result.data:
+                    st.info(
+                        f"タイトル: {result.data.get('title', 'N/A')}\n"
+                        f"発言者数: {result.data.get('speakers_count', 0)}\n"
+                        f"文字数: {result.data.get('content_length', 0)}\n"
+                        f"処理時間: {result.data.get('processing_time', 0):.2f}秒"
+                    )
+                st.rerun()
+            else:
+                st.error(result.message)
+
+    except Exception as e:
+        handle_ui_error(e, "スクレイピング処理")
+
+
+def execute_extract_minutes(
+    presenter: MeetingPresenter, meeting_id: int, has_conversations: bool
+):
+    """Execute minutes extraction for a meeting.
+
+    Args:
+        presenter: Meeting presenter
+        meeting_id: Meeting ID
+        has_conversations: Whether conversations have already been extracted
+    """
+    import asyncio
+
+    try:
+        with st.spinner("発言抽出中..."):
+            result = asyncio.run(
+                presenter.extract_minutes(meeting_id, force_reprocess=has_conversations)
+            )
+
+            if result.success:
+                st.success(result.message)
+                if result.data:
+                    st.info(
+                        f"議事録ID: {result.data.get('minutes_id', 'N/A')}\n"
+                        f"発言数: {result.data.get('total_conversations', 0)}\n"
+                        f"発言者数: {result.data.get('unique_speakers', 0)}\n"
+                        f"処理時間: {result.data.get('processing_time', 0):.2f}秒"
+                    )
+                st.rerun()
+            else:
+                st.error(result.message)
+
+    except Exception as e:
+        handle_ui_error(e, "発言抽出処理")
+
+
+def execute_extract_speakers(
+    presenter: MeetingPresenter, meeting_id: int, has_speakers_linked: bool
+):
+    """Execute speaker extraction for a meeting.
+
+    Args:
+        presenter: Meeting presenter
+        meeting_id: Meeting ID
+        has_speakers_linked: Whether speakers have already been extracted
+    """
+    import asyncio
+
+    try:
+        with st.spinner("発言者抽出中..."):
+            result = asyncio.run(
+                presenter.extract_speakers(
+                    meeting_id, force_reprocess=has_speakers_linked
+                )
+            )
+
+            if result.success:
+                st.success(result.message)
+                if result.data:
+                    st.info(
+                        f"発言数: {result.data.get('total_conversations', 0)}\n"
+                        f"ユニーク発言者数: {result.data.get('unique_speakers', 0)}\n"
+                        f"新規発言者: {result.data.get('new_speakers', 0)}\n"
+                        f"既存発言者: {result.data.get('existing_speakers', 0)}\n"
+                        f"処理時間: {result.data.get('processing_time', 0):.2f}秒"
+                    )
+                st.rerun()
+            else:
+                st.error(result.message)
+
+    except Exception as e:
+        handle_ui_error(e, "発言者抽出処理")
 
 
 # For backward compatibility with existing app.py
