@@ -95,3 +95,38 @@ async def test_execute_with_params(async_session_adapter, mock_sync_session):
 
     assert result == mock_result
     mock_sync_session.execute.assert_called_once_with(statement, params)
+
+
+@pytest.mark.asyncio
+async def test_get(async_session_adapter, mock_sync_session):
+    """Test get method delegates to sync session."""
+    entity_type = Mock()
+    entity_id = 123
+    mock_entity = Mock()
+    mock_sync_session.get.return_value = mock_entity
+
+    result = await async_session_adapter.get(entity_type, entity_id)
+
+    assert result == mock_entity
+    mock_sync_session.get.assert_called_once_with(entity_type, entity_id)
+
+
+@pytest.mark.asyncio
+async def test_get_returns_none(async_session_adapter, mock_sync_session):
+    """Test get method returns None when entity not found."""
+    entity_type = Mock()
+    entity_id = 999
+    mock_sync_session.get.return_value = None
+
+    result = await async_session_adapter.get(entity_type, entity_id)
+
+    assert result is None
+    mock_sync_session.get.assert_called_once_with(entity_type, entity_id)
+
+
+@pytest.mark.asyncio
+async def test_delete(async_session_adapter, mock_sync_session):
+    """Test delete method delegates to sync session."""
+    instance = Mock()
+    await async_session_adapter.delete(instance)
+    mock_sync_session.delete.assert_called_once_with(instance)

@@ -292,55 +292,99 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 
 ### Clean Architecture Implementation
 
-Polibase has successfully migrated to Clean Architecture (Phase 3 cleanup in progress). The architecture separates concerns into distinct layers:
+Polibase has successfully migrated to Clean Architecture. **Status: 🟢 90% Complete**
+
+The architecture separates concerns into distinct layers following the Dependency Inversion Principle.
 
 #### Layer Structure
 
-1. **Domain Layer** (`src/domain/`)
-   - **Entities**: Core business objects with business rules
+1. **Domain Layer** (`src/domain/`) - ✅ Complete (77 files)
+   - **Entities** (21 files): Core business objects with business rules
      - `BaseEntity`: Common fields and methods for all entities
-     - Business entities: GoverningBody, Conference, Meeting, Politician, Speaker, etc.
-   - **Repository Interfaces**: Abstract interfaces for data access
+     - Business entities: `Politician`, `Speaker`, `Meeting`, `Conference`, `Proposal`, etc.
+   - **Repository Interfaces** (22 files): Abstract interfaces for data access
      - `BaseRepository[T]`: Generic repository with common CRUD operations
-     - Entity-specific repositories with additional methods
-   - **Domain Services**: Business logic that doesn't belong to entities
-     - `SpeakerDomainService`: Name normalization, party extraction, similarity
-     - `PoliticianDomainService`: Deduplication, validation, merging
+     - `ISessionAdapter`: Database session abstraction (Issue #592: now complete with `get()` and `delete()` methods)
+     - Entity-specific repositories with additional query methods
+   - **Domain Services** (18 files): Business logic that doesn't belong to entities
+     - `SpeakerDomainService`: Name normalization, party extraction, similarity calculation
+     - `PoliticianDomainService`: Deduplication, validation, merging logic
      - `MinutesDomainService`: Text processing, conversation extraction
      - `ConferenceDomainService`: Member role extraction
      - `ParliamentaryGroupDomainService`: Group membership validation
+     - `SpeakerMatchingService`, `PoliticianMatchingService`: Matching algorithms
+   - **Service Interfaces** (8 files): External service abstractions
+     - `ILLMService`, `IStorageService`, `IWebScraperService`, `ITextExtractorService`, etc.
 
-2. **Application Layer** (`src/application/`)
-   - **Use Cases**: Application-specific business rules
+2. **Application Layer** (`src/application/`) - ✅ Complete (37 files)
+   - **Use Cases** (21 files): Application-specific business rules
      - `ProcessMinutesUseCase`: Orchestrates minutes processing workflow
      - `MatchSpeakersUseCase`: Speaker-politician matching coordination
      - `ScrapePoliticiansUseCase`: Party member scraping workflow
      - `ManageConferenceMembersUseCase`: Conference member management
-   - **DTOs**: Data Transfer Objects for clean layer separation
+     - `Extract*UseCase`, `Manage*UseCase`: Various data processing and management
+   - **DTOs** (16 files): Data Transfer Objects for clean layer separation
      - Input/Output DTOs for each use case
      - Prevents domain model leakage to outer layers
+     - Includes validation logic
 
-3. **Infrastructure Layer** (`src/infrastructure/`)
-   - **Persistence**: Database access implementations
-     - `BaseRepositoryImpl`: Generic SQLAlchemy repository
-     - Entity-specific implementations
+3. **Infrastructure Layer** (`src/infrastructure/`) - ✅ Complete (63 files)
+   - **Persistence** (22+ files): Database access implementations
+     - `BaseRepositoryImpl[T]`: Generic SQLAlchemy repository using `ISessionAdapter`
+     - All 22 domain repositories have corresponding implementations
+     - `AsyncSessionAdapter`: Adapts sync sessions for async usage
+     - `UnitOfWorkImpl`: Transaction management implementation
    - **External Services**: Third-party integrations
-     - `ILLMService` / `GeminiLLMService`: LLM integration
-     - `IStorageService` / `GCSStorageService`: Cloud storage
-     - `IWebScraperService` / `PlaywrightScraperService`: Web scraping
+     - `GeminiLLMService`: Google Gemini API integration
+     - `CachedLLMService`, `InstrumentedLLMService`: Decorator pattern for caching and instrumentation
+     - `GCSStorageService`: Google Cloud Storage integration
+     - `WebScraperService`: Playwright-based web scraping
+     - `MinutesProcessingService`, `ProposalScraperService`: Domain-specific services
+   - **Infrastructure Support**:
+     - DI Container (`di/`): Dependency injection
+     - Logging (`logging/`): Structured logging
+     - Monitoring (`monitoring/`): Performance metrics
+     - Error Handling (`error_handling/`): Centralized error management
 
-4. **Interfaces Layer** (`src/interfaces/`)
-   - **CLI**: Command-line interfaces (migration in progress)
-   - **Web**: Streamlit UI (migration in progress)
+4. **Interfaces Layer** (`src/interfaces/`) - ✅ Mostly Complete (63 files)
+   - **CLI** (`src/interfaces/cli/`): Command-line interfaces
+     - Unified `polibase` command entry point
+     - Structured commands: `scraping/`, `database/`, `processing/`, `monitoring/`
+   - **Web** (`src/interfaces/web/streamlit/`): Streamlit UI
+     - `views/`: Page views for各entity types
+     - `presenters/`: Business logic presentation layer
+     - `components/`: Reusable UI components
+     - `dto/`: UI-specific data transfer objects
+     - Complete separation of business logic from UI
 
 #### Migration Status
 
-Clean Architecture migration is nearly complete (Phase 3: Legacy cleanup):
-- ✅ All core repositories migrated to infrastructure layer
-- ✅ Domain entities and services implemented
-- ✅ Use cases and DTOs created
-- ⏳ Removing remaining legacy files (6 files left)
-- See [CLEAN_ARCHITECTURE_MIGRATION.md](docs/CLEAN_ARCHITECTURE_MIGRATION.md) for details
+**Overall: 🟢 90% Complete**
+
+| Layer | Files | Status |
+|-------|-------|--------|
+| Domain | 77 | ✅ 100% |
+| Application | 37 | ✅ 100% |
+| Infrastructure | 63 | ✅ 100% |
+| Interfaces | 63 | ✅ 95% |
+| **Legacy Cleanup** | ~20 | ⏳ 60% |
+
+**Completed**:
+- ✅ All 22 domain repositories have infrastructure implementations
+- ✅ All 21 use cases implemented
+- ✅ Full async/await support across all repositories
+- ✅ Complete dependency inversion (Domain ← Infrastructure)
+- ✅ `ISessionAdapter` complete with `get()` and `delete()` (Issue #592)
+- ✅ CLI migrated to `src/interfaces/cli/`
+- ✅ Web UI migrated to `src/interfaces/web/streamlit/`
+
+**In Progress**:
+- ⏳ Legacy code cleanup (`src/cli.py`, `src/streamlit/`, etc.)
+- ⏳ Legacy directory consolidation
+
+See:
+- [CLEAN_ARCHITECTURE_MIGRATION.md](docs/CLEAN_ARCHITECTURE_MIGRATION.md) - Migration guide
+- [tmp/clean_architecture_analysis_2025.md](tmp/clean_architecture_analysis_2025.md) - Detailed analysis
 
 ### System Design Principles
 

@@ -618,28 +618,83 @@ gsutil iam get gs://YOUR_BUCKET_NAME/
 
 Polibaseは、保守性と拡張性を向上させるためClean Architectureを採用しています。
 
+**移行状況**: 🟢 **90%完了** - コアアーキテクチャは完全に実装され、レガシーコードのクリーンアップが進行中です。
+
 #### レイヤー構成
 
-1. **ドメイン層** (`src/domain/`)
-   - **エンティティ**: ビジネスルールを含む中心的なビジネスオブジェクト
-   - **リポジトリインターフェース**: データアクセスの抽象化
-   - **ドメインサービス**: エンティティに属さないビジネスロジック
+1. **ドメイン層** (`src/domain/`) - ✅ 完全実装
+   - **エンティティ** (21ファイル): ビジネスルールを含む中心的なビジネスオブジェクト
+     - `BaseEntity`: 共通基底クラス
+     - 主要エンティティ: `Politician`, `Speaker`, `Meeting`, `Conference`, `Proposal` など
+   - **リポジトリインターフェース** (22ファイル): データアクセスの抽象化
+     - `BaseRepository[T]`: ジェネリック基底リポジトリ
+     - `ISessionAdapter`: データベースセッション抽象化（Issue #592で完全性達成）
+   - **ドメインサービス** (18ファイル): エンティティに属さないビジネスロジック
+     - `SpeakerDomainService`, `PoliticianDomainService`, `MinutesDomainService` など
+   - **サービスインターフェース** (8ファイル): 外部サービスへの抽象化
+     - `ILLMService`, `IStorageService`, `IWebScraperService` など
 
-2. **アプリケーション層** (`src/application/`)
-   - **ユースケース**: アプリケーション固有のビジネスルール
-   - **DTO**: レイヤー間のデータ転送オブジェクト
+2. **アプリケーション層** (`src/application/`) - ✅ 完全実装
+   - **ユースケース** (21ファイル): アプリケーション固有のビジネスルール
+     - `ProcessMinutesUseCase`: 議事録処理ワークフロー
+     - `MatchSpeakersUseCase`: 発言者マッチング
+     - `ScrapePoliticiansUseCase`: 政治家情報収集
+     - その他管理系ユースケース
+   - **DTO** (16ファイル): レイヤー間のデータ転送オブジェクト
+     - ドメインエンティティの漏洩を防ぐ
+     - バリデーションロジックを含む
 
-3. **インフラストラクチャ層** (`src/infrastructure/`)
-   - **永続化**: データベースアクセスの実装
-   - **外部サービス**: LLM、ストレージ、Webスクレイピングなど
+3. **インフラストラクチャ層** (`src/infrastructure/`) - ✅ 完全実装
+   - **永続化** (22+ファイル): データベースアクセスの実装
+     - `BaseRepositoryImpl[T]`: ジェネリックSQLAlchemyリポジトリ
+     - すべてのドメインリポジトリに対応する実装
+     - `AsyncSessionAdapter`: 同期セッションのasyncラッパー
+     - `UnitOfWorkImpl`: トランザクション管理
+   - **外部サービス**: LLM、ストレージ、Webスクレイピングの実装
+     - `GeminiLLMService`: Google Gemini API統合
+     - `CachedLLMService`, `InstrumentedLLMService`: デコレーター
+     - `GCSStorageService`: Google Cloud Storage統合
+     - `WebScraperService`: Playwright Webスクレイピング
+   - **その他**: DI Container, Logging, Monitoring, Error Handling
 
-4. **インターフェース層** (`src/interfaces/`)
-   - **CLI**: コマンドラインインターフェース（移行予定）
-   - **Web**: StreamlitなどのWebインターフェース（移行予定）
+4. **インターフェース層** (`src/interfaces/`) - ✅ 大部分完了
+   - **CLI** (`src/interfaces/cli/`): コマンドラインインターフェース
+     - 統一CLIエントリーポイント: `polibase`コマンド
+     - 構造化されたコマンド群: scraping, database, processing, monitoring
+   - **Web** (`src/interfaces/web/streamlit/`): Streamlit Webインターフェース
+     - Views, Presenters, Components, DTOsで構成
+     - ビジネスロジックとUIの完全分離
 
-#### 移行戦略
+#### アーキテクチャの特徴
 
-既存の機能を維持しながら、段階的にClean Architectureへ移行しています。詳細は[移行ガイド](docs/CLEAN_ARCHITECTURE_MIGRATION.md)をご覧ください。
+**完全な依存性逆転**:
+- ドメイン層がすべてのインターフェースを定義
+- インフラ層がドメインのインターフェースを実装
+- 例: `ISessionAdapter` (domain) ← `AsyncSessionAdapter` (infrastructure)
+
+**高いテスト容易性**:
+- モックやスタブの作成が容易
+- ドメインロジックを外部依存なしでテスト可能
+- 統合テストとユニットテストの明確な分離
+
+**将来の拡張性**:
+- 新しいデータソースへの対応が容易
+- LLMプロバイダーの切り替えが容易
+- UIフレームワークの変更が容易
+
+#### レガシーコードについて
+
+以下のディレクトリ・ファイルは段階的に廃止予定です：
+- `src/cli.py` → `src/interfaces/cli/cli.py` へ移行済み
+- `src/streamlit/` → `src/interfaces/web/streamlit/` へ移行済み
+- `src/monitoring_app.py` → `src/interfaces/metrics_app.py` へ移行済み
+
+詳細は `tmp/clean_architecture_analysis_2025.md` を参照してください。
+
+#### 参考ドキュメント
+
+- [Clean Architecture移行ガイド](docs/CLEAN_ARCHITECTURE_MIGRATION.md) - 移行の詳細手順
+- [アーキテクチャ分析レポート](tmp/clean_architecture_analysis_2025.md) - 実装状況の詳細分析
 
 ## 🗂️ データの流れ
 

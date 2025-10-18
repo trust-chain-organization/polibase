@@ -67,3 +67,11 @@ class AsyncSessionAdapter(ISessionAdapter):
     async def refresh(self, instance: Any) -> None:
         """Refresh instance synchronously but return as if async."""
         self._sync_session.refresh(instance)
+
+    async def get(self, entity_type: Any, entity_id: Any) -> Any | None:
+        """Get entity by primary key synchronously but return as if async."""
+        return self._sync_session.get(entity_type, entity_id)
+
+    async def delete(self, instance: Any) -> None:
+        """Delete synchronously but return as if async."""
+        self._sync_session.delete(instance)
