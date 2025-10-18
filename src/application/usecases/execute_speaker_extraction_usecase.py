@@ -151,7 +151,7 @@ class ExecuteSpeakerExtractionUseCase:
     async def _extract_and_create_speakers(
         self, conversations: list[Conversation]
     ) -> dict[str, int]:
-        """発言から一意な発言者を抽出し、発言者レコードを作成する
+        """発言から一意な発言者を抽出し、発言者レコードを作成し、conversationsにリンクする
 
         Args:
             conversations: 発言エンティティのリスト
@@ -175,9 +175,10 @@ class ExecuteSpeakerExtractionUseCase:
 
         logger.info(f"Found {len(speaker_names)} unique speaker names")
 
-        # 発言者レコードを作成
+        # 発言者レコードを作成し、conversationsにリンク
         new_speakers = 0
         existing_speakers = 0
+        linked_conversations = 0
 
         for name, party_info in speaker_names:
             # 既存の発言者をチェック
@@ -192,16 +193,34 @@ class ExecuteSpeakerExtractionUseCase:
                     political_party_name=party_info,
                     is_politician=bool(party_info),  # 政党があれば政治家と仮定
                 )
-                await self.speaker_repo.create(speaker)
+                created_speaker = await self.speaker_repo.create(speaker)
                 new_speakers += 1
                 logger.debug(f"Created new speaker: {name}")
+                speaker_to_link = created_speaker
             else:
                 existing_speakers += 1
                 logger.debug(f"Speaker already exists: {name}")
+                speaker_to_link = existing
+
+            # この発言者に対応するすべてのconversationsをリンク
+            if speaker_to_link and speaker_to_link.id:
+                for conv in conversations:
+                    if conv.speaker_name:
+                        clean_conv_name, conv_party = (
+                            self.speaker_service.extract_party_from_name(
+                                conv.speaker_name
+                            )
+                        )
+                        if clean_conv_name == name and conv_party == party_info:
+                            conv.speaker_id = speaker_to_link.id
+                            if conv.id:
+                                await self.conversation_repo.update(conv)
+                                linked_conversations += 1
 
         logger.info(
             f"Speaker extraction complete - "
-            f"New: {new_speakers}, Existing: {existing_speakers}"
+            f"New: {new_speakers}, Existing: {existing_speakers}, "
+            f"Linked conversations: {linked_conversations}"
         )
 
         return {
