@@ -101,18 +101,29 @@ class ExecuteSpeakerExtractionUseCase:
                 f"for meeting {request.meeting_id}"
             )
 
-            # 既存のSpeakers数をカウント（強制再処理でない場合はチェック）
-            if not request.force_reprocess:
-                # 全conversationsでspeaker_idが設定されているか確認
-                conversations_with_speakers = [
-                    c for c in conversations if c.speaker_id is not None
-                ]
-                if conversations_with_speakers:
+            # 既存のSpeaker linkをチェック・クリア
+            conversations_with_speakers = [
+                c for c in conversations if c.speaker_id is not None
+            ]
+            if conversations_with_speakers:
+                if not request.force_reprocess:
                     raise ValueError(
                         f"Meeting {request.meeting_id} already has "
                         f"{len(conversations_with_speakers)} "
                         f"conversations with speakers linked"
                     )
+                else:
+                    # 強制再処理の場合は既存のspeaker linkをクリア
+                    logger.info(
+                        f"Clearing speaker links for "
+                        f"{len(conversations_with_speakers)} conversations "
+                        f"for force reprocessing"
+                    )
+                    for conv in conversations_with_speakers:
+                        conv.speaker_id = None
+                        if conv.id:
+                            await self.conversation_repo.update(conv)
+                    logger.info("Speaker links cleared")
 
             # 発言者を抽出・作成
             extraction_result = await self._extract_and_create_speakers(conversations)
