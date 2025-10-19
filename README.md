@@ -614,11 +614,67 @@ gsutil iam get gs://YOUR_BUCKET_NAME/
 
 ## 🏗️ アーキテクチャ
 
+> 📚 **詳細な図とガイド**: [docs/diagrams/](docs/diagrams/) にすべてのアーキテクチャ図と詳細な説明があります
+> 📖 **包括的なドキュメント**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) でアーキテクチャの全体像を参照
+
 ### Clean Architecture
 
 Polibaseは、保守性と拡張性を向上させるためClean Architectureを採用しています。
 
 **移行状況**: 🟢 **90%完了** - コアアーキテクチャは完全に実装され、レガシーコードのクリーンアップが進行中です。
+
+### アーキテクチャ概要図
+
+```mermaid
+graph TB
+    subgraph interfaces["🖥️ Interfaces Layer"]
+        CLI["CLI Commands"]
+        WEB["Streamlit UI"]
+    end
+
+    subgraph application["⚙️ Application Layer"]
+        UC["Use Cases (21)"]
+        DTO["DTOs (16)"]
+    end
+
+    subgraph domain["🎯 Domain Layer (Core)"]
+        ENT["Entities (21)"]
+        DS["Domain Services (18)"]
+        RI["Repository Interfaces (22)"]
+    end
+
+    subgraph infrastructure["🔧 Infrastructure Layer"]
+        PERSIST["Persistence (22+)"]
+        EXT["External Services"]
+    end
+
+    CLI --> UC
+    WEB --> UC
+    UC --> DS
+    UC --> RI
+    PERSIST -.implements.-> RI
+
+    classDef interfaceStyle fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef applicationStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef domainStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:3px
+    classDef infrastructureStyle fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+
+    class interfaces interfaceStyle
+    class application applicationStyle
+    class domain domainStyle
+    class infrastructure infrastructureStyle
+```
+
+**重要原則**:
+- 依存関係は内側（ドメイン層）に向かう
+- ドメイン層は外部フレームワークに依存しない
+- 各層を独立してテスト可能
+
+**詳細な図**:
+- [レイヤー依存関係図](docs/diagrams/layer-dependency.mmd) - 4層の詳細な依存関係
+- [コンポーネント相互作用図](docs/diagrams/component-interaction.mmd) - リクエストフローの詳細
+- [データフロー図](docs/diagrams/) - 主要ワークフローのシーケンス図
+- [リポジトリパターン図](docs/diagrams/repository-pattern.mmd) - データアクセス層の実装
 
 #### レイヤー構成
 

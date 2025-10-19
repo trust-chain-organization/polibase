@@ -290,11 +290,24 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 
 ## Architecture
 
+> 📚 **Visual Diagrams**: See [docs/diagrams/](docs/diagrams/) for detailed architecture diagrams
+> 📖 **Full Documentation**: See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for comprehensive architecture guide
+
 ### Clean Architecture Implementation
 
 Polibase has successfully migrated to Clean Architecture. **Status: 🟢 90% Complete**
 
 The architecture separates concerns into distinct layers following the Dependency Inversion Principle.
+
+### Quick Reference Diagrams
+
+**Essential diagrams for understanding the system**:
+- [Layer Dependency](docs/diagrams/layer-dependency.mmd) - Shows how layers depend on each other
+- [Component Interaction](docs/diagrams/component-interaction.mmd) - End-to-end request flow
+- [Minutes Processing Flow](docs/diagrams/data-flow-minutes-processing.mmd) - How議事録 are processed
+- [Speaker Matching Flow](docs/diagrams/data-flow-speaker-matching.mmd) - How speakers are matched with politicians
+- [Politician Scraping Flow](docs/diagrams/data-flow-politician-scraping.mmd) - How politician data is scraped
+- [Repository Pattern](docs/diagrams/repository-pattern.mmd) - Data access layer implementation
 
 #### Layer Structure
 

@@ -1,0 +1,172 @@
+```mermaid
+graph TB
+    subgraph "Domain Layer (Interfaces)"
+        direction TB
+        BASE_REPO["BaseRepository[T]<br/>Generic Interface"]
+        I_MEETING_REPO["IMeetingRepository<br/>extends BaseRepository[Meeting]"]
+        I_SPEAKER_REPO["ISpeakerRepository<br/>extends BaseRepository[Speaker]"]
+        I_SESSION["ISessionAdapter<br/>Database Session Abstraction"]
+
+        BASE_REPO --> I_MEETING_REPO
+        BASE_REPO --> I_SPEAKER_REPO
+        I_MEETING_REPO -.depends on.-> I_SESSION
+        I_SPEAKER_REPO -.depends on.-> I_SESSION
+    end
+
+    subgraph "Application Layer"
+        direction TB
+        USE_CASE["ProcessMinutesUseCase"]
+        USE_CASE -.uses.-> I_MEETING_REPO
+        USE_CASE -.uses.-> I_SPEAKER_REPO
+    end
+
+    subgraph "Infrastructure Layer (Implementations)"
+        direction TB
+
+        subgraph "Repository Implementations"
+            BASE_IMPL["BaseRepositoryImpl[T]<br/>Generic SQLAlchemy Implementation"]
+            MEETING_IMPL["MeetingRepositoryImpl<br/>implements IMeetingRepository"]
+            SPEAKER_IMPL["SpeakerRepositoryImpl<br/>implements ISpeakerRepository"]
+
+            BASE_IMPL --> MEETING_IMPL
+            BASE_IMPL --> SPEAKER_IMPL
+        end
+
+        subgraph "Session Management"
+            ASYNC_SESSION["AsyncSessionAdapter<br/>implements ISessionAdapter"]
+            SQLALCHEMY_SESSION["SQLAlchemy Session<br/>(AsyncSession)"]
+
+            ASYNC_SESSION --> SQLALCHEMY_SESSION
+        end
+
+        MEETING_IMPL -.uses.-> ASYNC_SESSION
+        SPEAKER_IMPL -.uses.-> ASYNC_SESSION
+    end
+
+    subgraph "Database"
+        POSTGRES[("PostgreSQL<br/>Database")]
+        SQLALCHEMY_SESSION --> POSTGRES
+    end
+
+    %% Implementation relationships
+    MEETING_IMPL -.implements.-> I_MEETING_REPO
+    SPEAKER_IMPL -.implements.-> I_SPEAKER_REPO
+    ASYNC_SESSION -.implements.-> I_SESSION
+
+    %% Styling
+    classDef domainStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:3px
+    classDef applicationStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef infrastructureStyle fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef databaseStyle fill:#e3f2fd,stroke:#0d47a1,stroke-width:2px
+
+    class BASE_REPO,I_MEETING_REPO,I_SPEAKER_REPO,I_SESSION domainStyle
+    class USE_CASE applicationStyle
+    class BASE_IMPL,MEETING_IMPL,SPEAKER_IMPL,ASYNC_SESSION,SQLALCHEMY_SESSION infrastructureStyle
+    class POSTGRES databaseStyle
+```
+
+## Repository Pattern Architecture
+
+This diagram shows Polibase's implementation of the Repository Pattern following Clean Architecture principles.
+
+### Key Components
+
+#### Domain Layer (Abstractions)
+- **BaseRepository[T]**: Generic repository interface with common CRUD operations
+  - `get(id)`, `create()`, `update()`, `delete()`, `find_all()`
+- **Entity-specific Repositories**: Add specialized query methods
+  - `IMeetingRepository`: `find_by_date_range()`, `find_by_conference()`
+  - `ISpeakerRepository`: `find_by_name()`, `find_unlinked()`
+- **ISessionAdapter**: Abstracts database session management
+  - `get(entity, id)`, `add()`, `delete()`, `flush()`, `commit()`
+
+#### Infrastructure Layer (Implementations)
+- **BaseRepositoryImpl[T]**: Generic SQLAlchemy implementation
+  - Uses `ISessionAdapter` for all database operations
+  - Provides default CRUD implementation
+- **Concrete Implementations**: Implement specialized methods
+  - Example: `MeetingRepositoryImpl.find_by_date_range()`
+- **AsyncSessionAdapter**: Wraps SQLAlchemy AsyncSession
+  - Implements `ISessionAdapter` interface
+  - Handles async database operations
+
+### Design Benefits
+
+#### 1. Dependency Inversion
+```python
+# Use Case depends on interface, not implementation
+class ProcessMinutesUseCase:
+    def __init__(self, meeting_repo: IMeetingRepository):
+        self._meeting_repo = meeting_repo
+```
+
+#### 2. Easy Testing
+```python
+# Test with mock repository
+class MockMeetingRepository(IMeetingRepository):
+    def get(self, id):
+        return Meeting(id=id, title="Test Meeting")
+
+usecase = ProcessMinutesUseCase(MockMeetingRepository())
+```
+
+#### 3. Framework Independence
+- Domain layer doesn't know about SQLAlchemy
+- Can swap SQLAlchemy for another ORM
+- Can add caching layer without changing domain
+
+#### 4. Consistent API
+All repositories share common interface:
+```python
+# Same pattern for all entities
+meeting = await meeting_repo.get(123)
+speaker = await speaker_repo.get(456)
+politician = await politician_repo.get(789)
+```
+
+### Session Management
+
+**ISessionAdapter** abstracts SQLAlchemy session details:
+
+```python
+# Domain code doesn't know about SQLAlchemy
+await session_adapter.add(meeting_entity)
+await session_adapter.commit()
+
+# Infrastructure code uses SQLAlchemy
+class AsyncSessionAdapter:
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def add(self, entity):
+        self._session.add(entity)
+```
+
+### Generic Repository
+
+**BaseRepository[T]** provides type-safe generic operations:
+
+```python
+class BaseRepository(Generic[T]):
+    async def get(self, id: int) -> Optional[T]:
+        ...
+
+    async def create(self, entity: T) -> T:
+        ...
+
+# Type safety for each entity
+meeting_repo: BaseRepository[Meeting]
+speaker_repo: BaseRepository[Speaker]
+```
+
+### Async/Await Support
+
+All repository methods are async for better performance:
+
+```python
+# Concurrent database operations
+meeting, speakers = await asyncio.gather(
+    meeting_repo.get(123),
+    speaker_repo.find_by_meeting(123)
+)
+```

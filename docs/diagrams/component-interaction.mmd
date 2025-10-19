@@ -1,0 +1,107 @@
+```mermaid
+graph LR
+    %% User Interface
+    USER([User])
+
+    %% Interfaces Layer
+    STREAMLIT[Streamlit UI<br/>views/]
+    PRESENTER[Presenter]
+    CLI[CLI Command]
+
+    %% Application Layer
+    USECASE[Use Case<br/>ProcessMinutesUseCase]
+    DTO_IN[Input DTO]
+    DTO_OUT[Output DTO]
+
+    %% Domain Layer
+    DOMAIN_SVC[Domain Service<br/>MinutesDomainService]
+    ENTITY[Entity<br/>Meeting, Conversation]
+    REPO_INTERFACE[Repository Interface<br/>IMeetingRepository]
+
+    %% Infrastructure Layer
+    REPO_IMPL[Repository Implementation<br/>MeetingRepositoryImpl]
+    SESSION_ADAPTER[ISessionAdapter<br/>AsyncSessionAdapter]
+    SQLALCHEMY[SQLAlchemy ORM]
+    DB[(PostgreSQL<br/>Database)]
+
+    %% External Services
+    LLM_INTERFACE[ILLMService]
+    LLM_IMPL[GeminiLLMService]
+    GEMINI_API{{Gemini API}}
+
+    %% Flow connections
+    USER --> STREAMLIT
+    USER --> CLI
+
+    STREAMLIT --> PRESENTER
+    PRESENTER --> USECASE
+    CLI --> USECASE
+
+    USECASE --> DTO_IN
+    USECASE --> DOMAIN_SVC
+    USECASE --> REPO_INTERFACE
+    USECASE --> LLM_INTERFACE
+    USECASE --> DTO_OUT
+
+    DOMAIN_SVC --> ENTITY
+    DOMAIN_SVC --> REPO_INTERFACE
+
+    REPO_INTERFACE -.implemented by.-> REPO_IMPL
+    LLM_INTERFACE -.implemented by.-> LLM_IMPL
+
+    REPO_IMPL --> SESSION_ADAPTER
+    SESSION_ADAPTER --> SQLALCHEMY
+    SQLALCHEMY --> DB
+
+    LLM_IMPL --> GEMINI_API
+
+    DTO_OUT --> PRESENTER
+    PRESENTER --> STREAMLIT
+    STREAMLIT --> USER
+
+    %% Styling
+    classDef userStyle fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef interfaceStyle fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef applicationStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef domainStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef infrastructureStyle fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef externalStyle fill:#ffebee,stroke:#c62828,stroke-width:2px
+
+    class USER userStyle
+    class STREAMLIT,PRESENTER,CLI interfaceStyle
+    class USECASE,DTO_IN,DTO_OUT applicationStyle
+    class DOMAIN_SVC,ENTITY,REPO_INTERFACE,LLM_INTERFACE domainStyle
+    class REPO_IMPL,SESSION_ADAPTER,SQLALCHEMY,DB,LLM_IMPL infrastructureStyle
+    class GEMINI_API externalStyle
+```
+
+## Component Interaction Flow
+
+This diagram shows how components interact across layers in a typical request flow.
+
+### Example Flow: Process Minutes
+
+1. **User** interacts with Streamlit UI or CLI
+2. **Presenter** (UI layer) prepares data and calls Use Case
+3. **Use Case** (Application layer):
+   - Validates input using Input DTO
+   - Calls Domain Service for business logic
+   - Interacts with Repository Interface (not implementation)
+   - Calls LLM Service Interface (not implementation)
+4. **Domain Service** works with Entities and Repository Interfaces
+5. **Repository Implementation** (Infrastructure):
+   - Uses ISessionAdapter to abstract database sessions
+   - Uses SQLAlchemy ORM to interact with PostgreSQL
+6. **LLM Service Implementation**:
+   - Calls external Gemini API
+7. **Output DTO** carries results back to Presenter
+8. **Presenter** formats data for UI
+9. **User** sees the result
+
+### Key Design Patterns
+
+- **Dependency Inversion**: Use Cases depend on interfaces, not implementations
+- **DTO Pattern**: Data Transfer Objects prevent domain model leakage
+- **Repository Pattern**: Abstracts data access logic
+- **Adapter Pattern**: ISessionAdapter adapts SQLAlchemy sessions
+- **Service Layer**: Domain Services encapsulate complex business logic
