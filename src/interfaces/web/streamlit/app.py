@@ -16,6 +16,9 @@ from src.interfaces.web.streamlit.views.conversations_speakers_view import (
 from src.interfaces.web.streamlit.views.conversations_view import (
     render_conversations_page,
 )
+from src.interfaces.web.streamlit.views.extracted_politicians_view import (
+    render_extracted_politicians_page,
+)
 from src.interfaces.web.streamlit.views.governing_bodies_view import (
     render_governing_bodies_page,
 )
@@ -84,6 +87,7 @@ def main():
             "会議体管理",
             "開催主体管理",
             "政治家管理",
+            "政治家レビュー",
             "議員団管理",
             "発言レコード一覧",
             "発言・発言者管理",
@@ -109,6 +113,9 @@ def main():
     elif page == "政治家管理":
         # ✅ Migrated to Clean Architecture
         render_politicians_page()
+    elif page == "政治家レビュー":
+        # ✅ Migrated to Clean Architecture
+        render_extracted_politicians_page()
     elif page == "議員団管理":
         # ✅ Migrated to Clean Architecture
         render_parliamentary_groups_page()
@@ -130,8 +137,9 @@ def main():
     - ✅ 政党管理
     - ✅ 会議体管理
     - ✅ 開催主体管理
-    - ✅ 議員団管理
     - ✅ 政治家管理
+    - ✅ 政治家レビュー
+    - ✅ 議員団管理
     - ✅ 発言・発言者管理
     - ✅ 発言レコード一覧
     - ✅ 処理実行
