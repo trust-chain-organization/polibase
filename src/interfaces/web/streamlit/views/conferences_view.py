@@ -130,7 +130,7 @@ def render_new_conference_form(
     governing_bodies = governing_body_repo.get_all()
     gb_options = {f"{gb.name} ({gb.type})": gb.id for gb in governing_bodies}
 
-    with st.form("new_conference_form"):
+    with st.form("conference_create_form"):
         # Conference name
         name = st.text_input(
             "会議体名 *",
@@ -226,7 +226,7 @@ def render_edit_delete_form(
         governing_bodies = governing_body_repo.get_all()
         gb_options = {f"{gb.name} ({gb.type})": gb.id for gb in governing_bodies}
 
-        with st.form("edit_conference_form"):
+        with st.form(f"conference_edit_form_{conference_id}"):
             # Conference name
             name = st.text_input(
                 "会議体名 *",
