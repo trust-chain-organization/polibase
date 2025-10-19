@@ -184,7 +184,7 @@ def render_meeting_row(
                 ):
                     delete_meeting(presenter, display_row["ID"])
 
-    # Show processing status and action buttons
+    # Show processing status and action buttons (aligned with 8 columns)
     import asyncio
 
     meeting_id = display_row["ID"]
@@ -192,8 +192,17 @@ def render_meeting_row(
     # Get processing status
     status = asyncio.run(presenter.check_meeting_status(meeting_id))
 
-    # Processing status indicators
-    col_status1, col_status2, col_status3 = st.columns(3)
+    # Processing status indicators - aligned with table columns
+    (
+        col_s1,
+        col_s2,
+        col_s3,
+        col_s4,
+        col_s5,
+        col_status1,
+        col_status2,
+        col_status3,
+    ) = st.columns([1, 2, 3, 3, 1, 1, 1, 2])
 
     with col_status1:
         scrape_status = "✓ 済" if status["is_scraped"] else "未実行"
@@ -207,8 +216,17 @@ def render_meeting_row(
         speaker_status = "✓ 済" if status["has_speakers_linked"] else "未実行"
         st.caption(f"発言者抽出: {speaker_status}")
 
-    # Action buttons for processing
-    col_action1, col_action2, col_action3 = st.columns(3)
+    # Action buttons for processing - aligned with table columns
+    (
+        col_a1,
+        col_a2,
+        col_a3,
+        col_a4,
+        col_a5,
+        col_action1,
+        col_action2,
+        col_action3,
+    ) = st.columns([1, 2, 3, 3, 1, 1, 1, 2])
 
     with col_action1:
         scrape_label = "再スクレイピング" if status["is_scraped"] else "スクレイピング"
@@ -228,6 +246,9 @@ def render_meeting_row(
             execute_extract_speakers(
                 presenter, meeting_id, status["has_speakers_linked"]
             )
+
+    # Add divider between records
+    st.divider()
 
     # Show edit form if this meeting is being edited
     if presenter.is_editing(display_row["ID"]):
