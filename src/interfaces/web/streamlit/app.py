@@ -229,13 +229,13 @@ def render_home_page():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("移行完了ページ", "9", "✅")
+        st.metric("移行完了ページ", "12", "✅")
 
     with col2:
         st.metric("移行中ページ", "0", "✅")
 
     with col3:
-        st.metric("進捗率", "100%", "🎉")
+        st.metric("進捗率", "92.3%", "🎉")
 
 
 if __name__ == "__main__":
