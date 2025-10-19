@@ -228,3 +228,145 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
                 f"{statistics.without_url} ({statistics.without_url_percentage:.1f}%)"
             ),
         }
+
+    def extract_politicians(
+        self, party_id: int, dry_run: bool = False
+    ) -> dict[str, Any]:
+        """Extract politicians from party members list URL.
+
+        Args:
+            party_id: Party ID to extract politicians from
+            dry_run: If True, don't save to database
+
+        Returns:
+            Dictionary with extraction results:
+            - success: Whether extraction succeeded
+            - message: Success or error message
+            - count: Number of politicians extracted
+            - politicians: List of extracted politician DTOs
+        """
+        import asyncio
+        import logging
+
+        from src.application.usecases.scrape_politicians_usecase import (
+            ScrapePoliticiansInputDTO,
+            ScrapePoliticiansUseCase,
+        )
+        from src.infrastructure.external.web_scraper_service import (
+            WebScraperService,
+        )
+        from src.infrastructure.persistence import (
+            extracted_politician_repository_impl as extracted_repo,
+        )
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Initialize dependencies
+            extracted_repo_impl = RepositoryAdapter(
+                extracted_repo.ExtractedPoliticianRepositoryImpl
+            )
+            scraper = WebScraperService()
+
+            # Create use case
+            use_case = ScrapePoliticiansUseCase(
+                party_repo=self.repository,  # type: ignore[arg-type]
+                extracted_politician_repo=extracted_repo_impl,  # type: ignore[arg-type]
+                scraper=scraper,
+            )
+
+            # Execute extraction
+            request = ScrapePoliticiansInputDTO(
+                party_id=party_id, all_parties=False, dry_run=dry_run
+            )
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                results = loop.run_until_complete(use_case.execute(request))
+            finally:
+                loop.close()
+
+            return {
+                "success": True,
+                "message": f"✅ {len(results)}人の政治家情報を抽出しました",
+                "count": len(results),
+                "politicians": results,
+            }
+
+        except ValueError as e:
+            logger.error(f"Validation error during politician extraction: {e}")
+            return {
+                "success": False,
+                "message": f"❌ エラー: {str(e)}",
+                "count": 0,
+                "politicians": [],
+            }
+        except Exception as e:
+            logger.error(f"Error during politician extraction: {e}", exc_info=True)
+            return {
+                "success": False,
+                "message": f"❌ 抽出処理中にエラーが発生しました: {str(e)}",
+                "count": 0,
+                "politicians": [],
+            }
+
+    def get_extraction_statistics(self, party_id: int) -> dict[str, int]:
+        """Get extraction statistics for a party.
+
+        Args:
+            party_id: Party ID
+
+        Returns:
+            Dictionary with statistics:
+            - total: Total extracted politicians
+            - pending: Pending review
+            - approved: Approved
+            - rejected: Rejected
+            - converted: Converted to politicians
+        """
+        import asyncio
+
+        from src.infrastructure.persistence import (
+            extracted_politician_repository_impl as extracted_repo,
+        )
+
+        try:
+            repo = RepositoryAdapter(extracted_repo.ExtractedPoliticianRepositoryImpl)
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                # Get all extracted politicians for this party
+                all_extracted = loop.run_until_complete(
+                    repo.get_by_party(party_id)  # type: ignore[attr-defined]
+                )
+            finally:
+                loop.close()
+
+            # Count by status
+            total = len(all_extracted)
+            pending = sum(1 for p in all_extracted if p.status == "pending")
+            approved = sum(1 for p in all_extracted if p.status == "approved")
+            rejected = sum(1 for p in all_extracted if p.status == "rejected")
+            converted = sum(
+                1 for p in all_extracted if p.converted_politician_id is not None
+            )
+
+            return {
+                "total": total,
+                "pending": pending,
+                "approved": approved,
+                "rejected": rejected,
+                "converted": converted,
+            }
+
+        except Exception:
+            # Return zeros on error
+            return {
+                "total": 0,
+                "pending": 0,
+                "approved": 0,
+                "rejected": 0,
+                "converted": 0,
+            }
