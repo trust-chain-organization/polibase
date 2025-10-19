@@ -94,6 +94,29 @@ def render_meetings_list_tab(presenter: MeetingPresenter):
             # Convert to DataFrame for display
             df = presenter.to_dataframe(meetings)
 
+            # Display header row
+            col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(
+                [1, 2, 3, 3, 1, 1, 1, 2]
+            )
+            with col1:
+                st.markdown("**ID**")
+            with col2:
+                st.markdown("**開催日**")
+            with col3:
+                st.markdown("**開催主体・会議体**")
+            with col4:
+                st.markdown("**URL**")
+            with col5:
+                st.markdown("**GCS**")
+            with col6:
+                st.markdown("**発言数**")
+            with col7:
+                st.markdown("**発言者数**")
+            with col8:
+                st.markdown("**操作**")
+
+            st.divider()
+
             # Display as table with actions
             for idx, (_, row) in enumerate(df.iterrows()):
                 render_meeting_row(presenter, row, meetings[idx])
