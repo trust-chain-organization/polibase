@@ -270,9 +270,9 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
 
             # Create use case
             use_case = ScrapePoliticiansUseCase(
-                party_repo=self.repository,  # type: ignore[arg-type]
-                extracted_politician_repo=extracted_repo_impl,  # type: ignore[arg-type]
-                scraper=scraper,
+                political_party_repository=self.repository,  # type: ignore[arg-type]
+                extracted_politician_repository=extracted_repo_impl,  # type: ignore[arg-type]
+                web_scraper_service=scraper,
             )
 
             # Execute extraction
