@@ -245,7 +245,6 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
             - count: Number of politicians extracted
             - politicians: List of extracted politician DTOs
         """
-        import asyncio
         import logging
 
         from src.application.usecases.scrape_politicians_usecase import (
@@ -280,12 +279,9 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
                 party_id=party_id, all_parties=False, dry_run=dry_run
             )
 
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                results = loop.run_until_complete(use_case.execute(request))
-            finally:
-                loop.close()
+            # Run async code synchronously
+            # Note: Using _run_async helper inherited from base presenter
+            results = self._run_async(use_case.execute(request))
 
             return {
                 "success": True,
@@ -325,8 +321,6 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
             - rejected: Rejected
             - converted: Converted to politicians
         """
-        import asyncio
-
         from src.infrastructure.persistence import (
             extracted_politician_repository_impl as extracted_repo,
         )
@@ -334,15 +328,11 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         try:
             repo = RepositoryAdapter(extracted_repo.ExtractedPoliticianRepositoryImpl)
 
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                # Get all extracted politicians for this party
-                all_extracted = loop.run_until_complete(
-                    repo.get_by_party(party_id)  # type: ignore[attr-defined]
-                )
-            finally:
-                loop.close()
+            # Get all extracted politicians for this party
+            # Using _run_async helper inherited from base presenter
+            all_extracted = self._run_async(
+                repo.get_by_party(party_id)  # type: ignore[attr-defined]
+            )
 
             # Count by status
             total = len(all_extracted)
