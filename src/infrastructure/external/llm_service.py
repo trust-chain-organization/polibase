@@ -388,7 +388,7 @@ Format: [{"speaker": "Name", "content": "Speech text"}, ...]"""
         import yaml
 
         prompts_path = os.path.join(
-            os.path.dirname(__file__), "../../prompts/prompts.yaml"
+            os.path.dirname(__file__), "../prompts/prompts.yaml"
         )
 
         with open(prompts_path, encoding="utf-8") as f:

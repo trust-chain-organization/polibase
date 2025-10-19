@@ -10,7 +10,7 @@ from src.services.llm_errors import LLMError, LLMRateLimitError
 from src.services.llm_factory import LLMServiceFactory
 from src.services.llm_service import LLMService
 from src.services.prompt_loader import PromptLoader
-from src.test_utils.llm_mock import LLMServiceMock, mock_llm_service
+from tests.utils.llm_mock import LLMServiceMock, mock_llm_service
 
 
 class TestLLMService:
@@ -210,7 +210,7 @@ class TestMockFramework:
 
     def test_mock_llm_basic(self) -> None:
         """Test basic mock LLM functionality"""
-        from src.test_utils.llm_mock import MockLLM
+        from tests.utils.llm_mock import MockLLM
 
         mock = MockLLM(["Response 1", "Response 2"])
 
@@ -228,7 +228,7 @@ class TestMockFramework:
 
     def test_mock_structured_llm(self) -> None:
         """Test mock structured LLM"""
-        from src.test_utils.llm_mock import MockLLM
+        from tests.utils.llm_mock import MockLLM
 
         class TestModel(BaseModel):
             name: str
