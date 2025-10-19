@@ -1,0 +1,86 @@
+```mermaid
+graph TB
+    subgraph interfaces["🖥️ Interfaces Layer"]
+        direction LR
+        CLI["CLI Commands<br/>(src/interfaces/cli/)"]
+        WEB["Streamlit UI<br/>(src/interfaces/web/)"]
+    end
+
+    subgraph application["⚙️ Application Layer"]
+        direction LR
+        UC["Use Cases (21)<br/>ProcessMinutesUseCase<br/>MatchSpeakersUseCase<br/>ScrapePoliticiansUseCase"]
+        DTO["DTOs (16)<br/>Data Transfer Objects"]
+    end
+
+    subgraph domain["🎯 Domain Layer (Core)"]
+        direction TB
+        ENT["Entities (21)<br/>Politician, Speaker<br/>Meeting, Conference"]
+        DS["Domain Services (18)<br/>SpeakerDomainService<br/>PoliticianDomainService"]
+        RI["Repository Interfaces (22)<br/>BaseRepository<br/>ISessionAdapter"]
+        SI["Service Interfaces (8)<br/>ILLMService<br/>IStorageService"]
+
+        ENT --- DS
+        DS --- RI
+        DS --- SI
+    end
+
+    subgraph infrastructure["🔧 Infrastructure Layer"]
+        direction TB
+        PERSIST["Persistence (22+)<br/>BaseRepositoryImpl<br/>AsyncSessionAdapter"]
+        EXT["External Services<br/>GeminiLLMService<br/>GCSStorageService<br/>WebScraperService"]
+        SUPPORT["Support<br/>DI Container<br/>Logging, Monitoring"]
+
+        PERSIST --- EXT
+        EXT --- SUPPORT
+    end
+
+    %% Dependencies (arrows point FROM dependent TO dependency)
+    CLI --> UC
+    WEB --> UC
+    UC --> DS
+    UC --> RI
+    UC --> SI
+
+    PERSIST -.implements.-> RI
+    EXT -.implements.-> SI
+
+    %% Styling
+    classDef interfaceStyle fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef applicationStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef domainStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:3px
+    classDef infrastructureStyle fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+
+    class interfaces interfaceStyle
+    class application applicationStyle
+    class domain domainStyle
+    class infrastructure infrastructureStyle
+
+    %% Notes
+    note1["Note: Solid arrows = direct dependencies<br/>Dotted arrows = implements interface"]
+
+    style note1 fill:#fff9c4,stroke:#f57f17,stroke-width:1px
+```
+
+## Clean Architecture Layers
+
+This diagram shows the four layers of Polibase's Clean Architecture and their dependencies.
+
+### Key Principles
+
+1. **Dependency Rule**: Dependencies point inward (toward Domain layer)
+   - Interfaces → Application → Domain ← Infrastructure
+
+2. **Domain Independence**: Domain layer has no external dependencies
+   - Contains only business logic and abstractions
+   - Defines interfaces that Infrastructure implements
+
+3. **Testability**: Easy to mock and test each layer independently
+   - Domain logic can be tested without external services
+   - Infrastructure can be swapped without changing domain
+
+### Layer Responsibilities
+
+- **Interfaces**: User interaction (CLI, Web UI)
+- **Application**: Use cases and application workflows
+- **Domain**: Core business logic and rules (framework-independent)
+- **Infrastructure**: External service implementations (Database, APIs, etc.)

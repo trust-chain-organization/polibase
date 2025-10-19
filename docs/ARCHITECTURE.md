@@ -1,5 +1,7 @@
 # Polibase アーキテクチャドキュメント
 
+> 📚 **詳細な図とガイド**: [diagrams/](diagrams/) ディレクトリにすべてのアーキテクチャ図とその詳細な説明があります
+
 ## システム概要
 
 Polibaseは日本の政治活動を追跡・分析するためのアプリケーションです。議事録からの発言抽出、政治家情報の管理、会議体メンバーの追跡などの機能を提供します。
@@ -8,41 +10,72 @@ Polibaseは日本の政治活動を追跡・分析するためのアプリケー
 
 本システムはClean Architectureの原則に基づいて設計されており、以下の4つの層から構成されています：
 
+### レイヤー依存関係図
+
+> 📖 詳細: [diagrams/layer-dependency.mmd](diagrams/layer-dependency.mmd)
+
 ```mermaid
 graph TB
-    subgraph "Interfaces Layer"
-        CLI[CLI Commands]
-        WEB[Streamlit UI]
+    subgraph interfaces["🖥️ Interfaces Layer"]
+        direction LR
+        CLI["CLI Commands<br/>(src/interfaces/cli/)"]
+        WEB["Streamlit UI<br/>(src/interfaces/web/)"]
     end
 
-    subgraph "Application Layer"
-        UC[Use Cases]
-        DTO[DTOs]
+    subgraph application["⚙️ Application Layer"]
+        direction LR
+        UC["Use Cases (21)<br/>ProcessMinutesUseCase<br/>MatchSpeakersUseCase<br/>ScrapePoliticiansUseCase"]
+        DTO["DTOs (16)<br/>Data Transfer Objects"]
     end
 
-    subgraph "Domain Layer"
-        ENT[Entities]
-        DS[Domain Services]
-        RI[Repository Interfaces]
+    subgraph domain["🎯 Domain Layer (Core)"]
+        direction TB
+        ENT["Entities (21)<br/>Politician, Speaker<br/>Meeting, Conference"]
+        DS["Domain Services (18)<br/>SpeakerDomainService<br/>PoliticianDomainService"]
+        RI["Repository Interfaces (22)<br/>BaseRepository<br/>ISessionAdapter"]
+        SI["Service Interfaces (8)<br/>ILLMService<br/>IStorageService"]
+
+        ENT --- DS
+        DS --- RI
+        DS --- SI
     end
 
-    subgraph "Infrastructure Layer"
-        DB[Database]
-        LLM[LLM Service]
-        GCS[Cloud Storage]
-        WS[Web Scraper]
+    subgraph infrastructure["🔧 Infrastructure Layer"]
+        direction TB
+        PERSIST["Persistence (22+)<br/>BaseRepositoryImpl<br/>AsyncSessionAdapter"]
+        EXT["External Services<br/>GeminiLLMService<br/>GCSStorageService<br/>WebScraperService"]
+        SUPPORT["Support<br/>DI Container<br/>Logging, Monitoring"]
+
+        PERSIST --- EXT
+        EXT --- SUPPORT
     end
 
+    %% Dependencies (arrows point FROM dependent TO dependency)
     CLI --> UC
     WEB --> UC
     UC --> DS
     UC --> RI
-    DS --> ENT
-    DB --> RI
-    LLM --> UC
-    GCS --> UC
-    WS --> UC
+    UC --> SI
+
+    PERSIST -.implements.-> RI
+    EXT -.implements.-> SI
+
+    %% Styling
+    classDef interfaceStyle fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef applicationStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef domainStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:3px
+    classDef infrastructureStyle fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+
+    class interfaces interfaceStyle
+    class application applicationStyle
+    class domain domainStyle
+    class infrastructure infrastructureStyle
 ```
+
+**重要原則**:
+- **依存性ルール**: 依存関係は内側（ドメイン層）に向かう
+- **ドメイン独立性**: ドメイン層は外部フレームワークに依存しない
+- **テスタビリティ**: 各層を独立してモック・テスト可能
 
 ## 層の詳細
 
@@ -102,60 +135,240 @@ graph TB
 - **CLI**: コマンドラインインターフェース
 - **Web**: Streamlit ベースのWeb UI
 
+## コンポーネント相互作用
+
+> 📖 詳細: [diagrams/component-interaction.mmd](diagrams/component-interaction.mmd)
+
+以下の図は、典型的なリクエストフローにおけるコンポーネント間の相互作用を示しています：
+
+```mermaid
+graph LR
+    %% User Interface
+    USER([User])
+
+    %% Interfaces Layer
+    STREAMLIT[Streamlit UI<br/>views/]
+    PRESENTER[Presenter]
+    CLI[CLI Command]
+
+    %% Application Layer
+    USECASE[Use Case<br/>ProcessMinutesUseCase]
+    DTO_IN[Input DTO]
+    DTO_OUT[Output DTO]
+
+    %% Domain Layer
+    DOMAIN_SVC[Domain Service<br/>MinutesDomainService]
+    ENTITY[Entity<br/>Meeting, Conversation]
+    REPO_INTERFACE[Repository Interface<br/>IMeetingRepository]
+
+    %% Infrastructure Layer
+    REPO_IMPL[Repository Implementation<br/>MeetingRepositoryImpl]
+    SESSION_ADAPTER[ISessionAdapter<br/>AsyncSessionAdapter]
+    SQLALCHEMY[SQLAlchemy ORM]
+    DB[(PostgreSQL<br/>Database)]
+
+    %% External Services
+    LLM_INTERFACE[ILLMService]
+    LLM_IMPL[GeminiLLMService]
+    GEMINI_API{{Gemini API}}
+
+    %% Flow connections
+    USER --> STREAMLIT
+    USER --> CLI
+
+    STREAMLIT --> PRESENTER
+    PRESENTER --> USECASE
+    CLI --> USECASE
+
+    USECASE --> DTO_IN
+    USECASE --> DOMAIN_SVC
+    USECASE --> REPO_INTERFACE
+    USECASE --> LLM_INTERFACE
+    USECASE --> DTO_OUT
+
+    DOMAIN_SVC --> ENTITY
+    DOMAIN_SVC --> REPO_INTERFACE
+
+    REPO_INTERFACE -.implemented by.-> REPO_IMPL
+    LLM_INTERFACE -.implemented by.-> LLM_IMPL
+
+    REPO_IMPL --> SESSION_ADAPTER
+    SESSION_ADAPTER --> SQLALCHEMY
+    SQLALCHEMY --> DB
+
+    LLM_IMPL --> GEMINI_API
+
+    DTO_OUT --> PRESENTER
+    PRESENTER --> STREAMLIT
+    STREAMLIT --> USER
+
+    %% Styling
+    classDef userStyle fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef interfaceStyle fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef applicationStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef domainStyle fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef infrastructureStyle fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef externalStyle fill:#ffebee,stroke:#c62828,stroke-width:2px
+
+    class USER userStyle
+    class STREAMLIT,PRESENTER,CLI interfaceStyle
+    class USECASE,DTO_IN,DTO_OUT applicationStyle
+    class DOMAIN_SVC,ENTITY,REPO_INTERFACE,LLM_INTERFACE domainStyle
+    class REPO_IMPL,SESSION_ADAPTER,SQLALCHEMY,DB,LLM_IMPL infrastructureStyle
+    class GEMINI_API externalStyle
+```
+
+**重要な設計パターン**:
+- **依存性逆転**: ユースケースはインターフェースに依存、実装に依存しない
+- **DTOパターン**: データ転送オブジェクトがドメインモデルの漏洩を防ぐ
+- **リポジトリパターン**: データアクセスロジックを抽象化
+- **アダプターパターン**: ISessionAdapterがSQLAlchemyセッションを適応
+
 ## データフロー
 
 ### 1. 議事録処理フロー
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant CLI
-    participant ProcessMinutesUseCase
-    participant MinutesService
-    participant Repository
-    participant LLM
+> 📖 詳細: [diagrams/data-flow-minutes-processing.mmd](diagrams/data-flow-minutes-processing.mmd)
 
-    User->>CLI: process-minutes command
-    CLI->>ProcessMinutesUseCase: execute()
-    ProcessMinutesUseCase->>LLM: extract speeches
-    LLM-->>ProcessMinutesUseCase: speeches data
-    ProcessMinutesUseCase->>MinutesService: create conversations
-    ProcessMinutesUseCase->>Repository: save conversations
-    ProcessMinutesUseCase-->>CLI: result
-    CLI-->>User: processing complete
-```
-
-### 2. 政治家情報スクレイピングフロー
+このシーケンス図は、議事録PDF/テキストから構造化された会話データへの完全なフローを示しています：
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant CLI
-    participant ScrapePoliticiansUseCase
-    participant WebScraper
-    participant LLM
-    participant ExtractedPoliticianRepo
-    participant ReviewProcess
-    participant PoliticianRepo
+    autonumber
+    actor User
+    participant CLI as CLI Command
+    participant UseCase as ProcessMinutesUseCase
+    participant Storage as IStorageService
+    participant LLM as ILLMService
+    participant DomainSvc as MinutesDomainService
+    participant MeetingRepo as IMeetingRepository
+    participant ConvRepo as IConversationRepository
+    participant DB as Database
 
-    User->>CLI: scrape-politicians command
-    CLI->>ScrapePoliticiansUseCase: execute()
-    ScrapePoliticiansUseCase->>WebScraper: scrape party website
-    WebScraper-->>ScrapePoliticiansUseCase: HTML content
-    ScrapePoliticiansUseCase->>LLM: extract politician data
-    LLM-->>ScrapePoliticiansUseCase: structured data
-    ScrapePoliticiansUseCase->>ExtractedPoliticianRepo: save as ExtractedPolitician
-    ScrapePoliticiansUseCase-->>CLI: result
-    CLI-->>User: scraping complete
+    User->>CLI: polibase process-minutes --meeting-id 123
+    activate CLI
 
-    Note over User,ReviewProcess: レビュープロセス
-    User->>ReviewProcess: approve politician
-    ReviewProcess->>ExtractedPoliticianRepo: update status to approved
-    ReviewProcess->>PoliticianRepo: convert to Politician
-    ReviewProcess->>ExtractedPoliticianRepo: update status to converted
+    CLI->>UseCase: execute(meeting_id=123)
+    activate UseCase
+
+    %% Fetch PDF/Text from GCS
+    UseCase->>MeetingRepo: get_meeting(123)
+    activate MeetingRepo
+    MeetingRepo->>DB: SELECT * FROM meetings WHERE id=123
+    DB-->>MeetingRepo: meeting data (with gcs_text_uri)
+    MeetingRepo-->>UseCase: Meeting entity
+    deactivate MeetingRepo
+
+    UseCase->>Storage: download_text(gcs_text_uri)
+    activate Storage
+    Storage-->>UseCase: raw text content
+    deactivate Storage
+
+    %% LLM Processing
+    UseCase->>LLM: divide_into_speeches(raw_text)
+    activate LLM
+    Note over LLM: Uses Gemini API<br/>with prompt template
+    LLM-->>UseCase: speeches_data (JSON)
+    deactivate LLM
+
+    %% Domain Logic
+    UseCase->>DomainSvc: create_conversations(speeches_data, meeting_id)
+    activate DomainSvc
+
+    loop For each speech
+        DomainSvc->>DomainSvc: validate speech data
+        DomainSvc->>DomainSvc: create Conversation entity
+    end
+
+    DomainSvc-->>UseCase: List[Conversation]
+    deactivate DomainSvc
+
+    %% Save to Database
+    UseCase->>ConvRepo: save_batch(conversations)
+    activate ConvRepo
+
+    loop For each conversation
+        ConvRepo->>DB: INSERT INTO conversations
+        DB-->>ConvRepo: saved
+    end
+
+    ConvRepo-->>UseCase: success
+    deactivate ConvRepo
+
+    %% Update meeting status
+    UseCase->>MeetingRepo: update_processing_status(meeting_id, "completed")
+    activate MeetingRepo
+    MeetingRepo->>DB: UPDATE meetings SET status='completed'
+    DB-->>MeetingRepo: updated
+    MeetingRepo-->>UseCase: success
+    deactivate MeetingRepo
+
+    UseCase-->>CLI: ProcessingResult(success=True, conversations_count=50)
+    deactivate UseCase
+
+    CLI-->>User: ✓ Processed 50 conversations from meeting 123
+    deactivate CLI
 ```
 
-### 3. エンティティ関係図
+**データ変換**: `PDF/Text → Raw Text → LLM JSON → Conversation Entities → Database Records`
+
+### 2. 発言者マッチングフロー
+
+> 📖 詳細: [diagrams/data-flow-speaker-matching.mmd](diagrams/data-flow-speaker-matching.mmd)
+
+ルールベース + LLMハイブリッドアプローチによる発言者と政治家のマッチング：
+
+**マッチング戦略**:
+- **フェーズ1**: 発言者抽出（名前正規化、既存speaker検索、新規speaker作成）
+- **フェーズ2**: 政治家マッチング（候補検索、LLMファジーマッチング、信頼度≥0.7で自動リンク）
+
+**なぜLLMマッチングが必要か**:
+日本語の議事録では名前の表記揺れが多い（例：山田太郎君、山田議員、山田太郎）
+
+### 3. 政治家情報スクレイピングフロー
+
+> 📖 詳細: [diagrams/data-flow-politician-scraping.mmd](diagrams/data-flow-politician-scraping.mmd)
+
+政党Webサイトからの政治家データスクレイピングの3段階プロセス：
+
+**3段階プロセス**:
+1. **スクレイピング**: PlaywrightでWebページ取得、LLMで構造化データ抽出
+2. **ステージング**: `extracted_politicians`テーブルに保存（status = pending）
+3. **レビューと変換**: 管理者承認後、`politicians`テーブルに変換
+
+**なぜステージングテーブルが必要か**:
+1. 品質管理（マスターデータ追加前の人手レビュー）
+2. エラー検出（LLM抽出ミスのキャッチ）
+3. 重複防止（既存データとの確認）
+4. 監査証跡（いつ何が抽出されたかの追跡）
+
+## リポジトリパターン
+
+> 📖 詳細: [diagrams/repository-pattern.mmd](diagrams/repository-pattern.mmd)
+
+Polibaseのリポジトリパターン実装は、Clean Architectureの原則に従っています：
+
+### 主要コンポーネント
+
+**ドメイン層（抽象化）**:
+- `BaseRepository[T]`: ジェネリックリポジトリインターフェース（共通CRUD操作）
+- エンティティ固有リポジトリ: 特化したクエリメソッドを追加
+- `ISessionAdapter`: データベースセッション管理の抽象化
+
+**インフラストラクチャ層（実装）**:
+- `BaseRepositoryImpl[T]`: ジェネリックSQLAlchemy実装
+- 具体的な実装: 特化メソッドを実装（例：`MeetingRepositoryImpl.find_by_date_range()`）
+- `AsyncSessionAdapter`: SQLAlchemy AsyncSessionのラッパー
+
+### 設計の利点
+
+1. **依存性逆転**: ユースケースはインターフェースに依存、実装には依存しない
+2. **テスト容易性**: モックリポジトリで簡単にテスト可能
+3. **フレームワーク独立性**: ドメイン層はSQLAlchemyを知らない
+4. **一貫性のあるAPI**: すべてのリポジトリが共通インターフェースを共有
+5. **Async/Await対応**: すべてのリポジトリメソッドが非同期
+
+### エンティティ関係図
 
 ```mermaid
 erDiagram
