@@ -321,18 +321,16 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
             - rejected: Rejected
             - converted: Converted to politicians
         """
-        from src.infrastructure.persistence import (
-            extracted_politician_repository_impl as extracted_repo,
-        )
-
         try:
+            from src.infrastructure.persistence import (
+                extracted_politician_repository_impl as extracted_repo,
+            )
+
             repo = RepositoryAdapter(extracted_repo.ExtractedPoliticianRepositoryImpl)
 
             # Get all extracted politicians for this party
-            # Using _run_async helper inherited from base presenter
-            all_extracted = self._run_async(
-                repo.get_by_party(party_id)  # type: ignore[attr-defined]
-            )
+            # RepositoryAdapter handles async/sync conversion automatically
+            all_extracted = repo.get_by_party(party_id)  # type: ignore[attr-defined]
 
             # Count by status
             total = len(all_extracted)
@@ -351,7 +349,14 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
                 "converted": converted,
             }
 
-        except Exception:
+        except Exception as e:
+            # Log error for debugging
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.exception(
+                f"Error getting extraction statistics for party {party_id}: {e}"
+            )
             # Return zeros on error
             return {
                 "total": 0,
