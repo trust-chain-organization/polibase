@@ -54,7 +54,7 @@ def render_parties_list_tab(presenter: PoliticalPartyPresenter):
     # Load data
     try:
         # Run async function
-        result = presenter.load_data(filter_type)
+        result = presenter.load_data_filtered(filter_type)
 
         # Display statistics
         with col2:
