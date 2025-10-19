@@ -81,7 +81,7 @@ class UICommands(BaseCommand):
         UICommands.show_progress("You can now view your Streamlit app in your browser.")
         UICommands.show_progress(f"  URL: {access_url}")
 
-        # 新しいStreamlitアプリケーションを起動
+        # 新しいStreamlitアプリケーションを起動（Clean Architecture版）
         # browser.gatherUsageStatsをfalseにしてUsage statistics収集メッセージも抑制
         subprocess.run(
             [
@@ -89,7 +89,7 @@ class UICommands(BaseCommand):
                 "-m",
                 "streamlit",
                 "run",
-                "src/streamlit/app.py",
+                "src/interfaces/web/streamlit/app.py",  # Clean Architecture版に修正
                 "--server.port",
                 str(port),
                 "--server.address",

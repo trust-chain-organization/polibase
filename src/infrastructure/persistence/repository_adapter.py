@@ -116,14 +116,21 @@ class RepositoryAdapter:
         session_factory = self.get_async_session_factory()
         async with session_factory() as session:
             self._shared_session = session
+            logger.debug(f"Transaction started, session={id(session)}")
             try:
                 yield session
+                logger.debug(f"Committing transaction, session={id(session)}")
                 await session.commit()
-            except Exception:
+                logger.info(
+                    f"Transaction committed successfully, session={id(session)}"
+                )
+            except Exception as e:
+                logger.error(f"Transaction failed, rolling back: {e}")
                 await session.rollback()
                 raise
             finally:
                 self._shared_session = None
+                logger.debug(f"Transaction context exited, session={id(session)}")
 
     def with_transaction(self, func: Any, *args: Any, **kwargs: Any) -> Any:
         """

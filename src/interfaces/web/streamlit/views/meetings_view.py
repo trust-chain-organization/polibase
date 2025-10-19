@@ -114,7 +114,9 @@ def render_meeting_row(
         display_row: DataFrame row for display
         meeting_data: Original meeting data dictionary
     """
-    col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 3, 3, 1, 2])
+    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(
+        [1, 2, 3, 3, 1, 1, 1, 2]
+    )
 
     with col1:
         st.text(str(display_row["ID"]))
@@ -135,6 +137,16 @@ def render_meeting_row(
         st.text(display_row["GCS"])
 
     with col6:
+        # 発言数
+        conv_count = display_row.get("発言数", 0)
+        st.text(str(conv_count) if conv_count > 0 else "-")
+
+    with col7:
+        # 発言者数
+        speaker_count = display_row.get("発言者数", 0)
+        st.text(str(speaker_count) if speaker_count > 0 else "-")
+
+    with col8:
         col_edit, col_delete = st.columns(2)
 
         with col_edit:

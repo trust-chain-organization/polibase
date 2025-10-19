@@ -214,8 +214,16 @@ class ExecuteSpeakerExtractionUseCase:
                         if clean_conv_name == name and conv_party == party_info:
                             conv.speaker_id = speaker_to_link.id
                             if conv.id:
+                                logger.debug(
+                                    f"Updating conversation {conv.id} "
+                                    f"with speaker_id={speaker_to_link.id}"
+                                )
                                 await self.conversation_repo.update(conv)
                                 linked_conversations += 1
+                                logger.debug(
+                                    f"Updated conversation {conv.id}, "
+                                    f"speaker_id is now {conv.speaker_id}"
+                                )
 
         logger.info(
             f"Speaker extraction complete - "

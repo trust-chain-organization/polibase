@@ -114,6 +114,18 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         Returns:
             List of meeting dictionaries with additional info
         """
+        import asyncio
+
+        from src.infrastructure.persistence.conversation_repository_impl import (
+            ConversationRepositoryImpl,
+        )
+        from src.infrastructure.persistence.minutes_repository_impl import (
+            MinutesRepositoryImpl,
+        )
+        from src.infrastructure.persistence.repository_adapter import (
+            RepositoryAdapter,
+        )
+
         # Get all meetings
         meetings = self.meeting_repo.get_all()
 
@@ -136,6 +148,30 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
                 if conference_id and meeting.conference_id != conference_id:
                     continue
 
+                # Get conversation and speaker counts
+                conversation_count = 0
+                speaker_count = 0
+                try:
+                    minutes_repo = RepositoryAdapter(MinutesRepositoryImpl)
+                    minutes = asyncio.run(minutes_repo.get_by_meeting(meeting.id))
+                    if minutes and minutes.id:
+                        conversation_repo = RepositoryAdapter(
+                            ConversationRepositoryImpl
+                        )
+                        conversations = asyncio.run(
+                            conversation_repo.get_by_minutes(minutes.id)
+                        )
+                        conversation_count = len(conversations)
+                        # Count unique speakers
+                        speaker_ids = {
+                            c.speaker_id for c in conversations if c.speaker_id
+                        }
+                        speaker_count = len(speaker_ids)
+                except Exception as e:
+                    self.logger.debug(
+                        f"Failed to get counts for meeting {meeting.id}: {e}"
+                    )
+
                 result.append(
                     {
                         "id": meeting.id,
@@ -151,6 +187,8 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
                         "governing_body_type": governing_body.type
                         if governing_body
                         else "",
+                        "conversation_count": conversation_count,
+                        "speaker_count": speaker_count,
                     }
                 )
 
@@ -347,7 +385,15 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         """
         if not meetings:
             return pd.DataFrame(
-                {"ID": [], "開催日": [], "開催主体・会議体": [], "URL": [], "GCS": []}
+                {
+                    "ID": [],
+                    "開催日": [],
+                    "開催主体・会議体": [],
+                    "URL": [],
+                    "GCS": [],
+                    "発言数": [],
+                    "発言者数": [],
+                }
             )
 
         df = pd.DataFrame(meetings)
@@ -371,10 +417,14 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             axis=1,
         )
 
+        # Format conversation and speaker counts
+        df["発言数"] = df["conversation_count"].fillna(0).astype(int)
+        df["発言者数"] = df["speaker_count"].fillna(0).astype(int)
+
         # Select columns for display
-        return df[["id", "開催日", "開催主体・会議体", "url", "GCS"]].rename(
-            columns={"id": "ID", "url": "URL"}
-        )
+        return df[
+            ["id", "開催日", "開催主体・会議体", "url", "GCS", "発言数", "発言者数"]
+        ].rename(columns={"id": "ID", "url": "URL"})
 
     def generate_seed_file(self) -> WebResponseDTO[str]:
         """Generate seed file for meetings.
@@ -487,14 +537,14 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             # Get services from DI container
             import os
 
-            from src.infrastructure.external.llm_service import LLMService
+            from src.infrastructure.external.llm_service import GeminiLLMService
 
             # Initialize services
             bucket_name = os.getenv("GCS_BUCKET_NAME", "polibase-bucket")
             storage_service: IStorageService = GCSStorageService(
                 bucket_name=bucket_name
             )
-            llm_service = LLMService()  # Use concrete implementation
+            llm_service = GeminiLLMService()  # Use concrete implementation
             minutes_processing_service: IMinutesProcessingService = (
                 MinutesProcessAgentService(llm_service=llm_service)
             )
