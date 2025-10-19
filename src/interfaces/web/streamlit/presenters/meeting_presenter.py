@@ -114,8 +114,6 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
         Returns:
             List of meeting dictionaries with additional info
         """
-        import asyncio
-
         from src.infrastructure.persistence.conversation_repository_impl import (
             ConversationRepositoryImpl,
         )
@@ -153,14 +151,12 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
                 speaker_count = 0
                 try:
                     minutes_repo = RepositoryAdapter(MinutesRepositoryImpl)
-                    minutes = asyncio.run(minutes_repo.get_by_meeting(meeting.id))
+                    minutes = minutes_repo.get_by_meeting(meeting.id)
                     if minutes and minutes.id:
                         conversation_repo = RepositoryAdapter(
                             ConversationRepositoryImpl
                         )
-                        conversations = asyncio.run(
-                            conversation_repo.get_by_minutes(minutes.id)
-                        )
+                        conversations = conversation_repo.get_by_minutes(minutes.id)
                         conversation_count = len(conversations)
                         # Count unique speakers
                         speaker_ids = {
