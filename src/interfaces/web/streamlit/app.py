@@ -22,6 +22,7 @@ from src.interfaces.web.streamlit.views.extracted_politicians_view import (
 from src.interfaces.web.streamlit.views.governing_bodies_view import (
     render_governing_bodies_page,
 )
+from src.interfaces.web.streamlit.views.llm_history_view import render_llm_history_page
 from src.interfaces.web.streamlit.views.meetings_view import render_meetings_page
 from src.interfaces.web.streamlit.views.parliamentary_groups_view import (
     render_parliamentary_groups_page,
@@ -92,6 +93,7 @@ def main():
             "発言レコード一覧",
             "発言・発言者管理",
             "処理実行",
+            "LLM履歴",
         ],
     )
 
@@ -128,6 +130,9 @@ def main():
     elif page == "処理実行":
         # ✅ Migrated to Clean Architecture
         render_processes_page()
+    elif page == "LLM履歴":
+        # ✅ Migrated to Clean Architecture
+        render_llm_history_page()
 
     # Footer
     st.sidebar.divider()
@@ -143,6 +148,7 @@ def main():
     - ✅ 発言・発言者管理
     - ✅ 発言レコード一覧
     - ✅ 処理実行
+    - ✅ LLM履歴
     """)
     st.sidebar.caption("© 2024 Polibase - Clean Architecture Edition")
 
