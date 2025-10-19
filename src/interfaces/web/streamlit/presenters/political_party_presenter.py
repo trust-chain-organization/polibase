@@ -253,7 +253,7 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
             ScrapePoliticiansUseCase,
         )
         from src.infrastructure.external.web_scraper_service import (
-            WebScraperService,
+            PlaywrightScraperService,
         )
         from src.infrastructure.persistence import (
             extracted_politician_repository_impl as extracted_repo,
@@ -266,7 +266,7 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
             extracted_repo_impl = RepositoryAdapter(
                 extracted_repo.ExtractedPoliticianRepositoryImpl
             )
-            scraper = WebScraperService()
+            scraper = PlaywrightScraperService()
 
             # Create use case
             use_case = ScrapePoliticiansUseCase(

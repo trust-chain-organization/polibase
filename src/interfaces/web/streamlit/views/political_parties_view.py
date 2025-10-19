@@ -179,13 +179,13 @@ def render_extraction_button(presenter: PoliticalPartyPresenter, party: Any) -> 
     if is_extracting:
         st.button("処理中...", disabled=True, key=f"extract_{party.id}")
     elif party.members_list_url:
-        if st.button("🔍 抽出", key=f"extract_{party.id}", type="primary"):
+        if st.button("🔍 メンバー抽出", key=f"extract_{party.id}", type="primary"):
             # Set extraction flag
             st.session_state[extraction_key] = True
             st.rerun()
     else:
         st.button(
-            "🔍 抽出",
+            "🔍 メンバー抽出",
             disabled=True,
             key=f"extract_{party.id}",
             help="議員一覧URLを設定してください",
