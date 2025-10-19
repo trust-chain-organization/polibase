@@ -1,11 +1,36 @@
-"""Streamlit app with URL-based routing using st.navigation"""
+"""
+DEPRECATED: This Streamlit interface is deprecated and will be removed in a
+future version.
+
+Please use the new unified CLI interface instead:
+    uv run polibase streamlit
+
+Or run directly:
+    streamlit run src/interfaces/web/streamlit/app.py
+
+See README_DEPRECATED.md in this directory for migration guide.
+See: https://github.com/trust-chain-organization/polibase/tree/main/src/interfaces/web/streamlit
+
+This is the legacy Streamlit app with URL-based routing using st.navigation
+"""
+
+import warnings
 
 import streamlit as st
 
+# Show deprecation warning
+warnings.warn(
+    "src.streamlit is deprecated. Use 'uv run polibase streamlit' or "
+    "the new implementation in src/interfaces/web/streamlit/ instead. "
+    "See: src/streamlit/README_DEPRECATED.md",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 # Initialize logging and Sentry before other imports
-from src.common.logging import setup_logging
-from src.config.sentry import init_sentry
-from src.config.settings import get_settings
+from src.common.logging import setup_logging  # noqa: E402
+from src.config.sentry import init_sentry  # noqa: E402
+from src.config.settings import get_settings  # noqa: E402
 
 # Initialize settings
 settings = get_settings()

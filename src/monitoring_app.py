@@ -1,5 +1,17 @@
-"""Streamlit monitoring dashboard for data coverage visualization"""
+"""
+DEPRECATED: This file is deprecated and will be moved in a future version.
 
+This monitoring dashboard will be reorganized into the Clean Architecture structure.
+For now, continue using:
+    uv run polibase monitoring
+
+Future location: src/interfaces/web/monitoring/ (to be determined)
+
+Note: This file is still functional and will continue to work, but the location
+and structure may change in future versions.
+"""
+
+import warnings
 from datetime import datetime
 from typing import Any
 
@@ -8,15 +20,29 @@ import plotly.express as px
 import plotly.graph_objects as go
 from streamlit_folium import st_folium  # type: ignore[import-untyped]
 
-import streamlit as st
-from src.common.logging import get_logger, setup_logging
-from src.config.sentry import init_sentry
-from src.config.settings import get_settings
-from src.infrastructure.persistence.monitoring_repository_impl import (
+# Show deprecation warning
+warnings.warn(
+    "src.monitoring_app is deprecated and will be reorganized. "
+    "Continue using 'uv run polibase monitoring' for now. "
+    "The file structure will be updated in a future version.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+import streamlit as st  # noqa: E402
+from src.common.logging import get_logger, setup_logging  # noqa: E402
+from src.config.sentry import init_sentry  # noqa: E402
+from src.config.settings import get_settings  # noqa: E402
+from src.infrastructure.persistence.monitoring_repository_impl import (  # noqa: E402
     MonitoringRepositoryImpl,
 )
-from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
-from src.utils.japan_map import create_japan_map, create_prefecture_details_card
+from src.infrastructure.persistence.repository_adapter import (  # noqa: E402
+    RepositoryAdapter,
+)
+from src.utils.japan_map import (  # noqa: E402
+    create_japan_map,
+    create_prefecture_details_card,
+)
 
 # Initialize settings
 settings = get_settings()
