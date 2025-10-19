@@ -337,16 +337,13 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
             pending = sum(1 for p in all_extracted if p.status == "pending")
             approved = sum(1 for p in all_extracted if p.status == "approved")
             rejected = sum(1 for p in all_extracted if p.status == "rejected")
-            converted = sum(
-                1 for p in all_extracted if p.converted_politician_id is not None
-            )
 
             return {
                 "total": total,
                 "pending": pending,
                 "approved": approved,
                 "rejected": rejected,
-                "converted": converted,
+                "converted": 0,  # Not applicable for party extraction
             }
 
         except Exception as e:

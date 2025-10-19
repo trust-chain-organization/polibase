@@ -262,9 +262,9 @@ def render_extraction_statistics(
             if stats["pending"] > 0:
                 stats_parts.append(f"⏳ 保留: {stats['pending']}")
 
-            # Converted
-            if stats["converted"] > 0:
-                stats_parts.append(f"🔄 変換済み: {stats['converted']}")
+            # Rejected
+            if stats["rejected"] > 0:
+                stats_parts.append(f"❌ 却下: {stats['rejected']}")
 
             st.caption(" | ".join(stats_parts))
 
