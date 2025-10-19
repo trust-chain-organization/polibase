@@ -359,7 +359,7 @@ The architecture separates concerns into distinct layers following the Dependenc
 
 #### Migration Status
 
-**Overall: 🟢 90% Complete**
+**Overall: 🟢 95% Complete**
 
 | Layer | Files | Status |
 |-------|-------|--------|
@@ -367,7 +367,7 @@ The architecture separates concerns into distinct layers following the Dependenc
 | Application | 37 | ✅ 100% |
 | Infrastructure | 63 | ✅ 100% |
 | Interfaces | 63 | ✅ 95% |
-| **Legacy Cleanup** | ~20 | ⏳ 60% |
+| **Legacy Cleanup** | ~20 | ✅ 100% |
 
 **Completed**:
 - ✅ All 22 domain repositories have infrastructure implementations
@@ -377,10 +377,10 @@ The architecture separates concerns into distinct layers following the Dependenc
 - ✅ `ISessionAdapter` complete with `get()` and `delete()` (Issue #592)
 - ✅ CLI migrated to `src/interfaces/cli/`
 - ✅ Web UI migrated to `src/interfaces/web/streamlit/`
+- ✅ Legacy Streamlit directories removed (`src/streamlit/`, `src/interfaces/streamlit/`) (Issue #602)
 
 **In Progress**:
-- ⏳ Legacy code cleanup (`src/cli.py`, `src/streamlit/`, etc.)
-- ⏳ Legacy directory consolidation
+- ⏳ Legacy directory consolidation (remaining items)
 
 See:
 - [CLEAN_ARCHITECTURE_MIGRATION.md](docs/CLEAN_ARCHITECTURE_MIGRATION.md) - Migration guide
@@ -452,7 +452,7 @@ Polibase follows these core design principles:
    - Creates entries in `politician_affiliations` with roles
 
 #### Additional Components
-- **Meeting Management UI** (`src/streamlit/`): Streamlit-based web interface with URL routing for managing meetings, parties, conferences, and more
+- **Meeting Management UI** (`src/interfaces/web/streamlit/`): Streamlit-based web interface with URL routing for managing meetings, parties, conferences, and more
 - **Party Member Extractor** (`src/party_member_extractor/`): LLM-based extraction of politician information from party member list pages
   - Uses Gemini API to extract structured data from HTML
   - Supports pagination for multi-page member lists

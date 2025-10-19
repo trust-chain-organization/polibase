@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import TYPE_CHECKING, cast
+from typing import Any, cast
 
 from bs4 import BeautifulSoup, Tag
 
@@ -11,9 +11,6 @@ from src.domain.services.interfaces.llm_service import ILLMService
 from ..infrastructure.persistence.llm_history_helper import SyncLLMHistoryHelper
 from ..services.llm_factory import LLMServiceFactory
 from .models import PartyMemberInfo, PartyMemberList, WebPageContent
-
-if TYPE_CHECKING:
-    from src.streamlit.utils.processing_logger import ProcessingLogger
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +22,7 @@ class PartyMemberExtractor:
         self,
         llm_service: ILLMService | None = None,
         party_id: int | None = None,
-        proc_logger: "ProcessingLogger | None" = None,
+        proc_logger: Any = None,
     ):
         """
         Initialize PartyMemberExtractor
@@ -44,10 +41,8 @@ class PartyMemberExtractor:
         self.party_id = party_id
         self.history_helper = SyncLLMHistoryHelper()
         self.proc_logger = proc_logger
-        if party_id is not None and proc_logger is None:
-            from src.streamlit.utils.processing_logger import ProcessingLogger
-
-            self.proc_logger = ProcessingLogger()
+        # ProcessingLogger is now optional (removed with legacy Streamlit code)
+        # If proc_logger is not provided, logging will use standard Python logging only
         if party_id is not None:
             self.log_key = party_id
 

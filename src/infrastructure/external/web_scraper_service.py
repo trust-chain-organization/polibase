@@ -52,12 +52,11 @@ class PlaywrightScraperService(IWebScraperService):
 
         from src.party_member_extractor.extractor import PartyMemberExtractor
         from src.party_member_extractor.html_fetcher import PartyMemberPageFetcher
-        from src.streamlit.utils.processing_logger import ProcessingLogger
 
         logger = logging.getLogger(__name__)
-        # Use a single ProcessingLogger instance throughout the chain
-        proc_logger = ProcessingLogger()
-        log_key = party_id
+        # ProcessingLogger removed with legacy Streamlit code
+        # Now using standard Python logging only
+        proc_logger = None
 
         # Get party name if not provided
         if party_name is None:
@@ -89,50 +88,37 @@ class PlaywrightScraperService(IWebScraperService):
 
         try:
             # Log the start of web scraping
-            proc_logger.add_log(log_key, f"🌐 Webページを取得中: {url}", "info")
+            logger.info(f"🌐 Webページを取得中: {url}")
 
             # Fetch pages with JavaScript rendering support
             fetcher = None
             try:
-                # Pass the ProcessingLogger instance to avoid multiple instances
                 fetcher = PartyMemberPageFetcher(
                     party_id=party_id, proc_logger=proc_logger
                 )
                 await fetcher.__aenter__()
 
-                proc_logger.add_log(
-                    log_key, "📄 JavaScriptレンダリング後のページを取得中...", "info"
-                )
-
-                proc_logger.add_log(
-                    log_key, f"🎯 URL: {url}からページを取得開始", "info"
-                )
+                logger.info("📄 JavaScriptレンダリング後のページを取得中...")
+                logger.info(f"🎯 URL: {url}からページを取得開始")
 
                 pages = await fetcher.fetch_all_pages(url, max_pages=10)
 
-                proc_logger.add_log(
-                    log_key, f"🎬 fetch_all_pages完了 - {len(pages)}ページ取得", "info"
-                )
+                logger.info(f"🎬 fetch_all_pages完了 - {len(pages)}ページ取得")
 
                 if not pages:
                     logger.warning(f"No pages fetched from {url}")
-                    proc_logger.add_log(
-                        log_key, "⚠️ ページが取得できませんでした", "warning"
-                    )
+                    logger.warning("⚠️ ページが取得できませんでした")
                     return []
 
-                proc_logger.add_log(
-                    log_key, f"✅ {len(pages)}ページ取得完了", "success"
-                )
+                logger.info(f"✅ {len(pages)}ページ取得完了")
 
                 # Log page URLs for debugging
                 for i, page in enumerate(pages, 1):
-                    proc_logger.add_log(log_key, f"  ページ{i}: {page.url}", "info")
+                    logger.debug(f"  ページ{i}: {page.url}")
 
                 # Extract party members using LLM
-                proc_logger.add_log(log_key, "🤖 LLMで政治家情報を抽出中...", "info")
+                logger.info("🤖 LLMで政治家情報を抽出中...")
 
-                # Pass the ProcessingLogger instance to avoid multiple instances
                 extractor = PartyMemberExtractor(
                     party_id=party_id, proc_logger=proc_logger
                 )
@@ -153,18 +139,14 @@ class PlaywrightScraperService(IWebScraperService):
                         )
                         member_names.append(member.name)
 
-                    proc_logger.add_log(
-                        log_key, f"✅ {len(result)}人の政治家情報を抽出", "success"
-                    )
+                    logger.info(f"✅ {len(result)}人の政治家情報を抽出")
 
                     # Log extracted member names for debugging
                     if member_names:
                         names_display = ", ".join(member_names[:10])
                         if len(member_names) > 10:
                             names_display += f" ... 他{len(member_names) - 10}人"
-                        proc_logger.add_log(
-                            log_key, f"抽出された議員: {names_display}", "info"
-                        )
+                        logger.info(f"抽出された議員: {names_display}")
 
                 return result
 
@@ -177,29 +159,21 @@ class PlaywrightScraperService(IWebScraperService):
 
         except Exception as e:
             logger.error(f"Failed to scrape party members from {url}: {e}")
-            proc_logger.add_log(
-                log_key, "❌ 政治家抽出処理でエラーが発生しました", "error"
-            )
-            proc_logger.add_log(log_key, f"エラー詳細: {str(e)}", "error")
+            logger.error("❌ 政治家抽出処理でエラーが発生しました")
+            logger.error(f"エラー詳細: {str(e)}")
 
             # エラーの種類に応じたヒントを表示
             if "Timeout" in str(e):
-                proc_logger.add_log(
-                    log_key,
-                    "💡 対処法: タイムアウト。サイトが混雑している可能性があります。",
-                    "info",
+                logger.info(
+                    "💡 対処法: タイムアウト。サイトが混雑している可能性があります。"
                 )
             elif "Failed to initialize" in str(e):
-                proc_logger.add_log(
-                    log_key,
-                    "💡 対処法: ブラウザ初期化失敗。リソースを確認してください。",
-                    "info",
+                logger.info(
+                    "💡 対処法: ブラウザ初期化失敗。リソースを確認してください。"
                 )
             elif "LLM" in str(e) or "Gemini" in str(e):
-                proc_logger.add_log(
-                    log_key,
-                    "💡 対処法: AI処理エラー。APIキーやクォータを確認してください。",
-                    "info",
+                logger.info(
+                    "💡 対処法: AI処理エラー。APIキーやクォータを確認してください。"
                 )
 
             # Return empty list on error instead of dummy data

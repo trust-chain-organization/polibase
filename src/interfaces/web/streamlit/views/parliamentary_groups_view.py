@@ -4,8 +4,8 @@ from datetime import date
 from typing import Any, cast
 
 import pandas as pd
-
 import streamlit as st
+
 from src.interfaces.web.streamlit.presenters.parliamentary_group_member_presenter import (  # noqa: E501
     ParliamentaryGroupMemberPresenter,
 )

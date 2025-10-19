@@ -67,9 +67,8 @@ polibase/
   - `web_scraper_service.py`: Scraper contract
 
 ### Interfaces Layer (`src/interfaces/`)
-- `streamlit/`: Streamlit UI (移行中)
-- `web/`: Web interfaces (移行中)
-- `cli/`: CLI interfaces (計画中)
+- `web/streamlit/`: Streamlit UI (Clean Architecture完了)
+- `cli/`: CLI interfaces (完了)
 
 ## Feature Modules (機能別モジュール)
 
@@ -126,13 +125,13 @@ polibase/
 - `docker/docker-compose.override.yml`: ポート上書き (git worktree用)
 
 ## Entry Points
-- `src/cli.py`: メインCLI (polibaseコマンド)
-- `src/streamlit/app.py`: Streamlit UI
+- `src/cli_package/`: メインCLI (polibaseコマンド)
+- `src/interfaces/web/streamlit/app.py`: Streamlit UI (Clean Architecture)
 - `src/monitoring_app.py`: モニタリングダッシュボード
 
 ## 移行状況
-- Clean Architecture移行: Phase 3 (最終段階)
-- 残存レガシーファイル: 6ファイル
+- Clean Architecture移行: ✅ 95% Complete
+- レガシーStreamlit削除完了 (Issue #602)
 - 詳細: `docs/CLEAN_ARCHITECTURE_MIGRATION.md`
 
 ## 開発中の機能

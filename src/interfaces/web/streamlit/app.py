@@ -29,42 +29,15 @@ from src.interfaces.web.streamlit.views.political_parties_view import (
 from src.interfaces.web.streamlit.views.politicians_view import render_politicians_page
 from src.interfaces.web.streamlit.views.processes_view import render_processes_page
 
-# Import legacy pages (to be migrated)
-# These will be gradually replaced with Clean Architecture views
-try:
-    from src.streamlit.pages.conferences import manage_conferences
-except ImportError:
-    manage_conferences = None
-
-try:
-    from src.streamlit.pages.governing_bodies import manage_governing_bodies
-except ImportError:
-    manage_governing_bodies = None
-
-try:
-    from src.streamlit.pages.politicians import manage_politicians
-except ImportError:
-    manage_politicians = None
-
-try:
-    from src.streamlit.pages.parliamentary_groups import manage_parliamentary_groups
-except ImportError:
-    manage_parliamentary_groups = None
-
-try:
-    from src.streamlit.pages.conversations import manage_conversations
-except ImportError:
-    manage_conversations = None
-
-try:
-    from src.streamlit.pages.conversations_speakers import manage_conversations_speakers
-except ImportError:
-    manage_conversations_speakers = None
-
-try:
-    from src.streamlit.pages.processes import execute_processes
-except ImportError:
-    execute_processes = None
+# Legacy pages have been removed (migrated to Clean Architecture)
+# Setting to None to maintain compatibility during full migration
+manage_conferences = None
+manage_governing_bodies = None
+manage_politicians = None
+manage_parliamentary_groups = None
+manage_conversations = None
+manage_conversations_speakers = None
+execute_processes = None
 
 
 def placeholder_page(title: str):
