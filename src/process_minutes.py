@@ -1,12 +1,24 @@
 """
-議事録分割処理のメインスクリプト
+DEPRECATED: This script is deprecated and will be removed in a future version.
 
-Processes meeting minutes PDF files and extracts individual conversations.
+Please use the new unified CLI interface instead:
+    uv run polibase process-minutes
+
+For GCS-based processing:
+    uv run polibase process-minutes --meeting-id <ID>
+
+For batch processing:
+    uv run polibase process-minutes --process-all-gcs
+
+See: https://github.com/trust-chain-organization/polibase/tree/main/src/interfaces/cli
+
+This script processes meeting minutes PDF files and extracts individual conversations.
 """
 
 import argparse
 import os
 import sys
+import warnings
 
 from src.application.exceptions import PDFProcessingError, ProcessingError
 from src.common.app_logic import (
@@ -229,6 +241,15 @@ def main() -> list[int] | None:
     Raises:
         SystemExit: If critical error occurs
     """
+    # Show deprecation warning when script is executed
+    warnings.warn(
+        "This script (src/process_minutes.py) is deprecated. "
+        "Use 'uv run polibase process-minutes' instead. "
+        "See: src/interfaces/cli/",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
     try:
         # 環境設定
         setup_environment()
