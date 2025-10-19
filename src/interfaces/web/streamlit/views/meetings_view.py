@@ -94,6 +94,29 @@ def render_meetings_list_tab(presenter: MeetingPresenter):
             # Convert to DataFrame for display
             df = presenter.to_dataframe(meetings)
 
+            # Display header row
+            col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(
+                [1, 2, 3, 3, 1, 1, 1, 2]
+            )
+            with col1:
+                st.markdown("**ID**")
+            with col2:
+                st.markdown("**開催日**")
+            with col3:
+                st.markdown("**開催主体・会議体**")
+            with col4:
+                st.markdown("**URL**")
+            with col5:
+                st.markdown("**GCS**")
+            with col6:
+                st.markdown("**発言数**")
+            with col7:
+                st.markdown("**発言者数**")
+            with col8:
+                st.markdown("**操作**")
+
+            st.divider()
+
             # Display as table with actions
             for idx, (_, row) in enumerate(df.iterrows()):
                 render_meeting_row(presenter, row, meetings[idx])
@@ -114,7 +137,9 @@ def render_meeting_row(
         display_row: DataFrame row for display
         meeting_data: Original meeting data dictionary
     """
-    col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 3, 3, 1, 2])
+    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(
+        [1, 2, 3, 3, 1, 1, 1, 2]
+    )
 
     with col1:
         st.text(str(display_row["ID"]))
@@ -135,64 +160,87 @@ def render_meeting_row(
         st.text(display_row["GCS"])
 
     with col6:
-        col_edit, col_delete = st.columns(2)
+        # 発言数
+        conv_count = display_row.get("発言数", 0)
+        st.text(str(conv_count) if conv_count > 0 else "-")
 
-        with col_edit:
-            if st.button("編集", key=f"edit_{display_row['ID']}"):
+    with col7:
+        # 発言者数
+        speaker_count = display_row.get("発言者数", 0)
+        st.text(str(speaker_count) if speaker_count > 0 else "-")
+
+    with col8:
+        # Get processing status for action labels
+        import asyncio
+
+        meeting_id = display_row["ID"]
+        status = asyncio.run(presenter.check_meeting_status(meeting_id))
+
+        # Create popover menu for all actions
+        with st.popover("⚙️ 操作", use_container_width=True):
+            # Show processing status
+            st.caption(
+                f"スクレイピング: {'✓ 済' if status['is_scraped'] else '未実行'}"
+            )
+            st.caption(
+                f"発言抽出: {'✓ 済' if status['has_conversations'] else '未実行'}"
+            )
+            st.caption(
+                f"発言者抽出: {'✓ 済' if status['has_speakers_linked'] else '未実行'}"
+            )
+            st.divider()
+
+            # Action buttons
+            scrape_label = (
+                "再スクレイピング" if status["is_scraped"] else "スクレイピング"
+            )
+            if st.button(
+                scrape_label, key=f"scrape_{meeting_id}", use_container_width=True
+            ):
+                execute_scrape(presenter, meeting_id, status["is_scraped"])
+
+            minutes_label = "再発言抽出" if status["has_conversations"] else "発言抽出"
+            if st.button(
+                minutes_label,
+                key=f"extract_minutes_{meeting_id}",
+                use_container_width=True,
+            ):
+                execute_extract_minutes(
+                    presenter, meeting_id, status["has_conversations"]
+                )
+
+            speaker_label = (
+                "再発言者抽出" if status["has_speakers_linked"] else "発言者抽出"
+            )
+            if st.button(
+                speaker_label,
+                key=f"extract_speakers_{meeting_id}",
+                use_container_width=True,
+            ):
+                execute_extract_speakers(
+                    presenter, meeting_id, status["has_speakers_linked"]
+                )
+
+            st.divider()
+
+            # Edit and delete buttons
+            if st.button("編集", key=f"edit_{meeting_id}", use_container_width=True):
                 presenter.set_editing_mode(display_row["ID"])
                 st.rerun()
 
-        with col_delete:
-            if st.button("削除", key=f"delete_{display_row['ID']}", type="secondary"):
+            if st.button(
+                "削除",
+                key=f"delete_{meeting_id}",
+                type="secondary",
+                use_container_width=True,
+            ):
                 if st.checkbox(
-                    "本当に削除しますか？", key=f"confirm_delete_{display_row['ID']}"
+                    "本当に削除しますか？", key=f"confirm_delete_{meeting_id}"
                 ):
                     delete_meeting(presenter, display_row["ID"])
 
-    # Show processing status and action buttons
-    import asyncio
-
-    meeting_id = display_row["ID"]
-
-    # Get processing status
-    status = asyncio.run(presenter.check_meeting_status(meeting_id))
-
-    # Processing status indicators
-    col_status1, col_status2, col_status3 = st.columns(3)
-
-    with col_status1:
-        scrape_status = "✓ 済" if status["is_scraped"] else "未実行"
-        st.caption(f"スクレイピング: {scrape_status}")
-
-    with col_status2:
-        minutes_status = "✓ 済" if status["has_conversations"] else "未実行"
-        st.caption(f"発言抽出: {minutes_status}")
-
-    with col_status3:
-        speaker_status = "✓ 済" if status["has_speakers_linked"] else "未実行"
-        st.caption(f"発言者抽出: {speaker_status}")
-
-    # Action buttons for processing
-    col_action1, col_action2, col_action3 = st.columns(3)
-
-    with col_action1:
-        scrape_label = "再スクレイピング" if status["is_scraped"] else "スクレイピング"
-        if st.button(scrape_label, key=f"scrape_{meeting_id}"):
-            execute_scrape(presenter, meeting_id, status["is_scraped"])
-
-    with col_action2:
-        minutes_label = "再発言抽出" if status["has_conversations"] else "発言抽出"
-        if st.button(minutes_label, key=f"extract_minutes_{meeting_id}"):
-            execute_extract_minutes(presenter, meeting_id, status["has_conversations"])
-
-    with col_action3:
-        speaker_label = (
-            "再発言者抽出" if status["has_speakers_linked"] else "発言者抽出"
-        )
-        if st.button(speaker_label, key=f"extract_speakers_{meeting_id}"):
-            execute_extract_speakers(
-                presenter, meeting_id, status["has_speakers_linked"]
-            )
+    # Add divider between records
+    st.divider()
 
     # Show edit form if this meeting is being edited
     if presenter.is_editing(display_row["ID"]):
