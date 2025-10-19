@@ -7,6 +7,7 @@ using the presenter pattern for business logic.
 from typing import Any
 
 import streamlit as st
+
 from src.interfaces.web.streamlit.presenters.political_party_presenter import (
     PoliticalPartyPresenter,
 )
@@ -88,7 +89,7 @@ def render_party_row(presenter: PoliticalPartyPresenter, party: Any) -> None:
         presenter: Political party presenter
         party: Political party entity
     """
-    col1, col2, col3, col4 = st.columns([1, 2, 3, 1])
+    col1, col2, col3, col4, col5 = st.columns([1, 2, 3, 1, 1])
 
     with col1:
         st.text(str(party.id))
@@ -130,6 +131,13 @@ def render_party_row(presenter: PoliticalPartyPresenter, party: Any) -> None:
                 presenter.set_editing_mode(party.id)
                 st.rerun()
 
+    with col5:
+        # Extraction button
+        render_extraction_button(presenter, party)
+
+    # Show extraction statistics below the row
+    render_extraction_statistics(presenter, party)
+
 
 def save_party_url(presenter: PoliticalPartyPresenter, party_id: int, url: str) -> None:
     """Save political party URL.
@@ -155,6 +163,114 @@ def save_party_url(presenter: PoliticalPartyPresenter, party_id: int, url: str) 
 
     except Exception as e:
         handle_ui_error(e, "URLの更新")
+
+
+def render_extraction_button(presenter: PoliticalPartyPresenter, party: Any) -> None:
+    """Render politician extraction button.
+
+    Args:
+        presenter: Political party presenter
+        party: Political party entity
+    """
+    # Check if extraction is in progress
+    extraction_key = f"extracting_{party.id}"
+    is_extracting = st.session_state.get(extraction_key, False)
+
+    if is_extracting:
+        st.button("処理中...", disabled=True, key=f"extract_{party.id}")
+    elif party.members_list_url:
+        if st.button("🔍 メンバー抽出", key=f"extract_{party.id}", type="primary"):
+            # Set extraction flag
+            st.session_state[extraction_key] = True
+            st.rerun()
+    else:
+        st.button(
+            "🔍 メンバー抽出",
+            disabled=True,
+            key=f"extract_{party.id}",
+            help="議員一覧URLを設定してください",
+        )
+
+    # Show extraction progress if in progress
+    if is_extracting:
+        show_extraction_progress(presenter, party.id)
+
+
+def show_extraction_progress(presenter: PoliticalPartyPresenter, party_id: int) -> None:
+    """Show politician extraction progress.
+
+    Args:
+        presenter: Political party presenter
+        party_id: Party ID
+    """
+    extraction_key = f"extracting_{party_id}"
+
+    with st.status("政治家情報を抽出中...", expanded=True) as status:
+        try:
+            st.write("📄 議員一覧ページを取得中...")
+
+            # Execute extraction
+            result = presenter.extract_politicians(party_id)
+
+            if result["success"]:
+                st.write(result["message"])
+                status.update(label="✅ 抽出完了", state="complete")
+
+                # Show extracted politicians
+                if result["politicians"]:
+                    st.write(f"抽出された政治家: {len(result['politicians'])}人")
+                    with st.expander("詳細を表示"):
+                        for politician in result["politicians"][:10]:
+                            st.write(f"- {politician.name}")
+                        if len(result["politicians"]) > 10:
+                            st.write(f"... 他{len(result['politicians']) - 10}人")
+            else:
+                st.error(result["message"])
+                status.update(label="❌ 抽出失敗", state="error")
+
+        except Exception as e:
+            st.error(f"❌ エラーが発生しました: {str(e)}")
+            status.update(label="❌ エラー", state="error")
+        finally:
+            # Clear extraction flag
+            st.session_state[extraction_key] = False
+
+
+def render_extraction_statistics(
+    presenter: PoliticalPartyPresenter, party: Any
+) -> None:
+    """Render extraction statistics for a party.
+
+    Args:
+        presenter: Political party presenter
+        party: Political party entity
+    """
+    try:
+        stats = presenter.get_extraction_statistics(party.id)
+
+        if stats["total"] > 0:
+            stats_parts = []
+
+            # Total extracted
+            stats_parts.append(f"📊 抽出済み: {stats['total']}")
+
+            # Approved
+            if stats["approved"] > 0:
+                stats_parts.append(f"✅ 承認: {stats['approved']}")
+
+            # Pending
+            if stats["pending"] > 0:
+                stats_parts.append(f"⏳ 保留: {stats['pending']}")
+
+            # Rejected
+            if stats["rejected"] > 0:
+                stats_parts.append(f"❌ 却下: {stats['rejected']}")
+
+            st.caption(" | ".join(stats_parts))
+
+    except Exception:
+        # Silently ignore errors in statistics display
+        pass
 
 
 def render_seed_generation_tab(presenter: PoliticalPartyPresenter):

@@ -30,6 +30,7 @@ warnings.warn(
 )
 
 import streamlit as st  # noqa: E402
+
 from src.common.logging import get_logger, setup_logging  # noqa: E402
 from src.config.sentry import init_sentry  # noqa: E402
 from src.config.settings import get_settings  # noqa: E402

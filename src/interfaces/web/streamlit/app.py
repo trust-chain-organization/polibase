@@ -16,9 +16,13 @@ from src.interfaces.web.streamlit.views.conversations_speakers_view import (
 from src.interfaces.web.streamlit.views.conversations_view import (
     render_conversations_page,
 )
+from src.interfaces.web.streamlit.views.extracted_politicians_view import (
+    render_extracted_politicians_page,
+)
 from src.interfaces.web.streamlit.views.governing_bodies_view import (
     render_governing_bodies_page,
 )
+from src.interfaces.web.streamlit.views.llm_history_view import render_llm_history_page
 from src.interfaces.web.streamlit.views.meetings_view import render_meetings_page
 from src.interfaces.web.streamlit.views.parliamentary_groups_view import (
     render_parliamentary_groups_page,
@@ -29,42 +33,15 @@ from src.interfaces.web.streamlit.views.political_parties_view import (
 from src.interfaces.web.streamlit.views.politicians_view import render_politicians_page
 from src.interfaces.web.streamlit.views.processes_view import render_processes_page
 
-# Import legacy pages (to be migrated)
-# These will be gradually replaced with Clean Architecture views
-try:
-    from src.streamlit.pages.conferences import manage_conferences
-except ImportError:
-    manage_conferences = None
-
-try:
-    from src.streamlit.pages.governing_bodies import manage_governing_bodies
-except ImportError:
-    manage_governing_bodies = None
-
-try:
-    from src.streamlit.pages.politicians import manage_politicians
-except ImportError:
-    manage_politicians = None
-
-try:
-    from src.streamlit.pages.parliamentary_groups import manage_parliamentary_groups
-except ImportError:
-    manage_parliamentary_groups = None
-
-try:
-    from src.streamlit.pages.conversations import manage_conversations
-except ImportError:
-    manage_conversations = None
-
-try:
-    from src.streamlit.pages.conversations_speakers import manage_conversations_speakers
-except ImportError:
-    manage_conversations_speakers = None
-
-try:
-    from src.streamlit.pages.processes import execute_processes
-except ImportError:
-    execute_processes = None
+# Legacy pages have been removed (migrated to Clean Architecture)
+# Setting to None to maintain compatibility during full migration
+manage_conferences = None
+manage_governing_bodies = None
+manage_politicians = None
+manage_parliamentary_groups = None
+manage_conversations = None
+manage_conversations_speakers = None
+execute_processes = None
 
 
 def placeholder_page(title: str):
@@ -111,10 +88,12 @@ def main():
             "会議体管理",
             "開催主体管理",
             "政治家管理",
+            "政治家レビュー",
             "議員団管理",
             "発言レコード一覧",
             "発言・発言者管理",
             "処理実行",
+            "LLM履歴",
         ],
     )
 
@@ -136,6 +115,9 @@ def main():
     elif page == "政治家管理":
         # ✅ Migrated to Clean Architecture
         render_politicians_page()
+    elif page == "政治家レビュー":
+        # ✅ Migrated to Clean Architecture
+        render_extracted_politicians_page()
     elif page == "議員団管理":
         # ✅ Migrated to Clean Architecture
         render_parliamentary_groups_page()
@@ -148,6 +130,9 @@ def main():
     elif page == "処理実行":
         # ✅ Migrated to Clean Architecture
         render_processes_page()
+    elif page == "LLM履歴":
+        # ✅ Migrated to Clean Architecture
+        render_llm_history_page()
 
     # Footer
     st.sidebar.divider()
@@ -157,11 +142,13 @@ def main():
     - ✅ 政党管理
     - ✅ 会議体管理
     - ✅ 開催主体管理
-    - ✅ 議員団管理
     - ✅ 政治家管理
+    - ✅ 政治家レビュー
+    - ✅ 議員団管理
     - ✅ 発言・発言者管理
     - ✅ 発言レコード一覧
     - ✅ 処理実行
+    - ✅ LLM履歴
     """)
     st.sidebar.caption("© 2024 Polibase - Clean Architecture Edition")
 
@@ -242,13 +229,13 @@ def render_home_page():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("移行完了ページ", "9", "✅")
+        st.metric("移行完了ページ", "12", "✅")
 
     with col2:
         st.metric("移行中ページ", "0", "✅")
 
     with col3:
-        st.metric("進捗率", "100%", "🎉")
+        st.metric("進捗率", "92.3%", "🎉")
 
 
 if __name__ == "__main__":

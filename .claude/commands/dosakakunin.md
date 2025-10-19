@@ -52,7 +52,7 @@ Issue番号を抽出（Fixes #123, Closes #456 などのパターン）：
 ### 判定ロジック
 
 以下のコマンドで変更ファイルのパスをチェック：
-!git diff --name-only origin/main...HEAD | grep -E "src/streamlit/|src/interfaces/web/"
+!git diff --name-only origin/main...HEAD | grep -E "src/interfaces/web/streamlit/"
 
 - 上記コマンドで結果がある場合: **Streamlit操作**
 - 結果がない場合: **CLI実行**
@@ -60,8 +60,7 @@ Issue番号を抽出（Fixes #123, Closes #456 などのパターン）：
 ### 判定基準の詳細
 
 **Streamlit操作が必要なケース：**
-- `src/streamlit/` 配下のファイルが変更されている
-- `src/interfaces/web/` 配下のファイルが変更されている
+- `src/interfaces/web/streamlit/` 配下のファイルが変更されている
 - UIに関連する機能追加・修正
 - データの表示方法の変更
 
