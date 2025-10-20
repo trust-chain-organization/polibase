@@ -3,6 +3,9 @@
 from dataclasses import dataclass
 from enum import Enum
 
+# Default confidence threshold for classification decisions
+DEFAULT_CONFIDENCE_THRESHOLD = 0.7
+
 
 class PageType(Enum):
     """Page type classification for hierarchical navigation."""
@@ -40,15 +43,17 @@ class PageClassification:
                 f"Confidence must be between 0.0 and 1.0, got {self.confidence}"
             )
 
-    def is_confident(self, threshold: float = 0.7) -> bool:
+    def is_confident(self, threshold: float | None = None) -> bool:
         """Check if classification confidence meets threshold.
 
         Args:
-            threshold: Minimum confidence level (default: 0.7)
+            threshold: Minimum confidence level (default: DEFAULT_CONFIDENCE_THRESHOLD)
 
         Returns:
             True if confidence >= threshold
         """
+        if threshold is None:
+            threshold = DEFAULT_CONFIDENCE_THRESHOLD
         return self.confidence >= threshold
 
     def should_explore_children(self, max_depth_reached: bool) -> bool:

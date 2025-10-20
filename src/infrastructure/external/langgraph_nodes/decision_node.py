@@ -2,7 +2,10 @@
 
 import logging
 
-from src.domain.value_objects.page_classification import PageType
+from src.domain.value_objects.page_classification import (
+    DEFAULT_CONFIDENCE_THRESHOLD,
+    PageType,
+)
 from src.infrastructure.external.langgraph_state_adapter import (
     LangGraphPartyScrapingStateOptional,
 )
@@ -53,9 +56,11 @@ def should_explore_children(state: LangGraphPartyScrapingStateOptional) -> str:
         return _move_to_next_url(state)
 
     # Check confidence threshold
-    if confidence < 0.7:
+    if confidence < DEFAULT_CONFIDENCE_THRESHOLD:
         logger.info(
-            f"Low confidence ({confidence:.2f}), skipping to avoid false positives"
+            f"Low confidence ({confidence:.2f}), "
+            f"below threshold ({DEFAULT_CONFIDENCE_THRESHOLD}), "
+            f"skipping to avoid false positives"
         )
         return _move_to_next_url(state)
 

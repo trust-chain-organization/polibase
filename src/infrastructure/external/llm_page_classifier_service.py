@@ -11,6 +11,9 @@ from src.domain.value_objects.page_classification import PageClassification, Pag
 
 logger = logging.getLogger(__name__)
 
+# Maximum length of HTML content to send to LLM for classification
+MAX_HTML_EXCERPT_LENGTH = 3000
+
 
 class LLMPageClassifierService(IPageClassifierService):
     """LLM-based implementation of page classification.
@@ -51,8 +54,8 @@ class LLMPageClassifierService(IPageClassifierService):
         if not current_url:
             raise ValueError("Current URL cannot be empty")
 
-        # Truncate HTML for prompt efficiency (first 3000 characters)
-        html_excerpt = html_content[:3000]
+        # Truncate HTML for prompt efficiency
+        html_excerpt = html_content[:MAX_HTML_EXCERPT_LENGTH]
 
         # Get prompt from service
         try:
