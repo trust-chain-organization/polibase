@@ -8,6 +8,9 @@ from dependency_injector import containers, providers
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from src.application.usecases.analyze_party_page_links_usecase import (
+    AnalyzePartyPageLinksUseCase,
+)
 from src.application.usecases.convert_extracted_politician_usecase import (
     ConvertExtractedPoliticianUseCase,
 )
@@ -32,14 +35,27 @@ from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
+from src.domain.services.interfaces.html_link_extractor_service import (
+    IHtmlLinkExtractorService,
+)
+from src.domain.services.interfaces.llm_link_classifier_service import (
+    ILLMLinkClassifierService,
+)
 from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.interfaces.minutes_processing_service import (
     IMinutesProcessingService,
 )
 from src.domain.services.interfaces.storage_service import IStorageService
+from src.domain.services.link_analysis_domain_service import LinkAnalysisDomainService
 from src.domain.services.politician_domain_service import PoliticianDomainService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.infrastructure.external.gcs_storage_service import GCSStorageService
+from src.infrastructure.external.html_link_extractor_service import (
+    BeautifulSoupLinkExtractor,
+)
+from src.infrastructure.external.llm_link_classifier_service import (
+    LLMLinkClassifierService,
+)
 from src.infrastructure.external.llm_service import GeminiLLMService
 from src.infrastructure.external.minutes_processing_service import (
     MinutesProcessAgentService,
@@ -366,6 +382,19 @@ class ServiceContainer(containers.DeclarativeContainer):
     # Domain services
     politician_domain_service = providers.Factory(PoliticianDomainService)
     speaker_domain_service = providers.Factory(SpeakerDomainService)
+    link_analysis_domain_service = providers.Factory(LinkAnalysisDomainService)
+
+    # Infrastructure services for link analysis
+    html_link_extractor_service: providers.Provider[IHtmlLinkExtractorService] = (
+        providers.Factory(BeautifulSoupLinkExtractor)
+    )
+
+    llm_link_classifier_service: providers.Provider[ILLMLinkClassifierService] = (
+        providers.Factory(
+            LLMLinkClassifierService,
+            llm_service=llm_service,
+        )
+    )
 
     # Mock services for testing (these may not have real implementations yet)
     minutes_domain_service = providers.Factory(lambda: MockDomainService("minutes"))
@@ -470,4 +499,11 @@ class UseCaseContainer(containers.DeclarativeContainer):
         proposal_judge_repository=repositories.proposal_judge_repository,
         web_scraper_service=services.web_scraper_service,
         llm_service=services.llm_service,
+    )
+
+    analyze_party_page_links_usecase = providers.Factory(
+        AnalyzePartyPageLinksUseCase,
+        html_extractor=services.html_link_extractor_service,
+        link_classifier=services.llm_link_classifier_service,
+        link_analysis_service=services.link_analysis_domain_service,
     )

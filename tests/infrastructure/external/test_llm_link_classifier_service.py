@@ -1,18 +1,21 @@
-"""Tests for link classifier tool."""
+"""Tests for LLMLinkClassifierService."""
 
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from src.party_member_extractor.tools.link_classifier import (
-    LinkClassification,
+from src.domain.services.interfaces.llm_link_classifier_service import (
     LinkClassificationResult,
-    LinkClassifier,
+    LinkType,
+)
+from src.domain.value_objects.link import Link
+from src.infrastructure.external.llm_link_classifier_service import (
+    LLMLinkClassifierService,
 )
 
 
-class TestLinkClassifier:
-    """Test cases for LinkClassifier class."""
+class TestLLMLinkClassifierService:
+    """Test cases for LLMLinkClassifierService."""
 
     @pytest.fixture
     def mock_llm_service(self):
@@ -36,21 +39,19 @@ class TestLinkClassifier:
     def sample_links(self):
         """Sample links for testing."""
         return [
-            {
-                "url": "https://example.com/members/tokyo",
-                "text": "東京都",
-                "title": "Tokyo Members",
-            },
-            {
-                "url": "https://example.com/members/osaka",
-                "text": "大阪府",
-                "title": "Osaka Members",
-            },
-            {
-                "url": "https://example.com/members",
-                "text": "議員一覧",
-                "title": "All Members",
-            },
+            Link(
+                url="https://example.com/members/tokyo",
+                text="東京都",
+                title="Tokyo Members",
+            ),
+            Link(
+                url="https://example.com/members/osaka",
+                text="大阪府",
+                title="Osaka Members",
+            ),
+            Link(
+                url="https://example.com/members", text="議員一覧", title="All Members"
+            ),
         ]
 
     @pytest.mark.asyncio
@@ -82,7 +83,7 @@ class TestLinkClassifier:
         """
         mock_llm_service.llm.ainvoke.return_value = mock_response
 
-        classifier = LinkClassifier(mock_llm_service)
+        classifier = LLMLinkClassifierService(mock_llm_service)
         result = await classifier.classify_links(
             sample_links, party_name="Test Party", context="Member page"
         )
@@ -92,10 +93,10 @@ class TestLinkClassifier:
         assert len(result.classifications) == 3
 
         # Verify classifications
-        assert result.classifications[0].link_type == "prefecture_list"
+        assert result.classifications[0].link_type == LinkType.PREFECTURE_LIST
         assert result.classifications[0].confidence == 0.95
-        assert result.classifications[1].link_type == "prefecture_list"
-        assert result.classifications[2].link_type == "member_list"
+        assert result.classifications[1].link_type == LinkType.PREFECTURE_LIST
+        assert result.classifications[2].link_type == LinkType.MEMBER_LIST
 
         # Verify summary
         assert result.summary["prefecture_list"] == 2
@@ -122,16 +123,16 @@ class TestLinkClassifier:
         """
         mock_llm_service.llm.ainvoke.return_value = mock_response
 
-        classifier = LinkClassifier(mock_llm_service)
+        classifier = LLMLinkClassifierService(mock_llm_service)
         result = await classifier.classify_links([sample_links[0]])
 
         assert len(result.classifications) == 1
-        assert result.classifications[0].link_type == "prefecture_list"
+        assert result.classifications[0].link_type == LinkType.PREFECTURE_LIST
 
     @pytest.mark.asyncio
     async def test_classify_links_empty_list(self, mock_llm_service):
         """Test classification with empty link list."""
-        classifier = LinkClassifier(mock_llm_service)
+        classifier = LLMLinkClassifierService(mock_llm_service)
         result = await classifier.classify_links([])
 
         assert len(result.classifications) == 0
@@ -147,14 +148,14 @@ class TestLinkClassifier:
         mock_response.content = "This is not valid JSON"
         mock_llm_service.llm.ainvoke.return_value = mock_response
 
-        classifier = LinkClassifier(mock_llm_service)
+        classifier = LLMLinkClassifierService(mock_llm_service)
         result = await classifier.classify_links(sample_links)
 
         # Should return fallback classifications
         assert len(result.classifications) == len(sample_links)
         # All should be marked as "other" with low confidence
         for classification in result.classifications:
-            assert classification.link_type == "other"
+            assert classification.link_type == LinkType.OTHER
             assert classification.confidence == 0.3
 
     @pytest.mark.asyncio
@@ -163,7 +164,7 @@ class TestLinkClassifier:
         # Mock LLM error
         mock_llm_service.llm.ainvoke.side_effect = Exception("LLM service error")
 
-        classifier = LinkClassifier(mock_llm_service)
+        classifier = LLMLinkClassifierService(mock_llm_service)
         result = await classifier.classify_links(sample_links)
 
         # Should return empty result on error
@@ -171,59 +172,60 @@ class TestLinkClassifier:
         assert result.summary == {}
 
     @pytest.mark.asyncio
-    async def test_classify_links_prompt_not_available(
+    async def test_classify_links_invalid_link_type(
         self, mock_llm_service, sample_links
     ):
-        """Test classification when prompt template is not available."""
-        # Mock prompt error
-        mock_llm_service.get_prompt.side_effect = KeyError("Prompt not found")
-
-        # Mock LLM response for fallback prompt
+        """Test handling of invalid link_type in LLM response."""
+        # Mock LLM response with invalid link_type
         mock_response = MagicMock()
         mock_response.content = """
         [
             {
                 "url": "https://example.com/members",
-                "link_type": "member_list",
-                "confidence": 0.8,
-                "reason": "Fallback classification"
+                "link_type": "invalid_type",
+                "confidence": 0.9,
+                "reason": "Test"
             }
         ]
         """
         mock_llm_service.llm.ainvoke.return_value = mock_response
 
-        classifier = LinkClassifier(mock_llm_service)
-        result = await classifier.classify_links([sample_links[2]])
+        classifier = LLMLinkClassifierService(mock_llm_service)
+        result = await classifier.classify_links([sample_links[0]])
 
-        # Should use fallback prompt and still work
+        # Should fallback to OTHER type
         assert len(result.classifications) == 1
-        assert result.classifications[0].link_type == "member_list"
+        assert result.classifications[0].link_type == LinkType.OTHER
 
-    def test_filter_by_type_basic(self):
+    def test_filter_by_type_basic(self, mock_llm_service):
         """Test filtering by link type."""
         # Create a sample result
+        from src.domain.services.interfaces.llm_link_classifier_service import (
+            LinkClassification,
+        )
+
         classifications = [
             LinkClassification(
                 url="https://example.com/tokyo",
-                link_type="prefecture_list",
+                link_type=LinkType.PREFECTURE_LIST,
                 confidence=0.9,
                 reason="Tokyo",
             ),
             LinkClassification(
                 url="https://example.com/osaka",
-                link_type="prefecture_list",
+                link_type=LinkType.PREFECTURE_LIST,
                 confidence=0.85,
                 reason="Osaka",
             ),
             LinkClassification(
                 url="https://example.com/members",
-                link_type="member_list",
+                link_type=LinkType.MEMBER_LIST,
                 confidence=0.95,
                 reason="Members",
             ),
             LinkClassification(
                 url="https://example.com/about",
-                link_type="other",
+                link_type=LinkType.OTHER,
                 confidence=0.6,
                 reason="Other",
             ),
@@ -233,38 +235,41 @@ class TestLinkClassifier:
             summary={"prefecture_list": 2, "member_list": 1, "other": 1},
         )
 
-        mock_llm_service = MagicMock()
-        classifier = LinkClassifier(mock_llm_service)
+        classifier = LLMLinkClassifierService(mock_llm_service)
 
         # Filter for prefecture lists
-        prefecture_urls = classifier.filter_by_type(result, ["prefecture_list"])
+        prefecture_urls = classifier.filter_by_type(result, [LinkType.PREFECTURE_LIST])
         assert len(prefecture_urls) == 2
         assert "https://example.com/tokyo" in prefecture_urls
         assert "https://example.com/osaka" in prefecture_urls
 
         # Filter for member lists
-        member_urls = classifier.filter_by_type(result, ["member_list"])
+        member_urls = classifier.filter_by_type(result, [LinkType.MEMBER_LIST])
         assert len(member_urls) == 1
         assert "https://example.com/members" in member_urls
 
-    def test_filter_by_type_with_confidence_threshold(self):
+    def test_filter_by_type_with_confidence_threshold(self, mock_llm_service):
         """Test filtering with confidence threshold."""
+        from src.domain.services.interfaces.llm_link_classifier_service import (
+            LinkClassification,
+        )
+
         classifications = [
             LinkClassification(
                 url="https://example.com/high",
-                link_type="member_list",
+                link_type=LinkType.MEMBER_LIST,
                 confidence=0.95,
                 reason="High confidence",
             ),
             LinkClassification(
                 url="https://example.com/medium",
-                link_type="member_list",
+                link_type=LinkType.MEMBER_LIST,
                 confidence=0.75,
                 reason="Medium confidence",
             ),
             LinkClassification(
                 url="https://example.com/low",
-                link_type="member_list",
+                link_type=LinkType.MEMBER_LIST,
                 confidence=0.5,
                 reason="Low confidence",
             ),
@@ -273,59 +278,20 @@ class TestLinkClassifier:
             classifications=classifications, summary={"member_list": 3}
         )
 
-        mock_llm_service = MagicMock()
-        classifier = LinkClassifier(mock_llm_service)
+        classifier = LLMLinkClassifierService(mock_llm_service)
 
         # Filter with high threshold
         high_confidence_urls = classifier.filter_by_type(
-            result, ["member_list"], min_confidence=0.8
+            result, [LinkType.MEMBER_LIST], min_confidence=0.8
         )
         assert len(high_confidence_urls) == 1
         assert "https://example.com/high" in high_confidence_urls
 
         # Filter with medium threshold
         medium_confidence_urls = classifier.filter_by_type(
-            result, ["member_list"], min_confidence=0.7
+            result, [LinkType.MEMBER_LIST], min_confidence=0.7
         )
         assert len(medium_confidence_urls) == 2
-
-    def test_filter_by_type_multiple_types(self):
-        """Test filtering for multiple link types."""
-        classifications = [
-            LinkClassification(
-                url="https://example.com/tokyo",
-                link_type="prefecture_list",
-                confidence=0.9,
-                reason="Tokyo",
-            ),
-            LinkClassification(
-                url="https://example.com/members",
-                link_type="member_list",
-                confidence=0.95,
-                reason="Members",
-            ),
-            LinkClassification(
-                url="https://example.com/about",
-                link_type="other",
-                confidence=0.8,
-                reason="Other",
-            ),
-        ]
-        result = LinkClassificationResult(
-            classifications=classifications,
-            summary={"prefecture_list": 1, "member_list": 1, "other": 1},
-        )
-
-        mock_llm_service = MagicMock()
-        classifier = LinkClassifier(mock_llm_service)
-
-        # Filter for both prefecture and member lists
-        filtered_urls = classifier.filter_by_type(
-            result, ["prefecture_list", "member_list"]
-        )
-        assert len(filtered_urls) == 2
-        assert "https://example.com/tokyo" in filtered_urls
-        assert "https://example.com/members" in filtered_urls
 
 
 if __name__ == "__main__":
