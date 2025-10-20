@@ -5,6 +5,7 @@ The tools act as an adapter between the LangGraph framework and our use cases.
 """
 
 import logging
+from typing import Any
 
 from langchain_core.tools import tool
 
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 def create_link_analysis_tools(
     usecase: AnalyzePartyPageLinksUseCase | None = None,
-) -> list:
+) -> list[Any]:
     """Create LangGraph tools for link analysis.
 
     Args:
@@ -45,7 +46,7 @@ def create_link_analysis_tools(
         current_url: str,
         party_name: str = "",
         context: str = "",
-    ) -> dict:  # type: ignore[type-arg]
+    ) -> dict[str, Any]:
         """Analyze links on a party member page.
 
         Identifies child pages and member profiles by extracting all links
