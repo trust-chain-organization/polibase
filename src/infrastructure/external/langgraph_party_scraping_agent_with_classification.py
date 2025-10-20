@@ -104,8 +104,6 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
             },
         )
 
-        workflow.add_edge("classify_page", "decision")
-
         # Decision node with conditional edges
         workflow.add_conditional_edges(
             "classify_page",
