@@ -335,6 +335,52 @@ prompts:
 
     description: "Extract parliamentary group information"
 
+  # Link classification prompts
+  classify_page_links:
+    template: |
+      あなたは政党ウェブサイトのリンク分類専門家です。
+      以下のリンクを分析し、それぞれのリンクタイプを判定してください。
+
+      政党名: {party_name}
+      コンテキスト: {context}
+
+      リンク一覧:
+      {links}
+
+      各リンクについて、以下の形式でJSON配列として返してください:
+      [
+        {{
+          "url": "リンクのURL",
+          "link_type": "prefecture_list | city_list | member_list | member_profile | other",
+          "confidence": 0.0から1.0の信頼度,
+          "reason": "判定理由"
+        }}
+      ]
+
+      リンクタイプの定義:
+      - prefecture_list: 都道府県別の議員リスト（例: 「東京都」「大阪府」）
+      - city_list: 市区町村別の議員リスト（例: 「渋谷区」「横浜市」）
+      - member_list: 議員一覧ページ（例: 「議員一覧」「メンバー」「所属議員」）
+      - member_profile: 個別の議員プロフィールページ
+      - other: その他のページ
+
+      判定基準:
+      1. リンクテキストとURLパスの両方を考慮してください
+      2. 都道府県名や市区町村名が含まれていれば該当するリストタイプと判定
+      3. 「一覧」「メンバー」「所属」などのキーワードがあれば member_list
+      4. 個人名が含まれていれば member_profile
+      5. 確信が持てない場合は confidence を低めに設定
+
+      重要: 必ず全てのリンクについて分類結果を返してください。
+      JSON形式のみを返し、余計な説明は不要です。
+
+    variables:
+      - party_name
+      - context
+      - links
+
+    description: "Classify page links using LLM"
+
 # Legacy prompts (for backward compatibility)
 legacy_prompts:
   divide_chapter_prompt: "langchain_hub:divide_chapter_prompt"
