@@ -108,6 +108,7 @@ def create_member_extractor_tools(
                     "count": 0,
                     "success": False,
                     "party_name": party_name,
+                    "error": "No members could be extracted from the page",
                 }
 
             # Convert to dict format for LangGraph

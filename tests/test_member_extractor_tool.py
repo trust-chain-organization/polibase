@@ -31,21 +31,23 @@ class MockLLMService(ILLMService):
         """Mock set history repository."""
         pass
 
-    async def get_processing_history(self, processing_id: str) -> Any:
+    async def get_processing_history(
+        self, reference_type: str | None = None, reference_id: int | None = None
+    ) -> list[Any]:
         """Mock get processing history."""
-        return None
+        return []
 
     async def match_speaker_to_politician(self, context: Any) -> Any:
         """Mock match speaker to politician."""
         return None
 
-    async def extract_speeches_from_text(self, text: str, meeting_info: Any) -> Any:
+    async def extract_speeches_from_text(self, text: str) -> list[dict[str, str]]:
         """Mock extract speeches."""
         return []
 
-    async def extract_party_members(self, html_content: str, party_name: str) -> Any:
+    async def extract_party_members(self, html_content: str, party_id: int) -> Any:
         """Mock extract party members."""
-        return []
+        return None
 
     async def match_conference_member(
         self, member_name: str, party_name: str | None, candidates: list[Any]
@@ -205,6 +207,7 @@ async def test_extract_members_from_page_no_members(
     assert result["count"] == 0
     assert result["party_name"] == "Unknown Party"
     assert len(result["members"]) == 0
+    assert "error" in result
 
 
 @pytest.mark.asyncio
@@ -245,7 +248,7 @@ async def test_extract_members_from_page_error_handling(
     assert result["success"] is False
     assert result["count"] == 0
     assert result["party_name"] == "Test Party"
-    # Note: "error" field is NOT present because the extractor handles it internally
+    assert "error" in result  # Error field should always be present when success=False
 
 
 @pytest.mark.asyncio
@@ -277,3 +280,126 @@ async def test_tool_with_party_id(
     # Verify result (party_id doesn't affect output, but ensures no errors)
     assert result["success"] is True
     assert result["count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_extract_with_malformed_html(mock_llm_service: MockLLMService) -> None:
+    """Test extraction with malformed HTML.
+
+    Note: BeautifulSoup handles malformed HTML gracefully,
+    so extraction may still succeed. This test verifies that
+    the tool doesn't crash on malformed input.
+    """
+    # Create tools
+    tools = create_member_extractor_tools(llm_service=mock_llm_service)
+    extract_tool = tools[0]
+
+    # Malformed HTML (unclosed tags, missing structure)
+    malformed_html = """
+    <html>
+        <body>
+            <div>
+                <h1>Members
+                <p>山田太郎
+            </div>
+        <!-- Missing closing tags -->
+    """
+
+    # Execute tool
+    result = await extract_tool.ainvoke(
+        {
+            "url": "https://example.com/members",
+            "html_content": malformed_html,
+            "party_name": "Test Party",
+        }
+    )
+
+    # Should handle gracefully without crashing
+    # BeautifulSoup may still parse malformed HTML successfully
+    assert "success" in result
+    assert "count" in result
+    assert "members" in result
+    assert result["party_name"] == "Test Party"
+
+
+@pytest.mark.asyncio
+async def test_extract_with_large_content(mock_llm_service: MockLLMService) -> None:
+    """Test extraction with very large HTML content (token limit scenario)."""
+    # Create tools
+    tools = create_member_extractor_tools(llm_service=mock_llm_service)
+    extract_tool = tools[0]
+
+    # Generate large HTML (simulate 100KB+ content)
+    large_html = "<html><body><main>"
+    # Add 1000 member entries
+    for i in range(1000):
+        large_html += f"""
+        <div class="member">
+            <h2>議員 {i}</h2>
+            <p>役職: 衆議院議員</p>
+            <p>選挙区: 東京{i % 25 + 1}区</p>
+            <p>経歴: {"長い経歴テキスト" * 50}</p>
+        </div>
+        """
+    large_html += "</main></body></html>"
+
+    # Execute tool
+    result = await extract_tool.ainvoke(
+        {
+            "url": "https://example.com/members",
+            "html_content": large_html,
+            "party_name": "Large Party",
+        }
+    )
+
+    # Should either succeed or fail gracefully (no crash)
+    assert "success" in result
+    assert "count" in result
+    assert "members" in result
+    assert result["party_name"] == "Large Party"
+
+
+@pytest.mark.asyncio
+async def test_extract_with_invalid_url(mock_llm_service: MockLLMService) -> None:
+    """Test extraction with invalid URL."""
+    # Create tools
+    tools = create_member_extractor_tools(llm_service=mock_llm_service)
+    extract_tool = tools[0]
+
+    # Execute tool with invalid URL
+    result = await extract_tool.ainvoke(
+        {
+            "url": "not-a-valid-url",
+            "html_content": "<html><body>Test</body></html>",
+            "party_name": "Test Party",
+        }
+    )
+
+    # Should handle gracefully (URL is used for context, not fetching)
+    assert "success" in result
+    assert "count" in result
+    assert result["party_name"] == "Test Party"
+
+
+@pytest.mark.asyncio
+async def test_extract_with_empty_party_name(
+    mock_llm_service: MockLLMService,
+) -> None:
+    """Test extraction with empty party name."""
+    # Create tools
+    tools = create_member_extractor_tools(llm_service=mock_llm_service)
+    extract_tool = tools[0]
+
+    # Execute tool with empty party name
+    result = await extract_tool.ainvoke(
+        {
+            "url": "https://example.com/members",
+            "html_content": "<html><body><p>議員リスト</p></body></html>",
+            "party_name": "",
+        }
+    )
+
+    # Should handle gracefully
+    assert "success" in result
+    assert "count" in result
+    assert result["party_name"] == ""
