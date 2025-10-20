@@ -17,6 +17,7 @@ class LangGraphPartyScrapingState(TypedDict):
     to LangGraph's requirements (TypedDict with message annotations).
     """
 
+    # Required fields
     current_url: str
     visited_urls: set[str]
     depth: int
@@ -27,6 +28,13 @@ class LangGraphPartyScrapingState(TypedDict):
     pending_urls: list[tuple[str, int]]
     messages: Annotated[list[BaseMessage], add_messages]
     error_message: str | None
+
+
+class LangGraphPartyScrapingStateOptional(LangGraphPartyScrapingState, total=False):
+    """Extended state with optional fields for page classification."""
+
+    classification: dict[str, Any]  # PageClassification metadata
+    html_content: str  # Current page HTML content
 
 
 def domain_to_langgraph_state(

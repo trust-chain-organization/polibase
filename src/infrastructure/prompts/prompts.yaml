@@ -381,6 +381,56 @@ prompts:
 
     description: "Classify page links using LLM"
 
+  # Page type classification for hierarchical navigation
+  classify_page_type:
+    template: |
+      あなたは政党ウェブサイトのページ分類専門家です。
+      以下のページを分析し、ページタイプを判定してください。
+
+      URL: {current_url}
+      政党名: {party_name}
+
+      HTMLコンテンツ (先頭3000文字):
+      {html_excerpt}
+
+      ページタイプの定義:
+      - index_page: 目次ページや地域別索引ページ（子ページへのリンクが多数ある）
+        例: 都道府県一覧、市区町村一覧、「議員一覧はこちら」のようなリンク集
+      - member_list_page: 議員一覧ページ（議員情報が直接掲載されている）
+        例: 議員の氏名、顔写真、プロフィール、選挙区などが複数人分掲載されている
+      - other: その他のページ（議員情報も有用な子ページリンクもない）
+        例: ニュース、政策紹介、お問い合わせページ
+
+      判定基準:
+      1. ページに議員の氏名や顔写真、プロフィール情報が複数人分掲載されていれば member_list_page
+      2. 「〇〇県」「〇〇市」などの地域名へのリンクが多数あれば index_page
+      3. 「一覧」「メンバー」「所属議員」などのキーワードと共にリンクが多数あれば index_page
+      4. URLに "member", "list", "index" などのキーワードがあるかも考慮
+      5. それ以外は other
+
+      重要: 慎重に判定してください。
+      - 議員情報が少しでも掲載されていれば member_list_page として扱う
+      - リンクが多いだけで index_page と判定しない（内容を確認）
+      - 確信が持てない場合は confidence を低めに設定
+
+      以下のJSON形式で返してください:
+      {{
+        "page_type": "index_page | member_list_page | other",
+        "confidence": 0.0から1.0の信頼度,
+        "reason": "判定理由（日本語で詳細に説明）",
+        "has_child_links": true/false,
+        "has_member_info": true/false
+      }}
+
+      JSON形式のみを返し、余計な説明は不要です。
+
+    variables:
+      - current_url
+      - party_name
+      - html_excerpt
+
+    description: "Classify page type for hierarchical navigation"
+
 # Legacy prompts (for backward compatibility)
 legacy_prompts:
   divide_chapter_prompt: "langchain_hub:divide_chapter_prompt"
