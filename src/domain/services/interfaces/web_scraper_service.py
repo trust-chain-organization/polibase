@@ -17,6 +17,20 @@ class IWebScraperService(Protocol):
         """
         ...
 
+    async def fetch_html(self, url: str) -> str:
+        """Fetch raw HTML content from a URL.
+
+        Args:
+            url: URL to fetch
+
+        Returns:
+            Raw HTML content as string
+
+        Raises:
+            ValueError: If URL is invalid or inaccessible
+        """
+        ...
+
     async def scrape_party_members(
         self, url: str, party_id: int
     ) -> list[dict[str, Any]]:

@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 from src.domain.services.interfaces.page_classifier_service import (
     IPageClassifierService,
 )
+from src.domain.services.interfaces.web_scraper_service import IWebScraperService
 from src.infrastructure.external.langgraph_state_adapter import (
     LangGraphPartyScrapingStateOptional,
 )
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 def create_page_classifier_node(
     page_classifier: IPageClassifierService,
+    scraper: IWebScraperService,
 ) -> Callable[
     [LangGraphPartyScrapingStateOptional],
     Awaitable[LangGraphPartyScrapingStateOptional],
@@ -37,19 +39,18 @@ def create_page_classifier_node(
         """Classify the current page and update state.
 
         This node:
-        1. Reads HTML content from state (must be fetched by a prior node)
+        1. Fetches HTML content for the current URL
         2. Classifies the page type (index_page, member_list_page, other)
         3. Stores classification result in state metadata
 
         Args:
-            state: Current LangGraph state (must include html_content)
+            state: Current LangGraph state with current_url
 
         Returns:
             Updated state with classification metadata
         """
         current_url = state.get("current_url")
         party_name = state.get("party_name", "")
-        html_content = state.get("html_content")
 
         if not current_url:
             logger.error("No current_url in state, cannot classify")
@@ -63,12 +64,28 @@ def create_page_classifier_node(
             }
             return state
 
-        if not html_content:
-            logger.warning(f"No HTML content in state for {current_url}")
+        try:
+            # Fetch HTML content
+            logger.info(f"Fetching HTML for classification: {current_url}")
+            html_content = await scraper.fetch_html(current_url)
+
+            if not html_content:
+                logger.warning(f"No HTML content fetched from {current_url}")
+                state["classification"] = {
+                    "page_type": "other",
+                    "confidence": 0.0,
+                    "reason": "No HTML content available",
+                    "has_child_links": False,
+                    "has_member_info": False,
+                }
+                return state
+
+        except Exception as e:
+            logger.error(f"Error fetching HTML from {current_url}: {e}")
             state["classification"] = {
                 "page_type": "other",
                 "confidence": 0.0,
-                "reason": "No HTML content available",
+                "reason": f"HTML fetch error: {str(e)}",
                 "has_child_links": False,
                 "has_member_info": False,
             }
