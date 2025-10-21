@@ -3,21 +3,20 @@
 import logging
 from collections.abc import Awaitable, Callable
 
-from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.interfaces.web_scraper_service import IWebScraperService
+from src.domain.services.party_member_extraction_service import (
+    IPartyMemberExtractionService,
+)
 from src.infrastructure.external.langgraph_state_adapter import (
     LangGraphPartyScrapingStateOptional,
 )
-from src.party_member_extractor.extractor import PartyMemberExtractor
-from src.party_member_extractor.models import WebPageContent
 
 logger = logging.getLogger(__name__)
 
 
 def create_extract_members_node(
     scraper: IWebScraperService,
-    llm_service: ILLMService,
-    party_id: int | None = None,
+    member_extractor: IPartyMemberExtractionService,
 ) -> Callable[
     [LangGraphPartyScrapingStateOptional],
     Awaitable[LangGraphPartyScrapingStateOptional],
@@ -26,13 +25,12 @@ def create_extract_members_node(
 
     This node:
     1. Fetches HTML content for the current URL
-    2. Extracts politician member data using LLM
+    2. Extracts politician member data using domain service
     3. Adds extracted members to the state
 
     Args:
         scraper: Web scraper service for fetching HTML
-        llm_service: LLM service for extraction
-        party_id: Optional party ID for tracking
+        member_extractor: Domain service for member extraction
 
     Returns:
         Async node function compatible with LangGraph
@@ -70,26 +68,20 @@ def create_extract_members_node(
                 logger.warning(f"No HTML content fetched from: {current_url}")
                 return state
 
-            # Create extractor instance
-            extractor = PartyMemberExtractor(
-                llm_service=llm_service,
-                party_id=party_id,
-            )
-
-            # Create WebPageContent
-            page = WebPageContent(
-                url=current_url,
+            # Extract members using domain service
+            result = await member_extractor.extract_from_html(
                 html_content=html_content,
-                page_number=1,
+                source_url=current_url,
+                party_name=party_name,
             )
 
-            # Extract members using the extractor's protected method
-            # This is acceptable within our infrastructure layer
-            result = extractor._extract_from_single_page(  # type: ignore[reportPrivateUsage]
-                page, party_name
-            )
+            if not result.extraction_successful:
+                logger.warning(
+                    f"Extraction failed for {current_url}: {result.error_message}"
+                )
+                return state
 
-            if result is None or not result.members:
+            if not result.members:
                 logger.info(f"No members extracted from {current_url}")
                 return state
 

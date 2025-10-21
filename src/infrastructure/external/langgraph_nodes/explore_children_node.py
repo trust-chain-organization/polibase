@@ -3,9 +3,7 @@
 import logging
 from collections.abc import Awaitable, Callable
 
-from src.application.usecases.analyze_party_page_links_usecase import (
-    AnalyzePartyPageLinksUseCase,
-)
+from src.domain.services.interfaces.link_analyzer_service import ILinkAnalyzerService
 from src.domain.services.interfaces.web_scraper_service import IWebScraperService
 from src.infrastructure.external.langgraph_state_adapter import (
     LangGraphPartyScrapingStateOptional,
@@ -17,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def create_explore_children_node(
     scraper: IWebScraperService,
-    link_analysis_usecase: AnalyzePartyPageLinksUseCase,
+    link_analyzer: ILinkAnalyzerService,
 ) -> Callable[
     [LangGraphPartyScrapingStateOptional],
     Awaitable[LangGraphPartyScrapingStateOptional],
@@ -31,7 +29,7 @@ def create_explore_children_node(
 
     Args:
         scraper: Web scraper service for fetching HTML
-        link_analysis_usecase: Use case for analyzing page links
+        link_analyzer: Domain service for analyzing page links
 
     Returns:
         Async node function compatible with LangGraph
@@ -72,22 +70,17 @@ def create_explore_children_node(
                 logger.warning(f"No HTML content fetched from: {current_url}")
                 return state
 
-            # Import here to avoid circular dependency
-            from src.application.dtos.link_analysis_dto import AnalyzeLinksInputDTO
-
-            # Analyze links to find child pages
-            input_dto = AnalyzeLinksInputDTO(
+            # Analyze links using domain service
+            member_list_urls = await link_analyzer.analyze_member_list_links(
                 html_content=html_content,
                 current_url=current_url,
                 party_name=party_name,
                 context=f"Exploring children at depth {depth}",
             )
 
-            output_dto = await link_analysis_usecase.execute(input_dto)
-
             # Add member_list_urls to pending queue (they are high-confidence children)
             added_count = 0
-            for url in output_dto.member_list_urls:
+            for url in member_list_urls:
                 try:
                     normalized_url = normalize_url(url)
 
@@ -119,7 +112,7 @@ def create_explore_children_node(
 
             logger.info(
                 f"Explored children of {current_url}: "
-                f"found {len(output_dto.member_list_urls)} links, "
+                f"found {len(member_list_urls)} links, "
                 f"added {added_count} new URLs to queue"
             )
 

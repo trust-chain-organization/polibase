@@ -2,19 +2,17 @@
 
 import pytest
 
-from src.application.dtos.link_analysis_dto import (
-    AnalyzeLinksOutputDTO,
-    LinkClassificationDTO,
-)
-from src.application.usecases.analyze_party_page_links_usecase import (
-    AnalyzePartyPageLinksUseCase,
-)
 from src.domain.entities.party_scraping_state import PartyScrapingState
-from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.link_analyzer_service import ILinkAnalyzerService
 from src.domain.services.interfaces.page_classifier_service import (
     IPageClassifierService,
 )
 from src.domain.services.interfaces.web_scraper_service import IWebScraperService
+from src.domain.services.party_member_extraction_service import (
+    ExtractedMember,
+    IPartyMemberExtractionService,
+    MemberExtractionResult,
+)
 from src.domain.value_objects.page_classification import PageClassification, PageType
 
 # fmt: off - Long import line required for clarity
@@ -100,101 +98,61 @@ class MockPageClassifierService(IPageClassifierService):
         )
 
 
-class MockLinkAnalysisUseCase(AnalyzePartyPageLinksUseCase):
-    """Mock link analysis use case for testing."""
+class MockLinkAnalyzerService(ILinkAnalyzerService):
+    """Mock link analyzer service for testing."""
 
     def __init__(self):
-        # Don't call super().__init__() to avoid dependencies
-        self.link_responses = {}
+        self.link_responses: dict[str, list[str]] = {}
 
-    async def execute(self, input_dto):
+    async def analyze_member_list_links(
+        self,
+        html_content: str,
+        current_url: str,
+        party_name: str,
+        context: str = "",
+    ) -> list[str]:
         """Return mock link analysis results."""
-        url = input_dto.current_url
-        if url in self.link_responses:
-            return self.link_responses[url]
+        if current_url in self.link_responses:
+            return self.link_responses[current_url]
 
         # Default: no links found
-        return AnalyzeLinksOutputDTO(
-            all_links_count=0,
-            child_links_count=0,
-            classifications=[],
-            summary={},
-            member_list_urls=[],
-            profile_urls=[],
-        )
+        return []
 
     def add_links(self, url: str, member_list_urls: list[str]):
         """Add mock link analysis response for a URL."""
-        classifications = [
-            LinkClassificationDTO(
-                url=link_url,
-                link_type="member_list",
-                confidence=0.9,
-                reason="Mock member list",
-            )
-            for link_url in member_list_urls
-        ]
-
-        self.link_responses[url] = AnalyzeLinksOutputDTO(
-            all_links_count=len(member_list_urls),
-            child_links_count=len(member_list_urls),
-            classifications=classifications,
-            summary={"member_list": len(member_list_urls)},
-            member_list_urls=member_list_urls,
-            profile_urls=[],
-        )
+        self.link_responses[url] = member_list_urls
 
 
-class MockLLMService(ILLMService):
-    """Mock LLM service for testing."""
-
-    model_name: str = "mock-model"
-    temperature: float = 0.0
+class MockMemberExtractionService(IPartyMemberExtractionService):
+    """Mock member extraction service for testing."""
 
     def __init__(self):
-        self.member_responses: dict[str, list[dict]] = {}
+        self.member_responses: dict[str, list[ExtractedMember]] = {}
 
-    def set_history_repository(self, repository):
-        """Mock: not used."""
-        pass
+    async def extract_from_html(
+        self,
+        html_content: str,
+        source_url: str,
+        party_name: str,
+    ) -> MemberExtractionResult:
+        """Return mock extraction results."""
+        if source_url in self.member_responses:
+            return MemberExtractionResult(
+                members=self.member_responses[source_url],
+                source_url=source_url,
+                extraction_successful=True,
+                error_message=None,
+            )
 
-    async def get_processing_history(self, **kwargs):
-        """Mock: not used."""
-        return []
+        # Default: no members extracted
+        return MemberExtractionResult(
+            members=[],
+            source_url=source_url,
+            extraction_successful=True,
+            error_message=None,
+        )
 
-    async def match_speaker_to_politician(self, **kwargs):
-        """Mock: not used."""
-        return None
-
-    async def extract_speeches_from_text(self, **kwargs):
-        """Mock: not used."""
-        return []
-
-    async def extract_party_members(self, **kwargs):
-        """Mock: not used."""
-        return []
-
-    async def match_conference_member(self, **kwargs):
-        """Mock: not used."""
-        return None
-
-    def get_structured_llm(self, schema=None, **kwargs):
-        """Mock: not used."""
-        return None
-
-    def get_prompt(self, name=None, **kwargs):
-        """Mock: not used."""
-        return None
-
-    def invoke_with_retry(self, prompt=None, **kwargs):
-        """Mock: not used."""
-        return None
-
-    def invoke_llm(self, prompt=None, **kwargs):
-        """Mock: not used."""
-        return None
-
-    def add_members_for_url(self, url: str, members: list[dict]):
+    def add_members_for_url(self, url: str, members: list[ExtractedMember]):
         """Add mock members to be returned for a URL."""
         self.member_responses[url] = members
 
@@ -205,8 +163,8 @@ async def test_hierarchical_scraping_single_page():
     # Setup mocks
     scraper = MockWebScraperService()
     classifier = MockPageClassifierService()
-    link_analysis = MockLinkAnalysisUseCase()
-    llm_service = MockLLMService()
+    link_analyzer = MockLinkAnalyzerService()
+    member_extractor = MockMemberExtractionService()
 
     # Configure mocks
     initial_url = "https://example.com/party/members"
@@ -219,9 +177,8 @@ async def test_hierarchical_scraping_single_page():
     agent = LangGraphPartyScrapingAgentWithClassification(
         page_classifier=classifier,
         scraper=scraper,
-        llm_service=llm_service,
-        link_analysis_usecase=link_analysis,
-        party_id=1,
+        member_extractor=member_extractor,
+        link_analyzer=link_analyzer,
     )
 
     # Create initial state
@@ -252,8 +209,8 @@ async def test_hierarchical_scraping_with_children():
     # Setup mocks
     scraper = MockWebScraperService()
     classifier = MockPageClassifierService()
-    link_analysis = MockLinkAnalysisUseCase()
-    llm_service = MockLLMService()
+    link_analyzer = MockLinkAnalyzerService()
+    member_extractor = MockMemberExtractionService()
 
     # Configure mocks for hierarchical structure
     root_url = "https://example.com/party"
@@ -263,7 +220,7 @@ async def test_hierarchical_scraping_with_children():
     # Root page is INDEX_PAGE with child links
     scraper.add_response(root_url, "<html>Index page with prefecture links</html>")
     classifier.add_classification(root_url, PageType.INDEX_PAGE, confidence=0.95)
-    link_analysis.add_links(root_url, [child_url1, child_url2])
+    link_analyzer.add_links(root_url, [child_url1, child_url2])
 
     # Child pages are MEMBER_LIST_PAGE
     scraper.add_response(child_url1, "<html>Tokyo members</html>")
@@ -280,9 +237,8 @@ async def test_hierarchical_scraping_with_children():
     agent = LangGraphPartyScrapingAgentWithClassification(
         page_classifier=classifier,
         scraper=scraper,
-        llm_service=llm_service,
-        link_analysis_usecase=link_analysis,
-        party_id=1,
+        member_extractor=member_extractor,
+        link_analyzer=link_analyzer,
     )
 
     # Create initial state
@@ -312,8 +268,8 @@ async def test_hierarchical_scraping_depth_limit():
     # Setup mocks
     scraper = MockWebScraperService()
     classifier = MockPageClassifierService()
-    link_analysis = MockLinkAnalysisUseCase()
-    llm_service = MockLLMService()
+    link_analyzer = MockLinkAnalyzerService()
+    member_extractor = MockMemberExtractionService()
 
     # Configure deep hierarchy
     level0_url = "https://example.com/party"
@@ -324,17 +280,17 @@ async def test_hierarchical_scraping_depth_limit():
     # Level 0: INDEX_PAGE
     scraper.add_response(level0_url, "<html>Root</html>")
     classifier.add_classification(level0_url, PageType.INDEX_PAGE, confidence=0.95)
-    link_analysis.add_links(level0_url, [level1_url])
+    link_analyzer.add_links(level0_url, [level1_url])
 
     # Level 1: INDEX_PAGE
     scraper.add_response(level1_url, "<html>Region</html>")
     classifier.add_classification(level1_url, PageType.INDEX_PAGE, confidence=0.95)
-    link_analysis.add_links(level1_url, [level2_url])
+    link_analyzer.add_links(level1_url, [level2_url])
 
     # Level 2: INDEX_PAGE (at max depth)
     scraper.add_response(level2_url, "<html>Prefecture</html>")
     classifier.add_classification(level2_url, PageType.INDEX_PAGE, confidence=0.95)
-    link_analysis.add_links(level2_url, [level3_url])
+    link_analyzer.add_links(level2_url, [level3_url])
 
     # Level 3: Should NOT be visited
     scraper.add_response(level3_url, "<html>City</html>")
@@ -346,9 +302,8 @@ async def test_hierarchical_scraping_depth_limit():
     agent = LangGraphPartyScrapingAgentWithClassification(
         page_classifier=classifier,
         scraper=scraper,
-        llm_service=llm_service,
-        link_analysis_usecase=link_analysis,
-        party_id=1,
+        member_extractor=member_extractor,
+        link_analyzer=link_analyzer,
     )
 
     # Create initial state with max_depth=2
@@ -381,8 +336,8 @@ async def test_hierarchical_scraping_infinite_loop_prevention():
     # Setup mocks
     scraper = MockWebScraperService()
     classifier = MockPageClassifierService()
-    link_analysis = MockLinkAnalysisUseCase()
-    llm_service = MockLLMService()
+    link_analyzer = MockLinkAnalyzerService()
+    member_extractor = MockMemberExtractionService()
 
     # Configure circular link structure
     page_a_url = "https://example.com/party/a"
@@ -391,20 +346,19 @@ async def test_hierarchical_scraping_infinite_loop_prevention():
     # Page A links to B
     scraper.add_response(page_a_url, "<html>Page A</html>")
     classifier.add_classification(page_a_url, PageType.INDEX_PAGE, confidence=0.95)
-    link_analysis.add_links(page_a_url, [page_b_url])
+    link_analyzer.add_links(page_a_url, [page_b_url])
 
     # Page B links back to A (circular)
     scraper.add_response(page_b_url, "<html>Page B</html>")
     classifier.add_classification(page_b_url, PageType.INDEX_PAGE, confidence=0.95)
-    link_analysis.add_links(page_b_url, [page_a_url])
+    link_analyzer.add_links(page_b_url, [page_a_url])
 
     # Create agent
     agent = LangGraphPartyScrapingAgentWithClassification(
         page_classifier=classifier,
         scraper=scraper,
-        llm_service=llm_service,
-        link_analysis_usecase=link_analysis,
-        party_id=1,
+        member_extractor=member_extractor,
+        link_analyzer=link_analyzer,
     )
 
     # Create initial state
@@ -435,15 +389,14 @@ async def test_agent_initialization():
     """Test that agent initializes correctly."""
     scraper = MockWebScraperService()
     classifier = MockPageClassifierService()
-    link_analysis = MockLinkAnalysisUseCase()
-    llm_service = MockLLMService()
+    link_analyzer = MockLinkAnalyzerService()
+    member_extractor = MockMemberExtractionService()
 
     agent = LangGraphPartyScrapingAgentWithClassification(
         page_classifier=classifier,
         scraper=scraper,
-        llm_service=llm_service,
-        link_analysis_usecase=link_analysis,
-        party_id=1,
+        member_extractor=member_extractor,
+        link_analyzer=link_analyzer,
     )
 
     assert agent.is_initialized()
@@ -454,15 +407,14 @@ async def test_scrape_with_empty_url_raises_error():
     """Test that scraping with empty URL raises ValueError."""
     scraper = MockWebScraperService()
     classifier = MockPageClassifierService()
-    link_analysis = MockLinkAnalysisUseCase()
-    llm_service = MockLLMService()
+    link_analyzer = MockLinkAnalyzerService()
+    member_extractor = MockMemberExtractionService()
 
     agent = LangGraphPartyScrapingAgentWithClassification(
         page_classifier=classifier,
         scraper=scraper,
-        llm_service=llm_service,
-        link_analysis_usecase=link_analysis,
-        party_id=1,
+        member_extractor=member_extractor,
+        link_analyzer=link_analyzer,
     )
 
     initial_state = PartyScrapingState(

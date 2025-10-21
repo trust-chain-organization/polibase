@@ -9,16 +9,16 @@ from dataclasses import replace
 
 from langgraph.graph import END, START, StateGraph
 
-from src.application.usecases.analyze_party_page_links_usecase import (
-    AnalyzePartyPageLinksUseCase,
-)
 from src.domain.entities.party_scraping_state import PartyScrapingState
-from src.domain.services.interfaces.llm_service import ILLMService
+from src.domain.services.interfaces.link_analyzer_service import ILinkAnalyzerService
 from src.domain.services.interfaces.page_classifier_service import (
     IPageClassifierService,
 )
 from src.domain.services.interfaces.party_scraping_agent import IPartyScrapingAgent
 from src.domain.services.interfaces.web_scraper_service import IWebScraperService
+from src.domain.services.party_member_extraction_service import (
+    IPartyMemberExtractionService,
+)
 
 from .langgraph_nodes.decision_node import should_explore_children
 from .langgraph_nodes.explore_children_node import create_explore_children_node
@@ -46,24 +46,21 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
         self,
         page_classifier: IPageClassifierService,
         scraper: IWebScraperService,
-        llm_service: ILLMService,
-        link_analysis_usecase: AnalyzePartyPageLinksUseCase,
-        party_id: int | None = None,
+        member_extractor: IPartyMemberExtractionService,
+        link_analyzer: ILinkAnalyzerService,
     ):
         """Initialize the enhanced LangGraph agent.
 
         Args:
             page_classifier: Service for classifying page types
             scraper: Web scraper service for fetching HTML content
-            llm_service: LLM service for member extraction
-            link_analysis_usecase: Use case for analyzing page links
-            party_id: Optional party ID for tracking
+            member_extractor: Domain service for member extraction
+            link_analyzer: Domain service for analyzing page links
         """
         self._page_classifier = page_classifier
         self._scraper = scraper
-        self._llm_service = llm_service
-        self._link_analysis_usecase = link_analysis_usecase
-        self._party_id = party_id
+        self._member_extractor = member_extractor
+        self._link_analyzer = link_analyzer
         self._compiled_agent = None
         self._is_initialized = False
         self._initialize_agent()
@@ -104,10 +101,10 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
             self._page_classifier, self._scraper
         )
         explore_children_node = create_explore_children_node(
-            self._scraper, self._link_analysis_usecase
+            self._scraper, self._link_analyzer
         )
         extract_members_node = create_extract_members_node(
-            self._scraper, self._llm_service, self._party_id
+            self._scraper, self._member_extractor
         )
 
         # Add nodes
