@@ -67,10 +67,11 @@ class PartyScrapingState:
         return tuple(self._extracted_members)
 
     @staticmethod
-    def _normalize_url(url: str) -> str:
-        """Normalize URL for consistent comparison.
+    def normalize_url(url: str) -> str:
+        """Normalize URL for consistent comparison and deduplication.
 
         Removes fragments, trailing slashes, and normalizes case of scheme/host.
+        This is a public method that can be used by infrastructure layer components.
 
         Args:
             url: Raw URL string
@@ -80,6 +81,12 @@ class PartyScrapingState:
 
         Raises:
             ValueError: If URL is invalid
+
+        Examples:
+            >>> PartyScrapingState.normalize_url("HTTPS://Example.COM/path/")
+            'https://example.com/path'
+            >>> PartyScrapingState.normalize_url("http://test.com#fragment")
+            'http://test.com'
         """
         if not url or not url.strip():
             raise ValueError("URL cannot be empty or whitespace")
@@ -132,7 +139,7 @@ class PartyScrapingState:
         Raises:
             ValueError: If URL is invalid
         """
-        normalized_url = self._normalize_url(url)
+        normalized_url = self.normalize_url(url)
         return normalized_url in self._visited_urls
 
     def mark_visited(self, url: str) -> None:
@@ -144,7 +151,7 @@ class PartyScrapingState:
         Raises:
             ValueError: If URL is invalid
         """
-        normalized_url = self._normalize_url(url)
+        normalized_url = self.normalize_url(url)
         self._visited_urls.add(normalized_url)
 
     def add_pending_url(self, url: str, depth: int) -> bool:
@@ -163,7 +170,7 @@ class PartyScrapingState:
         if depth < 0:
             raise ValueError(f"Depth cannot be negative: {depth}")
 
-        normalized_url = self._normalize_url(url)
+        normalized_url = self.normalize_url(url)
 
         if self.has_visited(normalized_url):
             return False

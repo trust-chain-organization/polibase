@@ -31,10 +31,12 @@ class LangGraphPartyScrapingState(TypedDict):
 
 
 class LangGraphPartyScrapingStateOptional(LangGraphPartyScrapingState, total=False):
-    """Extended state with optional fields for page classification."""
+    """Extended state with optional fields for page classification and node control."""
 
     classification: dict[str, Any]  # PageClassification metadata
     html_content: str  # Current page HTML content
+    should_skip: bool  # Flag indicating if processing should be skipped
+    skip_reason: str | None  # Reason for skipping (if applicable)
 
 
 def domain_to_langgraph_state(
@@ -94,15 +96,15 @@ def langgraph_to_domain_state(
         error_message=lg_state.get("error_message"),
     )
 
-    # Populate collections using the public API
-    for url in lg_state["visited_urls"]:
+    # Populate collections using the public API (with defaults for missing fields)
+    for url in lg_state.get("visited_urls", set()):
         domain_state.mark_visited(url)
 
-    for url, depth in lg_state["pending_urls"]:
+    for url, depth in lg_state.get("pending_urls", []):
         domain_state.add_pending_url(url, depth)
 
     # Deep copy members to prevent mutation
-    for member in copy.deepcopy(lg_state["extracted_members"]):
+    for member in copy.deepcopy(lg_state.get("extracted_members", [])):
         domain_state.add_extracted_member(member)  # type: ignore[arg-type]
 
     return domain_state
