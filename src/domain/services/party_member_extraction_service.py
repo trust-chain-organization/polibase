@@ -4,6 +4,7 @@ This service provides the core business logic for extracting politician
 information from HTML content, independent of any specific framework.
 """
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 
@@ -29,9 +30,10 @@ class MemberExtractionResult:
     error_message: str | None = None
 
 
-class IPartyMemberExtractionService:
+class IPartyMemberExtractionService(ABC):
     """Domain interface for party member extraction."""
 
+    @abstractmethod
     async def extract_from_html(
         self,
         html_content: str,
@@ -54,4 +56,4 @@ class IPartyMemberExtractionService:
         Raises:
             ValueError: If html_content or party_name is empty
         """
-        raise NotImplementedError
+        ...
