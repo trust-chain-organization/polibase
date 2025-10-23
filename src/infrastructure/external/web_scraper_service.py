@@ -43,6 +43,47 @@ class PlaywrightScraperService(IWebScraperService):
 
         return any(domain in url for domain in supported_domains)
 
+    async def fetch_html(self, url: str) -> str:
+        """Fetch raw HTML content from a URL using Playwright.
+
+        Args:
+            url: URL to fetch
+
+        Returns:
+            Raw HTML content as string
+
+        Raises:
+            ValueError: If URL is invalid or inaccessible
+        """
+        import logging
+
+        from playwright.async_api import async_playwright
+
+        logger = logging.getLogger(__name__)
+
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=self.headless)
+                page = await browser.new_page()
+
+                # Navigate to the URL
+                await page.goto(url, wait_until="networkidle", timeout=30000)
+
+                # Wait for content to load
+                await page.wait_for_load_state("domcontentloaded")
+
+                # Get the HTML content
+                html_content = await page.content()
+
+                await browser.close()
+
+                logger.debug(f"Fetched HTML from {url} ({len(html_content)} bytes)")
+                return html_content
+
+        except Exception as e:
+            logger.error(f"Failed to fetch HTML from {url}: {e}")
+            raise ValueError(f"Failed to fetch HTML from {url}: {e}") from e
+
     async def scrape_party_members(
         self, url: str, party_id: int, party_name: str | None = None
     ) -> list[dict[str, Any]]:

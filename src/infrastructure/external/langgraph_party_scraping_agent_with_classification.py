@@ -10,12 +10,19 @@ from dataclasses import replace
 from langgraph.graph import END, START, StateGraph
 
 from src.domain.entities.party_scraping_state import PartyScrapingState
+from src.domain.services.interfaces.link_analyzer_service import ILinkAnalyzerService
 from src.domain.services.interfaces.page_classifier_service import (
     IPageClassifierService,
 )
 from src.domain.services.interfaces.party_scraping_agent import IPartyScrapingAgent
+from src.domain.services.interfaces.web_scraper_service import IWebScraperService
+from src.domain.services.party_member_extraction_service import (
+    IPartyMemberExtractionService,
+)
 
 from .langgraph_nodes.decision_node import should_explore_children
+from .langgraph_nodes.explore_children_node import create_explore_children_node
+from .langgraph_nodes.extract_members_node import create_extract_members_node
 from .langgraph_nodes.page_classifier_node import create_page_classifier_node
 from .langgraph_state_adapter import (
     LangGraphPartyScrapingState,
@@ -38,13 +45,22 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
     def __init__(
         self,
         page_classifier: IPageClassifierService,
+        scraper: IWebScraperService,
+        member_extractor: IPartyMemberExtractionService,
+        link_analyzer: ILinkAnalyzerService,
     ):
         """Initialize the enhanced LangGraph agent.
 
         Args:
             page_classifier: Service for classifying page types
+            scraper: Web scraper service for fetching HTML content
+            member_extractor: Domain service for member extraction
+            link_analyzer: Domain service for analyzing page links
         """
         self._page_classifier = page_classifier
+        self._scraper = scraper
+        self._member_extractor = member_extractor
+        self._link_analyzer = link_analyzer
         self._compiled_agent = None
         self._is_initialized = False
         self._initialize_agent()
@@ -80,15 +96,23 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
         """
         workflow = StateGraph(LangGraphPartyScrapingState)
 
-        # Create page classifier node
-        classify_page_node = create_page_classifier_node(self._page_classifier)
+        # Create nodes
+        classify_page_node = create_page_classifier_node(
+            self._page_classifier, self._scraper
+        )
+        explore_children_node = create_explore_children_node(
+            self._scraper, self._link_analyzer
+        )
+        extract_members_node = create_extract_members_node(
+            self._scraper, self._member_extractor
+        )
 
         # Add nodes
         workflow.add_node("initialize", self._initialize_state_node)
         workflow.add_node("pop_next_url", self._pop_next_url_node)
         workflow.add_node("classify_page", classify_page_node)
-        workflow.add_node("explore_children_placeholder", self._placeholder_node)
-        workflow.add_node("extract_members_placeholder", self._placeholder_node)
+        workflow.add_node("explore_children", explore_children_node)
+        workflow.add_node("extract_members", extract_members_node)
 
         # Define edges
         workflow.add_edge(START, "initialize")
@@ -109,16 +133,16 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
             "classify_page",
             should_explore_children,
             {
-                "explore_children": "explore_children_placeholder",
-                "extract_members": "extract_members_placeholder",
+                "explore_children": "explore_children",
+                "extract_members": "extract_members",
                 "continue": "pop_next_url",
                 "end": END,
             },
         )
 
         # After processing, loop back
-        workflow.add_edge("explore_children_placeholder", "pop_next_url")
-        workflow.add_edge("extract_members_placeholder", "pop_next_url")
+        workflow.add_edge("explore_children", "pop_next_url")
+        workflow.add_edge("extract_members", "pop_next_url")
 
         logger.info("Enhanced LangGraph workflow created successfully")
         return workflow
@@ -204,20 +228,6 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
         current_url = state.get("current_url", "")
         return "classify" if current_url else "end"
 
-    def _placeholder_node(
-        self, state: LangGraphPartyScrapingState
-    ) -> LangGraphPartyScrapingState:
-        """Placeholder node for future implementation.
-
-        Args:
-            state: Current state
-
-        Returns:
-            Unchanged state
-        """
-        logger.warning("Placeholder node called - implement in future PBI")
-        return state
-
     async def scrape(self, initial_state: PartyScrapingState) -> PartyScrapingState:
         """Execute hierarchical scraping using enhanced LangGraph.
 
@@ -251,8 +261,8 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
         lg_state = domain_to_langgraph_state(initial_state)
 
         try:
-            # Invoke the LangGraph agent
-            result_lg_state = self._compiled_agent.invoke(lg_state)
+            # Invoke the LangGraph agent asynchronously
+            result_lg_state = await self._compiled_agent.ainvoke(lg_state)
 
             # Convert back to domain state
             # Type: ignore for LangGraph's return type complexity
