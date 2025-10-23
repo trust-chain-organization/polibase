@@ -119,6 +119,11 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --party-id 5
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --all-parties --dry-run
 
+# Hierarchical scraping with Agent (experimental)
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --party-id 5 --hierarchical
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --party-id 5 --hierarchical --max-depth 5
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --all-parties --hierarchical --max-depth 3 --dry-run
+
 # Conference member extraction (3-step process)
 # Step 1: Extract members from conference URLs
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-conference-members --conference-id 185

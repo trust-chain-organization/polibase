@@ -38,6 +38,7 @@ from src.application.usecases.scrape_politicians_usecase import ScrapePolitician
 from src.domain.services.interfaces.html_link_extractor_service import (
     IHtmlLinkExtractorService,
 )
+from src.domain.services.interfaces.link_analyzer_service import ILinkAnalyzerService
 from src.domain.services.interfaces.llm_link_classifier_service import (
     ILLMLinkClassifierService,
 )
@@ -45,20 +46,43 @@ from src.domain.services.interfaces.llm_service import ILLMService
 from src.domain.services.interfaces.minutes_processing_service import (
     IMinutesProcessingService,
 )
+from src.domain.services.interfaces.page_classifier_service import (
+    IPageClassifierService,
+)
+from src.domain.services.interfaces.party_scraping_agent import IPartyScrapingAgent
 from src.domain.services.interfaces.storage_service import IStorageService
 from src.domain.services.link_analysis_domain_service import LinkAnalysisDomainService
+from src.domain.services.party_member_extraction_service import (
+    IPartyMemberExtractionService,
+)
 from src.domain.services.politician_domain_service import PoliticianDomainService
 from src.domain.services.speaker_domain_service import SpeakerDomainService
 from src.infrastructure.external.gcs_storage_service import GCSStorageService
 from src.infrastructure.external.html_link_extractor_service import (
     BeautifulSoupLinkExtractor,
 )
+
+# fmt: off - Long import line required for clarity
+from src.infrastructure.external.langgraph_party_scraping_agent_with_classification import (  # noqa: E501
+    LangGraphPartyScrapingAgentWithClassification,
+)
+
+# fmt: on
+from src.infrastructure.external.link_analyzer_service_impl import (
+    LinkAnalyzerServiceImpl,
+)
 from src.infrastructure.external.llm_link_classifier_service import (
     LLMLinkClassifierService,
+)
+from src.infrastructure.external.llm_page_classifier_service import (
+    LLMPageClassifierService,
 )
 from src.infrastructure.external.llm_service import GeminiLLMService
 from src.infrastructure.external.minutes_processing_service import (
     MinutesProcessAgentService,
+)
+from src.infrastructure.external.party_member_extraction_service_impl import (
+    PartyMemberExtractionServiceImpl,
 )
 from src.infrastructure.external.web_scraper_service import (
     IWebScraperService,
@@ -396,6 +420,23 @@ class ServiceContainer(containers.DeclarativeContainer):
         )
     )
 
+    # Page classifier service for hierarchical scraping
+    page_classifier_service: providers.Provider[IPageClassifierService] = (
+        providers.Factory(
+            LLMPageClassifierService,
+            llm_service=llm_service,
+        )
+    )
+
+    # Party member extraction service
+    party_member_extraction_service: providers.Provider[
+        IPartyMemberExtractionService
+    ] = providers.Factory(
+        PartyMemberExtractionServiceImpl,
+        llm_service=llm_service,
+        party_id=None,  # Will be set per-request
+    )
+
     # Mock services for testing (these may not have real implementations yet)
     minutes_domain_service = providers.Factory(lambda: MockDomainService("minutes"))
 
@@ -506,4 +547,19 @@ class UseCaseContainer(containers.DeclarativeContainer):
         html_extractor=services.html_link_extractor_service,
         link_classifier=services.llm_link_classifier_service,
         link_analysis_service=services.link_analysis_domain_service,
+    )
+
+    # Infrastructure services that depend on use cases
+    # Note: These are placed here to resolve circular dependencies
+    link_analyzer_service: providers.Provider[ILinkAnalyzerService] = providers.Factory(
+        LinkAnalyzerServiceImpl,
+        link_analysis_usecase=analyze_party_page_links_usecase,
+    )
+
+    party_scraping_agent: providers.Provider[IPartyScrapingAgent] = providers.Factory(
+        LangGraphPartyScrapingAgentWithClassification,
+        page_classifier=services.page_classifier_service,
+        scraper=services.web_scraper_service,
+        member_extractor=services.party_member_extraction_service,
+        link_analyzer=link_analyzer_service,
     )
