@@ -477,7 +477,7 @@ class UseCaseContainer(containers.DeclarativeContainer):
         ScrapePoliticiansUseCase,
         political_party_repository=repositories.political_party_repository,
         extracted_politician_repository=repositories.extracted_politician_repository,
-        web_scraper_service=services.web_scraper_service,
+        party_scraping_agent=services.party_scraping_agent,
     )
 
     manage_conference_members_usecase = providers.Factory(

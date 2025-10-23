@@ -251,9 +251,6 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
             ScrapePoliticiansInputDTO,
             ScrapePoliticiansUseCase,
         )
-        from src.infrastructure.external.web_scraper_service import (
-            PlaywrightScraperService,
-        )
         from src.infrastructure.persistence import (
             extracted_politician_repository_impl as extracted_repo,
         )
@@ -261,17 +258,22 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         logger = logging.getLogger(__name__)
 
         try:
-            # Initialize dependencies
+            # Initialize dependencies via DI container
             extracted_repo_impl = RepositoryAdapter(
                 extracted_repo.ExtractedPoliticianRepositoryImpl
             )
-            scraper = PlaywrightScraperService()
 
-            # Create use case
+            # Get LangGraph-based party scraping agent from DI container
+            if self.container is None:
+                raise ValueError("DI container is not initialized")
+
+            party_scraping_agent = self.container.services.party_scraping_agent()
+
+            # Create use case with new LangGraph architecture
             use_case = ScrapePoliticiansUseCase(
                 political_party_repository=self.repository,  # type: ignore[arg-type]
                 extracted_politician_repository=extracted_repo_impl,  # type: ignore[arg-type]
-                web_scraper_service=scraper,
+                party_scraping_agent=party_scraping_agent,
             )
 
             # Execute extraction
