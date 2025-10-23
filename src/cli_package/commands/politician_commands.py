@@ -24,9 +24,25 @@ class PoliticianCommands(BaseCommand):
         "--dry-run", is_flag=True, help="Show what would be scraped without saving"
     )
     @click.option("--max-pages", default=10, help="Maximum pages to fetch per party")
+    @click.option(
+        "--hierarchical",
+        is_flag=True,
+        help="Enable hierarchical page exploration (experimental)",
+    )
+    @click.option(
+        "--max-depth",
+        type=int,
+        default=3,
+        help="Maximum depth for hierarchical exploration",
+    )
     @with_error_handling
     def scrape_politicians(
-        party_id: int | None, all_parties: bool, dry_run: bool, max_pages: int
+        party_id: int | None,
+        all_parties: bool,
+        dry_run: bool,
+        max_pages: int,
+        hierarchical: bool,
+        max_depth: int,
     ):
         """Scrape politician data from party member list pages (政党議員一覧取得)
 
@@ -37,19 +53,31 @@ class PoliticianCommands(BaseCommand):
             polibase scrape-politicians --party-id 1
             polibase scrape-politicians --all-parties
             polibase scrape-politicians --all-parties --dry-run
+            polibase scrape-politicians --party-id 1 --hierarchical --max-depth 3
         """
         # Run the async scraping operation
         asyncio.run(
             PoliticianCommands._async_scrape_politicians(
-                party_id, all_parties, dry_run, max_pages
+                party_id, all_parties, dry_run, max_pages, hierarchical, max_depth
             )
         )
 
     @staticmethod
     async def _async_scrape_politicians(
-        party_id: int | None, all_parties: bool, dry_run: bool, max_pages: int
+        party_id: int | None,
+        all_parties: bool,
+        dry_run: bool,
+        max_pages: int,
+        hierarchical: bool,
+        max_depth: int,
     ):
         """Async implementation of scrape_politicians"""
+        # If hierarchical mode is enabled, use the new Agent-based approach
+        if hierarchical:
+            await PoliticianCommands._async_scrape_politicians_hierarchical(
+                party_id, all_parties, dry_run, max_depth
+            )
+            return
         from src.config.database import get_db_engine
         from src.infrastructure.persistence.politician_repository_sync_impl import (
             PoliticianRepositorySyncImpl,
@@ -227,6 +255,168 @@ class PoliticianCommands(BaseCommand):
         finally:
             engine.dispose()
             # 少し待機してから終了
+            time.sleep(0.5)
+
+    @staticmethod
+    async def _async_scrape_politicians_hierarchical(
+        party_id: int | None, all_parties: bool, dry_run: bool, max_depth: int
+    ):
+        """Async implementation using hierarchical Agent-based scraping"""
+        from src.config.database import get_db_engine
+        from src.domain.entities.party_scraping_state import PartyScrapingState
+        from src.infrastructure.di.container import get_container, init_container
+        from src.infrastructure.persistence.politician_repository_sync_impl import (
+            PoliticianRepositorySyncImpl,
+        )
+
+        # Initialize DI container
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        # Get Agent and dependencies from container
+        agent = container.use_cases.party_scraping_agent()
+        engine = get_db_engine()
+
+        try:
+            # Get target parties
+            with engine.connect() as conn:
+                if party_id:
+                    query = text("""
+                        SELECT id, name, members_list_url
+                        FROM political_parties
+                        WHERE id = :party_id AND members_list_url IS NOT NULL
+                    """)
+                    result = conn.execute(query, {"party_id": party_id})
+                else:
+                    query = text("""
+                        SELECT id, name, members_list_url
+                        FROM political_parties
+                        WHERE members_list_url IS NOT NULL
+                        ORDER BY name
+                    """)
+                    result = conn.execute(query)
+
+                parties = result.fetchall()
+
+            if not parties:
+                PoliticianCommands.error(
+                    "No parties found with member list URLs", exit_code=0
+                )
+                return
+
+            PoliticianCommands.show_progress(
+                f"Found {len(parties)} parties to scrape (hierarchical mode):"
+            )
+            for party in parties:
+                PoliticianCommands.show_progress(
+                    f"  - {party.name}: {party.members_list_url}"
+                )
+
+            # Skip confirmation if running from Streamlit
+            import os
+
+            if os.environ.get("STREAMLIT_RUNNING") != "true":
+                if not PoliticianCommands.confirm("\nDo you want to continue?"):
+                    return
+
+            # Execute hierarchical scraping
+            total_scraped = 0
+
+            with ProgressTracker(len(parties), "Processing parties") as tracker:
+                for _i, party in enumerate(parties):
+                    PoliticianCommands.show_progress(f"\nProcessing {party.name}...")
+                    PoliticianCommands.show_progress(f"  URL: {party.members_list_url}")
+
+                    # Create initial scraping state
+                    initial_state = PartyScrapingState(
+                        current_url=party.members_list_url,
+                        party_name=party.name,
+                        party_id=party.id,
+                        max_depth=max_depth,
+                    )
+
+                    # Run Agent
+                    with spinner(
+                        f"Running hierarchical scraping for {party.name} "
+                        f"(max depth: {max_depth})..."
+                    ):
+                        final_state = await agent.scrape(initial_state)
+
+                    if final_state.error_message:
+                        PoliticianCommands.show_progress(
+                            f"  Error: {final_state.error_message}"
+                        )
+                        continue
+
+                    extracted_members = list(final_state.extracted_members)
+                    PoliticianCommands.show_progress(
+                        f"  Extracted {len(extracted_members)} members from "
+                        f"{len(final_state.visited_urls)} pages"
+                    )
+
+                    if dry_run:
+                        # Dry run mode: display data only
+                        for member in extracted_members[:5]:
+                            PoliticianCommands.show_progress(f"    - {member['name']}")
+                            if member.get("position"):
+                                PoliticianCommands.show_progress(
+                                    f"      Position: {member['position']}"
+                                )
+                            if member.get("electoral_district"):
+                                PoliticianCommands.show_progress(
+                                    f"      District: {member['electoral_district']}"
+                                )
+                        if len(extracted_members) > 5:
+                            PoliticianCommands.show_progress(
+                                f"    ... and {len(extracted_members) - 5} more"
+                            )
+                    else:
+                        # Save to database
+                        with spinner(
+                            f"Saving {len(extracted_members)} members to database..."
+                        ):
+                            from src.config.database import get_db_session
+
+                            session = get_db_session()
+                            repo = PoliticianRepositorySyncImpl(session)
+
+                            # Convert to dict and add political_party_id
+                            members_data: list[dict[str, Any]] = []
+                            for member in extracted_members:
+                                member_dict = dict(member)
+                                member_dict["political_party_id"] = party.id
+                                members_data.append(member_dict)
+
+                            stats = repo.bulk_create_politicians_sync(members_data)
+                            session.close()
+
+                        # Display statistics
+                        PoliticianCommands.show_progress(
+                            "  Database operation results:"
+                        )
+                        PoliticianCommands.show_progress(
+                            f"    - Created: {len(stats['created'])} new politicians"
+                        )
+                        PoliticianCommands.show_progress(
+                            f"    - Updated: {len(stats['updated'])} "
+                            "existing politicians"
+                        )
+                        PoliticianCommands.show_progress(
+                            f"    - Errors: {len(stats['errors'])}"
+                        )
+
+                        total_scraped += len(stats["created"]) + len(stats["updated"])
+
+                    tracker.update(1, f"Completed {party.name}")
+
+            if not dry_run:
+                PoliticianCommands.success(f"Total politicians saved: {total_scraped}")
+
+        finally:
+            engine.dispose()
+            # Wait a bit before exiting
             time.sleep(0.5)
 
     @staticmethod
