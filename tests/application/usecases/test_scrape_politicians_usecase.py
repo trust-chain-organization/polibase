@@ -6,6 +6,7 @@ import pytest
 
 from src.application.dtos.politician_dto import ScrapePoliticiansInputDTO
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
+from src.domain.entities.party_scraping_state import PartyScrapingState
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician_party_extracted_politician import (
     PoliticianPartyExtractedPolitician,
@@ -28,23 +29,23 @@ class TestScrapePoliticiansUseCase:
         return repo
 
     @pytest.fixture
-    def mock_scraper(self):
-        """Create mock web scraper service."""
-        scraper = AsyncMock()
-        return scraper
+    def mock_scraping_agent(self):
+        """Create mock party scraping agent."""
+        agent = AsyncMock()
+        return agent
 
     @pytest.fixture
     def use_case(
         self,
         mock_party_repo,
         mock_extracted_politician_repo,
-        mock_scraper,
+        mock_scraping_agent,
     ):
         """Create ScrapePoliticiansUseCase instance."""
         return ScrapePoliticiansUseCase(
             political_party_repository=mock_party_repo,
             extracted_politician_repository=mock_extracted_politician_repo,
-            web_scraper_service=mock_scraper,
+            party_scraping_agent=mock_scraping_agent,
         )
 
     @pytest.mark.asyncio
@@ -53,7 +54,7 @@ class TestScrapePoliticiansUseCase:
         use_case,
         mock_party_repo,
         mock_extracted_politician_repo,
-        mock_scraper,
+        mock_scraping_agent,
     ):
         """Test scraping politicians from a single party."""
         # Setup
@@ -64,18 +65,30 @@ class TestScrapePoliticiansUseCase:
         )
 
         mock_party_repo.get_by_id.return_value = party
-        mock_scraper.scrape_party_members.return_value = [
+
+        # Mock LangGraph agent response
+        final_state = PartyScrapingState(
+            party_id=1,
+            party_name="自民党",
+            current_url="https://example.com/members",
+            max_depth=3,
+        )
+        # Add extracted members using the proper API
+        final_state.add_extracted_member(
             {
                 "name": "山田太郎",
                 "position": "衆議院議員",
-                "district": "東京1区",
-            },
+                "electoral_district": "東京1区",
+            }
+        )
+        final_state.add_extracted_member(
             {
                 "name": "鈴木花子",
                 "position": "参議院議員",
-                "district": "比例区",
-            },
-        ]
+                "electoral_district": "比例区",
+            }
+        )
+        mock_scraping_agent.scrape.return_value = final_state
 
         # No duplicates found
         mock_extracted_politician_repo.get_duplicates.return_value = []
@@ -109,14 +122,20 @@ class TestScrapePoliticiansUseCase:
         assert results[0].status == "pending"
         assert results[1].name == "鈴木花子"
 
-        mock_scraper.scrape_party_members.assert_called_once_with(
-            "https://example.com/members", 1
-        )
+        # Verify LangGraph agent was called correctly
+        mock_scraping_agent.scrape.assert_called_once()
+        call_args = mock_scraping_agent.scrape.call_args[0][0]
+        assert call_args.party_id == 1
+        assert call_args.party_name == "自民党"
+        assert call_args.current_url == "https://example.com/members"
+
         assert mock_extracted_politician_repo.get_duplicates.call_count == 2
         assert mock_extracted_politician_repo.create.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_execute_all_parties(self, use_case, mock_party_repo, mock_scraper):
+    async def test_execute_all_parties(
+        self, use_case, mock_party_repo, mock_scraping_agent
+    ):
         """Test scraping politicians from all parties."""
         # Setup
         parties = [
@@ -133,14 +152,22 @@ class TestScrapePoliticiansUseCase:
         ]
 
         mock_party_repo.get_with_members_url.return_value = parties
-        mock_scraper.scrape_party_members.return_value = []
+
+        # Mock LangGraph agent to return empty results
+        empty_state = PartyScrapingState(
+            party_id=1,
+            party_name="",
+            current_url="https://example.com",
+            max_depth=3,
+        )
+        mock_scraping_agent.scrape.return_value = empty_state
 
         # Execute
         request = ScrapePoliticiansInputDTO(all_parties=True)
         await use_case.execute(request)
 
         # Verify
-        assert mock_scraper.scrape_party_members.call_count == 2
+        assert mock_scraping_agent.scrape.call_count == 2
 
     @pytest.mark.asyncio
     async def test_execute_dry_run(
@@ -148,7 +175,7 @@ class TestScrapePoliticiansUseCase:
         use_case,
         mock_party_repo,
         mock_extracted_politician_repo,
-        mock_scraper,
+        mock_scraping_agent,
     ):
         """Test dry run mode without saving."""
         # Setup
@@ -159,9 +186,16 @@ class TestScrapePoliticiansUseCase:
         )
 
         mock_party_repo.get_by_id.return_value = party
-        mock_scraper.scrape_party_members.return_value = [
-            {"name": "山田太郎", "position": "衆議院議員"},
-        ]
+
+        # Mock LangGraph agent response
+        final_state = PartyScrapingState(
+            party_id=1,
+            party_name="自民党",
+            current_url="https://example.com/members",
+            max_depth=3,
+        )
+        final_state.add_extracted_member({"name": "山田太郎", "position": "衆議院議員"})
+        mock_scraping_agent.scrape.return_value = final_state
 
         # Execute
         request = ScrapePoliticiansInputDTO(party_id=1, dry_run=True)
@@ -205,7 +239,7 @@ class TestScrapePoliticiansUseCase:
         use_case,
         mock_party_repo,
         mock_extracted_politician_repo,
-        mock_scraper,
+        mock_scraping_agent,
     ):
         """Test skipping duplicate politician in extracted_politicians table."""
         # Setup
@@ -222,13 +256,22 @@ class TestScrapePoliticiansUseCase:
         )
 
         mock_party_repo.get_by_id.return_value = party
-        mock_scraper.scrape_party_members.return_value = [
+
+        # Mock LangGraph agent response
+        final_state = PartyScrapingState(
+            party_id=1,
+            party_name="自民党",
+            current_url="https://example.com/members",
+            max_depth=3,
+        )
+        final_state.add_extracted_member(
             {
                 "name": "山田太郎",
                 "position": "衆議院議員",
-                "district": "東京1区",
-            },
-        ]
+                "electoral_district": "東京1区",
+            }
+        )
+        mock_scraping_agent.scrape.return_value = final_state
 
         # Duplicate exists - should skip
         mock_extracted_politician_repo.get_duplicates.return_value = [
@@ -249,7 +292,7 @@ class TestScrapePoliticiansUseCase:
         use_case,
         mock_party_repo,
         mock_extracted_politician_repo,
-        mock_scraper,
+        mock_scraping_agent,
     ):
         """Test creating new politician when no duplicate exists."""
         # Setup
@@ -267,13 +310,22 @@ class TestScrapePoliticiansUseCase:
         )
 
         mock_party_repo.get_by_id.return_value = party
-        mock_scraper.scrape_party_members.return_value = [
+
+        # Mock LangGraph agent response
+        final_state = PartyScrapingState(
+            party_id=1,
+            party_name="自民党",
+            current_url="https://example.com/members",
+            max_depth=3,
+        )
+        final_state.add_extracted_member(
             {
                 "name": "山田太郎",
                 "position": "衆議院議員",
-                "district": "東京1区",
-            },
-        ]
+                "electoral_district": "東京1区",
+            }
+        )
+        mock_scraping_agent.scrape.return_value = final_state
 
         # No duplicate found - should create new
         mock_extracted_politician_repo.get_duplicates.return_value = []

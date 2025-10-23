@@ -5,6 +5,7 @@ from src.application.dtos.politician_dto import (
     PoliticianPartyExtractedPoliticianOutputDTO,
     ScrapePoliticiansInputDTO,
 )
+from src.domain.entities.party_scraping_state import PartyScrapingState
 from src.domain.entities.political_party import PoliticalParty
 from src.domain.entities.politician_party_extracted_politician import (
     PoliticianPartyExtractedPolitician,
@@ -13,7 +14,7 @@ from src.domain.repositories.extracted_politician_repository import (
     ExtractedPoliticianRepository,
 )
 from src.domain.repositories.political_party_repository import PoliticalPartyRepository
-from src.domain.services.interfaces.web_scraper_service import IWebScraperService
+from src.domain.services.interfaces.party_scraping_agent import IPartyScrapingAgent
 
 
 class ScrapePoliticiansUseCase:
@@ -47,18 +48,18 @@ class ScrapePoliticiansUseCase:
         self,
         political_party_repository: PoliticalPartyRepository,
         extracted_politician_repository: ExtractedPoliticianRepository,
-        web_scraper_service: IWebScraperService,
+        party_scraping_agent: IPartyScrapingAgent,
     ):
         """政治家スクレイピングユースケースを初期化する
 
         Args:
             political_party_repository: 政党リポジトリの実装
             extracted_politician_repository: 抽出済み政治家リポジトリの実装
-            web_scraper_service: Webスクレイピングサービス
+            party_scraping_agent: LangGraphベースの政党スクレイピングエージェント
         """
         self.party_repo = political_party_repository
         self.extracted_politician_repo = extracted_politician_repository
-        self.scraper = web_scraper_service
+        self.scraping_agent = party_scraping_agent
 
     async def execute(
         self,
@@ -173,31 +174,60 @@ class ScrapePoliticiansUseCase:
         if not party.members_list_url:
             return []
 
-        # Use web scraper service
         if party.id is None:
             raise ValueError("Party must have an ID")
-        raw_data = await self.scraper.scrape_party_members(
-            party.members_list_url, party.id
-        )
 
-        # Log raw data count
         import logging
 
         logger = logging.getLogger(__name__)
-        logger.info(f"Raw data received: {len(raw_data)} items")
 
-        # Convert to DTOs
+        # Create initial state for LangGraph agent
+        initial_state = PartyScrapingState(
+            party_id=party.id,
+            party_name=party.name,
+            current_url=party.members_list_url,
+            max_depth=3,  # Reasonable default for hierarchical navigation
+        )
+
+        # Execute LangGraph-based scraping
+        logger.info(
+            f"Starting LangGraph scraping for {party.name} "
+            f"from {party.members_list_url}"
+        )
+        final_state = await self.scraping_agent.scrape(initial_state)
+
+        if final_state.error_message:
+            logger.error(
+                f"LangGraph scraping failed for {party.name}: "
+                f"{final_state.error_message}"
+            )
+            # Return empty list on error instead of raising
+            return []
+
+        # Convert extracted members to DTOs
         extracted: list[PoliticianPartyExtractedPoliticianDTO] = []
-        for item in raw_data:
+        for member in final_state.extracted_members:
+            # extracted_members returns PoliticianMemberData (TypedDict)
+            # Name is required in practice but TypedDict has total=False
+            name = member.get("name")
+            if not name:
+                logger.warning(f"Skipping member with missing name: {member}")
+                continue
+
             dto = PoliticianPartyExtractedPoliticianDTO(
-                name=item["name"],
-                party_id=party.id,  # Safe because we checked above
-                furigana=item.get("furigana"),
-                district=item.get("district"),
-                profile_page_url=item.get("profile_page_url"),
+                name=name,
+                party_id=party.id,
+                furigana=None,  # Not available in PoliticianMemberData
+                district=member.get("electoral_district"),
+                profile_page_url=member.get("profile_url"),
                 source_url=party.members_list_url,
             )
             extracted.append(dto)
+
+        logger.info(
+            f"LangGraph scraping completed: {len(extracted)} members "
+            f"extracted from {party.name}"
+        )
 
         return extracted
 
