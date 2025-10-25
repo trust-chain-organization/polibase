@@ -5,12 +5,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.exceptions import (
-    APIKeyError,
-    DatabaseError,
-    PDFProcessingError,
-    ProcessingError,
-)
+from src.application.exceptions import PDFProcessingError, ProcessingError
+from src.infrastructure.exceptions import APIKeyError, DatabaseError
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 from src.process_minutes import (
     display_database_status,

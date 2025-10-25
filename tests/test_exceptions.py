@@ -2,35 +2,48 @@
 
 import pytest
 
-from src.exceptions import (
-    APIKeyError,
+# Application layer exceptions
+from src.application.exceptions import (
     ConfigurationError,
+    PDFProcessingError,
+    ProcessingError,
+    TextExtractionError,
+)
+
+# Domain layer exceptions
+from src.domain.exceptions import PolibaseError
+
+# Infrastructure layer exceptions
+from src.infrastructure.exceptions import (
+    APIKeyError,
     ConnectionError,
     DatabaseError,
-    DeleteError,
-    DuplicateRecordError,
     IntegrityError,
     LLMError,
-    MissingConfigError,
-    ModelError,
-    ParsingError,
-    PDFProcessingError,
-    PolibaseError,
-    ProcessingError,
-    QueryError,
     RecordNotFoundError,
-    RepositoryError,
-    ResponseParsingError,
     SaveError,
-    SchemaValidationError,
     ScrapingError,
     StorageError,
-    TextExtractionError,
-    TokenLimitError,
     UpdateError,
-    URLError,
-    ValidationError,
 )
+from src.infrastructure.exceptions import (
+    DuplicateRecordException as DuplicateRecordError,
+)
+from src.infrastructure.exceptions import (
+    URLException as URLError,
+)
+
+# Legacy aliases for backward compatibility tests
+MissingConfigError = ConfigurationError
+ModelError = LLMError
+ParsingError = TextExtractionError
+QueryError = DatabaseError
+RepositoryError = SaveError
+ResponseParsingError = LLMError
+SchemaValidationError = ProcessingError
+TokenLimitError = LLMError
+ValidationError = ProcessingError
+DeleteError = SaveError
 
 
 class TestExceptionHierarchy:
