@@ -27,8 +27,16 @@ except ImportError:
         NotFound = Exception
         storage = None
 
-from ..exceptions import FileNotFoundError as PolibaseFileNotFoundError
-from ..exceptions import PermissionError, StorageError, UploadError
+from src.infrastructure.exceptions import (
+    FileNotFoundException as PolibaseFileNotFoundError,
+)
+from src.infrastructure.exceptions import (
+    PermissionError,
+    StorageError,
+)
+from src.infrastructure.exceptions import (
+    UploadException as UploadError,
+)
 
 logger = logging.getLogger(__name__)
 

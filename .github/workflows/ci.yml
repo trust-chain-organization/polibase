@@ -40,8 +40,10 @@ jobs:
           sys.path.insert(0, '.')
           try:
               # srcディレクトリ内のモジュールを確認
-              from src import exceptions
-              from src import cli
+              # Exception classes are now re-exported from src.__init__
+              from src import PolibaseError, ConfigurationError, DatabaseError
+              # CLI is now at src.interfaces.cli.cli
+              from src.interfaces.cli import cli
               from src.infrastructure.persistence import base_repository_impl
               from src.application import usecases
               from src.domain import entities

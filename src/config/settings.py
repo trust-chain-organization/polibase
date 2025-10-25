@@ -10,7 +10,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from ..exceptions import ConfigurationError, InvalidConfigError, MissingConfigError
+from src.application.exceptions import (
+    ConfigurationError,
+)
+from src.application.exceptions import (
+    InvalidConfigException as InvalidConfigError,
+)
+from src.application.exceptions import (
+    MissingConfigException as MissingConfigError,
+)
 
 logger = logging.getLogger(__name__)
 

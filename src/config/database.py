@@ -14,7 +14,7 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from ..exceptions import ConnectionError, DatabaseError
+from src.infrastructure.exceptions import ConnectionError, DatabaseError
 
 load_dotenv()
 

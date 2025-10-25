@@ -8,7 +8,11 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.conference import Conference
-from src.exceptions import DatabaseError, RecordNotFoundError, UpdateError
+from src.infrastructure.exceptions import (
+    DatabaseError,
+    RecordNotFoundError,
+    UpdateError,
+)
 from src.infrastructure.persistence.conference_repository_impl import (
     ConferenceModel,
     ConferenceRepositoryImpl,

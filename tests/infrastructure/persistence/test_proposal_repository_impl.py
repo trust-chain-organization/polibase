@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.entities.proposal import Proposal
-from src.exceptions import DatabaseError
+from src.infrastructure.exceptions import DatabaseError
 from src.infrastructure.persistence.proposal_repository_impl import (
     ProposalModel,
     ProposalRepositoryImpl,

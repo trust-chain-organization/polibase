@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import unittest
 from unittest.mock import MagicMock
 
-from src.exceptions import SaveError
+from src.infrastructure.exceptions import SaveError
 from src.minutes_divide_processor.models import SpeakerAndSpeechContent
 
 

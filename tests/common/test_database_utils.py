@@ -9,7 +9,8 @@ from src.common.database_utils import (
     display_repository_status,
     save_data_with_logging,
 )
-from src.exceptions import DatabaseError, RepositoryError
+from src.infrastructure.exceptions import DatabaseError
+from src.infrastructure.exceptions import SaveError as RepositoryError
 
 
 class MockRepository:

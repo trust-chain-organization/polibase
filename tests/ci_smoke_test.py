@@ -21,9 +21,9 @@ def test_database_connection():
 def test_cli_import():
     """CLIモジュールのインポート確認"""
     try:
-        import src.cli
+        from src.interfaces.cli import cli
 
-        assert src.cli is not None
+        assert cli is not None
         # CLIモジュールが正常にインポートできることを確認
     except ImportError as e:
         pytest.fail(f"CLIモジュールのインポートに失敗: {e}")
