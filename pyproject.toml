@@ -106,6 +106,14 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
 
+[tool.ruff.lint.per-file-ignores]
+# Ignore E501 (line too long) for debug print statements
+"src/application/usecases/scrape_politicians_usecase.py" = ["E501"]
+"src/domain/services/link_analysis_domain_service.py" = ["E501"]
+"src/infrastructure/external/langgraph_nodes/explore_children_node.py" = ["E501"]
+"src/infrastructure/external/langgraph_party_scraping_agent_with_classification.py" = ["E501"]
+"src/interfaces/web/streamlit/presenters/political_party_presenter.py" = ["E501"]
+
 # Pyright configuration moved to pyrightconfig.json
 
 [tool.bandit]
