@@ -46,6 +46,15 @@ class LLMServiceAdapter:
         """Get the API key."""
         return getattr(self._llm_service, "api_key", "")
 
+    @property
+    def llm(self) -> Any:
+        """Get the underlying LLM instance.
+
+        Returns:
+            The LangChain LLM instance from the wrapped service
+        """
+        return getattr(self._llm_service, "llm", None)
+
     def _run_async(self, coro: Coroutine[Any, Any, T]) -> T:
         """Run an async function in sync context.
 

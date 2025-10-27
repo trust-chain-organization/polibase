@@ -205,15 +205,25 @@ def show_extraction_progress(presenter: PoliticalPartyPresenter, party_id: int) 
     """
     extraction_key = f"extracting_{party_id}"
 
+    # Create placeholder for progress messages
+    progress_placeholder = st.empty()
+    progress_messages = []
+
+    def progress_callback(message: str):
+        """Callback to update progress in real-time."""
+        progress_messages.append(message)
+        with progress_placeholder.container():
+            for msg in progress_messages:
+                st.write(msg)
+
     with st.status("政治家情報を抽出中...", expanded=True) as status:
         try:
-            st.write("📄 議員一覧ページを取得中...")
-
-            # Execute extraction
-            result = presenter.extract_politicians(party_id)
+            # Execute extraction with progress callback
+            result = presenter.extract_politicians(
+                party_id, progress_callback=progress_callback
+            )
 
             if result["success"]:
-                st.write(result["message"])
                 status.update(label="✅ 抽出完了", state="complete")
 
                 # Show extracted politicians
@@ -224,6 +234,8 @@ def show_extraction_progress(presenter: PoliticalPartyPresenter, party_id: int) 
                             st.write(f"- {politician.name}")
                         if len(result["politicians"]) > 10:
                             st.write(f"... 他{len(result['politicians']) - 10}人")
+                else:
+                    st.warning("政治家が抽出されませんでした")
             else:
                 st.error(result["message"])
                 status.update(label="❌ 抽出失敗", state="error")

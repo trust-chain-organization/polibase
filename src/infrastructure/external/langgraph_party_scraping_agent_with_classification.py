@@ -69,6 +69,8 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
         """Initialize and compile the LangGraph workflow."""
         try:
             workflow = self._create_workflow()
+            # Compile the workflow
+            # Note: recursion_limit is set in ainvoke() config, not here
             self._compiled_agent = workflow.compile()
             self._is_initialized = True
             logger.info(
@@ -161,6 +163,9 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
         logger.info(
             f"Initializing scraping for party: {state.get('party_name', 'Unknown')}"
         )
+        print(
+            f"DEBUG Agent: Initializing state for {state.get('party_name', 'Unknown')}"
+        )
 
         # Ensure required fields are present
         if "visited_urls" not in state:
@@ -196,6 +201,7 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
 
         if not pending_urls:
             logger.info("No more URLs to process")
+            print("DEBUG Agent: No more URLs in pending queue")
             state["current_url"] = ""
             return state
 
@@ -213,6 +219,9 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
         state["depth"] = depth
 
         logger.info(f"Processing URL (depth={depth}): {next_url}")
+        print(
+            f"DEBUG Agent: Popped URL (depth={depth}): {next_url}, pending={len(pending_urls)}"
+        )
 
         return state
 
@@ -262,7 +271,13 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
 
         try:
             # Invoke the LangGraph agent asynchronously
-            result_lg_state = await self._compiled_agent.ainvoke(lg_state)
+            # Set high recursion limit for hierarchical scraping:
+            # - 47 prefectures at depth 1
+            # - Each prefecture may have 10-50 cities/municipalities
+            # - Total nodes could be 47 + (47 * avg_cities) = 200-500+
+            result_lg_state = await self._compiled_agent.ainvoke(
+                lg_state, config={"recursion_limit": 500}
+            )
 
             # Convert back to domain state
             # Type: ignore for LangGraph's return type complexity

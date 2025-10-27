@@ -35,7 +35,7 @@ class BasePresenter(ABC, Generic[T]):  # noqa: UP046
         Args:
             container: Dependency injection container. If None, creates a new instance.
         """
-        self.container = container or Container()
+        self.container = container or Container.create_for_environment()
         self.logger = get_logger(self.__class__.__name__)
 
     def _run_async(self, coro: Coroutine[Any, Any, R]) -> R:

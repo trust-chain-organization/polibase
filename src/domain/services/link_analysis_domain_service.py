@@ -22,8 +22,9 @@ class LinkAnalysisDomainService:
 
         A child page is defined as a URL that:
         1. Is in the same domain/subdomain as the parent
-        2. Has a longer path than the parent (deeper in hierarchy)
-        3. The parent's path is a prefix of the child's path
+        2. Either:
+           a) Has a longer path with parent's path as prefix (traditional hierarchy)
+           b) Contains member list patterns (for party sites with non-hierarchical paths)
 
         Args:
             link_url: The URL to check
@@ -37,6 +38,11 @@ class LinkAnalysisDomainService:
             >>> service.is_child_page(
             ...     "https://example.com/party/members/tokyo",
             ...     "https://example.com/party/members"
+            ... )
+            True
+            >>> service.is_child_page(
+            ...     "https://www.jcp.or.jp/list/pref/1",
+            ...     "https://www.jcp.or.jp/giin/"
             ... )
             True
         """
@@ -56,12 +62,41 @@ class LinkAnalysisDomainService:
             link_segments = [s for s in link_path.split("/") if s]
             parent_segments = [s for s in parent_path.split("/") if s]
 
-            # Child must have more segments
-            if len(link_segments) <= len(parent_segments):
-                return False
+            # Check traditional hierarchy (parent path is prefix)
+            if len(link_segments) > len(parent_segments):
+                if link_segments[: len(parent_segments)] == parent_segments:
+                    return True
 
-            # Parent path must be prefix of link path
-            return link_segments[: len(parent_segments)] == parent_segments
+            # Check for member list patterns (for non-hierarchical paths)
+            # Common patterns in party member pages:
+            # - /list/, /pref/, /member/, /district/, /region/, /area/
+            # - Prefecture codes, city codes, etc.
+            member_patterns = [
+                "/list/",
+                "/pref/",
+                "/member/",
+                "/district/",
+                "/region/",
+                "/area/",
+                "/local/",
+                "/chihou/",
+                "/todofuken/",
+                "/shiku/",
+                "/city/",
+                "/town/",
+            ]
+
+            link_path_lower = link_path.lower()
+
+            # If link contains member patterns and is in same domain, consider it a child
+            for pattern in member_patterns:
+                if pattern in link_path_lower:
+                    logger.debug(
+                        f"Recognized {link_url} as child page due to pattern '{pattern}'"
+                    )
+                    return True
+
+            return False
 
         except Exception as e:
             logger.warning(f"Error checking child page relationship: {e}")
@@ -163,7 +198,20 @@ class LinkAnalysisDomainService:
         Returns:
             List of links that are children of parent_url
         """
-        return [link for link in links if self.is_child_page(link.url, parent_url)]
+        child_pages = []
+        for link in links:
+            is_child = self.is_child_page(link.url, parent_url)
+            if is_child:
+                child_pages.append(link)
+                logger.debug(f"✓ Child page detected: {link.url}")
+            else:
+                logger.debug(f"✗ Not a child page: {link.url}")
+
+        print(
+            f"DEBUG filter_child_pages: Filtered {len(child_pages)} "
+            f"child pages from {len(links)} total links"
+        )
+        return child_pages
 
     def filter_sibling_pages(self, links: list[Link], reference_url: str) -> list[Link]:
         """Filter a list of links to only include sibling pages.

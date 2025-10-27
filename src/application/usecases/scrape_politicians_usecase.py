@@ -110,14 +110,26 @@ class ScrapePoliticiansUseCase:
             raise ValueError("Either party_id or all_parties must be specified")
 
         all_results: list[PoliticianPartyExtractedPoliticianOutputDTO] = []
+        total_extracted = 0
+        total_skipped = 0
+        total_saved = 0
 
         for party in parties:
             # Scrape party website
             extracted = await self._scrape_party_website(party)
+            total_extracted += len(extracted)
+            print(
+                f"DEBUG UseCase: Extracted {len(extracted)} DTOs from _scrape_party_website"
+            )
+            print(f"DEBUG UseCase: request.dry_run = {request.dry_run}")
 
             if request.dry_run:
                 # Convert to DTOs without saving
+                print(
+                    f"DEBUG UseCase: In dry_run branch, processing {len(extracted)} items"
+                )
                 for data in extracted:
+                    print(f"DEBUG UseCase: Processing member: {data.name}")
                     all_results.append(
                         PoliticianPartyExtractedPoliticianOutputDTO(
                             id=0,  # Not saved
@@ -129,16 +141,30 @@ class ScrapePoliticiansUseCase:
                             status="pending",
                         )
                     )
+                print(
+                    f"DEBUG UseCase: After dry_run loop, all_results has {len(all_results)} items"
+                )
             else:
                 # Save extracted politicians
+                print(
+                    f"DEBUG UseCase: In save branch, extracted has {len(extracted)} items"
+                )
                 logger.info(
                     f"Saving {len(extracted)} politicians to "
                     "extracted_politicians table"
                 )
-                saved_politicians = await self._save_extracted_politicians(
-                    extracted, party.name
+                (
+                    saved_politicians,
+                    skipped_count,
+                ) = await self._save_extracted_politicians(extracted, party.name)
+                total_skipped += skipped_count
+                total_saved += len(saved_politicians)
+                print(
+                    f"DEBUG UseCase: _save_extracted_politicians returned {len(saved_politicians)} saved, {skipped_count} skipped"
                 )
+
                 for politician in saved_politicians:
+                    print(f"DEBUG UseCase: Adding saved politician: {politician.name}")
                     all_results.append(
                         PoliticianPartyExtractedPoliticianOutputDTO(
                             id=politician.id if politician.id else 0,
@@ -150,10 +176,27 @@ class ScrapePoliticiansUseCase:
                             status=politician.status,
                         )
                     )
-                logger.info(
-                    f"Saved {len(saved_politicians)} politicians to "
-                    "extracted_politicians"
+                print(
+                    f"DEBUG UseCase: After save loop, all_results has {len(all_results)} items"
                 )
+
+                if skipped_count > 0:
+                    logger.info(
+                        f"Skipped {skipped_count} duplicate politicians, "
+                        f"saved {len(saved_politicians)} new ones"
+                    )
+                else:
+                    logger.info(
+                        f"Saved {len(saved_politicians)} politicians to "
+                        "extracted_politicians"
+                    )
+
+        # Log summary
+        if not request.dry_run and total_skipped > 0:
+            logger.info(
+                f"Extraction complete: {total_extracted} extracted, "
+                f"{total_saved} saved, {total_skipped} already existed"
+            )
 
         return all_results
 
@@ -196,6 +239,15 @@ class ScrapePoliticiansUseCase:
         )
         final_state = await self.scraping_agent.scrape(initial_state)
 
+        # Debug: Log final state details
+        debug_msg = (
+            f"Final state - extracted_members count: {len(final_state.extracted_members)}, "
+            f"visited_urls count: {len(final_state.visited_urls)}, "
+            f"error: {final_state.error_message}"
+        )
+        logger.info(debug_msg)
+        print(f"DEBUG UseCase: {debug_msg}")  # Force print to stdout
+
         if final_state.error_message:
             logger.error(
                 f"LangGraph scraping failed for {party.name}: "
@@ -203,6 +255,12 @@ class ScrapePoliticiansUseCase:
             )
             # Return empty list on error instead of raising
             return []
+
+        if not final_state.extracted_members:
+            logger.warning(
+                f"No members extracted for {party.name}. "
+                f"Visited {len(final_state.visited_urls)} URLs"
+            )
 
         # Convert extracted members to DTOs
         extracted: list[PoliticianPartyExtractedPoliticianDTO] = []
@@ -235,7 +293,7 @@ class ScrapePoliticiansUseCase:
         self,
         extracted_data: list[PoliticianPartyExtractedPoliticianDTO],
         party_name: str,
-    ) -> list[PoliticianPartyExtractedPolitician]:
+    ) -> tuple[list[PoliticianPartyExtractedPolitician], int]:
         """抽出データを extracted_politicians テーブルに保存する
 
         重複チェックを行い、既存のデータがある場合はスキップします。
@@ -245,27 +303,36 @@ class ScrapePoliticiansUseCase:
             party_name: 政党名（ログ用）
 
         Returns:
-            保存された PoliticianPartyExtractedPolitician エンティティのリスト
+            Tuple of:
+            - 保存された PoliticianPartyExtractedPolitician エンティティのリスト
+            - スキップされた重複の数
         """
         import logging
 
         logger = logging.getLogger(__name__)
         saved_politicians: list[PoliticianPartyExtractedPolitician] = []
+        skipped_count = 0
 
         for data in extracted_data:
+            print(f"DEBUG Save: Processing {data.name} (party_id={data.party_id})")
+
             # Check for duplicates in extracted_politicians table
             duplicates = await self.extracted_politician_repo.get_duplicates(
                 data.name, data.party_id
             )
+            print(f"DEBUG Save: Found {len(duplicates)} duplicates for {data.name}")
 
             if duplicates:
                 logger.info(
                     f"Skipping duplicate: {data.name} already exists in "
                     "extracted_politicians"
                 )
+                print(f"DEBUG Save: Skipping {data.name} (duplicate)")
+                skipped_count += 1
                 continue
 
             # Create new extracted politician
+            print(f"DEBUG Save: Creating new entity for {data.name}")
             extracted_politician = PoliticianPartyExtractedPolitician(
                 name=data.name,
                 party_id=data.party_id,
@@ -274,11 +341,17 @@ class ScrapePoliticiansUseCase:
                 status="pending",  # Initial status is pending for review
             )
 
+            print(f"DEBUG Save: Calling repository.create() for {data.name}")
             created = await self.extracted_politician_repo.create(extracted_politician)
+            print(f"DEBUG Save: create() returned: {created}")
+
             if created:
                 saved_politicians.append(created)
                 logger.info(
                     f"Saved to extracted_politicians: {created.name} (ID: {created.id})"
                 )
+                print(f"DEBUG Save: Successfully saved {created.name}")
+            else:
+                print(f"DEBUG Save: create() returned None for {data.name}")
 
-        return saved_politicians
+        return saved_politicians, skipped_count

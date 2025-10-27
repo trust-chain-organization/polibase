@@ -230,13 +230,14 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         }
 
     def extract_politicians(
-        self, party_id: int, dry_run: bool = False
+        self, party_id: int, dry_run: bool = False, progress_callback=None
     ) -> dict[str, Any]:
         """Extract politicians from party members list URL.
 
         Args:
             party_id: Party ID to extract politicians from
             dry_run: If True, don't save to database
+            progress_callback: Optional callback function(message: str) for progress updates
 
         Returns:
             Dictionary with extraction results:
@@ -249,46 +250,102 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
 
         from src.application.usecases.scrape_politicians_usecase import (
             ScrapePoliticiansInputDTO,
-            ScrapePoliticiansUseCase,
-        )
-        from src.infrastructure.persistence import (
-            extracted_politician_repository_impl as extracted_repo,
         )
 
         logger = logging.getLogger(__name__)
 
-        try:
-            # Initialize dependencies via DI container
-            extracted_repo_impl = RepositoryAdapter(
-                extracted_repo.ExtractedPoliticianRepositoryImpl
-            )
+        # Helper to send progress updates
+        def update_progress(message: str):
+            if progress_callback:
+                progress_callback(message)
+            logger.info(message)
 
-            # Get LangGraph-based party scraping agent from DI container
+        try:
+            update_progress("🔧 処理を初期化中...")
+
+            # Get use case from DI container (includes all dependencies)
             if self.container is None:
                 raise ValueError("DI container is not initialized")
 
-            party_scraping_agent = self.container.services.party_scraping_agent()
-
-            # Create use case with new LangGraph architecture
-            use_case = ScrapePoliticiansUseCase(
-                political_party_repository=self.repository,  # type: ignore[arg-type]
-                extracted_politician_repository=extracted_repo_impl,  # type: ignore[arg-type]
-                party_scraping_agent=party_scraping_agent,
-            )
+            use_case = self.container.use_cases.scrape_politicians_usecase()
+            update_progress("📄 議員一覧ページを取得中...")
 
             # Execute extraction
             request = ScrapePoliticiansInputDTO(
                 party_id=party_id, all_parties=False, dry_run=dry_run
             )
 
-            # Run async code synchronously
+            update_progress("🤖 LangGraphエージェントを起動中...")
+
+            # Debug: Check use case type
+            update_progress(f"🔍 UseCase type: {type(use_case).__name__}")
+            update_progress(f"🔍 Agent type: {type(use_case.scraping_agent).__name__}")
+
+            # Run async code synchronously with detailed error handling
             # Note: Using _run_async helper inherited from base presenter
-            results = self._run_async(use_case.execute(request))
+            try:
+                update_progress("🔍 Calling use_case.execute()...")
+
+                # Get party info for debugging (repository is sync via RepositoryAdapter)
+                party = self.repository.get_by_id(party_id)  # type: ignore[attr-defined]
+                update_progress(
+                    f"🔍 Party: {party.name if party else 'None'}, URL: {party.members_list_url if party else 'None'}"
+                )
+
+                # Execute use case (this IS async)
+                results = self._run_async(use_case.execute(request))
+                update_progress(
+                    f"🔍 Execute completed. Results type: {type(results)}, length: {len(results)}"
+                )
+
+                # Debug: Show first result if exists
+                if results:
+                    update_progress(
+                        f"🔍 First result: {results[0].name if hasattr(results[0], 'name') else str(results[0])}"
+                    )
+                else:
+                    update_progress("🔍 Results list is empty")
+
+            except Exception as exec_error:
+                update_progress(
+                    f"❌ Exception during execute: {type(exec_error).__name__}: {str(exec_error)}"
+                )
+                import traceback
+
+                update_progress(f"🔍 Traceback: {traceback.format_exc()}")
+                raise
+
+            # Parse extraction results and create appropriate message
+            saved_count = len(results)
+
+            # Check logs for extraction summary
+            # If saved_count is 0, check if there were duplicates
+            if saved_count == 0:
+                # Try to get existing records to show they were already extracted
+                from src.infrastructure.persistence import (
+                    extracted_politician_repository_impl as extracted_repo,
+                )
+
+                repo = RepositoryAdapter(
+                    extracted_repo.ExtractedPoliticianRepositoryImpl
+                )
+                existing = repo.get_by_party(party_id)  # type: ignore[attr-defined]
+
+                if existing and len(existing) > 0:
+                    message = (
+                        f"ℹ️ 既に{len(existing)}人が抽出済みです（重複のためスキップ）"
+                    )
+                else:
+                    message = "⚠️ 政治家が抽出されませんでした"
+            else:
+                message = f"✅ {saved_count}人の政治家情報を新規抽出しました"
+
+            update_progress(message)
 
             return {
                 "success": True,
-                "message": f"✅ {len(results)}人の政治家情報を抽出しました",
-                "count": len(results),
+                "message": message,
+                "count": saved_count,
                 "politicians": results,
             }
 
