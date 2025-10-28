@@ -21,3 +21,6 @@ docker/docker-compose.override.yml
 
 # Playwright MCP screenshots (動作確認用の画像を無視)
 .playwright-mcp/
+
+# Local knowledge accumulation layer
+_docs/
