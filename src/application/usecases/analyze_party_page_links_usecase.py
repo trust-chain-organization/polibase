@@ -161,16 +161,17 @@ class AnalyzePartyPageLinksUseCase:
             LinkType.CITY_LIST,
             LinkType.MEMBER_LIST,
         }
+        threshold = input_dto.min_confidence_threshold
         member_list_urls = [
             c.url
             for c in classification_result.classifications
-            if c.link_type in hierarchical_types and c.confidence >= 0.7
+            if c.link_type in hierarchical_types and c.confidence >= threshold
         ]
 
         profile_urls = [
             c.url
             for c in classification_result.classifications
-            if c.link_type == LinkType.MEMBER_PROFILE and c.confidence >= 0.7
+            if c.link_type == LinkType.MEMBER_PROFILE and c.confidence >= threshold
         ]
 
         logger.info(

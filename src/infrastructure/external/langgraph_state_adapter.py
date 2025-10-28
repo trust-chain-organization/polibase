@@ -1,6 +1,7 @@
 """Adapter to convert between domain state and LangGraph state."""
 
 import copy
+from dataclasses import asdict
 from typing import Annotated, Any
 
 from langchain_core.messages import BaseMessage, HumanMessage
@@ -8,6 +9,7 @@ from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
 from src.domain.entities.party_scraping_state import PartyScrapingState
+from src.domain.value_objects.scraping_config import ScrapingConfig
 
 
 class LangGraphPartyScrapingState(TypedDict):
@@ -28,6 +30,7 @@ class LangGraphPartyScrapingState(TypedDict):
     pending_urls: list[tuple[str, int]]
     messages: Annotated[list[BaseMessage], add_messages]
     error_message: str | None
+    scraping_config: dict[str, Any]  # ScrapingConfig as dict
 
 
 class LangGraphPartyScrapingStateOptional(LangGraphPartyScrapingState, total=False):
@@ -67,6 +70,7 @@ def domain_to_langgraph_state(
             HumanMessage(content=f"Starting scraping from {domain_state.current_url}")
         ],
         "error_message": domain_state.error_message,
+        "scraping_config": asdict(domain_state.scraping_config),
     }
 
     return lg_state
@@ -85,11 +89,16 @@ def langgraph_to_domain_state(
     """
     # Create domain state - note that we can't directly assign to private fields
     # We need to use the public API to populate the state
+    # Reconstruct ScrapingConfig from dict
+    config_dict = lg_state["scraping_config"]
+    scraping_config = ScrapingConfig(**config_dict)
+
     domain_state = PartyScrapingState(
         current_url=lg_state["current_url"],
         party_name=lg_state["party_name"],
         party_id=lg_state["party_id"],
         max_depth=lg_state["max_depth"],
+        scraping_config=scraping_config,
         depth=lg_state["depth"],
         error_message=lg_state.get("error_message"),
     )

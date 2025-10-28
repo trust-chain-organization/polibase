@@ -55,6 +55,8 @@ def create_explore_children_node(
         max_depth = state.get("max_depth", 2)
         pending_urls = state.get("pending_urls", [])
         visited_urls = state.get("visited_urls", set())
+        scraping_config = state.get("scraping_config", {})
+        min_confidence_threshold = scraping_config.get("min_confidence_threshold", 0.7)
 
         if not current_url:
             logger.warning("No current URL to explore children from")
@@ -76,6 +78,7 @@ def create_explore_children_node(
                 current_url=current_url,
                 party_name=party_name,
                 context=f"Exploring children at depth {depth}",
+                min_confidence_threshold=min_confidence_threshold,
             )
 
             print(
