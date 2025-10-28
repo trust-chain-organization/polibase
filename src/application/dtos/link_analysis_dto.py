@@ -14,6 +14,9 @@ class AnalyzeLinksInputDTO(BaseModel):
     current_url: str = Field(description="URL of the current page")
     party_name: str = Field(default="", description="Name of the political party")
     context: str = Field(default="", description="Additional context about the page")
+    min_confidence_threshold: float = Field(
+        default=0.7, description="Minimum confidence threshold for link classification"
+    )
 
 
 class LinkClassificationDTO(BaseModel):

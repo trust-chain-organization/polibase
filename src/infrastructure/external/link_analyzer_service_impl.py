@@ -37,6 +37,7 @@ class LinkAnalyzerServiceImpl(ILinkAnalyzerService):
         current_url: str,
         party_name: str,
         context: str = "",
+        min_confidence_threshold: float = 0.7,
     ) -> list[str]:
         """Analyze HTML and return high-confidence member list URLs.
 
@@ -45,6 +46,8 @@ class LinkAnalyzerServiceImpl(ILinkAnalyzerService):
             current_url: URL of the current page
             party_name: Name of the party (for context)
             context: Additional context about the page (optional)
+            min_confidence_threshold: Minimum confidence for link
+                classification (default: 0.7)
 
         Returns:
             List of URLs classified as member list pages
@@ -63,6 +66,7 @@ class LinkAnalyzerServiceImpl(ILinkAnalyzerService):
             current_url=current_url,
             party_name=party_name,
             context=context,
+            min_confidence_threshold=min_confidence_threshold,
         )
 
         # Execute use case

@@ -271,12 +271,13 @@ class LangGraphPartyScrapingAgentWithClassification(IPartyScrapingAgent):
 
         try:
             # Invoke the LangGraph agent asynchronously
-            # Set high recursion limit for hierarchical scraping:
-            # - 47 prefectures at depth 1
-            # - Each prefecture may have 10-50 cities/municipalities
-            # - Total nodes could be 47 + (47 * avg_cities) = 200-500+
+            # Use recursion_limit from scraping_config for flexibility:
+            # - Large parties (e.g., JCP): 500 for 47 prefectures + cities
+            # - Small parties: 50-100 for fewer pages
+            # - Testing: 10 to limit API calls
+            recursion_limit = initial_state.scraping_config.recursion_limit
             result_lg_state = await self._compiled_agent.ainvoke(
-                lg_state, config={"recursion_limit": 500}
+                lg_state, config={"recursion_limit": recursion_limit}
             )
 
             # Convert back to domain state

@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urlparse, urlunparse
 
 from src.domain.value_objects.politician_member_data import PoliticianMemberData
+from src.domain.value_objects.scraping_config import ScrapingConfig
 
 
 @dataclass
@@ -21,6 +22,7 @@ class PartyScrapingState:
         party_name: Name of the political party being scraped
         party_id: Database ID of the political party
         max_depth: Maximum allowed navigation depth (0 = root level)
+        scraping_config: Configuration for scraping behavior
         visited_urls: Set of normalized URLs already visited
         pending_urls: Queue of URLs to visit with their depth levels
         extracted_members: List of politician data extracted so far
@@ -32,6 +34,7 @@ class PartyScrapingState:
     party_name: str
     party_id: int
     max_depth: int
+    scraping_config: ScrapingConfig = field(default_factory=ScrapingConfig)
     _visited_urls: set[str] = field(default_factory=set)
     _pending_urls: deque[tuple[str, int]] = field(default_factory=deque)
     _extracted_members: list[PoliticianMemberData] = field(default_factory=list)

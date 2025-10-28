@@ -110,6 +110,7 @@ class MockLinkAnalyzerService(ILinkAnalyzerService):
         current_url: str,
         party_name: str,
         context: str = "",
+        min_confidence_threshold: float = 0.7,
     ) -> list[str]:
         """Return mock link analysis results."""
         if current_url in self.link_responses:

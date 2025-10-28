@@ -313,6 +313,12 @@ class TestLangGraphPartyScrapingAgent:
             "extracted_members": [{"name": "Mocked Member"}],
             "messages": [],
             "error_message": None,
+            "scraping_config": {
+                "max_depth": 2,
+                "recursion_limit": 100,
+                "min_confidence_threshold": 0.7,
+                "max_pages": 1000,
+            },
         }
 
         with patch.object(agent, "_compiled_agent") as mock_agent:
