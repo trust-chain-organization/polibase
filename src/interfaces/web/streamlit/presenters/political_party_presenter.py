@@ -230,7 +230,10 @@ class PoliticalPartyPresenter(CRUDPresenter[list[PoliticalParty]]):
         }
 
     def extract_politicians(
-        self, party_id: int, dry_run: bool = False, progress_callback=None
+        self,
+        party_id: int,
+        dry_run: bool = False,
+        progress_callback: Any = None,
     ) -> dict[str, Any]:
         """Extract politicians from party members list URL.
 
