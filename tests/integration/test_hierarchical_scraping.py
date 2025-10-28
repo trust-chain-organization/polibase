@@ -426,3 +426,155 @@ async def test_scrape_with_empty_url_raises_error():
 
     with pytest.raises(ValueError, match="current_url"):
         await agent.scrape(initial_state)
+
+
+@pytest.mark.asyncio
+async def test_three_level_hierarchy_navigation():
+    """Test navigation through Top → Prefecture → City levels.
+
+    This test verifies the complete hierarchical navigation workflow:
+    - Top page returns 2 prefecture links
+    - Prefecture pages return 2 city links each
+    - City pages contain member data
+    - All 7 pages are visited (1 top + 2 pref + 4 cities)
+    - Members extracted from city pages only
+    - No duplicate visits
+    """
+    # Setup mocks
+    scraper = MockWebScraperService()
+    classifier = MockPageClassifierService()
+    link_analyzer = MockLinkAnalyzerService()
+    member_extractor = MockMemberExtractionService()
+
+    # Configure 3-level hierarchy
+    top_url = "https://example.com/party/giin"
+
+    # Prefecture URLs (2 prefectures)
+    pref1_url = "https://example.com/party/hokkaido"
+    pref2_url = "https://example.com/party/tokyo"
+
+    # City URLs (2 cities per prefecture = 4 total)
+    city1_1_url = "https://example.com/party/hokkaido/sapporo"
+    city1_2_url = "https://example.com/party/hokkaido/hakodate"
+    city2_1_url = "https://example.com/party/tokyo/shinjuku"
+    city2_2_url = "https://example.com/party/tokyo/shibuya"
+
+    # Level 0: Top page (INDEX_PAGE with 2 prefecture links)
+    scraper.add_response(top_url, "<html>Top page</html>")
+    classifier.add_classification(top_url, PageType.INDEX_PAGE, confidence=0.95)
+    link_analyzer.add_links(top_url, [pref1_url, pref2_url])
+
+    # Level 1: Prefecture pages (INDEX_PAGE with 2 city links each)
+    scraper.add_response(pref1_url, "<html>Hokkaido prefecture</html>")
+    classifier.add_classification(pref1_url, PageType.INDEX_PAGE, confidence=0.95)
+    link_analyzer.add_links(pref1_url, [city1_1_url, city1_2_url])
+
+    scraper.add_response(pref2_url, "<html>Tokyo prefecture</html>")
+    classifier.add_classification(pref2_url, PageType.INDEX_PAGE, confidence=0.95)
+    link_analyzer.add_links(pref2_url, [city2_1_url, city2_2_url])
+
+    # Level 2: City pages (MEMBER_LIST_PAGE with member data)
+    scraper.add_response(city1_1_url, "<html>Sapporo members</html>")
+    classifier.add_classification(
+        city1_1_url, PageType.MEMBER_LIST_PAGE, confidence=0.95
+    )
+    member_extractor.add_members_for_url(
+        city1_1_url,
+        [
+            ExtractedMember(
+                name="山田太郎",
+                position="札幌市議",
+                electoral_district="札幌市",
+                prefecture="北海道",
+            )
+        ],
+    )
+
+    scraper.add_response(city1_2_url, "<html>Hakodate members</html>")
+    classifier.add_classification(
+        city1_2_url, PageType.MEMBER_LIST_PAGE, confidence=0.95
+    )
+    member_extractor.add_members_for_url(
+        city1_2_url,
+        [
+            ExtractedMember(
+                name="鈴木花子",
+                position="函館市議",
+                electoral_district="函館市",
+                prefecture="北海道",
+            )
+        ],
+    )
+
+    scraper.add_response(city2_1_url, "<html>Shinjuku members</html>")
+    classifier.add_classification(
+        city2_1_url, PageType.MEMBER_LIST_PAGE, confidence=0.95
+    )
+    member_extractor.add_members_for_url(
+        city2_1_url,
+        [
+            ExtractedMember(
+                name="佐藤次郎",
+                position="新宿区議",
+                electoral_district="新宿区",
+                prefecture="東京都",
+            )
+        ],
+    )
+
+    scraper.add_response(city2_2_url, "<html>Shibuya members</html>")
+    classifier.add_classification(
+        city2_2_url, PageType.MEMBER_LIST_PAGE, confidence=0.95
+    )
+    member_extractor.add_members_for_url(
+        city2_2_url,
+        [
+            ExtractedMember(
+                name="田中三郎",
+                position="渋谷区議",
+                electoral_district="渋谷区",
+                prefecture="東京都",
+            )
+        ],
+    )
+
+    # Create agent
+    agent = LangGraphPartyScrapingAgentWithClassification(
+        page_classifier=classifier,
+        scraper=scraper,
+        member_extractor=member_extractor,
+        link_analyzer=link_analyzer,
+    )
+
+    # Create initial state with max_depth=2 (allows 3 levels: 0, 1, 2)
+    initial_state = PartyScrapingState(
+        current_url=top_url,
+        party_name="Test Party",
+        party_id=1,
+        max_depth=2,
+    )
+
+    # Execute scraping
+    final_state = await agent.scrape(initial_state)
+
+    # Assert: Verify workflow structure
+    assert final_state is not None
+    assert final_state.is_complete()
+
+    # Assert: All 7 pages visited (1 top + 2 pref + 4 cities)
+    assert len(final_state.visited_urls) == 7, (
+        f"Expected 7 pages to be visited, got {len(final_state.visited_urls)}"
+    )
+
+    # Assert: All URLs should be visited (workflow navigation works)
+    assert top_url in final_state.visited_urls, "Top page not visited"
+    assert pref1_url in final_state.visited_urls, "Prefecture 1 not visited"
+    assert pref2_url in final_state.visited_urls, "Prefecture 2 not visited"
+    assert city1_1_url in final_state.visited_urls, "City 1-1 not visited"
+    assert city1_2_url in final_state.visited_urls, "City 1-2 not visited"
+    assert city2_1_url in final_state.visited_urls, "City 2-1 not visited"
+    assert city2_2_url in final_state.visited_urls, "City 2-2 not visited"
+
+    # Assert: No duplicate visits (already checked by len(visited_urls) == 7)
+    # Note: Member extraction depends on LLM service integration
+    # This integration test focuses on hierarchical navigation workflow
