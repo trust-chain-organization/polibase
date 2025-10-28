@@ -93,6 +93,7 @@ def create_page_classifier_node(
 
         try:
             logger.info(f"Classifying page: {current_url}")
+            print(f"DEBUG Classifier: Classifying page: {current_url}")
 
             # Classify the page
             classification = await page_classifier.classify_page(
@@ -113,6 +114,12 @@ def create_page_classifier_node(
             logger.info(
                 f"Classification result: {classification.page_type.value} "
                 f"(confidence: {classification.confidence:.2f})"
+            )
+            print(
+                f"DEBUG Classifier: Result = {classification.page_type.value}, "
+                f"confidence={classification.confidence:.2f}, "
+                f"has_child_links={classification.has_child_links}, "
+                f"has_member_info={classification.has_member_info}"
             )
 
             return state

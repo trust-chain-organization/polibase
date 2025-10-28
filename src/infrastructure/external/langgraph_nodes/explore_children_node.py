@@ -78,6 +78,14 @@ def create_explore_children_node(
                 context=f"Exploring children at depth {depth}",
             )
 
+            print(
+                f"DEBUG ExploreChildren: Found {len(member_list_urls)} links from {current_url}"
+            )
+            if member_list_urls:
+                print(
+                    f"DEBUG ExploreChildren: Links = {member_list_urls[:5]}"
+                )  # Show first 5
+
             # Add member_list_urls to pending queue (they are high-confidence children)
             added_count = 0
             for url in member_list_urls:

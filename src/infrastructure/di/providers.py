@@ -473,11 +473,33 @@ class UseCaseContainer(containers.DeclarativeContainer):
         llm_service=services.llm_service,
     )
 
+    # Define analyze_party_page_links_usecase, link_analyzer_service, and party_scraping_agent
+    # before scrape_politicians_usecase to resolve dependencies
+    analyze_party_page_links_usecase = providers.Factory(
+        AnalyzePartyPageLinksUseCase,
+        html_extractor=services.html_link_extractor_service,
+        link_classifier=services.llm_link_classifier_service,
+        link_analysis_service=services.link_analysis_domain_service,
+    )
+
+    link_analyzer_service: providers.Provider[ILinkAnalyzerService] = providers.Factory(
+        LinkAnalyzerServiceImpl,
+        link_analysis_usecase=analyze_party_page_links_usecase,
+    )
+
+    party_scraping_agent: providers.Provider[IPartyScrapingAgent] = providers.Factory(
+        LangGraphPartyScrapingAgentWithClassification,
+        page_classifier=services.page_classifier_service,
+        scraper=services.web_scraper_service,
+        member_extractor=services.party_member_extraction_service,
+        link_analyzer=link_analyzer_service,
+    )
+
     scrape_politicians_usecase = providers.Factory(
         ScrapePoliticiansUseCase,
         political_party_repository=repositories.political_party_repository,
         extracted_politician_repository=repositories.extracted_politician_repository,
-        web_scraper_service=services.web_scraper_service,
+        party_scraping_agent=party_scraping_agent,
     )
 
     manage_conference_members_usecase = providers.Factory(
@@ -540,26 +562,4 @@ class UseCaseContainer(containers.DeclarativeContainer):
         proposal_judge_repository=repositories.proposal_judge_repository,
         web_scraper_service=services.web_scraper_service,
         llm_service=services.llm_service,
-    )
-
-    analyze_party_page_links_usecase = providers.Factory(
-        AnalyzePartyPageLinksUseCase,
-        html_extractor=services.html_link_extractor_service,
-        link_classifier=services.llm_link_classifier_service,
-        link_analysis_service=services.link_analysis_domain_service,
-    )
-
-    # Infrastructure services that depend on use cases
-    # Note: These are placed here to resolve circular dependencies
-    link_analyzer_service: providers.Provider[ILinkAnalyzerService] = providers.Factory(
-        LinkAnalyzerServiceImpl,
-        link_analysis_usecase=analyze_party_page_links_usecase,
-    )
-
-    party_scraping_agent: providers.Provider[IPartyScrapingAgent] = providers.Factory(
-        LangGraphPartyScrapingAgentWithClassification,
-        page_classifier=services.page_classifier_service,
-        scraper=services.web_scraper_service,
-        member_extractor=services.party_member_extraction_service,
-        link_analyzer=link_analyzer_service,
     )

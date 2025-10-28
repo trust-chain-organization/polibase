@@ -42,6 +42,11 @@ def should_explore_children(state: LangGraphPartyScrapingStateOptional) -> str:
         f"max_depth={max_depth}, "
         f"pending_count={len(pending_urls)}"
     )
+    print(
+        f"DEBUG Decision: page_type={page_type_str}, "
+        f"confidence={confidence:.2f}, depth={depth}/{max_depth}, "
+        f"pending={len(pending_urls)}"
+    )
 
     # Check if max depth reached
     if depth >= max_depth:
@@ -64,17 +69,35 @@ def should_explore_children(state: LangGraphPartyScrapingStateOptional) -> str:
         )
         return _move_to_next_url(state)
 
+    # Check for child links to prioritize exploration
+    has_child_links = classification.get("has_child_links", False)
+
     # Make decision based on page type
     if page_type == PageType.INDEX_PAGE:
         logger.info("Index page detected, will explore child links")
+        print("DEBUG Decision: INDEX_PAGE → explore_children")
         return "explore_children"
 
     elif page_type == PageType.MEMBER_LIST_PAGE:
-        logger.info("Member list page detected, will extract members")
-        return "extract_members"
+        # If member list page has child links, explore them first
+        # This handles cases where a page has both member info and hierarchical structure
+        if has_child_links:
+            logger.info(
+                "Member list page with child links detected, "
+                "prioritizing exploration for deeper member discovery"
+            )
+            print(
+                "DEBUG Decision: MEMBER_LIST_PAGE + has_child_links → explore_children"
+            )
+            return "explore_children"
+        else:
+            logger.info("Member list page detected, will extract members")
+            print("DEBUG Decision: MEMBER_LIST_PAGE → extract_members")
+            return "extract_members"
 
     else:  # PageType.OTHER
         logger.info("Other page type, skipping")
+        print("DEBUG Decision: OTHER → skip/continue")
         return _move_to_next_url(state)
 
 
