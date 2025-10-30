@@ -8,290 +8,49 @@ Polibase is a Political Activity Tracking Application (政治活動追跡アプ�
 
 ## Key Commands
 
-### Environment Setup
+For comprehensive command reference including setup, application execution, testing, code quality, and database management, see:
+
+**📖 [Command Reference](.claude/skills/polibase-commands/)**
+
+### Quick Start
+
 ```bash
 # First time setup
-cp .env.example .env  # Configure GOOGLE_API_KEY for Gemini API
+cp .env.example .env  # Configure GOOGLE_API_KEY
+just up               # Start environment
 
-# Docker起動（重要: docker-compose.override.ymlがある場合は必ず両方を指定）
-# git worktreeを使用している場合:
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml up -d
-# 通常の場合（override.ymlがない場合）:
-docker compose -f docker/docker-compose.yml up -d
+# Run application
+just streamlit        # Launch web UI
+just monitoring       # Launch monitoring dashboard
 
-./test-setup.sh
+# Development
+just test             # Run tests
+just format && just lint  # Format and lint code
 
-# Install dependencies for local development
-uv sync
-
-# Google Cloud Storage setup (optional)
-gcloud auth application-default login  # Authenticate for GCS access
-# Edit .env to set GCS_BUCKET_NAME and GCS_UPLOAD_ENABLED=true
+# Database
+just db               # Connect to PostgreSQL
+./reset-database.sh   # Reset database
 ```
 
-#### Port Configuration with docker-compose.override.yml
-git worktreeを使用している場合、`docker/docker-compose.override.yml`が自動生成されポート番号が上書きされます：
-- このファイルは各worktreeで異なるポート番号を使用し、ポートの衝突を防ぎます
-- 実際のポート番号は`docker ps`で確認するか、`docker/docker-compose.override.yml`を参照してください
-- 例: Streamlitが9291番、APIが8790番、Monitoringが9292番など（worktreeによって異なります）
-- コンテナ内部のポート番号（8501など）は変わりませんが、ホストからアクセスする際のポート番号が変更されます
-
-**重要**:
-1. **必ずdocker-compose.override.ymlも指定**: git worktreeを使用している場合は、すべてのdocker composeコマンドで`-f docker/docker-compose.override.yml`を追加してください
-2. **ポート番号の確認**: 実際のポート番号は`docker ps`または`docker/docker-compose.override.yml`で確認してください
-
-### Quick Start with Just (推奨)
-
-[Just](https://github.com/casey/just)コマンドランナーを使用すると、git worktreeの検出とdocker-compose.override.ymlの自動適用が行われます：
+### Most Common Commands
 
 ```bash
-# Basic commands
-just up        # Start containers and launch Streamlit (worktree自動検出)
-just down      # Stop and remove containers
-just db        # Connect to database
-just test      # Run tests with type checking
-just format    # Format code with ruff
-just lint      # Lint and auto-fix code
-
-# Additional commands
-just monitoring         # Launch monitoring dashboard
-just process-minutes    # Process meeting minutes
-just pytest            # Run pytest only
-just logs              # View container logs
-just ports             # Show current port configuration
-just help              # Show CLI help
-just exec <command>    # Execute command in container
-
-# List all available commands
-just --list
+just up                                    # Start containers
+just exec uv run polibase streamlit        # Launch Streamlit UI
+just exec uv run polibase process-minutes  # Process meeting minutes
+just exec uv run polibase scrape-politicians --all-parties  # Scrape politicians
+just test                                  # Run tests with type checking
+just format                                # Format code
+just db                                    # Connect to database
+just down                                  # Stop containers
 ```
 
-**justコマンドの利点**:
-- git worktreeを自動検出し、必要に応じて`setup-worktree-ports.sh`を実行
-- `docker-compose.override.yml`が存在する場合は自動的に含める
-- コマンドが短く覚えやすい
-- 一貫性のある実行環境を保証
+For detailed command documentation with all options, workflows, and examples, see `.claude/skills/polibase-commands/reference.md`.
 
-### Running the Application
-
-#### Using the Unified CLI (Recommended)
-```bash
-# Show all available commands
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase --help
-
-# Process meeting minutes
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase process-minutes
-
-# Process minutes from GCS (using meeting ID)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
-
-# Scrape politician information from party websites
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --all-parties
-
-# Update speaker links with LLM
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase update-speakers --use-llm
-
-# Launch meeting management web UI
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase streamlit
-
-# Launch monitoring dashboard for data coverage visualization
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase monitoring
-
-# Scrape meeting minutes from web
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-minutes "URL"
-
-# Scrape with Google Cloud Storage upload (automatically saves GCS URIs to meetings table)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
-
-# Batch scrape multiple minutes from kaigiroku.net
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase batch-scrape --tenant kyoto
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase batch-scrape --tenant osaka
-
-# Batch scrape with GCS upload
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
-
-# Extract speakers from meeting minutes
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-speakers
-
-# Scrape politician information from party websites
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --all-parties
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --party-id 5
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --all-parties --dry-run
-
-# Hierarchical scraping with Agent (experimental)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --party-id 5 --hierarchical
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --party-id 5 --hierarchical --max-depth 5
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase scrape-politicians --all-parties --hierarchical --max-depth 3 --dry-run
-
-# Conference member extraction (3-step process)
-# Step 1: Extract members from conference URLs
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-conference-members --conference-id 185
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-conference-members --force  # Re-extract all
-
-# Step 2: Match extracted members with existing politicians
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase match-conference-members --conference-id 185
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase match-conference-members  # Process all pending
-
-# Step 3: Create politician affiliations from matched data
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-affiliations --conference-id 185
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-affiliations --start-date 2024-01-01
-
-# Check extraction and matching status
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase member-status --conference-id 185
-
-# Parliamentary group member extraction (3-step process)
-# Step 1: Extract members from parliamentary group URLs
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-parliamentary-group-members --parliamentary-group-id 1
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase extract-parliamentary-group-members --force  # Re-extract all
-
-# Step 2: Match extracted members with existing politicians
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase match-parliamentary-group-members --parliamentary-group-id 1
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase match-parliamentary-group-members  # Process all pending
-
-# Step 3: Create parliamentary group memberships from matched data
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-parliamentary-group-affiliations --parliamentary-group-id 1
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-parliamentary-group-affiliations --start-date 2024-01-01
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase create-parliamentary-group-affiliations --min-confidence 0.8  # Higher confidence threshold
-
-# Check extraction and matching status for parliamentary groups
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase parliamentary-group-member-status --parliamentary-group-id 1
-
-# Show coverage statistics for governing bodies
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase coverage
-```
-
-#### Direct Module Execution (Legacy)
-```bash
-# Minutes Division Processing
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python -m src.process_minutes
-
-# Minutes Division Processing from GCS
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python -m src.process_minutes --meeting-id 123
-
-
-# LLM-based Speaker Matching
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python update_speaker_links_llm.py
-```
-
-### Testing
-```bash
-# Run tests
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run pytest
-
-# Test database connection
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python -c "from src.config.database import test_connection; test_connection()"
-
-# Run LLM evaluation tests (local - uses mock by default)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase evaluate --all
-# Note: Evaluation tests are excluded from CI to save API costs
-# Run manually via GitHub Actions workflow_dispatch for real LLM testing
-```
-
-#### Testing Guidelines
+### Testing Guidelines
 - **外部サービスへの依存を避ける**: テストでは外部LLMサービス（Google Gemini API）やその他のAPIに実際にアクセスしてはいけません
 - **モックの使用**: 外部サービスとの連携をテストする場合は、必ずモックを使用してください
-  - LLMサービスのレスポンスはモックで作成
-  - APIキーの検証もモックで実施
-  - ネットワーク接続は不要
 - **テストの独立性**: テストは環境（CI/ローカル）に依存せず、常に同じ結果を返すようにしてください
-- **統合テスト**: 実際のサービスとの統合をテストする必要がある場合は、別途手動テストとして実施し、自動テストには含めません
-
-### Code Formatting and Quality
-
-#### Ruff (Code Formatter and Linter)
-```bash
-# Format code
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run --frozen ruff format .
-
-# Check code style
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run --frozen ruff check .
-
-# Fix auto-fixable issues
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run --frozen ruff check . --fix
-```
-
-**Critical Ruff Rules:**
-- Line length: 88 characters
-- Import sorting (I001)
-- Unused imports removal
-- Line wrapping conventions:
-  - Strings: use parentheses for multi-line
-  - Function calls: multi-line with proper indentation
-  - Imports: split into multiple lines when needed
-
-#### Type Checking
-```bash
-# Run type checking with pyright
-# NOTE: pyrightを実行する際は、Dockerコンテナ内ではなくローカル環境で実行してください
-# Docker環境では設定ファイルの読み込みに問題が発生することがあります
-uv run --frozen pyright
-
-# 特定のフォルダのみチェックする場合
-uv run --frozen pyright src/database/
-
-# pyrightの出力が多い場合、特定のフォルダのエラーのみを抽出
-uv run --frozen pyright 2>&1 | grep -A5 -B5 "src/database/"
-```
-
-**Requirements:**
-- Explicit `None` checks for `Optional` types
-- Proper type narrowing for strings
-- Version warnings can be ignored if type checks pass
-- pyrightconfig.json で設定されたルールに従う
-
-#### Pre-commit Hooks
-```bash
-# Install pre-commit hooks (first time only)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run pre-commit install
-
-# Run pre-commit manually on all files
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run pre-commit run --all-files
-
-# Update pre-commit hooks to latest versions
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run pre-commit autoupdate
-```
-
-**Pre-commit Configuration:**
-- Config file: `.pre-commit-config.yaml`
-- Runs automatically on `git commit`
-- Tools included:
-  - Prettier: for YAML/JSON formatting
-  - Ruff: for Python formatting and linting
-  - Standard hooks: trailing whitespace, EOF fixer, etc.
-
-**Updating Ruff in pre-commit:**
-1. Check latest version on PyPI
-2. Update `rev` in `.pre-commit-config.yaml`
-3. Commit config changes first before running
-
-### Database Management
-```bash
-# Access PostgreSQL
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec postgres psql -U polibase_user -d polibase_db
-
-# Backup/Restore (with GCS support)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database backup               # Backup to local and GCS
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database backup --no-gcs      # Backup to local only
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database restore backup.sql   # Restore from local
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database restore gs://bucket/backup.sql  # Restore from GCS
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database list                 # List all backups
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run polibase database list --no-gcs        # List local backups only
-
-# Legacy backup scripts (local only)
-./backup-database.sh backup
-./backup-database.sh restore database/backups/[filename]
-
-# Reset database
-./reset-database.sh
-
-# Apply new migrations manually (if needed)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase cat /app/database/migrations/013_create_llm_processing_history.sql | docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec -T postgres psql -U polibase_user -d polibase_db
-
-# Important: When adding new migration files
-# 1. Create migration file in database/migrations/ with sequential numbering (e.g., 016_*.sql)
-# 2. Add the migration to database/02_run_migrations.sql to ensure it runs on reset-database.sh
-```
 
 ## Architecture
 
