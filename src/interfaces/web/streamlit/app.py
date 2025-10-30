@@ -32,6 +32,7 @@ from src.interfaces.web.streamlit.views.political_parties_view import (
 )
 from src.interfaces.web.streamlit.views.politicians_view import render_politicians_page
 from src.interfaces.web.streamlit.views.processes_view import render_processes_page
+from src.interfaces.web.streamlit.views.proposals_view import render_proposals_page
 
 # Legacy pages have been removed (migrated to Clean Architecture)
 # Setting to None to maintain compatibility during full migration
@@ -90,6 +91,7 @@ def main():
             "政治家管理",
             "政治家レビュー",
             "議員団管理",
+            "議案管理",
             "発言レコード一覧",
             "発言・発言者管理",
             "処理実行",
@@ -121,6 +123,9 @@ def main():
     elif page == "議員団管理":
         # ✅ Migrated to Clean Architecture
         render_parliamentary_groups_page()
+    elif page == "議案管理":
+        # ✅ Migrated to Clean Architecture
+        render_proposals_page()
     elif page == "発言レコード一覧":
         # ✅ Migrated to Clean Architecture
         render_conversations_page()
@@ -145,6 +150,7 @@ def main():
     - ✅ 政治家管理
     - ✅ 政治家レビュー
     - ✅ 議員団管理
+    - ✅ 議案管理
     - ✅ 発言・発言者管理
     - ✅ 発言レコード一覧
     - ✅ 処理実行
@@ -172,6 +178,7 @@ def render_home_page():
     - **開催主体管理**: 国、都道府県、市町村などの開催主体を管理
     - **議員団管理**: 議員団・会派の情報を管理
     - **政治家管理**: 政治家の情報を管理
+    - **議案管理**: 議案の情報を自動収集・管理
     - **発言管理**: 会議での発言記録を管理
     - **処理実行**: 各種バッチ処理の実行
 
@@ -229,13 +236,13 @@ def render_home_page():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("移行完了ページ", "12", "✅")
+        st.metric("移行完了ページ", "13", "✅")
 
     with col2:
         st.metric("移行中ページ", "0", "✅")
 
     with col3:
-        st.metric("進捗率", "92.3%", "🎉")
+        st.metric("進捗率", "100%", "🎉")
 
 
 if __name__ == "__main__":
