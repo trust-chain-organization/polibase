@@ -15,6 +15,56 @@ This skill activates automatically when:
 - User mentions "test", "pytest", or "testing"
 - Reviewing existing test code
 
+## ⚡ TDD Workflow (Test-First Development)
+
+**ALWAYS write tests BEFORE implementation!**
+
+### Red-Green-Refactor Cycle
+
+1. **🔴 Red**: Write a failing test
+   ```python
+   # Write test first - it will fail (no implementation yet)
+   @pytest.mark.asyncio
+   async def test_create_politician_saves_to_repository():
+       mock_repo = AsyncMock(spec=IPoliticianRepository)
+       mock_repo.create.return_value = Politician(id=1, name="山田太郎")
+
+       usecase = CreatePoliticianUseCase(mock_repo)
+       result = await usecase.execute(CreatePoliticianInputDTO(name="山田太郎"))
+
+       mock_repo.create.assert_awaited_once()
+   ```
+
+2. **🟢 Green**: Write minimal code to pass
+   ```python
+   # Now implement just enough to make test pass
+   class CreatePoliticianUseCase:
+       async def execute(self, input_dto):
+           politician = Politician(name=input_dto.name)
+           await self.repository.create(politician)
+   ```
+
+3. **♻️ Refactor**: Improve code while keeping tests green
+   ```python
+   # Refactor with confidence - tests verify behavior
+   class CreatePoliticianUseCase:
+       async def execute(self, input_dto):
+           # Add validation
+           if not input_dto.name:
+               raise ValueError("Name required")
+           # Extract to method
+           politician = self._create_entity(input_dto)
+           return await self.repository.create(politician)
+   ```
+
+### TDD Benefits
+- ✅ Forces you to think about API design before implementation
+- ✅ Tests serve as documentation
+- ✅ Refactoring is safe (tests catch regressions)
+- ✅ Code is naturally testable (designed for testing)
+
+**Remember**: If you write implementation first, you're not doing TDD!
+
 ## 🚫 CRITICAL: Never Call External Services
 
 **ABSOLUTELY FORBIDDEN in tests:**
@@ -61,15 +111,38 @@ tests/
 
 ### 1. Mocking External Services
 
-**Always mock:**
+**Always use `AsyncMock` with `spec=` parameter:**
 ```python
 from unittest.mock import AsyncMock
 
 @pytest.fixture
 def mock_llm_service():
+    # ALWAYS use spec= to catch typos and wrong method calls
     mock = AsyncMock(spec=ILLMService)
     mock.generate_text.return_value = "Mocked response"
     return mock
+```
+
+**⚠️ Why `spec=` is CRITICAL:**
+```python
+# ❌ WITHOUT spec= - typos go undetected
+mock = AsyncMock()
+await mock.genrate_text("prompt")  # Typo! Test still passes!
+
+# ✅ WITH spec= - typos caught immediately
+mock = AsyncMock(spec=ILLMService)
+await mock.genrate_text("prompt")  # AttributeError!
+```
+
+**Use `AsyncMock` for async methods, never `MagicMock`:**
+```python
+# ❌ WRONG - MagicMock for async function
+mock_repo = MagicMock(spec=IPoliticianRepository)
+result = await mock_repo.create(politician)  # Error!
+
+# ✅ CORRECT - AsyncMock for async function
+mock_repo = AsyncMock(spec=IPoliticianRepository)
+result = await mock_repo.create(politician)  # Works!
 ```
 
 ### 2. Async Tests
