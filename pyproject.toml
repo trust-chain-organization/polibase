@@ -87,6 +87,9 @@ dev = [
 [tool.ruff]
 line-length = 88
 target-version = "py313"
+exclude = [
+    ".claude/skills/*/templates/*",  # Exclude skill template files
+]
 
 [tool.ruff.lint]
 select = [
