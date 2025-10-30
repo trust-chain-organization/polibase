@@ -396,7 +396,7 @@ def render_extracted_judge_row(
 
             col_info1, col_info2, col_info3 = st.columns(3)
             with col_info1:
-                st.markdown(f"**賛否**: {judge.vote or '未設定'}")
+                st.markdown(f"**賛否**: {judge.extracted_judgment or '未設定'}")
             with col_info2:
                 group_name = judge.extracted_parliamentary_group_name or "未設定"
                 st.markdown(f"**議員団**: {group_name}")
@@ -479,7 +479,7 @@ def render_judge_statistics(judges: list[ProposalJudge]):
     # Count by vote
     vote_counts = {}
     for judge in judges:
-        vote = judge.vote or "未設定"
+        vote = judge.approve or "未設定"
         vote_counts[vote] = vote_counts.get(vote, 0) + 1
 
     st.markdown("### 統計情報")
@@ -500,10 +500,10 @@ def render_final_judge_row(presenter: ProposalPresenter, judge: ProposalJudge):
 
             col_info1, col_info2 = st.columns(2)
             with col_info1:
-                st.markdown(f"**賛否**: {judge.vote or '未設定'}")
+                st.markdown(f"**賛否**: {judge.approve or '未設定'}")
             with col_info2:
-                if judge.remarks:
-                    st.markdown(f"**備考**: {judge.remarks}")
+                # ProposalJudge doesn't have remarks field, skip it
+                pass
 
         with col2:
             with st.popover("⚙️"):

@@ -331,7 +331,7 @@ class ProposalPresenter(CRUDPresenter[list[Proposal]]):
                     "ID": judge.id,
                     "政治家名": judge.extracted_politician_name or "未設定",
                     "議員団名": judge.extracted_parliamentary_group_name or "未設定",
-                    "賛否": judge.vote or "未設定",
+                    "賛否": judge.extracted_judgment or "未設定",
                     "信頼度": (
                         f"{judge.matching_confidence:.2f}"
                         if judge.matching_confidence
@@ -346,7 +346,7 @@ class ProposalPresenter(CRUDPresenter[list[Proposal]]):
     def proposal_judges_to_dataframe(self, judges: list[ProposalJudge]) -> pd.DataFrame:
         """Convert proposal judges to DataFrame for display."""
         if not judges:
-            return pd.DataFrame({"ID": [], "政治家ID": [], "賛否": [], "備考": []})
+            return pd.DataFrame({"ID": [], "政治家ID": [], "賛否": []})
 
         data = []
         for judge in judges:
@@ -354,8 +354,7 @@ class ProposalPresenter(CRUDPresenter[list[Proposal]]):
                 {
                     "ID": judge.id,
                     "政治家ID": judge.politician_id or "未設定",
-                    "賛否": judge.vote or "未設定",
-                    "備考": judge.remarks or "",
+                    "賛否": judge.approve or "未設定",
                 }
             )
 
