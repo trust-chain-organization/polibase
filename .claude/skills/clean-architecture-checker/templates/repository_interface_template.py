@@ -6,10 +6,10 @@ Replace:
 - IEntityNameRepository: Your repository interface name
 """
 
-from typing import Protocol
+from typing import Any, Protocol
 
 from src.domain.entities.entity_name import EntityName  # Replace with your entity
-from src.domain.repositories.base_repository import BaseRepository
+from src.domain.repositories.base import BaseRepository
 
 
 class IEntityNameRepository(BaseRepository[EntityName], Protocol):
@@ -21,13 +21,16 @@ class IEntityNameRepository(BaseRepository[EntityName], Protocol):
     """
 
     # Common CRUD operations inherited from BaseRepository:
-    # - async def find_by_id(self, id: int) -> EntityName | None
-    # - async def find_all(self) -> list[EntityName]
-    # - async def save(self, entity: EntityName) -> EntityName
-    # - async def delete(self, id: int) -> bool
+    # - async def get_by_id(self, entity_id: int) -> EntityName | None
+    # - async def get_all(
+    #       self, limit: int | None = None, offset: int | None = None
+    #   ) -> list[EntityName]
+    # - async def create(self, entity: EntityName) -> EntityName
+    # - async def update(self, entity: EntityName) -> EntityName
+    # - async def delete(self, entity_id: int) -> bool
 
     # Add custom query methods here
-    async def find_by_name(self, name: str) -> list[EntityName]:
+    async def get_by_name(self, name: str) -> list[EntityName]:
         """
         Find entities by name.
 
@@ -39,7 +42,7 @@ class IEntityNameRepository(BaseRepository[EntityName], Protocol):
         """
         ...
 
-    async def find_by_criteria(self, criteria: dict[str, any]) -> list[EntityName]:
+    async def get_by_criteria(self, criteria: dict[str, Any]) -> list[EntityName]:
         """
         Find entities matching specific criteria.
 

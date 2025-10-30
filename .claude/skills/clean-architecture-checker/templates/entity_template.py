@@ -7,12 +7,12 @@ Replace:
 - FieldType: Your field types
 """
 
-from dataclasses import dataclass, field
 from datetime import datetime
 
+from src.domain.entities.base import BaseEntity
 
-@dataclass
-class EntityName:
+
+class EntityName(BaseEntity):
     """
     Domain entity representing [description].
 
@@ -22,28 +22,36 @@ class EntityName:
     - [e.g., email must be unique]
     """
 
-    # Primary key (None for new entities)
-    id: int | None
+    def __init__(
+        self,
+        name: str,
+        # Add your required fields here
+        description: str | None = None,
+        # Add your optional fields here
+        id: int | None = None,
+    ) -> None:
+        """
+        Initialize entity.
 
-    # Required fields
-    name: str
-    # Add your required fields here
+        Args:
+            name: Entity name (required)
+            description: Optional description
+            id: Entity ID (None for new entities, set by database)
+        """
+        super().__init__(id)  # Initialize BaseEntity with id
+        self.name = name
+        self.description = description
+        # Add your other fields here
 
-    # Optional fields
-    description: str | None = None
-    # Add your optional fields here
-
-    # Timestamps (usually managed by repository)
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
-
-    def __post_init__(self) -> None:
-        """Validate entity state after initialization."""
-        self.validate()
+        # Note: created_at and updated_at are managed by BaseEntity
+        # and set by the repository layer, not here
 
     def validate(self) -> None:
         """
         Validate business rules.
+
+        Note: This method can be called explicitly when needed.
+        It is NOT called automatically in __init__.
 
         Raises:
             ValueError: If validation fails
@@ -70,7 +78,9 @@ class EntityName:
             raise ValueError("Name cannot be empty")
 
         self.name = new_name
-        self.updated_at = datetime.now()
+        # Note: updated_at timestamp is managed by repository layer
 
     # Add other business methods here
     # Keep them focused on this entity's state and rules
+    # Avoid complex logic that involves multiple entities
+    # (that belongs in domain services)

@@ -6,7 +6,7 @@ Replace:
 - EntityName: Your entity name
 """
 
-from src.application.dto.operation_name_dto import (
+from src.application.dtos.operation_name_dto import (
     OperationNameInputDTO,
     OperationNameOutputDTO,
 )

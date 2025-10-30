@@ -5,7 +5,7 @@ Replace:
 - OperationName: Your operation name (e.g., CreatePolitician, UpdateSpeaker)
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -25,26 +25,9 @@ class OperationNameInputDTO:
     description: str | None = None
     # Add your optional fields
 
-    def validate(self) -> None:
-        """
-        Validate input data structure and basic constraints.
-
-        Note: Complex business rules should be in domain services,
-        not in DTOs. DTOs only validate structure and basic constraints.
-
-        Raises:
-            ValueError: If validation fails
-        """
-        # Validate required fields
-        if not self.name or not self.name.strip():
-            raise ValueError("Name is required")
-
-        # Validate field constraints
-        if len(self.name) > 100:
-            raise ValueError("Name too long (max 100 characters)")
-
-        # Add your validation rules here
-        # Keep them simple - no complex business logic
+    # Note: DTOs in Polibase typically don't have validate() methods
+    # Validation can be done in the use case if needed
+    # Keep DTOs simple - they are just data carriers
 
 
 @dataclass
@@ -65,15 +48,29 @@ class OperationNameOutputDTO:
     message: str = ""
 
     # Error details (if any)
-    errors: list[str] = field(default_factory=list)
+    errors: list[str] | None = None
 
-    # Additional result data
-    # Add your output fields here
 
-    def __post_init__(self) -> None:
-        """Post-initialization validation."""
-        if self.success and self.entity_id is None:
-            raise ValueError("entity_id is required when success is True")
+@dataclass
+class GetOperationNameInputDTO:
+    """
+    Input DTO for retrieving a single entity.
+    """
+
+    entity_id: int
+
+
+@dataclass
+class GetOperationNameOutputDTO:
+    """
+    Output DTO for retrieving a single entity.
+    """
+
+    success: bool
+    entity_id: int | None = None
+    name: str | None = None
+    # Add your entity fields here
+    message: str = ""
 
 
 @dataclass
@@ -94,15 +91,6 @@ class ListOperationNameInputDTO:
     name_filter: str | None = None
     # Add your filter fields
 
-    def validate(self) -> None:
-        """Validate pagination and sorting parameters."""
-        if self.page < 1:
-            raise ValueError("page must be >= 1")
-        if self.page_size < 1 or self.page_size > 100:
-            raise ValueError("page_size must be between 1 and 100")
-        if self.sort_order not in ["asc", "desc"]:
-            raise ValueError("sort_order must be 'asc' or 'desc'")
-
 
 @dataclass
 class ListOperationNameOutputDTO:
@@ -111,8 +99,55 @@ class ListOperationNameOutputDTO:
     """
 
     success: bool
-    items: list[dict] = field(default_factory=list)  # Or use specific item DTO
+    items: list[dict] = None  # Or use specific item DTO
     total_count: int = 0
     page: int = 1
     page_size: int = 20
+    message: str = ""
+
+    def __post_init__(self) -> None:
+        """Initialize default values."""
+        if self.items is None:
+            self.items = []
+
+
+@dataclass
+class UpdateOperationNameInputDTO:
+    """
+    Input DTO for updating an entity.
+    """
+
+    entity_id: int
+    name: str | None = None
+    # Add fields that can be updated
+    # Use None to indicate "no change"
+
+
+@dataclass
+class UpdateOperationNameOutputDTO:
+    """
+    Output DTO for update operation.
+    """
+
+    success: bool
+    entity_id: int | None = None
+    message: str = ""
+
+
+@dataclass
+class DeleteOperationNameInputDTO:
+    """
+    Input DTO for deleting an entity.
+    """
+
+    entity_id: int
+
+
+@dataclass
+class DeleteOperationNameOutputDTO:
+    """
+    Output DTO for delete operation.
+    """
+
+    success: bool
     message: str = ""
