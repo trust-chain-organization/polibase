@@ -92,9 +92,7 @@ class EntityNameDomainService:
 
         return name
 
-    def calculate_similarity(
-        self, entity1: EntityName, entity2: EntityName
-    ) -> float:
+    def calculate_similarity(self, entity1: EntityName, entity2: EntityName) -> float:
         """
         Calculate similarity score between two entities.
 
@@ -133,9 +131,7 @@ class EntityNameDomainService:
 
         return (False, None)
 
-    def merge_entities(
-        self, primary: EntityName, duplicate: EntityName
-    ) -> EntityName:
+    def merge_entities(self, primary: EntityName, duplicate: EntityName) -> EntityName:
         """
         Merge two duplicate entities.
 
@@ -261,9 +257,7 @@ class EntityNameMatchingService:
 
         return (best_match, best_score)
 
-    def _calculate_match_score(
-        self, entity1: EntityName, entity2: EntityName
-    ) -> float:
+    def _calculate_match_score(self, entity1: EntityName, entity2: EntityName) -> float:
         """Calculate match score between two entities."""
         # Implement matching algorithm
         # Consider multiple factors (name, attributes, etc.)

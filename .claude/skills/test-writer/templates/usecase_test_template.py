@@ -6,13 +6,14 @@ Replace:
 - OperationName: Your operation (e.g., CreatePolitician)
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
-from src.application.usecases.usecase_name import UseCaseName
+
+import pytest
+
 from src.application.dto.operation_dto import (
     OperationNameInputDTO,
-    OperationNameOutputDTO,
 )
+from src.application.usecases.usecase_name import UseCaseName
 from src.domain.entities.entity_name import EntityName
 
 
@@ -87,9 +88,7 @@ class TestUseCaseName:
         """Test use case fails when entity already exists."""
         # Arrange
         input_dto = OperationNameInputDTO(name="Existing")
-        mock_entity_repo.find_by_name.return_value = [
-            EntityName(id=1, name="Existing")
-        ]
+        mock_entity_repo.find_by_name.return_value = [EntityName(id=1, name="Existing")]
 
         # Act & Assert
         with pytest.raises(ValueError, match="already exists"):
@@ -131,9 +130,7 @@ class TestUseCaseName:
 
     # Error handling test
     @pytest.mark.asyncio
-    async def test_execute_handles_repository_error(
-        self, usecase, mock_entity_repo
-    ):
+    async def test_execute_handles_repository_error(self, usecase, mock_entity_repo):
         """Test use case handles repository errors gracefully."""
         # Arrange
         input_dto = OperationNameInputDTO(name="Test")
@@ -148,9 +145,7 @@ class TestUseCaseName:
 
     # Multiple entities test
     @pytest.mark.asyncio
-    async def test_execute_processes_multiple_entities(
-        self, usecase, mock_entity_repo
-    ):
+    async def test_execute_processes_multiple_entities(self, usecase, mock_entity_repo):
         """Test use case can process multiple entities."""
         # Arrange
         input_dto = OperationNameInputDTO(entity_ids=[1, 2, 3])

@@ -19,9 +19,7 @@ from src.infrastructure.persistence.models.entity_name import (
 )
 
 
-class EntityNameRepositoryImpl(
-    BaseRepositoryImpl[EntityName], IEntityNameRepository
-):
+class EntityNameRepositoryImpl(BaseRepositoryImpl[EntityName], IEntityNameRepository):
     """
     SQLAlchemy implementation of IEntityNameRepository.
 
@@ -46,9 +44,7 @@ class EntityNameRepositoryImpl(
         models = result.scalars().all()
         return [self._to_entity(model) for model in models]
 
-    async def find_by_criteria(
-        self, criteria: dict[str, any]
-    ) -> list[EntityName]:
+    async def find_by_criteria(self, criteria: dict[str, any]) -> list[EntityName]:
         """Find entities matching criteria."""
         query = select(EntityNameModel)
 

@@ -7,6 +7,7 @@ Replace:
 """
 
 from typing import Protocol
+
 from src.domain.entities.entity_name import EntityName  # Replace with your entity
 from src.domain.repositories.base_repository import BaseRepository
 
@@ -38,9 +39,7 @@ class IEntityNameRepository(BaseRepository[EntityName], Protocol):
         """
         ...
 
-    async def find_by_criteria(
-        self, criteria: dict[str, any]
-    ) -> list[EntityName]:
+    async def find_by_criteria(self, criteria: dict[str, any]) -> list[EntityName]:
         """
         Find entities matching specific criteria.
 

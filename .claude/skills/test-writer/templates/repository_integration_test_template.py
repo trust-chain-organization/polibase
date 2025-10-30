@@ -7,8 +7,9 @@ Replace:
 """
 
 import pytest
-from src.infrastructure.persistence.repository_name import RepositoryNameImpl
+
 from src.domain.entities.entity_name import EntityName
+from src.infrastructure.persistence.repository_name import RepositoryNameImpl
 
 
 @pytest.mark.integration
@@ -213,10 +214,7 @@ class TestRepositoryNameIntegration:
     async def test_bulk_insert_performance(self, repository):
         """Test bulk insert of many entities (marked as slow)."""
         # Arrange
-        entities = [
-            EntityName(id=None, name=f"Entity{i}")
-            for i in range(1000)
-        ]
+        entities = [EntityName(id=None, name=f"Entity{i}") for i in range(1000)]
 
         # Act
         for entity in entities:

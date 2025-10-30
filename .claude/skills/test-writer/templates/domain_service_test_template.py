@@ -7,8 +7,9 @@ Replace:
 """
 
 import pytest
-from src.domain.services.service_name import ServiceName
+
 from src.domain.entities.entity_name import EntityName
+from src.domain.services.service_name import ServiceName
 
 
 class TestServiceName:
@@ -85,11 +86,14 @@ class TestServiceName:
         assert "Name is required" in errors
 
     # Parametrized tests for multiple inputs
-    @pytest.mark.parametrize("input_value,expected", [
-        ("input1", "output1"),
-        ("input2", "output2"),
-        ("input3", "output3"),
-    ])
+    @pytest.mark.parametrize(
+        "input_value,expected",
+        [
+            ("input1", "output1"),
+            ("input2", "output2"),
+            ("input3", "output3"),
+        ],
+    )
     def test_method_name_with_various_inputs(self, service, input_value, expected):
         """Test method with various input/output combinations."""
         result = service.method_name(input_value)

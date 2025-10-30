@@ -46,9 +46,7 @@ class OperationNameUseCase:
         self.entity_repository = entity_repository
         self.entity_service = entity_service
 
-    async def execute(
-        self, input_dto: OperationNameInputDTO
-    ) -> OperationNameOutputDTO:
+    async def execute(self, input_dto: OperationNameInputDTO) -> OperationNameOutputDTO:
         """
         Execute the use case.
 
