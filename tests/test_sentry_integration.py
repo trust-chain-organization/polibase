@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config.sentry import (
+from src.infrastructure.config.sentry import (
     before_send_filter,
     before_send_transaction_filter,
     capture_exception,
@@ -24,11 +24,11 @@ class TestSentryInitialization:
 
     def setup_method(self):
         """Reset the global initialization flag before each test"""
-        import src.config.sentry
+        import src.infrastructure.config.sentry
 
-        src.config.sentry.initialized = False
+        src.infrastructure.config.sentry.initialized = False
 
-    @patch("src.config.sentry.sentry_sdk.init")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.init")
     @patch.dict(os.environ, {"SENTRY_DSN": "https://test@sentry.io/123"})
     def test_init_sentry_with_dsn(self, mock_init):
         """Test Sentry initialization with DSN"""
@@ -42,8 +42,8 @@ class TestSentryInitialization:
         assert call_args["send_default_pii"] is False
         assert call_args["attach_stacktrace"] is True
 
-    @patch("src.config.sentry.sentry_sdk.init")
-    @patch("src.config.sentry.logger")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.init")
+    @patch("src.infrastructure.config.sentry.logger")
     @patch.dict(os.environ, {"SENTRY_DSN": ""})
     def test_init_sentry_without_dsn(self, mock_logger, mock_init):
         """Test Sentry initialization without DSN"""
@@ -55,7 +55,7 @@ class TestSentryInitialization:
         )
 
     @patch("src.config.sentry.sentry_sdk.init", side_effect=Exception("Init failed"))
-    @patch("src.config.sentry.logger")
+    @patch("src.infrastructure.config.sentry.logger")
     @patch.dict(os.environ, {"SENTRY_DSN": "https://test@sentry.io/123"})
     def test_init_sentry_with_error(self, mock_logger, mock_init):
         """Test Sentry initialization with error"""
@@ -63,8 +63,8 @@ class TestSentryInitialization:
 
         mock_logger.error.assert_called_with("Failed to initialize Sentry: Init failed")
 
-    @patch("src.config.sentry.sentry_sdk.init")
-    @patch("src.config.sentry.logger")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.init")
+    @patch("src.infrastructure.config.sentry.logger")
     @patch.dict(os.environ, {"SENTRY_DSN": "https://test@sentry.io/123"})
     def test_init_sentry_called_multiple_times(self, mock_logger, mock_init):
         """Test that Sentry is only initialized once even when called multiple times"""
