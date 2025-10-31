@@ -54,7 +54,10 @@ class TestSentryInitialization:
             "Sentry DSN not configured, skipping Sentry initialization"
         )
 
-    @patch("src.config.sentry.sentry_sdk.init", side_effect=Exception("Init failed"))
+    @patch(
+        "src.infrastructure.config.sentry.sentry_sdk.init",
+        side_effect=Exception("Init failed"),
+    )
     @patch("src.infrastructure.config.sentry.logger")
     @patch.dict(os.environ, {"SENTRY_DSN": "https://test@sentry.io/123"})
     def test_init_sentry_with_error(self, mock_logger, mock_init):
@@ -168,7 +171,7 @@ class TestSentryUtilities:
         assert "[REDACTED_API_KEY]" in sanitized
         assert "AIzaSyC123456" not in sanitized
 
-    @patch("src.config.sentry.sentry_sdk.capture_message")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.capture_message")
     def test_capture_message(self, mock_capture):
         """Test capturing message to Sentry"""
         capture_message("Test message", level="warning", extra={"user": "test"})
@@ -177,7 +180,7 @@ class TestSentryUtilities:
             "Test message", level="warning", extra={"user": "test"}
         )
 
-    @patch("src.config.sentry.sentry_sdk.capture_exception")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.capture_exception")
     def test_capture_exception(self, mock_capture):
         """Test capturing exception to Sentry"""
         error = ValueError("Test error")
@@ -189,7 +192,7 @@ class TestSentryUtilities:
 class TestPerformanceMonitoring:
     """Test performance monitoring decorators"""
 
-    @patch("src.config.sentry.sentry_sdk.start_transaction")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.start_transaction")
     def test_monitor_performance_decorator(self, mock_start_transaction):
         """Test performance monitoring decorator"""
         mock_transaction = MagicMock()
@@ -205,7 +208,7 @@ class TestPerformanceMonitoring:
         mock_start_transaction.assert_called_once()
         mock_transaction.set_status.assert_called_with("ok")
 
-    @patch("src.config.sentry.sentry_sdk.start_transaction")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.start_transaction")
     def test_monitor_db_query_decorator(self, mock_start_transaction):
         """Test database query monitoring decorator"""
         mock_transaction = MagicMock()
@@ -222,7 +225,7 @@ class TestPerformanceMonitoring:
         assert call_args["op"] == "db.query"
         assert call_args["name"] == "fetch_meetings"
 
-    @patch("src.config.sentry.sentry_sdk.start_transaction")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.start_transaction")
     def test_monitor_llm_call_decorator(self, mock_start_transaction):
         """Test LLM call monitoring decorator"""
         mock_transaction = MagicMock()
@@ -239,7 +242,7 @@ class TestPerformanceMonitoring:
         assert call_args["op"] == "llm.gemini-2.0-flash"
         mock_transaction.set_tag.assert_called_with("llm.model", "gemini-2.0-flash")
 
-    @patch("src.config.sentry.sentry_sdk.start_transaction")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.start_transaction")
     def test_monitor_web_scraping_decorator(self, mock_start_transaction):
         """Test web scraping monitoring decorator"""
         mock_transaction = MagicMock()
@@ -256,7 +259,7 @@ class TestPerformanceMonitoring:
         assert call_args["op"] == "http.client"
         mock_transaction.set_tag.assert_called_with("url", "https://example.com")
 
-    @patch("src.config.sentry.sentry_sdk.start_transaction")
+    @patch("src.infrastructure.config.sentry.sentry_sdk.start_transaction")
     def test_monitor_performance_with_exception(self, mock_start_transaction):
         """Test performance monitoring with exception"""
         mock_transaction = MagicMock()

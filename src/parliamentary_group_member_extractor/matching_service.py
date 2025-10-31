@@ -28,7 +28,7 @@ class ParliamentaryGroupMemberMatchingService:
         self.extracted_repo = RepositoryAdapter(
             ExtractedParliamentaryGroupMemberRepositoryImpl
         )
-        from src.config.database import get_db_session
+        from src.infrastructure.config.database import get_db_session
 
         session = get_db_session()
         self.politician_repo = PoliticianRepositorySyncImpl(session)

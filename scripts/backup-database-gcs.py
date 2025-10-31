@@ -18,7 +18,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.config.settings import get_settings
+from src.infrastructure.config.settings import get_settings
 from src.utils.gcs_storage import HAS_GCS, GCSStorage
 
 # Configure logging

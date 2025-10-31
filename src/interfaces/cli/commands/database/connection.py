@@ -10,7 +10,7 @@ class TestConnectionCommand(Command, BaseCommand):
 
     def execute(self, **kwargs: Any) -> None:
         """Test database connection."""
-        from src.config.database import test_connection as test_db
+        from src.infrastructure.config.database import test_connection as test_db
 
         self.show_progress("Testing database connection...")
         test_db()

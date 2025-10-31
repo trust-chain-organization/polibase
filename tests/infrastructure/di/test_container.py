@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config.settings import Settings
+from src.infrastructure.config.settings import Settings
 from src.infrastructure.di.container import (
     ApplicationContainer,
     Environment,

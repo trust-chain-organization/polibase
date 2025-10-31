@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from src.config.database import DATABASE_URL
+from src.infrastructure.config.database import DATABASE_URL
 from src.infrastructure.persistence.political_party_repository_impl import (
     PoliticalPartyRepositoryImpl as PoliticalPartyRepository,
 )

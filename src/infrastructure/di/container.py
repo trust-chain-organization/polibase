@@ -11,7 +11,7 @@ from typing import Any
 
 from dependency_injector import containers, providers
 
-from src.config.settings import Settings, get_settings
+from src.infrastructure.config.settings import Settings, get_settings
 from src.infrastructure.di.providers import (
     DatabaseContainer,
     RepositoryContainer,
@@ -124,13 +124,13 @@ class ApplicationContainer(containers.DeclarativeContainer):
             settings = get_settings()
         except Exception:
             # If settings failed to load, create a fresh instance
-            from src.config.settings import Settings
+            from src.infrastructure.config.settings import Settings
 
             settings = Settings()
 
         # Additional check for None settings
         if settings is None:
-            from src.config.settings import Settings
+            from src.infrastructure.config.settings import Settings
 
             settings = Settings()
 

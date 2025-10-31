@@ -5,7 +5,7 @@ from typing import Any, TextIO
 
 from sqlalchemy import text
 
-from src.config.database import get_db_engine
+from src.infrastructure.config.database import get_db_engine
 
 
 class SeedGenerator:

@@ -31,7 +31,7 @@ class PromptCommands(BaseCommand):
         - polibase prompt-list --prompt-key minutes_divide  # List specific prompt
         - polibase prompt-list --limit 20         # Show more versions
         """
-        from src.config.async_database import get_async_session
+        from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence.prompt_version_repository_impl import (
             PromptVersionRepositoryImpl,
         )
@@ -110,7 +110,7 @@ class PromptCommands(BaseCommand):
         - polibase prompt-show minutes_divide latest     # Show active version
         - polibase prompt-show speaker_match 1.0.0       # Show specific version
         """
-        from src.config.async_database import get_async_session
+        from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence.prompt_version_repository_impl import (
             PromptVersionRepositoryImpl,
         )
@@ -181,7 +181,7 @@ class PromptCommands(BaseCommand):
         - polibase prompt-activate minutes_divide 2.0.0
         - polibase prompt-activate speaker_match 1.5.0
         """
-        from src.config.async_database import get_async_session
+        from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence.prompt_version_repository_impl import (
             PromptVersionRepositoryImpl,
         )
@@ -224,7 +224,7 @@ class PromptCommands(BaseCommand):
         - polibase prompt-migrate                      # Migrate as 'system'
         - polibase prompt-migrate --created-by admin   # Migrate with custom creator
         """
-        from src.config.async_database import get_async_session
+        from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence.prompt_version_repository_impl import (
             PromptVersionRepositoryImpl,
         )
@@ -269,7 +269,7 @@ class PromptCommands(BaseCommand):
         - polibase prompt-history minutes_divide
         - polibase prompt-history speaker_match --limit 20
         """
-        from src.config.async_database import get_async_session
+        from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence.prompt_version_repository_impl import (
             PromptVersionRepositoryImpl,
         )

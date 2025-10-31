@@ -104,7 +104,7 @@ class PlaywrightScraperService(IWebScraperService):
             # Try to get party name from database
             from sqlalchemy.orm import sessionmaker
 
-            from src.config.database import get_db_engine
+            from src.infrastructure.config.database import get_db_engine
             from src.infrastructure.persistence.async_session_adapter import (
                 AsyncSessionAdapter,
             )

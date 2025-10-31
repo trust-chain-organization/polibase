@@ -26,7 +26,7 @@ from typing import Any, TypeVar
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session
 
-from src.config.database import DATABASE_URL
+from src.infrastructure.config.database import DATABASE_URL
 
 T = TypeVar("T")
 logger = logging.getLogger(__name__)

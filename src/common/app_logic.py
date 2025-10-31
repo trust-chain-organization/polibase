@@ -9,13 +9,13 @@ import os
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-import src.config.config as config
+import src.infrastructure.config.config as config
 from src.application.exceptions import (
     ConfigurationError,
     PDFProcessingError,
     ProcessingError,
 )
-from src.config.database import test_connection
+from src.infrastructure.config.database import test_connection
 from src.infrastructure.exceptions import DatabaseError
 from src.infrastructure.exceptions import (
     FileNotFoundException as PolibaseFileNotFoundError,

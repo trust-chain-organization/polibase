@@ -12,9 +12,9 @@ from typing import Any, TypedDict
 from langchain_core.prompts import PromptTemplate
 from sqlalchemy import text
 
-from src.config.database import get_db_session
 from src.domain.repositories.politician_repository import PoliticianRepository
 from src.domain.services.interfaces.llm_service import ILLMService
+from src.infrastructure.config.database import get_db_session
 from src.infrastructure.persistence.parliamentary_group_repository_impl import (
     ParliamentaryGroupMembershipRepositoryImpl,
     ParliamentaryGroupRepositoryImpl,
