@@ -78,7 +78,7 @@ class PoliticianCommands(BaseCommand):
                 party_id, all_parties, dry_run, max_depth
             )
             return
-        from src.config.database import get_db_engine
+        from src.infrastructure.config.database import get_db_engine
         from src.infrastructure.persistence.politician_repository_sync_impl import (
             PoliticianRepositorySyncImpl,
         )
@@ -211,7 +211,9 @@ class PoliticianCommands(BaseCommand):
                             with spinner(
                                 f"Saving {len(result.members)} members to database..."
                             ):
-                                from src.config.database import get_db_session
+                                from src.infrastructure.config.database import (
+                                    get_db_session,
+                                )
 
                                 session = get_db_session()
                                 repo = PoliticianRepositorySyncImpl(session)
@@ -262,8 +264,8 @@ class PoliticianCommands(BaseCommand):
         party_id: int | None, all_parties: bool, dry_run: bool, max_depth: int
     ):
         """Async implementation using hierarchical Agent-based scraping"""
-        from src.config.database import get_db_engine
         from src.domain.entities.party_scraping_state import PartyScrapingState
+        from src.infrastructure.config.database import get_db_engine
         from src.infrastructure.di.container import get_container, init_container
         from src.infrastructure.persistence.politician_repository_sync_impl import (
             PoliticianRepositorySyncImpl,
@@ -377,7 +379,9 @@ class PoliticianCommands(BaseCommand):
                         with spinner(
                             f"Saving {len(extracted_members)} members to database..."
                         ):
-                            from src.config.database import get_db_session
+                            from src.infrastructure.config.database import (
+                                get_db_session,
+                            )
 
                             session = get_db_session()
                             repo = PoliticianRepositorySyncImpl(session)

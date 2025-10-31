@@ -14,10 +14,10 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.config.async_database import get_async_session
 from src.domain.entities.politician_party_extracted_politician import (
     PoliticianPartyExtractedPolitician,
 )
+from src.infrastructure.config.async_database import get_async_session
 from src.infrastructure.persistence.extracted_politician_repository_impl import (
     ExtractedPoliticianRepositoryImpl,
 )

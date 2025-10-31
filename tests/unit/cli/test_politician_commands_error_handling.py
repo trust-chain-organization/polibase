@@ -18,7 +18,7 @@ class TestErrorHandling:
     async def test_agent_initialization_failure(self):
         """Test handling when DI container fails to initialize Agent."""
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch("src.infrastructure.di.container.get_container") as mock_container,
         ):
             # Setup database mock
@@ -58,7 +58,7 @@ class TestErrorHandling:
         )
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
@@ -95,12 +95,12 @@ class TestErrorHandling:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
             ),
-            patch("src.config.database.get_db_session"),
+            patch("src.infrastructure.config.database.get_db_session"),
             patch(
                 "src.infrastructure.persistence.politician_repository_sync_impl.PoliticianRepositorySyncImpl"
             ) as mock_repo_class,
@@ -127,7 +127,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_database_query_failure(self):
         """Test handling when database party query fails."""
-        with patch("src.config.database.get_db_engine") as mock_engine:
+        with patch("src.infrastructure.config.database.get_db_engine") as mock_engine:
             mock_conn = MagicMock()
             mock_engine.return_value.connect.return_value.__enter__.return_value = (
                 mock_conn
@@ -154,7 +154,7 @@ class TestErrorHandling:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
@@ -196,12 +196,12 @@ class TestErrorHandling:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
             ),
-            patch("src.config.database.get_db_session"),
+            patch("src.infrastructure.config.database.get_db_session"),
             patch(
                 "src.infrastructure.persistence.politician_repository_sync_impl.PoliticianRepositorySyncImpl"
             ) as mock_repo_class,
@@ -252,7 +252,7 @@ class TestErrorHandling:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,

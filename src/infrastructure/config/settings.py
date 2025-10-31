@@ -10,7 +10,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from ..exceptions import ConfigurationError, InvalidConfigError, MissingConfigError
+from src.application.exceptions import (
+    ConfigurationError,
+    InvalidConfigException,
+    MissingConfigException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +29,7 @@ class Settings:
         """Initialize settings from environment variables
 
         Raises:
-            InvalidConfigError: If configuration values are invalid
+            InvalidConfigException: If configuration values are invalid
         """
         # Database configuration
         self.database_url: str = os.getenv(
@@ -60,7 +64,7 @@ class Settings:
                 raise ValueError("Temperature must be between 0.0 and 2.0")
         except ValueError as e:
             logger.error(f"Invalid LLM_TEMPERATURE value: {e}")
-            raise InvalidConfigError(
+            raise InvalidConfigException(
                 "LLM_TEMPERATURE",
                 os.getenv("LLM_TEMPERATURE") or "",
                 f"Invalid temperature value: {str(e)}",
@@ -99,15 +103,15 @@ class Settings:
         """Validate required settings
 
         Raises:
-            MissingConfigError: If required configuration is missing
-            InvalidConfigError: If configuration is invalid
+            MissingConfigException: If required configuration is missing
+            InvalidConfigException: If configuration is invalid
         """
         # Validate database URL
         if not self.database_url:
-            raise MissingConfigError("DATABASE_URL", "DATABASE_URL is required")
+            raise MissingConfigException("DATABASE_URL", "DATABASE_URL is required")
 
         if not self.database_url.startswith(("postgresql://", "postgres://")):
-            raise InvalidConfigError(
+            raise InvalidConfigException(
                 "DATABASE_URL",
                 self.database_url[:30] + "...",
                 "must be a valid PostgreSQL connection string",
@@ -128,7 +132,7 @@ class Settings:
             output_path.mkdir(parents=True, exist_ok=True)
         except Exception as e:
             logger.error(f"Failed to create output directory: {e}")
-            raise InvalidConfigError(
+            raise InvalidConfigException(
                 "output_dir",
                 self.output_dir,
                 f"Failed to create output directory: {str(e)}",
@@ -179,11 +183,13 @@ class Settings:
             Configuration value
 
         Raises:
-            MissingConfigError: If configuration is not set or empty
+            MissingConfigException: If configuration is not set or empty
         """
         value = getattr(self, key, None)
         if not value:
-            raise MissingConfigError(key, f"Required configuration '{key}' is not set")
+            raise MissingConfigException(
+                key, f"Required configuration '{key}' is not set"
+            )
         return value
 
 

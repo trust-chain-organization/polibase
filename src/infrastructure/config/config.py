@@ -9,7 +9,7 @@ import subprocess
 
 from dotenv import load_dotenv
 
-from ..exceptions import InvalidConfigError, MissingConfigError
+from src.application.exceptions import InvalidConfigException, MissingConfigException
 
 
 # Load environment variables
@@ -89,7 +89,7 @@ def validate_config() -> None:
 
     # Validate DATABASE_URL format
     if not DATABASE_URL.startswith(("postgresql://", "postgres://")):
-        raise InvalidConfigError(
+        raise InvalidConfigException(
             "DATABASE_URL",
             DATABASE_URL[:30] + "..." if len(DATABASE_URL) > 30 else DATABASE_URL,
             "must be a valid PostgreSQL connection string",
@@ -124,9 +124,9 @@ def get_required_config(key: str) -> str:
         The configuration value
 
     Raises:
-        MissingConfigError: If the configuration is not set
+        MissingConfigException: If the configuration is not set
     """
     value = globals().get(key)
     if value is None:
-        raise MissingConfigError(key, f"Required configuration '{key}' is not set")
+        raise MissingConfigException(key, f"Required configuration '{key}' is not set")
     return value

@@ -23,8 +23,8 @@ from src.cli_package.commands.prompt_commands import get_prompt_commands
 from src.cli_package.commands.proposal_commands import get_proposal_commands
 from src.cli_package.commands.seed_commands import get_seed_commands
 from src.common.logging import setup_logging
-from src.config.sentry import init_sentry
-from src.config.settings import get_settings
+from src.infrastructure.config.sentry import init_sentry
+from src.infrastructure.config.settings import get_settings
 
 # Initialize settings
 settings = get_settings()

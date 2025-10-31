@@ -39,12 +39,12 @@ class TestDataTransformation:
         captured_members = None
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
             ),
-            patch("src.config.database.get_db_session"),
+            patch("src.infrastructure.config.database.get_db_session"),
             patch(
                 "src.infrastructure.persistence.politician_repository_sync_impl.PoliticianRepositorySyncImpl"
             ) as mock_repo_class,
@@ -101,12 +101,12 @@ class TestDataTransformation:
         captured_members = None
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
             ),
-            patch("src.config.database.get_db_session"),
+            patch("src.infrastructure.config.database.get_db_session"),
             patch(
                 "src.infrastructure.persistence.politician_repository_sync_impl.PoliticianRepositorySyncImpl"
             ) as mock_repo_class,
@@ -161,12 +161,12 @@ class TestDataTransformation:
         captured_members = None
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
             ),
-            patch("src.config.database.get_db_session"),
+            patch("src.infrastructure.config.database.get_db_session"),
             patch(
                 "src.infrastructure.persistence.politician_repository_sync_impl.PoliticianRepositorySyncImpl"
             ) as mock_repo_class,
@@ -219,12 +219,12 @@ class TestDataTransformation:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
             ),
-            patch("src.config.database.get_db_session"),
+            patch("src.infrastructure.config.database.get_db_session"),
             patch(
                 "src.infrastructure.persistence.politician_repository_sync_impl.PoliticianRepositorySyncImpl"
             ) as mock_repo_class,

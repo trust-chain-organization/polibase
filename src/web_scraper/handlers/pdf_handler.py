@@ -15,7 +15,7 @@ except ImportError:
     pdfium = None
     HAS_PDFIUM = False
 
-from ...config.settings import get_settings
+from src.infrastructure.config.settings import get_settings
 
 
 class PDFHandler:

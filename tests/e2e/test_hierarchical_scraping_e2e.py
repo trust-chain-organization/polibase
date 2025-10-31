@@ -54,7 +54,7 @@ async def test_scrape_politicians_with_hierarchical_flag():
 
     # Mock database operations
     with (
-        patch("src.config.database.get_db_engine") as mock_engine,
+        patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
         patch(
             "src.infrastructure.di.container.get_container",
             return_value=mock_container,
@@ -103,7 +103,7 @@ async def test_scrape_politicians_backward_compatibility():
     )
 
     with (
-        patch("src.config.database.get_db_engine") as mock_engine,
+        patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
         patch(
             "src.party_member_extractor.extractor.PartyMemberExtractor",
             return_value=mock_extractor,
@@ -158,7 +158,7 @@ async def test_hierarchical_scraping_with_max_depth():
     mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
     with (
-        patch("src.config.database.get_db_engine") as mock_engine,
+        patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
         patch(
             "src.infrastructure.di.container.get_container",
             return_value=mock_container,
@@ -204,7 +204,7 @@ async def test_hierarchical_scraping_error_handling():
     mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
     with (
-        patch("src.config.database.get_db_engine") as mock_engine,
+        patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
         patch(
             "src.infrastructure.di.container.get_container",
             return_value=mock_container,

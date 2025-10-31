@@ -15,7 +15,7 @@ class DatabaseCommands(BaseCommand):
     @with_error_handling
     def test_connection():
         """Test database connection (データベース接続テスト)"""
-        from src.config.database import test_connection as test_db
+        from src.infrastructure.config.database import test_connection as test_db
 
         DatabaseCommands.show_progress("Testing database connection...")
         test_db()

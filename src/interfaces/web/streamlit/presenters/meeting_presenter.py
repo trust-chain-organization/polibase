@@ -547,7 +547,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             speaker_domain_service = SpeakerDomainService()
 
             # Initialize Unit of Work
-            from src.config.database import AsyncSessionLocal
+            from src.infrastructure.config.database import AsyncSessionLocal
 
             async with AsyncSessionLocal() as session:
                 uow: IUnitOfWork = UnitOfWorkImpl(session=session)

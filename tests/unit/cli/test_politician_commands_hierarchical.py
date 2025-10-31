@@ -44,7 +44,7 @@ class TestAsyncScrapePoliticiansHierarchical:
         mock_agent.scrape.side_effect = capture_state
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
@@ -88,7 +88,7 @@ class TestAsyncScrapePoliticiansHierarchical:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
@@ -138,7 +138,7 @@ class TestAsyncScrapePoliticiansHierarchical:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
@@ -168,7 +168,7 @@ class TestAsyncScrapePoliticiansHierarchical:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
@@ -216,7 +216,7 @@ class TestAsyncScrapePoliticiansHierarchical:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
@@ -259,7 +259,7 @@ class TestAsyncScrapePoliticiansHierarchical:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
@@ -281,7 +281,7 @@ class TestAsyncScrapePoliticiansHierarchical:
     @pytest.mark.asyncio
     async def test_handles_database_connection_failures(self):
         """Test that database connection errors are handled gracefully."""
-        with patch("src.config.database.get_db_engine") as mock_engine:
+        with patch("src.infrastructure.config.database.get_db_engine") as mock_engine:
             mock_engine.side_effect = RuntimeError("Database connection failed")
 
             # Should raise - database errors should propagate
@@ -308,12 +308,12 @@ class TestAsyncScrapePoliticiansHierarchical:
         mock_container.use_cases.party_scraping_agent.return_value = mock_agent
 
         with (
-            patch("src.config.database.get_db_engine") as mock_engine,
+            patch("src.infrastructure.config.database.get_db_engine") as mock_engine,
             patch(
                 "src.infrastructure.di.container.get_container",
                 return_value=mock_container,
             ),
-            patch("src.config.database.get_db_session") as mock_session,
+            patch("src.infrastructure.config.database.get_db_session") as mock_session,
             patch.dict("os.environ", {"STREAMLIT_RUNNING": "true"}),
         ):
             mock_conn = MagicMock()

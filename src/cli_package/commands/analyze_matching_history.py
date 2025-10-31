@@ -55,12 +55,12 @@ class AnalyzeMatchingHistoryCommand:
             polibase analyze-matching-history --export-csv results.csv
         """
 
-        from src.config.async_database import get_async_session
         from src.domain.entities.llm_processing_history import (
             LLMProcessingHistory,
             ProcessingStatus,
             ProcessingType,
         )
+        from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence import (
             LLMProcessingHistoryRepositoryImpl,
         )

@@ -58,7 +58,7 @@ class TestConferenceMemberMatchingService:
             }.get(impl_class.__name__, Mock()),
         ):
             with patch(
-                "src.config.database.get_db_session",
+                "src.infrastructure.config.database.get_db_session",
                 return_value=Mock(),
             ):
                 with patch(

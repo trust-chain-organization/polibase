@@ -11,7 +11,7 @@ import pytest
 def test_database_connection():
     """データベース接続の確認（CI環境でのみ実行）"""
     if os.getenv("DATABASE_URL"):
-        from src.config.database import test_connection
+        from src.infrastructure.config.database import test_connection
 
         assert test_connection(), "データベース接続に失敗しました"
     else:

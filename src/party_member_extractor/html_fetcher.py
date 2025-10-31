@@ -7,7 +7,8 @@ from typing import Any
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright
 
-from ..config.settings import get_settings
+from src.infrastructure.config.settings import get_settings
+
 from .models import WebPageContent
 
 logger = logging.getLogger(__name__)

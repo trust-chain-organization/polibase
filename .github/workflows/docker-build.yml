@@ -106,7 +106,7 @@ jobs:
             docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db
 
           # 接続テスト
-          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run python -c "from src.config.database import test_connection; assert test_connection()"
+          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run python -c "from src.infrastructure.config.database import test_connection; assert test_connection()"
 
       - name: Test CLI
         run: |

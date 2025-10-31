@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from src.config.settings import settings
+from src.infrastructure.config.settings import settings
 
 logger = logging.getLogger(__name__)
 

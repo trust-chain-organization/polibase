@@ -29,7 +29,7 @@ from src.common.app_logic import (
 from src.common.instrumentation import measure_time
 from src.common.logging import get_logger
 from src.common.metrics import CommonMetrics, setup_metrics
-from src.config import config
+from src.infrastructure.config import config
 from src.infrastructure.exceptions import APIKeyError, DatabaseError
 from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
 from src.infrastructure.persistence.conversation_repository_impl import (
@@ -180,7 +180,7 @@ def process_minutes(
             # Set up history repository for recording
             import asyncio
 
-            from src.config.async_database import get_async_session
+            from src.infrastructure.config.async_database import get_async_session
 
             # Create and set history repository
             async def setup_history():

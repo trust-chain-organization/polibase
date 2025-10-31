@@ -26,7 +26,7 @@ class ConferenceMemberMatchingService:
 
     def __init__(self):
         self.extracted_repo = RepositoryAdapter(ExtractedConferenceMemberRepositoryImpl)
-        from src.config.database import get_db_session
+        from src.infrastructure.config.database import get_db_session
 
         session = get_db_session()
         self.politician_repo = PoliticianRepositorySyncImpl(session)
