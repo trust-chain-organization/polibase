@@ -115,7 +115,9 @@ class TestPartyMemberIntegration:
         ]
 
         # リポジトリのモック
-        with patch("src.config.database.get_db_engine") as mock_get_engine:
+        with patch(
+            "src.infrastructure.config.database.get_db_engine"
+        ) as mock_get_engine:
             mock_engine = Mock()
             mock_conn = Mock()
             mock_get_engine.return_value = mock_engine
@@ -210,7 +212,9 @@ class TestPartyMemberIntegration:
             }
         ]
 
-        with patch("src.config.database.get_db_engine") as mock_get_engine:
+        with patch(
+            "src.infrastructure.config.database.get_db_engine"
+        ) as mock_get_engine:
             mock_engine = Mock()
             mock_conn = Mock()
             mock_get_engine.return_value = mock_engine

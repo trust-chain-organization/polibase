@@ -123,7 +123,7 @@ class TestMinutesProcessingWithHistory:
         assert isinstance(service, InstrumentedLLMService)
         assert service._model_name == "gemini-2.0-flash-exp"
 
-    @patch("src.config.async_database.get_async_session")
+    @patch("src.infrastructure.config.async_database.get_async_session")
     @patch("src.process_minutes.LLMServiceFactory")
     @patch("src.process_minutes.LLMProcessingHistoryRepositoryImpl")
     def test_process_minutes_configures_meeting_context(
