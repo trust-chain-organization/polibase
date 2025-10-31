@@ -318,7 +318,7 @@ jobs:
 
       - name: Test database connection
         run: |
-          uv run python -c "from src.config.database import test_connection; test_connection()"
+          uv run python -c "from src.infrastructure.config.database import test_connection; test_connection()"
 
       - name: Test CLI commands
         run: |
