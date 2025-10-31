@@ -7,7 +7,8 @@ from urllib.parse import parse_qs, urlparse
 from bs4 import BeautifulSoup
 from playwright.async_api import Page, async_playwright
 
-from ..config.settings import get_settings
+from src.infrastructure.config.settings import get_settings
+
 from .base_scraper import BaseScraper
 from .extractors import ContentExtractor, SpeakerExtractor
 from .handlers import FileHandler, PDFHandler

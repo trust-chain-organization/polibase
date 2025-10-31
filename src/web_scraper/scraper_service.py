@@ -4,8 +4,9 @@ import asyncio
 import json
 from pathlib import Path
 
+from src.infrastructure.config import config
+
 from ..common.logging import get_logger
-from ..config import config
 from ..infrastructure.persistence.meeting_repository_impl import MeetingRepositoryImpl
 from ..infrastructure.persistence.repository_adapter import RepositoryAdapter
 from ..utils.gcs_storage import GCSStorage
