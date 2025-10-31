@@ -3,7 +3,6 @@
 import logging
 from typing import Any
 
-from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnablePassthrough, RunnableSerializable
 from pydantic import BaseModel
@@ -48,11 +47,15 @@ class ChainFactory:
             # Try to get from hub first
             prompt = self.prompt_manager.get_hub_prompt("divide_chapter_prompt")
         except Exception:
-            # Fallback to local prompt
-            prompt = self.prompt_manager.get_prompt("minutes_divide")
+            # Fall back to default prompt
+            template = """Please divide the following minutes into sections:
+
+{minutes}
+
+Return a JSON array of sections with title and content for each."""
+            prompt = ChatPromptTemplate.from_template(template)
 
         llm = self.llm_service.get_structured_llm(output_schema)
-
         chain = {"minutes": RunnablePassthrough()} | prompt | llm  # type: ignore[misc]
         return chain  # type: ignore[return-value]
 
@@ -60,23 +63,27 @@ class ChainFactory:
         self, output_schema: type[BaseModel]
     ) -> RunnableSerializable[dict[str, Any], BaseModel]:
         """
-        Create chain for dividing sections into speeches
+        Create chain for extracting speaker and speech content
 
         Args:
-            output_schema: Schema for speaker and speech content list
+            output_schema: Schema for speaker and speech list
 
         Returns:
             Configured chain
         """
         try:
-            prompt = self.prompt_manager.get_hub_prompt("comment_divide_prompt")
+            prompt = self.prompt_manager.get_hub_prompt("identify_speech")
         except Exception:
-            # 国会議事録用のプロンプトを優先的に使用
-            prompt = self.prompt_manager.get_prompt("speech_divide_kokkai")
+            template = """Extract speaker names and their speeches from the \
+following text:
+
+{text}
+
+Return a JSON array with speaker and content for each speech."""
+            prompt = ChatPromptTemplate.from_template(template)
 
         llm = self.llm_service.get_structured_llm(output_schema)
-
-        chain = {"section_string": RunnablePassthrough()} | prompt | llm  # type: ignore[misc]
+        chain = {"text": RunnablePassthrough()} | prompt | llm  # type: ignore[misc]
         return chain  # type: ignore[return-value]
 
     def create_politician_extractor_chain(
@@ -86,114 +93,110 @@ class ChainFactory:
         Create chain for extracting politician information
 
         Args:
-            output_schema: Schema for politician info list
+            output_schema: Schema for politician data
+
+        Returns:
+            Configured chain
+        """
+        template = """Extract politician information from the following HTML:
+
+{html_content}
+
+Return a JSON object with extracted politician data."""
+        prompt = ChatPromptTemplate.from_template(template)
+        llm = self.llm_service.get_structured_llm(output_schema)
+        chain = prompt | llm  # type: ignore[misc]
+        return chain  # type: ignore[return-value]
+
+    def create_speaker_matching_chain(
+        self, output_schema: type[BaseModel]
+    ) -> RunnableSerializable[dict[str, Any], BaseModel]:
+        """
+        Create chain for matching speakers to politicians
+
+        Args:
+            output_schema: Schema for match result
 
         Returns:
             Configured chain
         """
         try:
-            prompt = self.prompt_manager.get_hub_prompt("politician_extraction_prompt")
+            prompt = self.prompt_manager.get_prompt("speaker_match")
         except Exception:
-            prompt = self.prompt_manager.get_prompt("politician_extract")
+            template = """Match the following speaker to available politicians:
+
+Speaker: {speaker_name}
+Available speakers: {available_speakers}
+
+Return a JSON object with match results."""
+            prompt = ChatPromptTemplate.from_template(template)
 
         llm = self.llm_service.get_structured_llm(output_schema)
-
-        chain = {"minutes": RunnablePassthrough()} | prompt | llm  # type: ignore[misc]
-        return chain  # type: ignore[return-value]
-
-    def create_speaker_matching_chain(
-        self, output_schema: type[BaseModel]
-    ) -> RunnableSerializable[dict[str, Any], Any]:
-        """
-        Create chain for speaker matching with JSON output
-
-        Args:
-            output_schema: Schema for speaker match result
-
-        Returns:
-            Configured chain with JSON parsing
-        """
-        prompt = self.prompt_manager.get_prompt("speaker_match")
-        parser = JsonOutputParser(pydantic_object=output_schema)
-
-        chain = prompt | self.llm_service.llm | parser  # type: ignore[misc]
+        chain = prompt | llm  # type: ignore[misc]
         return chain  # type: ignore[return-value]
 
     def create_party_member_extractor_chain(
         self, output_schema: type[BaseModel]
-    ) -> Runnable[dict[str, Any], Any]:
+    ) -> RunnableSerializable[dict[str, Any], BaseModel]:
         """
         Create chain for extracting party member information
 
         Args:
-            output_schema: Schema for party member list
+            output_schema: Schema for party member data
 
         Returns:
             Configured chain
         """
-        # Party member extraction uses advanced model for better accuracy
-        advanced_service = LLMService.create_advanced_instance()
-        llm = advanced_service.get_structured_llm(output_schema)
+        template = """Extract party member information from the following HTML:
 
-        # Direct invocation without chain for party member extraction
-        return llm  # type: ignore[return-value]
+{html_content}
+
+Return a JSON array of party members with name, position, and other details."""
+        prompt = ChatPromptTemplate.from_template(template)
+        llm = self.llm_service.get_structured_llm(output_schema)
+        chain = prompt | llm  # type: ignore[misc]
+        return chain  # type: ignore[return-value]
 
     def create_generic_chain(
         self,
         prompt_template: str,
         output_schema: type[BaseModel] | None = None,
-        input_variables: list[str] | None = None,
-        use_json_parser: bool = False,
     ) -> Runnable[dict[str, Any], Any]:
         """
         Create a generic chain with custom prompt
 
         Args:
-            prompt_template: Custom prompt template
+            prompt_template: Template string for the prompt
             output_schema: Optional schema for structured output
-            input_variables: Variables expected in the prompt
-            use_json_parser: Whether to use JSON output parser
 
         Returns:
             Configured chain
         """
         prompt = ChatPromptTemplate.from_template(prompt_template)
 
-        if output_schema and not use_json_parser:
+        if output_schema:
             llm = self.llm_service.get_structured_llm(output_schema)
-        else:
-            llm = self.llm_service.llm
-
-        # Build input mapping
-        if input_variables:
-            input_mapping = {var: RunnablePassthrough() for var in input_variables}  # type: ignore[misc]
-            chain = input_mapping | prompt | llm  # type: ignore[misc]
-        else:
             chain = prompt | llm  # type: ignore[misc]
-
-        # Add JSON parser if requested
-        if use_json_parser and output_schema:
-            parser = JsonOutputParser(pydantic_object=output_schema)
-            chain = chain | parser  # type: ignore[misc]
+        else:
+            chain = prompt | self.llm_service.llm  # type: ignore[misc]
 
         return chain  # type: ignore[return-value]
 
     def invoke_with_retry(
         self,
-        chain: Runnable[dict[str, Any], Any]
-        | RunnableSerializable[dict[str, Any], Any],
+        chain: Runnable[dict[str, Any], Any],
         input_data: dict[str, Any],
         max_retries: int = 3,
     ) -> Any:
         """
-        Invoke a chain with retry logic
+        Invoke chain with retry logic
 
         Args:
-            chain: Chain to invoke
-            input_data: Input data
-            max_retries: Maximum retry attempts
+            chain: The chain to invoke
+            input_data: Input data for the chain
+            max_retries: Maximum number of retries
 
         Returns:
-            Chain result
+            Result from the chain
         """
         return self.llm_service.invoke_with_retry(chain, input_data, max_retries)

@@ -21,7 +21,9 @@ from src.domain.types import (
     LLMSpeakerMatchContext,
     PoliticianDTO,
 )
-from src.services.versioned_prompt_manager import VersionedPromptManager
+from src.infrastructure.external.versioned_prompt_manager import (
+    VersionedPromptManager,
+)
 
 logger = logging.getLogger(__name__)
 

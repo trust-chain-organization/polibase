@@ -1,41 +1,34 @@
-"""LLM service error definitions"""
+"""Backward compatibility stub for llm_errors.
 
+.. deprecated::
+    This module has moved to src.infrastructure.external.llm_errors.
+    Please update your imports.
+"""
 
-class LLMError(Exception):
-    """Base exception for LLM-related errors"""
+import warnings
 
-    pass
+warnings.warn(
+    "Importing from 'src.services.llm_errors' is deprecated. "
+    "Use 'src.infrastructure.external.llm_errors' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
+# Re-export from new location
+from src.infrastructure.external.llm_errors import (  # noqa: E402
+    LLMAuthenticationError,
+    LLMError,
+    LLMInvalidResponseError,
+    LLMQuotaExceededError,
+    LLMRateLimitError,
+    LLMTimeoutError,
+)
 
-class LLMRateLimitError(LLMError):
-    """Raised when LLM API rate limit is exceeded"""
-
-    def __init__(
-        self, message: str = "Rate limit exceeded", retry_after: int | None = None
-    ):
-        super().__init__(message)
-        self.retry_after = retry_after
-
-
-class LLMTimeoutError(LLMError):
-    """Raised when LLM API request times out"""
-
-    pass
-
-
-class LLMInvalidResponseError(LLMError):
-    """Raised when LLM returns invalid or unparseable response"""
-
-    pass
-
-
-class LLMAuthenticationError(LLMError):
-    """Raised when LLM API authentication fails"""
-
-    pass
-
-
-class LLMQuotaExceededError(LLMError):
-    """Raised when LLM API quota is exceeded"""
-
-    pass
+__all__ = [
+    "LLMError",
+    "LLMRateLimitError",
+    "LLMTimeoutError",
+    "LLMInvalidResponseError",
+    "LLMAuthenticationError",
+    "LLMQuotaExceededError",
+]
