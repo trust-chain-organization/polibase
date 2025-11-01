@@ -5,8 +5,8 @@ import os
 import pytest
 
 from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
+from src.infrastructure.external.prompt_loader import PromptLoader
 from src.services.llm_factory import LLMServiceFactory
-from src.services.prompt_loader import PromptLoader
 
 
 class TestLLMServiceBasic:

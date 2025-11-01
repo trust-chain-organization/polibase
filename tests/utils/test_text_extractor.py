@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.infrastructure.exceptions import PDFProcessingError, TextExtractionError
+from src.application.exceptions import PDFProcessingError, TextExtractionError
 from src.utils.text_extractor import extract_text_from_file, extract_text_from_pdf
 
 

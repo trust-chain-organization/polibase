@@ -4,6 +4,11 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from src.application.exceptions import (
+    ConfigurationError,
+    PDFProcessingError,
+    ProcessingError,
+)
 from src.common.app_logic import (
     load_pdf_text,
     print_completion_message,
@@ -12,12 +17,11 @@ from src.common.app_logic import (
     validate_database_connection,
 )
 from src.infrastructure.exceptions import (
-    ConfigurationError,
     DatabaseError,
-    PDFProcessingError,
-    ProcessingError,
 )
-from src.infrastructure.exceptions import FileNotFoundError as PolibaseFileNotFoundError
+from src.infrastructure.exceptions import (
+    FileNotFoundException as PolibaseFileNotFoundError,
+)
 
 
 class TestSetupEnvironment:

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import BaseModel
 
-from src.services.llm_errors import (
+from src.infrastructure.external.llm_errors import (
     LLMAuthenticationError,
     LLMError,
     LLMRateLimitError,
