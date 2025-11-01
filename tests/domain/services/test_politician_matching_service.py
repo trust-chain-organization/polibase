@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.domain.exceptions import ExternalServiceException
 from src.domain.services.politician_matching_service import (
     PoliticianMatchingService,
 )
@@ -22,9 +23,9 @@ class TestPoliticianMatchingService:
     @pytest.fixture
     def mock_llm_service(self):
         """Create a mock LLM service."""
-        mock = AsyncMock()
-        mock.get_prompt.return_value = AsyncMock()
-        mock.invoke_with_retry = AsyncMock()
+        mock = MagicMock()
+        mock.get_prompt.return_value = MagicMock()
+        mock.invoke_with_retry = MagicMock()
         return mock
 
     @pytest.fixture
@@ -118,10 +119,10 @@ class TestPoliticianMatchingService:
         assert result.confidence >= 0.7
 
     @pytest.mark.asyncio
-    async def test_no_match_different_party(
+    async def test_no_match_nonexistent_name(
         self, mock_llm_service, mock_politician_repository, sample_politicians
     ):
-        """Test no match when party is different."""
+        """Test no match when name doesn't exist."""
         # Arrange
         mock_politician_repository.get_all_for_matching.return_value = (
             sample_politicians
@@ -134,7 +135,7 @@ class TestPoliticianMatchingService:
             "politician_name": None,
             "political_party_name": None,
             "confidence": 0.3,
-            "reason": "政党が一致しません",
+            "reason": "候補者が見つかりません",
         }
 
         service = PoliticianMatchingService(
@@ -143,7 +144,7 @@ class TestPoliticianMatchingService:
 
         # Act
         result = await service.find_best_match(
-            speaker_name="山田太郎", speaker_party="別の党"
+            speaker_name="存在しない太郎", speaker_party="テスト党"
         )
 
         # Assert
@@ -332,10 +333,6 @@ class TestPoliticianMatchingService:
         )
 
         # Mock LLM to raise an exception
-        from src.infrastructure.error_handling.exceptions import (
-            ExternalServiceException,
-        )
-
         mock_llm_service.invoke_with_retry.side_effect = ExternalServiceException(
             service_name="LLM",
             operation="politician_matching",

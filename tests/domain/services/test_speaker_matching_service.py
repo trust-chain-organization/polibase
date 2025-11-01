@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from src.domain.exceptions import ExternalServiceException
 from src.domain.services.speaker_matching_service import (
     SpeakerMatchingService,
 )
@@ -22,9 +23,9 @@ class TestSpeakerMatchingService:
     @pytest.fixture
     def mock_llm_service(self):
         """Create a mock LLM service."""
-        mock = AsyncMock()
-        mock.get_prompt.return_value = AsyncMock()
-        mock.invoke_with_retry = AsyncMock()
+        mock = MagicMock()
+        mock.get_prompt.return_value = MagicMock()
+        mock.invoke_with_retry = MagicMock()
         return mock
 
     @pytest.fixture
@@ -276,10 +277,6 @@ class TestSpeakerMatchingService:
         mock_speaker_repository.get_affiliated_speakers.return_value = []
 
         # Mock LLM to raise an exception
-        from src.infrastructure.error_handling.exceptions import (
-            ExternalServiceException,
-        )
-
         mock_llm_service.invoke_with_retry.side_effect = ExternalServiceException(
             service_name="LLM",
             operation="speaker_matching",
