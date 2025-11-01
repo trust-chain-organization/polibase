@@ -170,7 +170,7 @@ class TestPartyMemberIntegration:
             ):
                 with patch.object(PoliticianRepository, "create") as mock_create:
                     # createメソッドはPoliticianオブジェクトを返す
-                    from src.models.politician import Politician
+                    from src.domain.entities.politician import Politician
 
                     mock_create.side_effect = [
                         Politician(id=1, name="DB統合太郎", political_party_id=1),
@@ -258,7 +258,7 @@ class TestPartyMemberIntegration:
             ) as mock_find:
                 with patch.object(PoliticianRepository, "create") as mock_create:
                     with patch.object(PoliticianRepository, "update_v2") as mock_update:
-                        from src.models.politician import Politician
+                        from src.domain.entities.politician import Politician
 
                         # 初回: 新規作成
                         mock_find.return_value = None

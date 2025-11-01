@@ -13,6 +13,7 @@ class Politician(BaseEntity):
         furigana: str | None = None,
         district: str | None = None,
         profile_page_url: str | None = None,
+        party_position: str | None = None,
         id: int | None = None,
     ) -> None:
         super().__init__(id)
@@ -21,6 +22,7 @@ class Politician(BaseEntity):
         self.furigana = furigana
         self.district = district
         self.profile_page_url = profile_page_url
+        self.party_position = party_position
 
     def __str__(self) -> str:
         return self.name
