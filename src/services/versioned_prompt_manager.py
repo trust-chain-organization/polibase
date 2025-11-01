@@ -6,6 +6,7 @@
 """
 
 import warnings
+from datetime import datetime  # noqa: F401
 
 warnings.warn(
     "Importing from 'src.services.versioned_prompt_manager' is deprecated. "
@@ -19,4 +20,4 @@ from src.infrastructure.external.versioned_prompt_manager import (  # noqa: E402
     VersionedPromptManager,
 )
 
-__all__ = ["VersionedPromptManager"]
+__all__ = ["VersionedPromptManager", "datetime"]

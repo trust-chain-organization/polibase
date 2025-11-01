@@ -7,6 +7,8 @@
 
 import warnings
 
+import pypdfium2 as pdfium  # noqa: F401
+
 warnings.warn(
     "Importing from 'src.utils.text_extractor' is deprecated. "
     "Use 'src.infrastructure.utilities.text_extractor' instead.",
@@ -20,4 +22,4 @@ from src.infrastructure.utilities.text_extractor import (  # noqa: E402
     extract_text_from_pdf,
 )
 
-__all__ = ["extract_text_from_pdf", "extract_text_from_file"]
+__all__ = ["extract_text_from_pdf", "extract_text_from_file", "pdfium"]
