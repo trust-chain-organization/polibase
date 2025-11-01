@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from src.infrastructure.persistence.async_session_adapter import AsyncSessionAdapter
 from src.infrastructure.persistence.speaker_repository_impl import (
     SpeakerRepositoryImpl as SpeakerRepository,
 )
@@ -19,6 +20,9 @@ def test_session() -> Iterator[Session]:
 
     # Create tables
     with engine.begin() as conn:
+        # Enable foreign key support in SQLite
+        conn.execute(text("PRAGMA foreign_keys = OFF"))
+
         # Create political_parties table
         conn.execute(
             text(
@@ -31,7 +35,7 @@ def test_session() -> Iterator[Session]:
             )
         )
 
-        # Create speakers table
+        # Create speakers table (without politician_id FK constraint initially)
         conn.execute(
             text(
                 """
@@ -42,6 +46,7 @@ def test_session() -> Iterator[Session]:
                     political_party_name VARCHAR,
                     position VARCHAR,
                     is_politician BOOLEAN DEFAULT FALSE,
+                    politician_id INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -76,6 +81,9 @@ def test_session() -> Iterator[Session]:
                 """
             )
         )
+
+        # Re-enable foreign keys
+        conn.execute(text("PRAGMA foreign_keys = ON"))
         conn.commit()
 
     # Create session
@@ -91,7 +99,8 @@ def test_session() -> Iterator[Session]:
 @pytest.fixture
 def speaker_repo(test_session: Session) -> SpeakerRepository:
     """Create a SpeakerRepository instance."""
-    return SpeakerRepository(session=test_session)
+    async_session = AsyncSessionAdapter(test_session)
+    return SpeakerRepository(session=async_session)
 
 
 def setup_test_data(session: Session):
@@ -131,6 +140,10 @@ def setup_test_data(session: Session):
         )
     )
 
+    # Update speakers to link back to politicians
+    session.execute(text("UPDATE speakers SET politician_id = 1 WHERE id = 1"))
+    session.execute(text("UPDATE speakers SET politician_id = 2 WHERE id = 2"))
+
     # Insert conversations
     session.execute(
         text(
@@ -148,16 +161,14 @@ def setup_test_data(session: Session):
     session.commit()
 
 
-@pytest.mark.skip(
-    reason="Async repository methods need async test conversion - Issue #434"
-)
-def test_get_speakers_with_politician_info(
+@pytest.mark.asyncio
+async def test_get_speakers_with_politician_info(
     speaker_repo: SpeakerRepository, test_session: Session
 ) -> None:
     """Test getting speakers with linked politician information."""
     setup_test_data(test_session)
 
-    results = speaker_repo.get_speakers_with_politician_info()
+    results = await speaker_repo.get_speakers_with_politician_info()
 
     assert len(results) == 4
 
@@ -193,16 +204,14 @@ def test_get_speakers_with_politician_info(
     assert tanaka["conversation_count"] == 1
 
 
-@pytest.mark.skip(
-    reason="Async repository methods need async test conversion - Issue #434"
-)
-def test_get_speaker_politician_stats(
+@pytest.mark.asyncio
+async def test_get_speaker_politician_stats(
     speaker_repo: SpeakerRepository, test_session: Session
 ) -> None:
     """Test getting speaker-politician linking statistics."""
     setup_test_data(test_session)
 
-    stats = speaker_repo.get_speaker_politician_stats()
+    stats = await speaker_repo.get_speaker_politician_stats()
 
     assert stats["total_speakers"] == 4
     assert stats["politician_speakers"] == 3  # 山田、鈴木、佐藤
@@ -212,14 +221,12 @@ def test_get_speaker_politician_stats(
     assert stats["link_rate"] == pytest.approx(66.7, rel=0.1)  # 2/3 = 66.7%
 
 
-@pytest.mark.skip(
-    reason="Async repository methods need async test conversion - Issue #434"
-)
-def test_get_speaker_politician_stats_empty(
+@pytest.mark.asyncio
+async def test_get_speaker_politician_stats_empty(
     speaker_repo: SpeakerRepository, test_session: Session
 ) -> None:
     """Test statistics with no data."""
-    stats = speaker_repo.get_speaker_politician_stats()
+    stats = await speaker_repo.get_speaker_politician_stats()
 
     assert stats["total_speakers"] == 0
     assert stats["politician_speakers"] == 0
@@ -229,10 +236,8 @@ def test_get_speaker_politician_stats_empty(
     assert stats["link_rate"] == 0.0
 
 
-@pytest.mark.skip(
-    reason="Async repository methods need async test conversion - Issue #434"
-)
-def test_get_speaker_politician_stats_no_politicians(
+@pytest.mark.asyncio
+async def test_get_speaker_politician_stats_no_politicians(
     speaker_repo: SpeakerRepository, test_session: Session
 ) -> None:
     """Test statistics when all speakers are not politicians."""
@@ -249,7 +254,7 @@ def test_get_speaker_politician_stats_no_politicians(
     )
     test_session.commit()
 
-    stats = speaker_repo.get_speaker_politician_stats()
+    stats = await speaker_repo.get_speaker_politician_stats()
 
     assert stats["total_speakers"] == 2
     assert stats["politician_speakers"] == 0
