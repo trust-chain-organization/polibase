@@ -194,30 +194,6 @@ class TestStructuredLogging:
 class TestLoggingIntegration:
     """実際のモジュールとの統合テスト."""
 
-    @pytest.mark.skip(
-        reason="Tests deleted src.process_minutes module (removed in Phase 5/5)"
-    )
-    def test_process_minutes_logging(self):
-        """process_minutesモジュールのログ出力を確認."""
-        log_output = StringIO()
-        with patch("sys.stdout", log_output):
-            setup_logging(log_level="INFO", json_format=True)
-
-            # process_minutesの一部機能をテスト
-            from src.process_minutes import logger as process_logger
-
-            with LogContext(module="process_minutes", test_run=True):
-                process_logger.info("Processing test", minutes_id=1, text_length=1000)
-
-        output = log_output.getvalue().strip()
-        log_data = json.loads(output)
-
-        assert log_data["event"] == "Processing test"
-        assert log_data["minutes_id"] == 1
-        assert log_data["text_length"] == 1000
-        assert log_data["module"] == "process_minutes"
-        assert log_data["test_run"] is True
-
     def test_scraper_service_logging(self):
         """scraperサービスのログ出力を確認."""
         log_output = StringIO()

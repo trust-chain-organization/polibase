@@ -1,6 +1,5 @@
 """Integration tests for party member scraping"""
 
-import os
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -19,10 +18,6 @@ from src.party_member_extractor.models import (
 class TestPartyMemberIntegration:
     """統合テストクラス"""
 
-    @pytest.mark.skipif(
-        os.environ.get("CI") == "true",
-        reason="Skip integration test requiring Playwright in CI environment",
-    )
     @pytest.mark.asyncio
     async def test_full_scraping_flow(self):
         """完全なスクレイピングフローのテスト"""

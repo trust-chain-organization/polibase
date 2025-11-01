@@ -52,6 +52,11 @@ jobs:
         run: |
           uv sync --extra dev
 
+      - name: Install Playwright browsers
+        run: |
+          uv run playwright install chromium
+          uv run playwright install-deps chromium
+
       - name: Set up test environment
         run: |
           cp .env.example .env
@@ -298,6 +303,11 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --extra dev
+
+      - name: Install Playwright browsers for integration tests
+        run: |
+          uv run playwright install chromium
+          uv run playwright install-deps chromium
 
       - name: Set up test environment
         run: |

@@ -1,6 +1,5 @@
 """Integration tests for parliamentary group repositories"""
 
-import os
 from datetime import date, timedelta
 
 import pytest
@@ -13,12 +12,6 @@ from src.infrastructure.persistence.parliamentary_group_membership_repository_im
 )
 from src.infrastructure.persistence.parliamentary_group_repository_impl import (
     ParliamentaryGroupRepositoryImpl as ParliamentaryGroupRepository,
-)
-
-# Skip all tests in this module if running in CI environment
-pytestmark = pytest.mark.skipif(
-    os.getenv("CI") == "true",
-    reason="Integration tests require database connection not available in CI",
 )
 
 
@@ -38,8 +31,11 @@ def db_session():
             """)
         )
         if not result.scalar():
-            pytest.skip(
-                "Parliamentary groups tables not found. Migrations may not be applied."
+            pytest.fail(
+                "Parliamentary groups tables not found. "
+                "Database migrations must be applied before running integration tests. "
+                "Run: psql -f "
+                "database/migrations/008_create_parliamentary_groups_tables.sql"
             )
 
     # Now create the actual test connection
