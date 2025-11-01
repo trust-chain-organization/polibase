@@ -126,6 +126,7 @@ class TestMinutesProcessingWithHistory:
     @patch("src.infrastructure.config.async_database.get_async_session")
     @patch("src.process_minutes.LLMServiceFactory")
     @patch("src.process_minutes.LLMProcessingHistoryRepositoryImpl")
+    @pytest.mark.skip(reason="Tests deleted src.process_minutes module")
     def test_process_minutes_configures_meeting_context(
         self, mock_history_repo_class, mock_factory_class, mock_get_async_session
     ):
