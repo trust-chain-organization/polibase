@@ -104,8 +104,7 @@ class TestDisplayRepositoryStatus:
         with pytest.raises(RepositoryException) as exc_info:
             display_repository_status(repo, "bad_table")
 
-        assert "does not implement required interface" in str(exc_info.value)
-        assert exc_info.value.details["error"] is not None
+        assert "does not implement required method" in str(exc_info.value)
 
     def test_display_status_repository_error(self):
         """Test error handling when repository operation fails"""
@@ -121,8 +120,7 @@ class TestDisplayRepositoryStatus:
         with pytest.raises(RepositoryException) as exc_info:
             display_repository_status(repo, "failing_table")
 
-        assert "Failed to get status for failing_table" in str(exc_info.value)
-        assert exc_info.value.details["table_name"] == "failing_table"
+        assert "failing_table" in str(exc_info.value)
 
 
 class TestSaveDataWithLogging:

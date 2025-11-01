@@ -64,15 +64,17 @@ def display_repository_status(
     except AttributeError as e:
         logger.error(f"Repository does not implement required method: {e}")
         raise RepositoryException(
-            f"Repository for '{table_name}' does not implement required interface",
-            {"error": str(e)},
+            operation="display_status",
+            entity_type=table_name,
+            reason=f"Repository does not implement required method: {str(e)}",
         ) from e
     except Exception as e:
         logger.error(f"Failed to display repository status: {e}")
         print(f"❌ データベース状態確認エラー: {e}")
         raise RepositoryException(
-            f"Failed to get status for {table_name}",
-            {"table_name": table_name, "error": str(e)},
+            operation="display_status",
+            entity_type=table_name,
+            reason=str(e),
         ) from e
 
 
