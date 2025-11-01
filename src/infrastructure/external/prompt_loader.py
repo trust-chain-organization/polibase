@@ -21,7 +21,8 @@ class PromptLoader:
             prompt_dir: Directory containing prompt YAML files
         """
         if prompt_dir is None:
-            prompt_dir = Path(__file__).parent.parent / "infrastructure" / "prompts"
+            # Prompts are in src/infrastructure/prompts/
+            prompt_dir = Path(__file__).parent.parent / "prompts"
         self.prompt_dir = Path(prompt_dir)
         self._prompts: dict[str, dict[str, Any]] = {}
         self._prompt_templates: dict[str, ChatPromptTemplate] = {}
