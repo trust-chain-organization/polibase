@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 import click
 
-from src.cli_package.base import BaseCommand, with_error_handling
+from src.interfaces.cli.base import BaseCommand, with_error_handling
 
 
 class AnalyzeMatchingHistoryCommand:

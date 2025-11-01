@@ -8,7 +8,8 @@ import logging
 from collections.abc import Callable
 from typing import Any, Protocol, TypeVar
 
-from ..exceptions import DatabaseError, RepositoryError
+from src.domain.exceptions import RepositoryError
+from src.infrastructure.exceptions import DatabaseError
 
 logger = logging.getLogger(__name__)
 

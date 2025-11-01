@@ -2,7 +2,7 @@
 
 import click
 
-from src.cli_package.commands.scraping_commands import ScrapingCommands
+from src.interfaces.cli.commands.scraping_commands import ScrapingCommands
 
 
 @click.group()

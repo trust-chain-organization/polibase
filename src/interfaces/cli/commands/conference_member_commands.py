@@ -7,8 +7,6 @@ from typing import Any
 
 import click
 
-from src.cli_package.base import BaseCommand
-from src.cli_package.progress import ProgressTracker
 from src.conference_member_extractor.extractor import ConferenceMemberExtractor
 from src.conference_member_extractor.matching_service import (
     ConferenceMemberMatchingService,
@@ -21,6 +19,8 @@ from src.infrastructure.persistence.extracted_conference_member_repository_impl 
     ExtractedConferenceMemberRepositoryImpl,
 )
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+from src.interfaces.cli.base import BaseCommand
+from src.interfaces.cli.progress import ProgressTracker
 
 logger = logging.getLogger(__name__)
 

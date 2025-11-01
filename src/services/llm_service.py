@@ -18,7 +18,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from .llm_errors import (
+from src.infrastructure.external.llm_errors import (
     LLMAuthenticationError,
     LLMError,
     LLMInvalidResponseError,
@@ -26,8 +26,8 @@ from .llm_errors import (
     LLMRateLimitError,
     LLMTimeoutError,
 )
-from .prompt_loader import PromptLoader
-from .prompt_manager import PromptManager
+from src.infrastructure.external.prompt_loader import PromptLoader
+from src.infrastructure.external.prompt_manager import PromptManager
 
 logger = logging.getLogger(__name__)
 

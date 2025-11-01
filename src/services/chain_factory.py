@@ -7,8 +7,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnablePassthrough, RunnableSerializable
 from pydantic import BaseModel
 
+from src.infrastructure.external.prompt_manager import PromptManager
+
 from .llm_service import LLMService
-from .prompt_manager import PromptManager
 
 logger = logging.getLogger(__name__)
 

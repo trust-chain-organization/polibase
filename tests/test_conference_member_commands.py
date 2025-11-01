@@ -6,7 +6,9 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 from click.testing import CliRunner
 
-from src.cli_package.commands.conference_member_commands import ConferenceMemberCommands
+from src.interfaces.cli.commands.conference_member_commands import (
+    ConferenceMemberCommands,
+)
 
 
 class TestConferenceMemberCommands:

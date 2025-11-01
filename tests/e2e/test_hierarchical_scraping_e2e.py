@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.cli_package.commands.politician_commands import PoliticianCommands
 from src.domain.entities.party_scraping_state import PartyScrapingState
 from src.domain.value_objects.politician_member_data import PoliticianMemberData
+from src.interfaces.cli.commands.politician_commands import PoliticianCommands
 
 
 @pytest.mark.asyncio

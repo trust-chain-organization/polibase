@@ -11,8 +11,8 @@ from src.application.dtos.proposal_judge_dto import (
     ExtractProposalJudgesInputDTO,
     MatchProposalJudgesInputDTO,
 )
-from src.cli_package.base import BaseCommand
 from src.infrastructure.di.container import get_container, init_container
+from src.interfaces.cli.base import BaseCommand
 
 logger = logging.getLogger(__name__)
 
