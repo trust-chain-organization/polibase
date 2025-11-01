@@ -216,7 +216,9 @@ class TestVersionedPromptManager:
         mock_repository.create_version.return_value = created_version
 
         # Execute
-        with patch("src.services.versioned_prompt_manager.datetime") as mock_datetime:
+        with patch(
+            "src.infrastructure.external.versioned_prompt_manager.datetime"
+        ) as mock_datetime:
             mock_datetime.now.return_value.strftime.return_value = "20231225-123456"
             result = await manager_with_repo.save_new_version(
                 prompt_key="test",
