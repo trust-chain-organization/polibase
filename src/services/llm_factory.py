@@ -5,8 +5,7 @@ from typing import Any, TypedDict
 from src.common.logging import get_logger
 from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
 from src.infrastructure.external.llm_service import GeminiLLMService
-
-from .prompt_loader import PromptLoader
+from src.infrastructure.external.prompt_loader import PromptLoader
 
 logger = get_logger(__name__)
 

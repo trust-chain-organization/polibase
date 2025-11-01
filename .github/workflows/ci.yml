@@ -40,11 +40,11 @@ jobs:
           sys.path.insert(0, '.')
           try:
               # srcディレクトリ内のモジュールを確認
-              from src import exceptions
-              from src import cli
               from src.infrastructure.persistence import base_repository_impl
               from src.application import usecases
               from src.domain import entities
+              from src.infrastructure import exceptions as infra_exceptions
+              from src.domain import exceptions as domain_exceptions
               print('✅ Basic imports successful')
           except ImportError as e:
               print(f'❌ Import error: {e}')

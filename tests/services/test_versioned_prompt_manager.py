@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from src.domain.entities.prompt_version import PromptVersion
-from src.services.versioned_prompt_manager import VersionedPromptManager
+from src.infrastructure.external.versioned_prompt_manager import VersionedPromptManager
 
 
 @pytest.fixture

@@ -6,25 +6,25 @@ from collections.abc import Callable
 
 import click
 
-from src.cli_package.commands.conference_member_commands import (
-    get_conference_member_commands,
-)
-from src.cli_package.commands.coverage_commands import get_coverage_commands
-from src.cli_package.commands.di_example_commands import get_di_example_commands
-from src.cli_package.commands.evaluation_commands import get_evaluation_commands
-from src.cli_package.commands.parliamentary_group_commands import (
-    get_parliamentary_group_commands,
-)
-from src.cli_package.commands.parliamentary_group_member_commands import (
-    get_parliamentary_group_member_commands,
-)
-from src.cli_package.commands.politician_commands import get_politician_commands
-from src.cli_package.commands.prompt_commands import get_prompt_commands
-from src.cli_package.commands.proposal_commands import get_proposal_commands
-from src.cli_package.commands.seed_commands import get_seed_commands
 from src.common.logging import setup_logging
 from src.infrastructure.config.sentry import init_sentry
 from src.infrastructure.config.settings import get_settings
+from src.interfaces.cli.commands.conference_member_commands import (
+    get_conference_member_commands,
+)
+from src.interfaces.cli.commands.coverage_commands import get_coverage_commands
+from src.interfaces.cli.commands.di_example_commands import get_di_example_commands
+from src.interfaces.cli.commands.evaluation_commands import get_evaluation_commands
+from src.interfaces.cli.commands.parliamentary_group_commands import (
+    get_parliamentary_group_commands,
+)
+from src.interfaces.cli.commands.parliamentary_group_member_commands import (
+    get_parliamentary_group_member_commands,
+)
+from src.interfaces.cli.commands.politician_commands import get_politician_commands
+from src.interfaces.cli.commands.prompt_commands import get_prompt_commands
+from src.interfaces.cli.commands.proposal_commands import get_proposal_commands
+from src.interfaces.cli.commands.seed_commands import get_seed_commands
 
 # Initialize settings
 settings = get_settings()
@@ -73,9 +73,9 @@ def register_clean_architecture_commands(cli_group: click.Group) -> None:
     cli_group.add_command(reset, "reset-database")
 
     # Register commands from other groups that remain unchanged
-    from src.cli_package.commands.minutes_commands import MinutesCommands
-    from src.cli_package.commands.scraping_commands import ScrapingCommands
-    from src.cli_package.commands.ui_commands import UICommands
+    from src.interfaces.cli.commands.minutes_commands import MinutesCommands
+    from src.interfaces.cli.commands.scraping_commands import ScrapingCommands
+    from src.interfaces.cli.commands.ui_commands import UICommands
 
     cli_group.add_command(MinutesCommands.process_minutes, "process-minutes")
     cli_group.add_command(MinutesCommands.update_speakers, "update-speakers")

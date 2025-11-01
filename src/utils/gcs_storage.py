@@ -27,8 +27,14 @@ except ImportError:
         NotFound = Exception
         storage = None
 
-from ..exceptions import FileNotFoundError as PolibaseFileNotFoundError
-from ..exceptions import PermissionError, StorageError, UploadError
+from src.infrastructure.exceptions import (
+    FileNotFoundException as PolibaseFileNotFoundError,
+)
+from src.infrastructure.exceptions import (
+    PermissionError,
+    StorageError,
+    UploadException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +134,7 @@ class GCSStorage:
                     {"gcs_path": gcs_path, "error": str(e)},
                 ) from e
             logger.error(f"GCS upload failed: {e}")
-            raise UploadError(
+            raise UploadException(
                 f"Failed to upload file to GCS: {gcs_path}",
                 {"local_path": str(local_path), "gcs_path": gcs_path, "error": str(e)},
             ) from e
@@ -170,7 +176,7 @@ class GCSStorage:
                     {"gcs_path": gcs_path, "error": str(e)},
                 ) from e
             logger.error(f"GCS upload failed: {e}")
-            raise UploadError(
+            raise UploadException(
                 f"Failed to upload content to GCS: {gcs_path}",
                 {"gcs_path": gcs_path, "content_size": len(content), "error": str(e)},
             ) from e

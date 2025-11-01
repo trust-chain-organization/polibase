@@ -5,8 +5,6 @@ from datetime import date, datetime
 
 import click
 
-from src.cli_package.base import BaseCommand
-from src.cli_package.progress import ProgressTracker
 from src.infrastructure.exceptions import DatabaseError, ScrapingError
 from src.infrastructure.persistence.extracted_parliamentary_group_member_repository_impl import (  # noqa: E501
     ExtractedParliamentaryGroupMemberRepositoryImpl,
@@ -15,6 +13,8 @@ from src.infrastructure.persistence.parliamentary_group_repository_impl import (
     ParliamentaryGroupRepositoryImpl,
 )
 from src.infrastructure.persistence.repository_adapter import RepositoryAdapter
+from src.interfaces.cli.base import BaseCommand
+from src.interfaces.cli.progress import ProgressTracker
 from src.parliamentary_group_member_extractor.extractor import (
     ParliamentaryGroupMemberExtractor,
 )

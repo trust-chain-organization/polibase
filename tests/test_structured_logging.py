@@ -194,6 +194,9 @@ class TestStructuredLogging:
 class TestLoggingIntegration:
     """実際のモジュールとの統合テスト."""
 
+    @pytest.mark.skip(
+        reason="Tests deleted src.process_minutes module (removed in Phase 5/5)"
+    )
     def test_process_minutes_logging(self):
         """process_minutesモジュールのログ出力を確認."""
         log_output = StringIO()

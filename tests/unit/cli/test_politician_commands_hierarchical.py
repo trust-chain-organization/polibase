@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.cli_package.commands.politician_commands import PoliticianCommands
 from src.domain.entities.party_scraping_state import PartyScrapingState
+from src.interfaces.cli.commands.politician_commands import PoliticianCommands
 
 
 class TestAsyncScrapePoliticiansHierarchical:

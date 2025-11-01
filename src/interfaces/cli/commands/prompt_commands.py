@@ -225,10 +225,12 @@ class PromptCommands(BaseCommand):
         - polibase prompt-migrate --created-by admin   # Migrate with custom creator
         """
         from src.infrastructure.config.async_database import get_async_session
+        from src.infrastructure.external.versioned_prompt_manager import (
+            VersionedPromptManager,
+        )
         from src.infrastructure.persistence.prompt_version_repository_impl import (
             PromptVersionRepositoryImpl,
         )
-        from src.services.versioned_prompt_manager import VersionedPromptManager
 
         PromptCommands.show_progress("Starting prompt migration...")
 

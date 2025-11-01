@@ -8,9 +8,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import BaseModel, Field
 
+from src.infrastructure.external.prompt_loader import PromptLoader
 from src.services.llm_factory import LLMServiceFactory
 from src.services.llm_service import LLMService
-from src.services.prompt_loader import PromptLoader
 
 
 class SampleTestSchema(BaseModel):
@@ -41,7 +41,7 @@ class TestLLMService:
     def test_initialization_without_api_key(self, monkeypatch):
         """Test initialization fails without API key"""
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-        from src.services.llm_errors import LLMAuthenticationError
+        from src.infrastructure.external.llm_errors import LLMAuthenticationError
 
         with pytest.raises(LLMAuthenticationError, match="Google API key not found"):
             LLMService(api_key=None)

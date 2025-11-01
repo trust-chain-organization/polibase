@@ -20,7 +20,7 @@ from src.infrastructure.exceptions import DatabaseError
 from src.infrastructure.exceptions import (
     FileNotFoundException as PolibaseFileNotFoundError,
 )
-from src.utils.text_extractor import extract_text_from_pdf
+from src.infrastructure.utilities.text_extractor import extract_text_from_pdf
 
 logger = logging.getLogger(__name__)
 

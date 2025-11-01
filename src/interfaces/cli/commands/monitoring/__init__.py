@@ -2,7 +2,7 @@
 
 import click
 
-from src.cli_package.commands.ui_commands import UICommands
+from src.interfaces.cli.commands.ui_commands import UICommands
 
 
 @click.group()

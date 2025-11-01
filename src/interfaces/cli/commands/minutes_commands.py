@@ -26,13 +26,16 @@ class MinutesCommands(BaseCommand):
 
         This command reads a PDF file containing meeting minutes and extracts
         individual speeches/conversations using LLM processing.
-        """
-        from src.process_minutes import main
 
-        MinutesCommands.show_progress(f"Processing minutes from: {pdf}")
-        MinutesCommands.show_progress(f"Output will be saved to: {output}")
-        main()
-        MinutesCommands.success("Minutes processing completed")
+        Note: This command has been deprecated. Please use the DI
+        container-based process-minutes command with specific options like
+        --meeting-id or --process-all-gcs.
+        """
+        MinutesCommands.error(
+            "This command is deprecated. Please use 'polibase process-minutes --help' "
+            "for the updated command options.",
+            exit_code=1,
+        )
 
     @staticmethod
     @click.command()
@@ -89,7 +92,7 @@ class MinutesCommands(BaseCommand):
 
 def get_minutes_commands():
     """Get all minutes-related commands"""
-    from src.cli_package.commands.analyze_matching_history import (
+    from src.interfaces.cli.commands.analyze_matching_history import (
         get_analyze_matching_history_command,
     )
 

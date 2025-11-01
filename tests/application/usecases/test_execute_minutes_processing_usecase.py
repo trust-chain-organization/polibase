@@ -13,7 +13,7 @@ from src.domain.entities.conversation import Conversation
 from src.domain.entities.meeting import Meeting
 from src.domain.entities.minutes import Minutes
 from src.domain.value_objects.speaker_speech import SpeakerSpeech
-from src.exceptions import APIKeyError
+from src.infrastructure.exceptions import APIKeyError
 
 
 @pytest.fixture

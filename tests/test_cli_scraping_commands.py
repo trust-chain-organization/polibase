@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from click.testing import CliRunner
 
-from src.cli_package.commands.scraping_commands import ScrapingCommands
+from src.interfaces.cli.commands.scraping_commands import ScrapingCommands
 from src.web_scraper.models import MinutesData
 
 
@@ -34,7 +34,7 @@ def mock_minutes_data():
 
 def test_scrape_minutes_with_url(cli_runner, mock_minutes_data):
     """Test scrape-minutes command with URL"""
-    with patch("src.cli_package.commands.scraping_commands.asyncio.run") as mock_run:
+    with patch("src.interfaces.cli.commands.scraping_commands.asyncio.run") as mock_run:
         # Mock the async function to return success
         mock_run.return_value = True
 
@@ -53,7 +53,7 @@ def test_scrape_minutes_with_url(cli_runner, mock_minutes_data):
 
 def test_scrape_minutes_with_meeting_id(cli_runner, mock_minutes_data):
     """Test scrape-minutes command with meeting ID"""
-    with patch("src.cli_package.commands.scraping_commands.asyncio.run") as mock_run:
+    with patch("src.interfaces.cli.commands.scraping_commands.asyncio.run") as mock_run:
         # Mock the async function to return success
         mock_run.return_value = True
 

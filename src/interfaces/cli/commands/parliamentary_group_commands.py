@@ -6,8 +6,8 @@ from typing import Any
 
 import click
 
-from src.cli_package.progress import ProgressTracker
 from src.infrastructure.di.container import get_container, init_container
+from src.interfaces.cli.progress import ProgressTracker
 from src.parliamentary_group_member_extractor import (
     ParliamentaryGroupMemberExtractor,
     ParliamentaryGroupMembershipService,

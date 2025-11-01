@@ -6,89 +6,69 @@ Japanese political activities.
 """
 
 # Export exceptions for easier access
-from .exceptions import (
+from src.domain.exceptions import (
+    BusinessRuleViolationException,
+    DuplicateEntityException,
+    EntityNotFoundException,
+    PolibaseError,
+)
+from src.infrastructure.exceptions import (
     APIKeyError,
-    ConfigurationError,
     ConnectionError,
     DatabaseError,
-    DataValidationError,
-    DeleteError,
-    DownloadError,
-    DuplicateRecordError,
-    ElementNotFoundError,
-    FileNotFoundError,
+    DeleteException,
+    DownloadException,
+    ElementNotFoundException,
+    FileNotFoundException,
     IntegrityError,
-    InvalidConfigError,
     LLMError,
-    MissingConfigError,
-    ModelError,
-    PageLoadError,
-    ParsingError,
-    PDFProcessingError,
+    PageLoadException,
     PermissionError,
-    PolibaseError,
-    ProcessingError,
-    QueryError,
+    QueryException,
     RecordNotFoundError,
-    RepositoryError,
-    ResponseParsingError,
+    ResponseParsingException,
     SaveError,
-    SchemaValidationError,
     ScrapingError,
     StorageError,
-    TextExtractionError,
-    TokenLimitError,
+    TokenLimitException,
     UpdateError,
-    UploadError,
-    URLError,
-    ValidationError,
+    UploadException,
+    URLException,
 )
 
 __all__ = [
     # Base exception
     "PolibaseError",
-    # Configuration
-    "ConfigurationError",
-    "MissingConfigError",
-    "InvalidConfigError",
+    # Domain exceptions
+    "EntityNotFoundException",
+    "BusinessRuleViolationException",
+    "DuplicateEntityException",
     # Database
     "DatabaseError",
     "ConnectionError",
-    "QueryError",
+    "QueryException",
     "IntegrityError",
     "RecordNotFoundError",
-    "DuplicateRecordError",
-    # Processing
-    "ProcessingError",
-    "PDFProcessingError",
-    "TextExtractionError",
-    "ParsingError",
     # LLM/AI
     "LLMError",
     "APIKeyError",
-    "ModelError",
-    "TokenLimitError",
-    "ResponseParsingError",
+    "TokenLimitException",
+    "ResponseParsingException",
     # Web Scraping
     "ScrapingError",
-    "URLError",
-    "PageLoadError",
-    "ElementNotFoundError",
-    "DownloadError",
+    "URLException",
+    "PageLoadException",
+    "ElementNotFoundException",
+    "DownloadException",
     # Storage
     "StorageError",
-    "FileNotFoundError",
-    "UploadError",
+    "FileNotFoundException",
+    "UploadException",
     "PermissionError",
-    # Validation
-    "ValidationError",
-    "DataValidationError",
-    "SchemaValidationError",
     # Repository
-    "RepositoryError",
     "SaveError",
     "UpdateError",
-    "DeleteError",
+    "DeleteException",
 ]
 
 __version__ = "0.1.0"

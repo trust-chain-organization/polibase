@@ -5,11 +5,11 @@ from pydantic import BaseModel
 from pytest import MonkeyPatch  # Add the import for type annotation
 
 from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
+from src.infrastructure.external.llm_errors import LLMError, LLMRateLimitError
+from src.infrastructure.external.prompt_loader import PromptLoader
 from src.party_member_extractor.models import PartyMemberInfo, PartyMemberList
-from src.services.llm_errors import LLMError, LLMRateLimitError
 from src.services.llm_factory import LLMServiceFactory
 from src.services.llm_service import LLMService
-from src.services.prompt_loader import PromptLoader
 from tests.utils.llm_mock import LLMServiceMock, mock_llm_service
 
 

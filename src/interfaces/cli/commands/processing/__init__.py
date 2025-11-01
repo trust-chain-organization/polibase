@@ -2,7 +2,7 @@
 
 import click
 
-from src.cli_package.commands.minutes_commands import MinutesCommands
+from src.interfaces.cli.commands.minutes_commands import MinutesCommands
 
 
 @click.group()
