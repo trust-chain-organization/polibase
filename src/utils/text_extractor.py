@@ -16,7 +16,8 @@ warnings.warn(
 
 # Re-export from new location
 from src.infrastructure.utilities.text_extractor import (  # noqa: E402
+    extract_text_from_file,
     extract_text_from_pdf,
 )
 
-__all__ = ["extract_text_from_pdf"]
+__all__ = ["extract_text_from_pdf", "extract_text_from_file"]
