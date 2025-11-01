@@ -9,7 +9,7 @@ from src.common.database_utils import (
     display_repository_status,
     save_data_with_logging,
 )
-from src.exceptions import DatabaseError, RepositoryError
+from src.infrastructure.exceptions import DatabaseError, RepositoryException
 
 
 class MockRepository:
@@ -101,7 +101,7 @@ class TestDisplayRepositoryStatus:
         repo = BadRepository()
 
         # Execute and verify
-        with pytest.raises(RepositoryError) as exc_info:
+        with pytest.raises(RepositoryException) as exc_info:
             display_repository_status(repo, "bad_table")
 
         assert "does not implement required interface" in str(exc_info.value)
@@ -118,7 +118,7 @@ class TestDisplayRepositoryStatus:
         repo = FailingRepository()
 
         # Execute and verify
-        with pytest.raises(RepositoryError) as exc_info:
+        with pytest.raises(RepositoryException) as exc_info:
             display_repository_status(repo, "failing_table")
 
         assert "Failed to get status for failing_table" in str(exc_info.value)

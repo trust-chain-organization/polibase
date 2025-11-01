@@ -11,13 +11,13 @@ from src.common.app_logic import (
     setup_environment,
     validate_database_connection,
 )
-from src.exceptions import (
+from src.infrastructure.exceptions import (
     ConfigurationError,
     DatabaseError,
     PDFProcessingError,
     ProcessingError,
 )
-from src.exceptions import FileNotFoundError as PolibaseFileNotFoundError
+from src.infrastructure.exceptions import FileNotFoundError as PolibaseFileNotFoundError
 
 
 class TestSetupEnvironment:

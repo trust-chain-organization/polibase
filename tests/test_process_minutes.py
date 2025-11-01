@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.exceptions import (
+from src.infrastructure.exceptions import (
     APIKeyError,
     DatabaseError,
     PDFProcessingError,

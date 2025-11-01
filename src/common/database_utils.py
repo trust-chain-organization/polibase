@@ -8,8 +8,7 @@ import logging
 from collections.abc import Callable
 from typing import Any, Protocol, TypeVar
 
-from src.domain.exceptions import RepositoryError
-from src.infrastructure.exceptions import DatabaseError
+from src.infrastructure.exceptions import DatabaseError, RepositoryException
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ def display_repository_status(
         additional_stats: 追加統計情報
 
     Raises:
-        RepositoryError: If repository operation fails
+        RepositoryException: If repository operation fails
     """
     try:
         count = repo.get_count()
@@ -64,14 +63,14 @@ def display_repository_status(
 
     except AttributeError as e:
         logger.error(f"Repository does not implement required method: {e}")
-        raise RepositoryError(
+        raise RepositoryException(
             f"Repository for '{table_name}' does not implement required interface",
             {"error": str(e)},
         ) from e
     except Exception as e:
         logger.error(f"Failed to display repository status: {e}")
         print(f"❌ データベース状態確認エラー: {e}")
-        raise RepositoryError(
+        raise RepositoryException(
             f"Failed to get status for {table_name}",
             {"table_name": table_name, "error": str(e)},
         ) from e
