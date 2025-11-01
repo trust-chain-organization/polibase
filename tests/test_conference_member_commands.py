@@ -22,9 +22,7 @@ class TestConferenceMemberCommands:
     @pytest.fixture
     def mock_progress(self):
         """Create a mock progress tracker"""
-        with patch(
-            "src.cli_package.commands.conference_member_commands.ProgressTracker"
-        ) as mock:
+        with patch("src.interfaces.cli.progress.ProgressTracker") as mock:
             progress_instance = Mock()
             progress_instance.__enter__ = Mock(return_value=progress_instance)
             progress_instance.__exit__ = Mock(return_value=None)
@@ -38,10 +36,10 @@ class TestConferenceMemberCommands:
     def test_extract_conference_members_success(self, runner, mock_progress):
         """Test successful extraction of conference members"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.RepositoryAdapter"
+            "src.interfaces.cli.commands.conference_member_commands.RepositoryAdapter"
         ) as mock_adapter_class:
             with patch(
-                "src.cli_package.commands.conference_member_commands.ConferenceMemberExtractor"
+                "src.interfaces.cli.commands.conference_member_commands.ConferenceMemberExtractor"
             ) as mock_extractor_class:
                 # Setup mocks
                 mock_conf_repo = MagicMock()
@@ -104,10 +102,10 @@ class TestConferenceMemberCommands:
     def test_extract_conference_members_with_force(self, runner, mock_progress):
         """Test extraction with force flag"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.RepositoryAdapter"
+            "src.interfaces.cli.commands.conference_member_commands.RepositoryAdapter"
         ) as mock_adapter_class:
             with patch(
-                "src.cli_package.commands.conference_member_commands.ConferenceMemberExtractor"
+                "src.interfaces.cli.commands.conference_member_commands.ConferenceMemberExtractor"
             ) as mock_extractor_class:
                 # Setup mocks
                 mock_conf_repo = Mock()
@@ -167,7 +165,7 @@ class TestConferenceMemberCommands:
     def test_match_conference_members_success(self, runner, mock_progress):
         """Test successful matching of conference members"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.ConferenceMemberMatchingService"
+            "src.interfaces.cli.commands.conference_member_commands.ConferenceMemberMatchingService"
         ) as mock_service_class:
             # Setup mocks
             mock_service = Mock()
@@ -199,7 +197,7 @@ class TestConferenceMemberCommands:
     def test_match_conference_members_no_conference_id(self, runner, mock_progress):
         """Test matching without conference_id (processes all)"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.ConferenceMemberMatchingService"
+            "src.interfaces.cli.commands.conference_member_commands.ConferenceMemberMatchingService"
         ) as mock_service_class:
             # Setup mocks
             mock_service = Mock()
@@ -224,7 +222,7 @@ class TestConferenceMemberCommands:
     def test_create_affiliations_success(self, runner, mock_progress):
         """Test successful creation of affiliations"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.ConferenceMemberMatchingService"
+            "src.interfaces.cli.commands.conference_member_commands.ConferenceMemberMatchingService"
         ) as mock_service_class:
             # Setup mocks
             mock_service = Mock()
@@ -252,10 +250,10 @@ class TestConferenceMemberCommands:
     def test_create_affiliations_with_default_date(self, runner, mock_progress):
         """Test creating affiliations with default date (today)"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.ConferenceMemberMatchingService"
+            "src.interfaces.cli.commands.conference_member_commands.ConferenceMemberMatchingService"
         ) as mock_service_class:
             with patch(
-                "src.cli_package.commands.conference_member_commands.date"
+                "src.interfaces.cli.commands.conference_member_commands.date"
             ) as mock_date:
                 # Mock today's date
                 mock_date.today.return_value = date(2024, 3, 15)
@@ -287,7 +285,7 @@ class TestConferenceMemberCommands:
     def test_member_status_success(self, runner):
         """Test member status command"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.RepositoryAdapter"
+            "src.interfaces.cli.commands.conference_member_commands.RepositoryAdapter"
         ) as mock_adapter_class:
             # Setup mocks
             mock_repo = MagicMock()
@@ -319,7 +317,7 @@ class TestConferenceMemberCommands:
     def test_extract_conference_members_error(self, runner):
         """Test extraction error handling"""
         with patch(
-            "src.cli_package.commands.conference_member_commands.RepositoryAdapter"
+            "src.interfaces.cli.commands.conference_member_commands.RepositoryAdapter"
         ) as mock_adapter_class:
             # Setup mock conference repo that returns None
             mock_conf_repo = MagicMock()
