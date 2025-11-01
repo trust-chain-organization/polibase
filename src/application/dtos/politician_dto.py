@@ -12,6 +12,7 @@ class CreatePoliticianDTO:
     furigana: str | None = None
     district: str | None = None
     profile_page_url: str | None = None
+    party_position: str | None = None
 
 
 @dataclass
@@ -24,6 +25,7 @@ class UpdatePoliticianDTO:
     furigana: str | None = None
     district: str | None = None
     profile_page_url: str | None = None
+    party_position: str | None = None
 
 
 @dataclass
@@ -37,6 +39,7 @@ class PoliticianDTO:
     furigana: str | None
     district: str | None
     profile_page_url: str | None
+    party_position: str | None = None
 
 
 @dataclass

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.models.meeting_v2 import Meeting
+from src.domain.entities.meeting import Meeting
 from src.web_scraper.models import MinutesData
 from src.web_scraper.scraper_service import ScraperService
 
@@ -19,15 +19,16 @@ def scraper_service():
 @pytest.fixture
 def mock_meeting():
     """Create a mock meeting object"""
-    return Meeting(
+    meeting = Meeting(
         id=123,
         conference_id=1,
         date=date(2024, 1, 15),
         url="https://example.com/minutes.html",
         name="第1回定例会",
-        created_at=datetime(2024, 1, 1),
-        updated_at=datetime(2024, 1, 1),
     )
+    meeting.created_at = datetime(2024, 1, 1)
+    meeting.updated_at = datetime(2024, 1, 1)
+    return meeting
 
 
 @pytest.fixture
@@ -98,11 +99,11 @@ async def test_fetch_from_meeting_id_no_url(scraper_service):
             date=date(2024, 1, 15),
             url=None,  # No URL
             name="第1回定例会",
-            created_at=datetime(2024, 1, 1),
-            updated_at=datetime(2024, 1, 1),
             gcs_pdf_uri=None,
             gcs_text_uri=None,
         )
+        mock_meeting.created_at = datetime(2024, 1, 1)
+        mock_meeting.updated_at = datetime(2024, 1, 1)
         mock_repo = Mock()
         mock_repo.get_by_id.return_value = mock_meeting
         mock_repo_class.return_value = mock_repo

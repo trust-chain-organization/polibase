@@ -4,10 +4,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from src.application.dtos.politician_dto import (
+    CreatePoliticianDTO,
+    UpdatePoliticianDTO,
+)
+from src.domain.entities.politician import Politician
 from src.infrastructure.persistence.politician_repository_impl import (
     PoliticianRepositoryImpl as PoliticianRepository,
 )
-from src.models.politician import Politician, PoliticianCreate, PoliticianUpdate
 
 
 @pytest.mark.skip(
@@ -45,13 +49,12 @@ class TestPoliticianRepositoryV2:
                 repository, "create_from_model", return_value=new_politician
             ):
                 # テスト実行
-                politician_data = PoliticianCreate(
+                politician_data = CreatePoliticianDTO(
                     name="テスト太郎",
                     political_party_id=1,
-                    position="衆議院議員",
-                    prefecture="東京都",
-                    electoral_district="東京1区",
-                    profile_url="https://example.com/test",
+                    furigana=None,
+                    district="東京1区",
+                    profile_page_url="https://example.com/test",
                     party_position="幹事長",
                 )
                 result = repository.create_politician(politician_data)
@@ -78,13 +81,12 @@ class TestPoliticianRepositoryV2:
         # モックの設定
         with patch.object(repository, "get_by_name_and_party", return_value=existing):
             # テスト実行
-            politician_data = PoliticianCreate(
+            politician_data = CreatePoliticianDTO(
                 name="テスト太郎",
                 political_party_id=1,
-                position="衆議院議員",
-                prefecture="東京都",
-                electoral_district="東京1区",
-                profile_url="https://example.com/test",
+                furigana=None,
+                district="東京1区",
+                profile_page_url="https://example.com/test",
                 party_position="幹事長",
             )
             result = repository.create_politician(politician_data)
@@ -204,7 +206,9 @@ class TestPoliticianRepositoryV2:
             repository, "update_from_model", return_value=updated_politician
         ) as mock_update:
             # テスト実行
-            update_data = PoliticianUpdate(position="参議院議員", prefecture="大阪府")
+            update_data = UpdatePoliticianDTO(
+                id=1, district="大阪府", party_position="参議院議員"
+            )
             result = repository.update_politician(1, update_data)
 
             # アサーション

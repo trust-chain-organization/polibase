@@ -6,16 +6,20 @@ synchronous methods for backward compatibility with sync code.
 
 import asyncio
 import logging
+from dataclasses import asdict
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from src.application.dtos.politician_dto import (
+    CreatePoliticianDTO,
+    UpdatePoliticianDTO,
+)
 from src.infrastructure.persistence.politician_repository_impl import (
     PoliticianRepositoryImpl,
 )
-from src.models.politician import PoliticianCreate, PoliticianUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -293,10 +297,12 @@ class PoliticianRepositorySyncImpl:
         """Execute raw SQL query (backward compatibility)."""
         return self.fetch_as_dict_sync(query, params)
 
-    def create_sync(self, politician_create: PoliticianCreate) -> dict[str, Any] | None:
+    def create_sync(
+        self, politician_create: CreatePoliticianDTO
+    ) -> dict[str, Any] | None:
         """Create politician (synchronous, backward compatibility)."""
         if self.sync_session:
-            data = politician_create.model_dump(exclude_unset=True)
+            data = {k: v for k, v in asdict(politician_create).items() if v is not None}
             columns = ", ".join(data.keys())
             values = ", ".join([f":{key}" for key in data.keys()])
             query = f"INSERT INTO politicians ({columns}) VALUES ({values}) RETURNING *"
@@ -311,11 +317,15 @@ class PoliticianRepositorySyncImpl:
         return None
 
     def update_v2(
-        self, politician_id: int, update_data: PoliticianUpdate
+        self, politician_id: int, update_data: UpdatePoliticianDTO
     ) -> dict[str, Any] | None:
         """Update politician (synchronous, backward compatibility)."""
         if self.sync_session:
-            data = update_data.model_dump(exclude_unset=True)
+            data_dict = asdict(update_data)
+            # Remove id from update data
+            data_dict.pop("id", None)
+            # Only include non-None values
+            data = {k: v for k, v in data_dict.items() if v is not None}
             if not data:
                 return None
             set_clause = ", ".join([f"{key} = :{key}" for key in data.keys()])
