@@ -139,36 +139,56 @@ def setup_test_data(db_session):
     )
     speaker_id3 = speaker_result3.scalar()
 
-    # Insert test politicians
+    # Insert test politicians (without speaker_id - removed in migration 032)
     politician_result1 = db_session.execute(
         text("""
-        INSERT INTO politicians (name, political_party_id, speaker_id)
-        VALUES ('テスト議員1', :party_id, :speaker_id)
+        INSERT INTO politicians (name, political_party_id)
+        VALUES ('テスト議員1', :party_id)
         RETURNING id
         """),
-        {"party_id": party_id1, "speaker_id": speaker_id1},
+        {"party_id": party_id1},
     )
     politician_id1 = politician_result1.scalar()
 
     politician_result2 = db_session.execute(
         text("""
-        INSERT INTO politicians (name, political_party_id, speaker_id)
-        VALUES ('テスト議員2', :party_id, :speaker_id)
+        INSERT INTO politicians (name, political_party_id)
+        VALUES ('テスト議員2', :party_id)
         RETURNING id
         """),
-        {"party_id": party_id2, "speaker_id": speaker_id2},
+        {"party_id": party_id2},
     )
     politician_id2 = politician_result2.scalar()
 
     politician_result3 = db_session.execute(
         text("""
-        INSERT INTO politicians (name, political_party_id, speaker_id)
-        VALUES ('テスト議員3', :party_id, :speaker_id)
+        INSERT INTO politicians (name, political_party_id)
+        VALUES ('テスト議員3', :party_id)
         RETURNING id
         """),
-        {"party_id": party_id1, "speaker_id": speaker_id3},
+        {"party_id": party_id1},
     )
     politician_id3 = politician_result3.scalar()
+
+    # Link speakers to politicians (new relationship from migration 032)
+    db_session.execute(
+        text(
+            "UPDATE speakers SET politician_id = :politician_id WHERE id = :speaker_id"
+        ),
+        {"politician_id": politician_id1, "speaker_id": speaker_id1},
+    )
+    db_session.execute(
+        text(
+            "UPDATE speakers SET politician_id = :politician_id WHERE id = :speaker_id"
+        ),
+        {"politician_id": politician_id2, "speaker_id": speaker_id2},
+    )
+    db_session.execute(
+        text(
+            "UPDATE speakers SET politician_id = :politician_id WHERE id = :speaker_id"
+        ),
+        {"politician_id": politician_id3, "speaker_id": speaker_id3},
+    )
 
     db_session.commit()
 
