@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -102,6 +103,13 @@ class BaseRepositoryImpl[T: BaseEntity](BaseRepository[T]):
         await self.session.delete(model)
         await self.session.flush()
         return True
+
+    async def count(self) -> int:
+        """Count total number of entities."""
+        query = select(func.count()).select_from(self.model_class)
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
 
     def _to_entity(self, model: Any) -> T:
         """Convert database model to domain entity."""
