@@ -937,6 +937,20 @@ External Websites
 | **デプロイ** | docker compose up | Cloud Build → Artifact Registry → Cloud Run |
 | **コスト** | サーバーコスト（固定） | 使用量ベース課金（従量制） |
 
+#### 開発環境のバリエーション比較
+
+| 項目 | ローカル (Docker) | GCP 常時稼働 | GCP GCSダンプ方式 ⭐ |
+|------|------------------|-------------|---------------------|
+| **起動時間** | 即座 | 1-2分 | 10-15分（初回）、1-2分（2回目以降） |
+| **月額コスト** | サーバー代（固定） | $50-150 | $0.02（停止時）+ 日割り |
+| **年間コスト** | サーバー代 | $600-1,800 | $24-96（週1日利用） |
+| **データ保持** | ローカルディスク | Cloud SQL | GCS（完全保持） |
+| **バックアップ** | 手動 | 自動（7日間） | 自動（無期限、履歴付き） |
+| **スケーラビリティ** | なし | 高 | 中（起動時のみ） |
+| **可用性** | 低 | 高 | 中（起動必要） |
+| **適用ケース** | ローカル開発 | 本番、頻繁な利用 | 週1回以下の開発 |
+| **推奨度** | 個人開発 | 本番環境 | コスト重視の開発 ⭐ |
+
 ### コスト見積もり
 
 #### 月額コスト試算（想定ワークロード）
@@ -974,7 +988,7 @@ External Websites
 
 #### コスト最適化戦略
 
-1. **開発環境**
+1. **開発環境（通常運用）**
    - Cloud SQLをdb-f1-microに変更 → $15/月
    - Cloud Runを最小インスタンスに設定 → $10/月
    - 開発環境合計: 約$50-70/月
@@ -984,24 +998,136 @@ External Websites
    - GCSライフサイクル管理（古いデータをColdline移行） → -$1/月
    - Cloud SQL Read Replicaは必要時のみ作成 → -$150/月（オプション）
 
-3. **スケーラビリティ対応**
+3. **GCSダンプ方式（超低コスト開発環境）** ⭐ 推奨
+
+   週1回以下の利用頻度で、とにかくコストを抑えたい場合に最適な方式です。
+
+   **概要**:
+   - 使用時: Cloud SQLインスタンスを作成してGCSから復元
+   - 終了時: GCSにバックアップしてCloud SQLインスタンスを削除
+   - 停止中: GCSストレージ課金のみ（約$0.02/月）
+
+   **コスト比較**:
+
+   | 運用方法 | 停止時コスト | 稼働時コスト | 年間コスト（週1日利用） |
+   |---------|-------------|-------------|---------------------|
+   | 常時稼働 | $150/月 | $150/月 | $1,800 |
+   | 停止運用（activation-policy） | $10/月 | $150/月 | $120-360 |
+   | **GCSダンプ方式** | **$0.02/月** | **日割り** | **$24-96** |
+
+   **運用フロー**:
+   ```bash
+   # 作業開始（初回: 10-15分、2回目以降: 1-2分）
+   just cloud-up
+   # または
+   ./scripts/cloud/setup-dev-env.sh
+
+   # 作業実施...
+
+   # 作業終了（5-10分）
+   just cloud-down
+   # または
+   ./scripts/cloud/teardown-dev-env.sh
+   ```
+
+   **メリット**:
+   - ✅ 使用しない期間は完全に$0（GCS課金$0.02のみ）
+   - ✅ データは完全に保持される
+   - ✅ バックアップ履歴が自動管理される
+   - ✅ 複数の復元ポイントを保持可能
+   - ✅ 年間約$1,700-2,800削減（週1日利用の場合）
+
+   **デメリット**:
+   - ⚠️ 初回起動に10-15分かかる
+   - ⚠️ バックアップ・復元の待ち時間が発生
+   - ⚠️ 完全自動化には不向き
+
+   **推奨ケース**:
+   - 週1回以下の利用頻度
+   - 開発・テスト環境
+   - 個人プロジェクト
+   - コスト最優先
+
+   **非推奨ケース**:
+   - 毎日使用する
+   - すぐに起動したい
+   - CI/CDでの自動実行
+
+   **実装詳細**:
+   - スクリプト: `scripts/cloud/`
+   - ドキュメント: `scripts/cloud/README.md`
+   - バックアップ保存先: `gs://polibase-backups/database-snapshots/`
+   - 自動化: Justfileコマンド（`cloud-up`, `cloud-down`, `cloud-status`）
+
+4. **スケーラビリティ対応**
    - アクセス増加時もCloud Runが自動スケール（コスト増は従量制）
    - LLM処理はキャッシング活用で呼び出し削減
    - データベースはリードレプリカで読み取り負荷分散
 
 ### デプロイメント戦略
 
-#### 初期デプロイ
+#### 開発環境（GCSダンプ方式） - 推奨
+
+週1回以下の利用頻度の場合、この方式が最もコスト効率が良いです。
+
+1. **初回セットアップ**
+   ```bash
+   # 環境変数を設定
+   export GCP_PROJECT_ID="your-project-id"
+   export GCP_REGION="asia-northeast1"
+   export GCS_BUCKET_NAME="polibase-backups"
+
+   # GCSバケット作成（バックアップ保存用）
+   gsutil mb -p $GCP_PROJECT_ID \
+     -c STANDARD \
+     -l $GCP_REGION \
+     gs://$GCS_BUCKET_NAME
+
+   # 開発環境起動（初回は空のDBが作成される）
+   just cloud-up
+   ```
+
+2. **日常的な使用**
+   ```bash
+   # 作業開始
+   just cloud-up          # GCSから自動復元（10-15分）
+
+   # 作業...
+
+   # 作業終了
+   just cloud-down        # GCSへ自動バックアップ＋削除（5-10分）
+   ```
+
+3. **バックアップ管理**
+   ```bash
+   # バックアップ一覧表示
+   just cloud-backups
+
+   # 環境状態確認
+   just cloud-status
+   ```
+
+**詳細**: `scripts/cloud/README.md` を参照
+
+#### 本番環境（常時稼働）
+
+本番環境または毎日使用する開発環境の場合は、この方式を推奨します。
 
 1. **インフラ構築（Terraform推奨）**
    ```bash
    # VPC作成
    gcloud compute networks create polibase-vpc --subnet-mode=custom
 
-   # Cloud SQL作成
+   # Cloud SQL作成（本番環境）
    gcloud sql instances create polibase-db \
      --database-version=POSTGRES_15 \
      --tier=db-custom-2-8192 \
+     --region=asia-northeast1
+
+   # または開発環境（低スペック）
+   gcloud sql instances create polibase-dev-db \
+     --database-version=POSTGRES_15 \
+     --tier=db-f1-micro \
      --region=asia-northeast1
 
    # GCSバケット作成
