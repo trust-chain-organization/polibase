@@ -91,15 +91,16 @@ class TestMinutesProcessingWithHistory:
         # Verify it was initialized correctly
         assert agent.minutes_divider.llm_service == instrumented_llm_service
 
-    def test_history_recording_on_extract_speeches(
+    @pytest.mark.asyncio
+    async def test_history_recording_on_extract_speeches(
         self, instrumented_llm_service, mock_history_repository
     ):
         """Test that history is recorded when extracting speeches."""
         # Test text
         test_text = "これはテスト議事録です。"
 
-        # Call extract_speeches_from_text (synchronous method)
-        instrumented_llm_service.extract_speeches_from_text(test_text)
+        # Call extract_speeches_from_text (async method)
+        await instrumented_llm_service.extract_speeches_from_text(test_text)
 
         # Verify history repository was called
         assert mock_history_repository.create.called
@@ -123,61 +124,6 @@ class TestMinutesProcessingWithHistory:
         assert isinstance(service, InstrumentedLLMService)
         assert service._model_name == "gemini-2.0-flash-exp"
 
-    @patch("src.infrastructure.config.async_database.get_async_session")
-    @patch("src.process_minutes.LLMServiceFactory")
-    @patch("src.process_minutes.LLMProcessingHistoryRepositoryImpl")
-    @pytest.mark.skip(reason="Tests deleted src.process_minutes module")
-    def test_process_minutes_configures_meeting_context(
-        self, mock_history_repo_class, mock_factory_class, mock_get_async_session
-    ):
-        """Test that process_minutes configures meeting context for history."""
-        from src.process_minutes import process_minutes
-
-        # Create mock async session
-        mock_session = AsyncMock()
-        mock_get_async_session.return_value.__aenter__.return_value = mock_session
-
-        # Create mock history repository
-        mock_history_repo = AsyncMock()
-        mock_history_repo_class.return_value = mock_history_repo
-
-        # Create mock instrumented service
-        mock_service = Mock(spec=InstrumentedLLMService)
-        mock_service._input_reference_type = None
-        mock_service._input_reference_id = None
-        mock_service.set_history_repository = AsyncMock()
-
-        # Add set_input_reference method to the mock
-        def set_input_reference(ref_type, ref_id):
-            mock_service._input_reference_type = ref_type
-            mock_service._input_reference_id = ref_id
-
-        mock_service.set_input_reference = Mock(side_effect=set_input_reference)
-
-        # Configure factory to return our mock
-        mock_factory = Mock()
-        mock_factory.create_advanced.return_value = mock_service
-        mock_factory_class.return_value = mock_factory
-
-        # Mock MinutesProcessAgent to avoid actual processing
-        with patch("src.process_minutes.MinutesProcessAgent") as mock_agent_class:
-            mock_agent = Mock()
-            mock_agent.run.return_value = []
-            mock_agent_class.return_value = mock_agent
-
-            # Call process_minutes with meeting_id
-            process_minutes("テストテキスト", meeting_id=456)
-
-            # Verify set_input_reference was called
-            mock_service.set_input_reference.assert_called_once_with("meeting", 456)
-
-            # Verify set_history_repository was called
-            mock_service.set_history_repository.assert_called_once()
-
-            # Verify meeting context was set via our side_effect
-            assert mock_service._input_reference_type == "meeting"
-            assert mock_service._input_reference_id == 456
-
     def test_instrumented_service_delegation_methods(
         self, instrumented_llm_service, mock_llm_service
     ):
@@ -198,7 +144,8 @@ class TestMinutesProcessingWithHistory:
         instrumented_llm_service.invoke_with_retry(chain, inputs)
         mock_llm_service.invoke_with_retry.assert_called_once_with(chain, inputs)
 
-    def test_history_recording_handles_errors(
+    @pytest.mark.asyncio
+    async def test_history_recording_handles_errors(
         self, mock_llm_service, mock_history_repository
     ):
         """Test that history recording handles errors gracefully."""
@@ -217,7 +164,7 @@ class TestMinutesProcessingWithHistory:
 
         # Call should raise the error
         with pytest.raises(Exception, match="Test error"):
-            service.extract_speeches_from_text("test")
+            await service.extract_speeches_from_text("test")
 
         # But history should still be recorded with failed status
         assert mock_history_repository.create.called
