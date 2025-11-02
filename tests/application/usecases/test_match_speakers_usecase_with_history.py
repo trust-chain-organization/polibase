@@ -74,7 +74,7 @@ class TestMatchSpeakersUseCaseWithHistory:
         )
 
         # Mock create to return the entry and update to modify it
-        def mock_create(entry: LLMProcessingHistory) -> LLMProcessingHistory:
+        async def mock_create(entry: LLMProcessingHistory) -> LLMProcessingHistory:
             # Copy the entry's properties to our fixture
             history_entry.status = entry.status
             history_entry.processing_type = entry.processing_type
@@ -82,14 +82,14 @@ class TestMatchSpeakersUseCaseWithHistory:
             history_entry.model_version = entry.model_version
             return history_entry
 
-        def mock_update(entry: LLMProcessingHistory) -> LLMProcessingHistory:
+        async def mock_update(entry: LLMProcessingHistory) -> LLMProcessingHistory:
             # Update status when update is called
             history_entry.status = entry.status
             history_entry.result = entry.result
             return history_entry
 
-        repo.create = MagicMock(side_effect=mock_create)
-        repo.update = MagicMock(side_effect=mock_update)
+        repo.create = AsyncMock(side_effect=mock_create)
+        repo.update = AsyncMock(side_effect=mock_update)
 
         return repo
 
@@ -124,12 +124,6 @@ class TestMatchSpeakersUseCaseWithHistory:
         )
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason=(
-            "InstrumentedLLMService._record_processing uses "
-            "loop.run_until_complete which doesn't work in async tests"
-        )
-    )
     async def test_llm_matching_records_history(
         self,
         use_case: MatchSpeakersUseCase,
@@ -227,12 +221,6 @@ class TestMatchSpeakersUseCaseWithHistory:
         mock_history_repo.create.assert_not_called()
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason=(
-            "InstrumentedLLMService._record_processing uses "
-            "loop.run_until_complete which doesn't work in async tests"
-        )
-    )
     async def test_set_input_reference_called(
         self,
         use_case: MatchSpeakersUseCase,
@@ -312,12 +300,6 @@ class TestMatchSpeakersUseCaseWithHistory:
         mock_history_repo.create.assert_not_called()
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason=(
-            "InstrumentedLLMService._record_processing uses "
-            "loop.run_until_complete which doesn't work in async tests"
-        )
-    )
     async def test_history_recording_failure_doesnt_break_matching(
         self,
         use_case: MatchSpeakersUseCase,
