@@ -616,12 +616,15 @@ gsutil iam get gs://YOUR_BUCKET_NAME/
 
 > 📚 **詳細な図とガイド**: [docs/diagrams/](docs/diagrams/) にすべてのアーキテクチャ図と詳細な説明があります
 > 📖 **包括的なドキュメント**: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) でアーキテクチャの全体像を参照
+> ☁️ **クラウドアーキテクチャ**: GCP上でのデプロイメント設計については [docs/ARCHITECTURE.md#クラウドアーキテクチャ-google-cloud-platform](docs/ARCHITECTURE.md#クラウドアーキテクチャ-google-cloud-platform) を参照
 
 ### Clean Architecture
 
 Polibaseは、保守性と拡張性を向上させるためClean Architectureを採用しています。
 
 **移行状況**: 🟢 **90%完了** - コアアーキテクチャは完全に実装され、レガシーコードのクリーンアップが進行中です。
+
+**注**: 以下はアーキテクチャの概要です。詳細な説明、データフロー図、セキュリティ設計、クラウド構成などは **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** を参照してください。
 
 ### アーキテクチャ概要図
 
