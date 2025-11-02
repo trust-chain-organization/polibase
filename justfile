@@ -118,3 +118,33 @@ ports:
 	else
 		echo "Using default port configuration"
 	fi
+
+# === GCP Cloud Management ===
+
+# Start GCP development environment (restore from GCS backup)
+cloud-up:
+	@echo "🚀 Starting GCP development environment..."
+	./scripts/cloud/setup-dev-env.sh
+
+# Stop GCP development environment (backup to GCS and delete instance)
+cloud-down:
+	@echo "🛑 Stopping GCP development environment..."
+	./scripts/cloud/teardown-dev-env.sh
+
+# List GCS backups
+cloud-backups:
+	@echo "📋 Listing GCS backups..."
+	./scripts/cloud/list-backups.sh
+
+# Show GCP cloud environment status
+cloud-status:
+	@echo "📊 GCP Cloud Environment Status"
+	@echo ""
+	@echo "Cloud SQL Instances:"
+	@gcloud sql instances list --format="table(name,state,settings.activationPolicy,region,databaseVersion)" 2>/dev/null || echo "  No instances found or gcloud not configured"
+	@echo ""
+	@echo "Cloud Run Services:"
+	@gcloud run services list --format="table(name,region,status.url,status.conditions[0].status)" 2>/dev/null || echo "  No services found or gcloud not configured"
+	@echo ""
+	@echo "GCS Buckets:"
+	@gsutil ls 2>/dev/null || echo "  No buckets found or gsutil not configured"
