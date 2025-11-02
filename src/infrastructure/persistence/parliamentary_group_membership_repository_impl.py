@@ -125,24 +125,45 @@ class ParliamentaryGroupMembershipRepositoryImpl(
     ) -> ParliamentaryGroupMembershipEntity:
         """Add a new parliamentary group membership.
 
-        This is a convenience method that delegates to create_membership.
-
         Args:
             politician_id: Politician ID
             parliamentary_group_id: Parliamentary group ID
             start_date: Membership start date
             role: Member role (optional)
-            end_date: Membership end date (optional, not used in creation)
+            end_date: Membership end date (optional)
 
         Returns:
             Created membership entity
         """
-        return await self.create_membership(
+        # Check if already exists
+        from sqlalchemy.future import select
+
+        existing_query = select(self.model_class).where(
+            and_(
+                self.model_class.politician_id == politician_id,
+                self.model_class.parliamentary_group_id == parliamentary_group_id,
+                self.model_class.start_date == start_date,
+            )
+        )
+        result = await self.session.execute(existing_query)
+        existing_model = result.scalars().first()
+
+        if existing_model:
+            return self._to_entity(existing_model)
+
+        # Create new membership using ORM
+        new_model = self.model_class(
             politician_id=politician_id,
-            group_id=parliamentary_group_id,
+            parliamentary_group_id=parliamentary_group_id,
             start_date=start_date,
+            end_date=end_date,
             role=role,
         )
+        self.session.add(new_model)
+        await self.session.flush()
+        await self.session.refresh(new_model)
+
+        return self._to_entity(new_model)
 
     async def end_membership(
         self, membership_id: int, end_date: date

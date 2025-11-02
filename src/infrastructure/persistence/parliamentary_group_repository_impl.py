@@ -40,6 +40,67 @@ class ParliamentaryGroupRepositoryImpl(
     def __init__(self, session: AsyncSession | ISessionAdapter):
         super().__init__(session, ParliamentaryGroup, ParliamentaryGroupModel)
 
+    async def create(self, entity: ParliamentaryGroup) -> ParliamentaryGroup:
+        """Create a new parliamentary group using raw SQL."""
+        query = text(
+            """
+            INSERT INTO parliamentary_groups (
+                name, conference_id, url, description, is_active
+            )
+            VALUES (:name, :conference_id, :url, :description, :is_active)
+            RETURNING id, name, conference_id, url, description, is_active
+        """
+        )
+
+        result = await self.session.execute(
+            query,
+            {
+                "name": entity.name,
+                "conference_id": entity.conference_id,
+                "url": entity.url,
+                "description": entity.description,
+                "is_active": entity.is_active,
+            },
+        )
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        raise ValueError("Failed to create parliamentary group")
+
+    async def update(self, entity: ParliamentaryGroup) -> ParliamentaryGroup:
+        """Update an existing parliamentary group using raw SQL."""
+        if not entity.id:
+            raise ValueError("Entity must have an ID to update")
+
+        query = text("""
+            UPDATE parliamentary_groups
+            SET name = :name,
+                conference_id = :conference_id,
+                url = :url,
+                description = :description,
+                is_active = :is_active
+            WHERE id = :id
+            RETURNING id, name, conference_id, url, description, is_active
+        """)
+
+        result = await self.session.execute(
+            query,
+            {
+                "id": entity.id,
+                "name": entity.name,
+                "conference_id": entity.conference_id,
+                "url": entity.url,
+                "description": entity.description,
+                "is_active": entity.is_active,
+            },
+        )
+        row = result.fetchone()
+
+        if row:
+            return self._row_to_entity(row)
+        raise ValueError(f"Parliamentary group with ID {entity.id} not found")
+
     async def get_by_name_and_conference(
         self, name: str, conference_id: int
     ) -> ParliamentaryGroup | None:
