@@ -106,10 +106,15 @@ Polibaseは以下の設計原則に基づいて構築されています：
    - 直感的なWebインターフェースで操作
 
 7. **データカバレッジを監視ダッシュボードで可視化**
-   - 全国の議会・議事録データの入力状況を一覧表示
-   - 議会別・都道府県別・政党別のカバレッジ率を視覚化
-   - 時系列でのデータ入力推移を分析
-   - データ充実度の低い領域を特定して効率的な作業が可能
+   - **監視ダッシュボード（Streamlit）**: 全国の議会・議事録データの入力状況を一覧表示
+     - 議会別・都道府県別・政党別のカバレッジ率を視覚化
+     - 時系列でのデータ入力推移を分析
+     - 日本地図による視覚的なカバレッジ表示
+   - **BIダッシュボード（Plotly Dash）**: データカバレッジの詳細分析
+     - インタラクティブなグラフと表でデータ分析
+     - 都道府県・組織タイプ別の詳細なカバレッジ統計
+     - リアルタイムデータ更新とフィルタリング機能
+     - Clean Architecture準拠の独立アプリケーション
 
 8. **LLM処理履歴とプロンプトバージョン管理**
    - すべてのLLM処理（議事録分割、発言者抽出、政治家マッチング等）の履歴を記録
@@ -158,6 +163,36 @@ Webブラウザで会議情報（URL、日付）と政党情報を管理でき�
 - **時系列分析**: データ入力の推移を時系列グラフで確認
 
 アクセスURL: http://localhost:8502 （Docker Compose使用時）
+
+#### BIダッシュボード（データカバレッジ分析）
+Plotly Dashを使用した高度なデータカバレッジ分析ダッシュボードを提供します：
+- **インタラクティブグラフ**: 円グラフ、棒グラフによるカバレッジ可視化
+- **組織タイプ別分析**: 国/都道府県/市町村のカバレッジ率比較
+- **都道府県別統計**: 各都道府県のデータ取得状況を詳細表示
+- **リアルタイム更新**: データベースから最新情報を取得
+
+**特徴**:
+- Clean Architecture準拠の独立アプリケーション
+- 完全にPythonコードで定義された可視化
+- 独自のDocker Compose設定で起動可能
+- 将来の機能拡張に対応した設計
+
+**起動方法**:
+```bash
+# BI Dashboardディレクトリに移動
+cd src/interfaces/bi_dashboard
+
+# 環境変数を設定して起動（既存DBを使用）
+export DATABASE_URL=postgresql://polibase:polibase@localhost:5432/polibase
+python app.py
+
+# または Docker Composeで起動
+docker-compose up --build
+```
+
+アクセスURL: http://localhost:8050
+
+詳細は [src/interfaces/bi_dashboard/README.md](src/interfaces/bi_dashboard/README.md) を参照してください。
 
 ### テストの実行
 ```bash
@@ -469,8 +504,16 @@ polibase/
 │   │       └── web_scraper_service.py
 │   │
 │   └── interfaces/             # インターフェース層（Clean Architecture）
-│       ├── cli/               # CLIインターフェース（予定）
-│       └── web/               # Webインターフェース（予定）
+│       ├── cli/               # CLIインターフェース
+│       ├── web/               # Webインターフェース（Streamlit）
+│       └── bi_dashboard/      # BIダッシュボード（Plotly Dash・独立アプリ）
+│           ├── app.py         # Dashアプリエントリーポイント
+│           ├── layouts/       # レイアウト定義
+│           ├── callbacks/     # インタラクティブロジック
+│           ├── data/          # データ取得ロジック
+│           ├── Dockerfile     # Docker設定
+│           ├── docker-compose.yml  # 独立起動用設定
+│           └── README.md      # BIダッシュボード詳細ドキュメント
 │
 ├── database/                    # データベース関連
 │   ├── init.sql                # データベース初期化スクリプト
@@ -808,8 +851,11 @@ docker compose -f docker/docker-compose.yml down       # 停止（データは�
 
 # 🏃 主要な処理実行
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase process-minutes      # 議事録分割
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit           # Web UI起動
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit           # Web UI起動（管理）
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring          # 監視ダッシュボード
+
+# 📊 BIダッシュボード起動（別インスタンス）
+cd src/interfaces/bi_dashboard && docker-compose up --build                                   # BIダッシュボード起動
 ```
 
 📚 **すべてのコマンドの詳細は [COMMANDS.md](COMMANDS.md) を参照してください。**
