@@ -104,10 +104,11 @@ class TestMinutesProcessingPerformance:
         result = divider.section_divide_run("テスト議事録")
         assert result is not None
 
-    def test_sync_history_recording_performance(
+    @pytest.mark.asyncio
+    async def test_sync_history_recording_performance(
         self, mock_llm_service, mock_history_repository
     ):
-        """Test sync history recording performance."""
+        """Test async history recording performance."""
 
         # Configure LLM service with realistic delay
         def mock_extract_speeches(text):
@@ -126,9 +127,9 @@ class TestMinutesProcessingPerformance:
             model_version="1.0",
         )
 
-        # Measure time for sync operation
+        # Measure time for async operation
         start_time = time.time()
-        result = instrumented_service.extract_speeches_from_text("テストテキスト")
+        result = await instrumented_service.extract_speeches_from_text("テストテキスト")
         end_time = time.time()
 
         # Total time should be close to LLM delay (100ms) plus small overhead
