@@ -1,0 +1,146 @@
+```mermaid
+graph TB
+    %% External Users & Clients
+    subgraph external["🌐 External"]
+        USERS([End Users])
+        ADMIN([Administrators])
+        COUNCILS([Council Websites])
+        PARTY_SITES([Political Party Sites])
+    end
+
+    %% Internet Edge
+    subgraph edge["🛡️ Edge Layer"]
+        CLB[Cloud Load Balancer<br/>HTTPS/SSL Termination]
+        CDN[Cloud CDN<br/>Static Assets]
+    end
+
+    %% Application Layer (Cloud Run)
+    subgraph cloudrun["☁️ Cloud Run (Serverless Containers)"]
+        direction TB
+        subgraph cr_web["Web Application"]
+            STREAMLIT[Streamlit UI<br/>Port 8501]
+            MONITOR[Monitoring Dashboard<br/>Port 8502]
+        end
+
+        subgraph cr_workers["Background Workers"]
+            SCRAPER_WORKER[Scraper Worker<br/>議事録スクレイピング]
+            PROCESSOR_WORKER[Minutes Processor<br/>LLM処理]
+            MATCHER_WORKER[Speaker Matcher<br/>マッチング処理]
+        end
+
+        subgraph cr_api["API Service (Future)"]
+            API[FastAPI<br/>REST/GraphQL]
+        end
+    end
+
+    %% Data Layer
+    subgraph data["💾 Data Layer"]
+        direction TB
+
+        subgraph cloudsql["Cloud SQL"]
+            POSTGRES[(PostgreSQL 15<br/>Primary Instance)]
+            REPLICA[(Read Replica<br/>レポート用)]
+        end
+
+        subgraph gcs["Google Cloud Storage"]
+            GCS_MINUTES[Scraped Minutes<br/>gs://polibase-minutes/]
+            GCS_BACKUPS[DB Backups<br/>gs://polibase-backups/]
+            GCS_EXPORTS[Data Exports<br/>gs://polibase-exports/]
+        end
+    end
+
+    %% External AI Services
+    subgraph ai["🤖 AI Services"]
+        VERTEX_AI[Vertex AI<br/>Gemini 2.0 Flash<br/>Gemini 1.5 Flash]
+        GEMINI_API[Gemini API<br/>Fallback Option]
+    end
+
+    %% Infrastructure Services
+    subgraph infra["🔧 Infrastructure Services"]
+        direction TB
+        SECRET[Secret Manager<br/>API Keys & Credentials]
+        VPC[VPC Network<br/>Private Network]
+
+        subgraph monitoring["Monitoring & Logging"]
+            CLOUD_LOG[Cloud Logging<br/>Structured Logs]
+            CLOUD_MON[Cloud Monitoring<br/>Metrics & Alerts]
+            CLOUD_TRACE[Cloud Trace<br/>Distributed Tracing]
+            SENTRY[Sentry<br/>Error Tracking]
+        end
+
+        subgraph cicd["CI/CD (Future)"]
+            CLOUD_BUILD[Cloud Build<br/>Container Builds]
+            ARTIFACT[Artifact Registry<br/>Container Images]
+        end
+    end
+
+    %% Network Connections
+    USERS --> CLB
+    ADMIN --> CLB
+    CLB --> STREAMLIT
+    CLB --> MONITOR
+    CLB --> API
+
+    STREAMLIT --> PROCESSOR_WORKER
+    STREAMLIT --> SCRAPER_WORKER
+    STREAMLIT --> MATCHER_WORKER
+    API --> PROCESSOR_WORKER
+
+    %% Data Access
+    STREAMLIT --> POSTGRES
+    MONITOR --> REPLICA
+    API --> POSTGRES
+    SCRAPER_WORKER --> POSTGRES
+    PROCESSOR_WORKER --> POSTGRES
+    MATCHER_WORKER --> POSTGRES
+
+    %% External Data Sources
+    SCRAPER_WORKER -.scrapes.-> COUNCILS
+    SCRAPER_WORKER -.scrapes.-> PARTY_SITES
+
+    %% Storage Access
+    SCRAPER_WORKER --> GCS_MINUTES
+    PROCESSOR_WORKER --> GCS_MINUTES
+    PROCESSOR_WORKER --> GCS_EXPORTS
+
+    %% AI Service Access
+    PROCESSOR_WORKER --> VERTEX_AI
+    MATCHER_WORKER --> VERTEX_AI
+    PROCESSOR_WORKER -.fallback.-> GEMINI_API
+
+    %% Infrastructure Connections
+    cr_web -.uses.-> SECRET
+    cr_workers -.uses.-> SECRET
+    cr_api -.uses.-> SECRET
+
+    cloudrun -.runs in.-> VPC
+    cloudsql -.private IP.-> VPC
+
+    %% Monitoring Connections
+    cloudrun --> CLOUD_LOG
+    cloudrun --> CLOUD_MON
+    cloudrun --> CLOUD_TRACE
+    cloudrun -.errors.-> SENTRY
+
+    %% Backup Process
+    POSTGRES -.automated backup.-> GCS_BACKUPS
+
+    %% CI/CD Flow (Future)
+    CLOUD_BUILD -.builds.-> ARTIFACT
+    ARTIFACT -.deploys.-> cloudrun
+
+    %% Styling
+    classDef externalStyle fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef edgeStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef computeStyle fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    classDef dataStyle fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef aiStyle fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px
+    classDef infraStyle fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+
+    class external externalStyle
+    class edge edgeStyle
+    class cloudrun,cr_web,cr_workers,cr_api computeStyle
+    class data,cloudsql,gcs dataStyle
+    class ai aiStyle
+    class infra,monitoring,cicd infraStyle
+```
