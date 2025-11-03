@@ -37,10 +37,10 @@ class TestErrorLoggerInit:
 
     def test_init_with_default_name(self):
         """Test initialization with default logger name."""
-        with patch("src.infrastructure.logging.error_logger.__name__", "test_module"):
-            logger = ErrorLogger()
+        logger = ErrorLogger()
 
-            assert "test_module" in logger.logger.name
+        # Default name should be the module name
+        assert logger.logger.name == "src.infrastructure.logging.error_logger"
 
 
 class TestLogError:

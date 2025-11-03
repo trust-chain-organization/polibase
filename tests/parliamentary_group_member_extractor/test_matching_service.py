@@ -73,7 +73,7 @@ def matching_service(
             "src.parliamentary_group_member_extractor.matching_service.PoliticianRepositorySyncImpl"
         ) as mock_pol_impl,
         patch(
-            "src.parliamentary_group_member_extractor.matching_service.get_db_session",
+            "src.infrastructure.config.database.get_db_session",
             return_value=mock_db_session,
         ),
         patch(
@@ -110,7 +110,7 @@ class TestParliamentaryGroupMemberMatchingServiceInit:
     @patch(
         "src.parliamentary_group_member_extractor.matching_service.PoliticianRepositorySyncImpl"
     )
-    @patch("src.parliamentary_group_member_extractor.matching_service.get_db_session")
+    @patch("src.infrastructure.config.database.get_db_session")
     @patch("src.parliamentary_group_member_extractor.matching_service.LLMService")
     def test_init_creates_repositories(
         self, mock_llm_class, mock_session, mock_pol_impl, mock_adapter
