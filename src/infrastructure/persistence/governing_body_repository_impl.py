@@ -159,6 +159,13 @@ class GoverningBodyRepositoryImpl(
         count = result.scalar()
         return count if count is not None else 0
 
+    async def count(self) -> int:
+        """Count total number of governing bodies."""
+        query = text("SELECT COUNT(*) FROM governing_bodies")
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
+
     def _row_to_entity(self, row: Any) -> GoverningBody:
         """Convert database row to domain entity."""
         return GoverningBody(
