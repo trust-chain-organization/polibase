@@ -136,9 +136,6 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase proces
 
 # 会議管理Web UIを起動
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit
-
-# データカバレッジ監視ダッシュボードを起動
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring
 ```
 
 ### 主要な機能
@@ -855,7 +852,6 @@ docker compose -f docker/docker-compose.yml down       # 停止（データは�
 # 🏃 主要な処理実行
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase process-minutes      # 議事録分割
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase streamlit           # Web UI起動（管理）
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase monitoring          # 監視ダッシュボード
 
 # 📊 BIダッシュボード起動（別インスタンス）
 cd src/interfaces/bi_dashboard && docker-compose up --build                                   # BIダッシュボード起動
