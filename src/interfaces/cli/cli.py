@@ -82,7 +82,6 @@ def register_clean_architecture_commands(cli_group: click.Group) -> None:
     cli_group.add_command(ScrapingCommands.scrape_minutes, "scrape-minutes")
     cli_group.add_command(ScrapingCommands.batch_scrape, "batch-scrape")
     cli_group.add_command(UICommands.streamlit, "streamlit")
-    cli_group.add_command(UICommands.monitoring, "monitoring")
 
 
 def register_legacy_commands(cli_group: click.Group) -> None:

@@ -14,4 +14,3 @@ def monitoring():
 # Re-export existing UI commands temporarily
 # These will be refactored to use Clean Architecture patterns in a future iteration
 monitoring.add_command(UICommands.streamlit, "streamlit")
-monitoring.add_command(UICommands.monitoring, "dashboard")
