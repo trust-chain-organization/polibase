@@ -28,6 +28,49 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
         """
         self.session = session
 
+    def _empty_governing_body_stats(self) -> GoverningBodyStats:
+        """Return empty governing body stats with proper structure.
+
+        Returns:
+            GoverningBodyStats: Empty statistics
+        """
+        return {
+            "total": 0,
+            "with_conferences": 0,
+            "with_meetings": 0,
+            "coverage_percentage": 0.0,
+        }
+
+    def _empty_meeting_stats(self) -> MeetingStats:
+        """Return empty meeting stats with proper structure.
+
+        Returns:
+            MeetingStats: Empty statistics
+        """
+        return {
+            "total_meetings": 0,
+            "with_minutes": 0,
+            "with_conversations": 0,
+            "average_conversations_per_meeting": 0.0,
+            "meetings_by_conference": {},
+        }
+
+    def _empty_speaker_matching_stats(self) -> SpeakerMatchingStats:
+        """Return empty speaker matching stats with proper structure.
+
+        Returns:
+            SpeakerMatchingStats: Empty statistics
+        """
+        return {
+            "total_speakers": 0,
+            "matched_speakers": 0,
+            "unmatched_speakers": 0,
+            "matching_rate": 0.0,
+            "total_conversations": 0,
+            "linked_conversations": 0,
+            "linkage_rate": 0.0,
+        }
+
     async def get_governing_body_stats(self) -> GoverningBodyStats:
         """Get statistics about governing body coverage.
 
@@ -67,12 +110,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
         row = result.fetchone()
 
         if not row:
-            return {
-                "total": 0,
-                "with_conferences": 0,
-                "with_meetings": 0,
-                "coverage_percentage": 0.0,
-            }
+            return self._empty_governing_body_stats()
 
         return {
             "total": row.total,
@@ -127,13 +165,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
         conference_rows = conference_result.fetchall()
 
         if not stats_row:
-            return {
-                "total_meetings": 0,
-                "with_minutes": 0,
-                "with_conversations": 0,
-                "average_conversations_per_meeting": 0.0,
-                "meetings_by_conference": {},
-            }
+            return self._empty_meeting_stats()
 
         # Build conference breakdown dictionary
         meetings_by_conference = {
@@ -205,15 +237,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
         row = result.fetchone()
 
         if not row:
-            return {
-                "total_speakers": 0,
-                "matched_speakers": 0,
-                "unmatched_speakers": 0,
-                "matching_rate": 0.0,
-                "total_conversations": 0,
-                "linked_conversations": 0,
-                "linkage_rate": 0.0,
-            }
+            return self._empty_speaker_matching_stats()
 
         return {
             "total_speakers": row.total_speakers,
@@ -255,10 +279,11 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
             raise ValueError("Period must be between 1 and 365 days")
 
         # Query with optimized date series and aggregations
-        query = text(f"""
+        # Use parameterized query to prevent SQL injection
+        query = text("""
             WITH date_series AS (
                 SELECT generate_series(
-                    CURRENT_DATE - INTERVAL '{days} days',
+                    CURRENT_DATE - :days * INTERVAL '1 day',
                     CURRENT_DATE,
                     '1 day'::interval
                 )::date as date
@@ -268,7 +293,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                     DATE(date) as date,
                     COUNT(*) as count
                 FROM meetings
-                WHERE date >= CURRENT_DATE - INTERVAL '{days} days'
+                WHERE date >= CURRENT_DATE - :days * INTERVAL '1 day'
                     AND date <= CURRENT_DATE
                 GROUP BY DATE(date)
             ),
@@ -278,7 +303,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                     COUNT(c.id) as count
                 FROM conversations c
                 JOIN meetings m ON c.meeting_id = m.id
-                WHERE m.date >= CURRENT_DATE - INTERVAL '{days} days'
+                WHERE m.date >= CURRENT_DATE - :days * INTERVAL '1 day'
                     AND m.date <= CURRENT_DATE
                 GROUP BY DATE(m.date)
             ),
@@ -287,7 +312,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                     DATE(created_at) as date,
                     COUNT(*) as count
                 FROM speakers
-                WHERE created_at >= CURRENT_DATE - INTERVAL '{days} days'
+                WHERE created_at >= CURRENT_DATE - :days * INTERVAL '1 day'
                     AND created_at <= CURRENT_DATE
                 GROUP BY DATE(created_at)
             ),
@@ -296,7 +321,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                     DATE(created_at) as date,
                     COUNT(*) as count
                 FROM politicians
-                WHERE created_at >= CURRENT_DATE - INTERVAL '{days} days'
+                WHERE created_at >= CURRENT_DATE - :days * INTERVAL '1 day'
                     AND created_at <= CURRENT_DATE
                 GROUP BY DATE(created_at)
             )
@@ -314,7 +339,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
             ORDER BY ds.date
         """)
 
-        result = await self.session.execute(query)
+        result = await self.session.execute(query, {"days": days})
         rows = result.fetchall()
 
         activity_data: list[ActivityData] = []

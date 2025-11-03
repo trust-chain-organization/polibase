@@ -120,6 +120,81 @@ async def repository(async_session: AsyncSession) -> DataCoverageRepositoryImpl:
     return DataCoverageRepositoryImpl(async_session)
 
 
+@pytest_asyncio.fixture
+async def sample_governing_body(async_session: AsyncSession) -> int:
+    """Create a sample governing body and return its ID.
+
+    Args:
+        async_session: Async database session
+
+    Returns:
+        int: ID of created governing body
+    """
+    result = await async_session.execute(
+        text("""
+            INSERT INTO governing_bodies (name, type)
+            VALUES ('Test Gov', '都道府県')
+            RETURNING id
+        """)
+    )
+    await async_session.commit()
+    gov_id = result.scalar()
+    assert gov_id is not None, "Failed to create governing body"
+    return gov_id
+
+
+@pytest_asyncio.fixture
+async def sample_conference(
+    async_session: AsyncSession, sample_governing_body: int
+) -> int:
+    """Create a sample conference and return its ID.
+
+    Args:
+        async_session: Async database session
+        sample_governing_body: ID of governing body
+
+    Returns:
+        int: ID of created conference
+    """
+    result = await async_session.execute(
+        text("""
+            INSERT INTO conferences (name, governing_body_id)
+            VALUES ('Test Conference', :gov_id)
+            RETURNING id
+        """),
+        {"gov_id": sample_governing_body},
+    )
+    await async_session.commit()
+    conf_id = result.scalar()
+    assert conf_id is not None, "Failed to create conference"
+    return conf_id
+
+
+@pytest_asyncio.fixture
+async def sample_meeting(async_session: AsyncSession, sample_conference: int) -> int:
+    """Create a sample meeting and return its ID.
+
+    Args:
+        async_session: Async database session
+        sample_conference: ID of conference
+
+    Returns:
+        int: ID of created meeting
+    """
+    result = await async_session.execute(
+        text("""
+            INSERT INTO meetings (name, conference_id, date)
+            VALUES ('Test Meeting', :conf_id, CURRENT_DATE)
+            RETURNING id
+        """),
+        {"conf_id": sample_conference},
+    )
+    await async_session.commit()
+    meeting_id = result.scalar()
+    assert meeting_id is not None, "Failed to create meeting"
+    return meeting_id
+
+
 @pytest.mark.asyncio
 async def test_get_governing_body_stats_empty(
     repository: DataCoverageRepositoryImpl,
@@ -249,6 +324,40 @@ async def test_get_meeting_stats_with_data(
     assert stats["average_conversations_per_meeting"] == 1.0
     assert "Test Conference" in stats["meetings_by_conference"]
     assert stats["meetings_by_conference"]["Test Conference"] == 2
+
+
+@pytest.mark.asyncio
+async def test_get_meeting_stats_conference_without_meetings(
+    repository: DataCoverageRepositoryImpl,
+    async_session: AsyncSession,
+) -> None:
+    """Test get_meeting_stats with conferences that have no meetings."""
+    # Arrange: Create governing body and conference without meetings
+    await async_session.execute(
+        text("""
+            INSERT INTO governing_bodies (id, name, type)
+            VALUES (1, 'Test Gov', '都道府県')
+        """)
+    )
+    await async_session.execute(
+        text("""
+            INSERT INTO conferences (id, name, governing_body_id)
+            VALUES (1, 'Empty Conference', 1)
+        """)
+    )
+    await async_session.commit()
+
+    # Act
+    stats = await repository.get_meeting_stats()
+
+    # Assert
+    assert stats["total_meetings"] == 0
+    assert stats["with_minutes"] == 0
+    assert stats["with_conversations"] == 0
+    assert stats["average_conversations_per_meeting"] == 0.0
+    # Conference should appear with 0 meetings
+    assert "Empty Conference" in stats["meetings_by_conference"]
+    assert stats["meetings_by_conference"]["Empty Conference"] == 0
 
 
 @pytest.mark.asyncio
