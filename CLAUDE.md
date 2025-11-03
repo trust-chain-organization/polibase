@@ -374,6 +374,12 @@ When working on this project, refer to these documentation files for detailed in
   - Metrics collection
   - Alert configuration
 
+- **BI Dashboard**: `docs/BI_DASHBOARD.md`
+  - BI Dashboard setup and usage
+  - Plotly Dash architecture
+  - Data visualization features
+  - Troubleshooting guide
+
 #### Quick Reference Files
 - **Environment Variables**: `.env.example`
   - Required environment variables

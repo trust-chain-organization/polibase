@@ -85,24 +85,22 @@ monitoring: _setup_worktree
 	fi
 
 # Launch BI Dashboard (Plotly Dash) on port 8050
-bi-dashboard:
+bi-dashboard: _setup_worktree
 	#!/bin/bash
-	cd src/interfaces/bi_dashboard
 	echo "Starting BI Dashboard (Plotly Dash)..."
+	docker compose {{compose_cmd}} up bi-dashboard --build
 	echo "Access at: http://localhost:8050"
-	docker-compose up --build
 
 # Launch BI Dashboard in background
-bi-dashboard-up:
+bi-dashboard-up: _setup_worktree
 	#!/bin/bash
-	cd src/interfaces/bi_dashboard
-	docker-compose up -d --build
+	docker compose {{compose_cmd}} up -d bi-dashboard --build
 	echo "BI Dashboard started in background"
 	echo "Access at: http://localhost:8050"
 
 # Stop BI Dashboard
-bi-dashboard-down:
-	cd src/interfaces/bi_dashboard && docker-compose down
+bi-dashboard-down: _setup_worktree
+	docker compose {{compose_cmd}} stop bi-dashboard
 
 # Process meeting minutes
 process-minutes: _setup_worktree

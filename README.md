@@ -171,25 +171,24 @@ Plotly Dashを使用した高度なデータカバレッジ分析ダッシュボ
 **特徴**:
 - Clean Architecture準拠の独立アプリケーション
 - 完全にPythonコードで定義された可視化
-- 独自のDocker Compose設定で起動可能
+- メインのDocker Compose設定で統合管理
 - 将来の機能拡張に対応した設計
 
 **起動方法**:
 ```bash
-# BI Dashboardディレクトリに移動
-cd src/interfaces/bi_dashboard
+# すべてのサービスを起動（PostgreSQL含む）
+docker compose -f docker/docker-compose.yml up -d
 
-# 環境変数を設定して起動（既存DBを使用）
-export DATABASE_URL=postgresql://polibase:polibase@localhost:5432/polibase
-python app.py
+# BI Dashboardのみを起動（既存のPostgreSQLを使用）
+docker compose -f docker/docker-compose.yml up -d bi-dashboard
 
-# または Docker Composeで起動
-docker-compose up --build
+# ログの確認
+docker compose -f docker/docker-compose.yml logs -f bi-dashboard
 ```
 
 アクセスURL: http://localhost:8050
 
-詳細は [src/interfaces/bi_dashboard/README.md](src/interfaces/bi_dashboard/README.md) を参照してください。
+詳細は [docs/BI_DASHBOARD.md](docs/BI_DASHBOARD.md) を参照してください。
 
 ### テストの実行
 ```bash
