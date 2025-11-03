@@ -1,6 +1,7 @@
 """Use cases for viewing data coverage statistics."""
 
 import logging
+import re
 
 from src.application.dtos.data_coverage_dto import (
     ActivityTrendDataDTO,
@@ -12,6 +13,9 @@ from src.application.dtos.data_coverage_dto import (
 from src.domain.repositories.data_coverage_repository import IDataCoverageRepository
 
 logger = logging.getLogger(__name__)
+
+# Valid period format pattern: number followed by unit (d/D, m/M, y/Y)
+PERIOD_PATTERN = re.compile(r"^\d+[dDmMyY]$")
 
 
 class ViewGoverningBodyCoverageUseCase:
@@ -199,10 +203,21 @@ class ViewActivityTrendUseCase:
             list[ActivityTrendDataDTO]: List of daily activity data points
 
         Raises:
+            ValueError: If the period format is invalid
             Exception: If there's an error retrieving the statistics
         """
+        period = input_dto["period"]
+
+        # Validate period format
+        if not PERIOD_PATTERN.match(period):
+            error_msg = (
+                f"Invalid period format: '{period}'. "
+                f"Expected format: number followed by unit (e.g., '7d', '30d', '90d')"
+            )
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
         try:
-            period = input_dto["period"]
             logger.info(f"Retrieving activity trend data for period: {period}")
 
             trend_data = await self._data_coverage_repo.get_activity_trend(period)

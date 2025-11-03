@@ -1,6 +1,6 @@
 """Tests for data coverage view use cases."""
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -299,3 +299,109 @@ class TestViewActivityTrendUseCase:
         # Verify exception is raised
         with pytest.raises(Exception, match="Database error"):
             await use_case.execute({"period": "30d"})
+
+    @pytest.mark.parametrize(
+        "period",
+        ["7d", "30d", "90d", "1D", "365D", "12m", "12M", "1y", "5Y"],
+    )
+    async def test_execute_with_various_valid_periods(self, period: str):
+        """Test that various valid period formats are accepted."""
+        # Create mock repository
+        mock_repo = Mock()
+        mock_repo.get_activity_trend = AsyncMock(return_value=[])
+
+        # Create use case and test
+        use_case = ViewActivityTrendUseCase(mock_repo)
+        result = await use_case.execute({"period": period})
+
+        # Verify repository was called with the correct period
+        mock_repo.get_activity_trend.assert_called_once_with(period)
+        assert result == []
+
+    @pytest.mark.parametrize(
+        "invalid_period",
+        [
+            "invalid",
+            "7",
+            "d7",
+            "7x",
+            "7dd",
+            "",
+            "30 d",
+            "-7d",
+            "7.5d",
+        ],
+    )
+    async def test_execute_with_invalid_period_format(self, invalid_period: str):
+        """Test that invalid period formats raise ValueError."""
+        # Create mock repository
+        mock_repo = Mock()
+
+        # Create use case
+        use_case = ViewActivityTrendUseCase(mock_repo)
+
+        # Verify ValueError is raised with appropriate message
+        with pytest.raises(ValueError, match="Invalid period format"):
+            await use_case.execute({"period": invalid_period})
+
+        # Verify repository was never called
+        mock_repo.get_activity_trend.assert_not_called()
+
+    async def test_execute_logs_validation_error(self):
+        """Test that validation errors are logged."""
+        # Create mock repository
+        mock_repo = Mock()
+
+        # Create use case
+        use_case = ViewActivityTrendUseCase(mock_repo)
+
+        # Patch logger
+        with patch(
+            "src.application.usecases.view_data_coverage_usecase.logger"
+        ) as mock_logger:
+            # Verify ValueError is raised
+            with pytest.raises(ValueError):
+                await use_case.execute({"period": "invalid"})
+
+            # Verify error was logged
+            mock_logger.error.assert_called_once()
+            call_args = mock_logger.error.call_args[0][0]
+            assert "Invalid period format" in call_args
+            assert "invalid" in call_args
+
+    async def test_execute_logs_success(self):
+        """Test that successful execution is logged."""
+        # Create mock repository
+        mock_repo = Mock()
+        mock_trend_data = [
+            {
+                "date": "2025-01-01",
+                "meetings_count": 5,
+                "conversations_count": 50,
+                "speakers_count": 10,
+                "politicians_count": 3,
+            }
+        ]
+        mock_repo.get_activity_trend = AsyncMock(return_value=mock_trend_data)
+
+        # Create use case
+        use_case = ViewActivityTrendUseCase(mock_repo)
+
+        # Patch logger
+        with patch(
+            "src.application.usecases.view_data_coverage_usecase.logger"
+        ) as mock_logger:
+            await use_case.execute({"period": "30d"})
+
+            # Verify info logs were called
+            assert mock_logger.info.call_count == 2
+
+            # Verify first log contains period
+            first_call = mock_logger.info.call_args_list[0][0][0]
+            assert "Retrieving activity trend data for period: 30d" in first_call
+
+            # Verify second log contains result summary
+            second_call = mock_logger.info.call_args_list[1][0][0]
+            assert "Retrieved activity trend data" in second_call
+            assert "1 data points" in second_call
+            assert "30d" in second_call
