@@ -116,7 +116,7 @@ jobs:
       - name: Run smoke tests
         run: |
           # CI用の軽量テストのみ実行
-          docker compose -f docker/docker-compose.ci.yml exec -T -e CI=true polibase uv run pytest tests/ci_smoke_test.py -v
+          docker compose -f docker/docker-compose.ci.yml exec -T -e CI=true polibase uv run pytest tests/smoke/test_ci_smoke.py -v
 
       - name: Stop services
         if: always()
