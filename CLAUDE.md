@@ -58,6 +58,17 @@ For detailed command documentation with all options, workflows, and examples, se
 
 > 📚 **Visual Diagrams**: See [docs/diagrams/](docs/diagrams/) for detailed architecture diagrams
 > 📖 **Full Documentation**: See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for comprehensive architecture guide
+> ☁️ **Cloud Architecture**: For Google Cloud Platform deployment design, see the [Cloud Architecture section](docs/ARCHITECTURE.md#クラウドアーキテクチャ-google-cloud-platform) in ARCHITECTURE.md
+
+**Important**: The sections below provide an overview. For detailed information including:
+- Complete layer descriptions and component interactions
+- Data flow diagrams and sequence flows
+- Security architecture and network design
+- **Google Cloud Platform deployment architecture** (Cloud Run, Cloud SQL, Vertex AI, etc.)
+- Cost estimation and optimization strategies
+- Disaster recovery and deployment procedures
+
+Please refer to **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ### Clean Architecture Implementation
 
