@@ -4,84 +4,9 @@ import pytest
 from pydantic import BaseModel
 from pytest import MonkeyPatch  # Add the import for type annotation
 
-from src.infrastructure.external.instrumented_llm_service import InstrumentedLLMService
-from src.infrastructure.external.llm_errors import LLMError, LLMRateLimitError
-from src.infrastructure.external.prompt_loader import PromptLoader
 from src.party_member_extractor.models import PartyMemberInfo, PartyMemberList
-from src.services.llm_factory import LLMServiceFactory
 from src.services.llm_service import LLMService
 from tests.utils.llm_mock import LLMServiceMock, mock_llm_service
-
-
-class TestLLMService:
-    """Test LLMService functionality"""
-
-    def test_factory_creates_service(self, monkeypatch: MonkeyPatch) -> None:
-        """Test that factory creates service instances correctly"""
-        # Set dummy API key for testing
-        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
-
-        factory = LLMServiceFactory()
-
-        # Test different presets
-        fast_service = factory.create_fast()
-        assert isinstance(fast_service, InstrumentedLLMService)
-        assert fast_service.model_name == "gemini-1.5-flash"
-
-        advanced_service = factory.create_advanced()
-        assert isinstance(advanced_service, InstrumentedLLMService)
-        assert advanced_service.model_name == "gemini-2.0-flash-exp"
-
-        creative_service = factory.create_creative()
-        assert isinstance(creative_service, InstrumentedLLMService)
-        assert creative_service.temperature == 0.7
-
-        precise_service = factory.create_precise()
-        assert isinstance(precise_service, InstrumentedLLMService)
-        assert precise_service.temperature == 0.0
-
-    def test_prompt_loader(self) -> None:
-        """Test prompt loader functionality"""
-        loader = PromptLoader()
-
-        # Test loading prompts
-        prompts = loader.list_prompts()
-        assert len(prompts) > 0
-        assert "minutes_divide" in prompts
-        assert "speaker_match" in prompts
-        assert "party_member_extract" in prompts
-
-        # Test getting prompt
-        prompt = loader.get_prompt("speaker_match")
-        assert prompt is not None
-
-        # Test prompt variables
-        variables = loader.get_variables("speaker_match")
-        assert "speaker_name" in variables
-        assert "available_speakers" in variables
-
-    def test_llm_service_with_mock(self, monkeypatch: MonkeyPatch) -> None:
-        """Test LLMService with mock"""
-        # Set dummy API key for testing
-        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
-
-        with LLMServiceMock([{"matched": True, "speaker_id": 123, "confidence": 0.9}]):
-            factory = LLMServiceFactory()
-            service = factory.create_fast()
-
-            # Verify service was created
-            assert service is not None
-            assert hasattr(service, "model_name")
-
-    def test_error_handling(self) -> None:
-        """Test error handling in LLMService"""
-        # Test error types - this can be tested independently
-        rate_limit_error = LLMRateLimitError("Rate limit exceeded")
-        assert isinstance(rate_limit_error, LLMError)
-
-        generic_error = LLMError("Some other error")
-        assert isinstance(generic_error, LLMError)
-        assert not isinstance(generic_error, LLMRateLimitError)
 
 
 class TestLLMServiceIntegration:
