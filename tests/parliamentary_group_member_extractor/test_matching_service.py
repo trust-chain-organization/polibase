@@ -283,12 +283,19 @@ class TestMatchWithLLM:
         self, matching_service, mock_llm_service
     ):
         """Test matching handles invalid LLM response format."""
+        # Reset side_effect from previous test
+        mock_llm_service.llm.invoke.side_effect = None
+
         mock_response = Mock()
         mock_response.content = "Invalid format"
         mock_llm_service.llm.invoke.return_value = mock_response
 
         extracted_member = {"extracted_name": "山田太郎"}
-        candidates = [{"id": 1, "name": "山田太郎", "party_name": "政党A"}]
+        # Need multiple candidates to trigger LLM path
+        candidates = [
+            {"id": 1, "name": "山田太郎", "party_name": "政党A"},
+            {"id": 2, "name": "山田次郎", "party_name": "政党B"},
+        ]
 
         politician_id, confidence = matching_service.match_with_llm(
             extracted_member, candidates
@@ -306,7 +313,11 @@ class TestMatchWithLLM:
         mock_llm_service.llm.invoke.return_value = mock_response
 
         extracted_member = {"extracted_name": "山田太郎"}
-        candidates = [{"id": 1, "name": "山田太郎", "party_name": "政党A"}]
+        # Need multiple candidates to trigger LLM path
+        candidates = [
+            {"id": 1, "name": "山田太郎", "party_name": "政党A"},
+            {"id": 2, "name": "山田次郎", "party_name": "政党B"},
+        ]
 
         politician_id, confidence = matching_service.match_with_llm(
             extracted_member, candidates
@@ -322,7 +333,11 @@ class TestMatchWithLLM:
         mock_llm_service.llm.invoke.return_value = mock_response
 
         extracted_member = {"extracted_name": "山田太郎"}
-        candidates = [{"id": 1, "name": "山田太郎", "party_name": "政党A"}]
+        # Need multiple candidates to trigger LLM path
+        candidates = [
+            {"id": 1, "name": "山田太郎", "party_name": "政党A"},
+            {"id": 2, "name": "山田次郎", "party_name": "政党B"},
+        ]
 
         politician_id, confidence = matching_service.match_with_llm(
             extracted_member, candidates
@@ -406,8 +421,10 @@ class TestProcessExtractedMember:
         mock_extracted_repo,
     ):
         """Test processing member with low confidence."""
+        # Need multiple candidates to trigger LLM path
         mock_politician_repo.search_by_name_sync.return_value = [
-            {"id": 10, "name": "田中太郎", "party_name": "政党A"}
+            {"id": 10, "name": "田中太郎", "party_name": "政党A"},
+            {"id": 11, "name": "田中次郎", "party_name": "政党B"},
         ]
         # Set LLM to return low confidence
         mock_response = Mock()
