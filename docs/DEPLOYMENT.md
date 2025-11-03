@@ -4,6 +4,7 @@
 
 ## 目次
 
+- [環境別のデータベース構成](#環境別のデータベース構成)
 - [Cloud SQL セットアップ](#cloud-sql-セットアップ)
 - [ローカル開発環境からのCloud SQL接続](#ローカル開発環境からのcloud-sql接続)
 - [データベース移行](#データベース移行)
@@ -11,6 +12,147 @@
 - [Secret Manager 設定](#secret-manager-設定)
 - [バックアップと復元](#バックアップと復元)
 - [トラブルシューティング](#トラブルシューティング)
+
+---
+
+## 環境別のデータベース構成
+
+Polibaseは環境に応じて異なるデータベース構成を使用します。
+
+### 📋 構成の概要
+
+| 環境 | データベース | 接続方法 | 設定場所 | 用途 |
+|------|-------------|---------|---------|------|
+| **ローカル開発** | Docker PostgreSQL | 直接接続 (localhost:5432) | `.env` | 開発・テスト |
+| **Cloud Run** | Cloud SQL | Cloud SQL Proxy（自動） | Terraform | 本番デプロイ |
+| **ローカル→Cloud SQL** | Cloud SQL | Cloud SQL Proxy（手動） | `.env` + スクリプト | Cloud SQLのテスト |
+
+### 🔧 ローカル開発環境（デフォルト）
+
+**使用するデータベース**: DockerコンテナのPostgreSQL
+
+**.envファイル設定**:
+```bash
+# ローカルPostgreSQL（デフォルト）
+DATABASE_URL=postgresql://polibase_user:polibase_password@localhost:5432/polibase_db
+USE_CLOUD_SQL_PROXY=false  # または未設定
+```
+
+**起動方法**:
+```bash
+# Dockerコンテナを起動
+just up
+
+# アプリケーション起動
+just streamlit
+```
+
+**特徴**:
+- ✅ 高速な起動・停止
+- ✅ GCP費用が発生しない
+- ✅ オフラインで開発可能
+- ✅ データのリセットが簡単（`./scripts/reset-database.sh`）
+
+### ☁️ Cloud Runデプロイ（本番環境）
+
+**使用するデータベース**: Cloud SQL（PostgreSQL）
+
+**環境変数設定**: Terraformで自動設定
+```bash
+USE_CLOUD_SQL_PROXY=true
+CLOUD_SQL_CONNECTION_NAME=PROJECT_ID:REGION:INSTANCE_NAME
+```
+
+**デプロイ方法**:
+```bash
+# インフラ構築
+cd terraform
+terraform apply
+
+# コンテナイメージのビルド＆デプロイ
+docker build -t asia-northeast1-docker.pkg.dev/PROJECT_ID/polibase/streamlit-ui:latest .
+docker push asia-northeast1-docker.pkg.dev/PROJECT_ID/polibase/streamlit-ui:latest
+
+# Cloud Runへデプロイ（Terraformで自動実行可能）
+gcloud run deploy polibase-ui --image=... --region=asia-northeast1
+```
+
+**特徴**:
+- ✅ Cloud SQL Proxyが自動的に設定される（`cloud_sql_instances`）
+- ✅ Unixソケット経由で安全な接続
+- ✅ VPCプライベート接続で高セキュリティ
+- ✅ 自動バックアップ・高可用性
+
+**Terraformによる自動設定**:
+
+`terraform/modules/app/main.tf`では、すべてのCloud Runサービスに以下が自動設定されます：
+
+```hcl
+# Cloud SQL接続を有効化
+cloud_sql_instances = [var.database_connection_name]
+
+# 環境変数の自動設定
+env {
+  name  = "USE_CLOUD_SQL_PROXY"
+  value = "true"
+}
+
+env {
+  name  = "CLOUD_SQL_CONNECTION_NAME"
+  value = var.database_connection_name
+}
+```
+
+### 🔄 ローカル開発環境からCloud SQLに接続
+
+**使用するデータベース**: Cloud SQL（PostgreSQL）
+**接続方法**: Cloud SQL Proxy（手動起動）
+
+**.envファイル設定**:
+```bash
+# Cloud SQL接続を有効化
+USE_CLOUD_SQL_PROXY=true
+CLOUD_SQL_CONNECTION_NAME=PROJECT_ID:REGION:INSTANCE_NAME
+CLOUD_SQL_UNIX_SOCKET_DIR=/cloudsql
+
+# データベース認証情報
+DB_USER=polibase_user
+DB_PASSWORD=YOUR_PASSWORD
+DB_NAME=polibase_db
+```
+
+**セットアップ方法**:
+```bash
+# 1. Cloud SQL Proxyをセットアップ
+./scripts/cloud_sql_proxy_setup.sh
+
+# 2. アプリケーション起動
+just streamlit
+```
+
+**使用ケース**:
+- 🧪 本番データでのローカルテスト
+- 🔍 Cloud SQL接続のデバッグ
+- 📊 本番データの分析
+
+### 🎯 どの構成を使うべきか？
+
+```mermaid
+graph TD
+    A[開発作業] --> B{何をしたい？}
+    B -->|通常の開発・テスト| C[Docker PostgreSQL]
+    B -->|本番デプロイ| D[Cloud Run + Cloud SQL]
+    B -->|本番データで検証| E[ローカル + Cloud SQL Proxy]
+
+    C --> F[.env: USE_CLOUD_SQL_PROXY=false]
+    D --> G[Terraform: 自動設定]
+    E --> H[.env: USE_CLOUD_SQL_PROXY=true]
+```
+
+**推奨**:
+1. **日常の開発**: Docker PostgreSQL（デフォルト設定）
+2. **本番デプロイ**: Terraformでインフラ構築 → Cloud Runにデプロイ
+3. **必要に応じて**: Cloud SQL Proxyでローカルから本番DBにアクセス
 
 ---
 

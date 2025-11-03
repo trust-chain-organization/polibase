@@ -17,6 +17,9 @@ resource "google_cloud_run_v2_service" "streamlit_ui" {
       egress    = "PRIVATE_RANGES_ONLY"
     }
 
+    # Enable Cloud SQL connection via Unix socket
+    cloud_sql_instances = [var.database_connection_name]
+
     containers {
       image = var.streamlit_image
 
@@ -35,6 +38,17 @@ resource "google_cloud_run_v2_service" "streamlit_ui" {
       env {
         name  = "ENVIRONMENT"
         value = var.environment
+      }
+
+      # Cloud SQL Proxy configuration
+      env {
+        name  = "USE_CLOUD_SQL_PROXY"
+        value = "true"
+      }
+
+      env {
+        name  = "CLOUD_SQL_CONNECTION_NAME"
+        value = var.database_connection_name
       }
 
       env {
@@ -104,6 +118,9 @@ resource "google_cloud_run_v2_service" "monitoring_dashboard" {
       egress    = "PRIVATE_RANGES_ONLY"
     }
 
+    # Enable Cloud SQL connection via Unix socket
+    cloud_sql_instances = [var.database_connection_name]
+
     containers {
       image = var.monitoring_image
 
@@ -122,6 +139,17 @@ resource "google_cloud_run_v2_service" "monitoring_dashboard" {
       env {
         name  = "ENVIRONMENT"
         value = var.environment
+      }
+
+      # Cloud SQL Proxy configuration
+      env {
+        name  = "USE_CLOUD_SQL_PROXY"
+        value = "true"
+      }
+
+      env {
+        name  = "CLOUD_SQL_CONNECTION_NAME"
+        value = var.database_connection_name
       }
 
       env {
@@ -156,6 +184,9 @@ resource "google_cloud_run_v2_service" "scraper_worker" {
       egress    = "ALL_TRAFFIC"
     }
 
+    # Enable Cloud SQL connection via Unix socket
+    cloud_sql_instances = [var.database_connection_name]
+
     timeout = "3600s" # 1 hour timeout for long-running scraping jobs
 
     containers {
@@ -172,6 +203,17 @@ resource "google_cloud_run_v2_service" "scraper_worker" {
       env {
         name  = "ENVIRONMENT"
         value = var.environment
+      }
+
+      # Cloud SQL Proxy configuration
+      env {
+        name  = "USE_CLOUD_SQL_PROXY"
+        value = "true"
+      }
+
+      env {
+        name  = "CLOUD_SQL_CONNECTION_NAME"
+        value = var.database_connection_name
       }
 
       env {
@@ -231,6 +273,9 @@ resource "google_cloud_run_v2_service" "processor_worker" {
       egress    = "PRIVATE_RANGES_ONLY"
     }
 
+    # Enable Cloud SQL connection via Unix socket
+    cloud_sql_instances = [var.database_connection_name]
+
     timeout = "3600s" # 1 hour timeout for LLM processing
 
     containers {
@@ -247,6 +292,17 @@ resource "google_cloud_run_v2_service" "processor_worker" {
       env {
         name  = "ENVIRONMENT"
         value = var.environment
+      }
+
+      # Cloud SQL Proxy configuration
+      env {
+        name  = "USE_CLOUD_SQL_PROXY"
+        value = "true"
+      }
+
+      env {
+        name  = "CLOUD_SQL_CONNECTION_NAME"
+        value = var.database_connection_name
       }
 
       env {
@@ -306,6 +362,9 @@ resource "google_cloud_run_v2_service" "matcher_worker" {
       egress    = "PRIVATE_RANGES_ONLY"
     }
 
+    # Enable Cloud SQL connection via Unix socket
+    cloud_sql_instances = [var.database_connection_name]
+
     timeout = "1800s" # 30 minutes timeout
 
     containers {
@@ -322,6 +381,17 @@ resource "google_cloud_run_v2_service" "matcher_worker" {
       env {
         name  = "ENVIRONMENT"
         value = var.environment
+      }
+
+      # Cloud SQL Proxy configuration
+      env {
+        name  = "USE_CLOUD_SQL_PROXY"
+        value = "true"
+      }
+
+      env {
+        name  = "CLOUD_SQL_CONNECTION_NAME"
+        value = var.database_connection_name
       }
 
       env {

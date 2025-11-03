@@ -82,9 +82,9 @@ module "security" {
   environment = var.environment
 
   # Secrets configuration
-  google_api_key      = var.google_api_key
-  database_password   = var.database_password
-  sentry_dsn          = var.sentry_dsn
+  google_api_key    = var.google_api_key
+  database_password = var.database_password
+  sentry_dsn        = var.sentry_dsn
 
   depends_on = [google_project_service.required_apis]
 }
@@ -98,20 +98,20 @@ module "database" {
   environment = var.environment
 
   # Network configuration
-  network_id         = module.network.network_id
+  network_id             = module.network.network_id
   private_vpc_connection = module.network.private_vpc_connection
 
   # Database configuration
-  database_version = var.database_version
-  database_tier    = var.database_tier
-  database_name    = var.database_name
-  database_user    = var.database_user
+  database_version  = var.database_version
+  database_tier     = var.database_tier
+  database_name     = var.database_name
+  database_user     = var.database_user
   database_password = var.database_password
 
   # High availability
   enable_high_availability = var.enable_high_availability
-  enable_backup           = var.enable_backup
-  backup_retention_days   = var.backup_retention_days
+  enable_backup            = var.enable_backup
+  backup_retention_days    = var.backup_retention_days
 
   depends_on = [module.network, google_project_service.required_apis]
 }
@@ -144,11 +144,11 @@ module "app" {
   exports_bucket = module.storage.exports_bucket_name
 
   # Container image configuration
-  streamlit_image   = var.streamlit_image
-  monitoring_image  = var.monitoring_image
-  scraper_image     = var.scraper_image
-  processor_image   = var.processor_image
-  matcher_image     = var.matcher_image
+  streamlit_image  = var.streamlit_image
+  monitoring_image = var.monitoring_image
+  scraper_image    = var.scraper_image
+  processor_image  = var.processor_image
+  matcher_image    = var.matcher_image
 
   depends_on = [
     module.network,
