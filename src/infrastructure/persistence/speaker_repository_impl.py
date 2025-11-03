@@ -383,23 +383,25 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             ),
             linked_stats AS (
                 SELECT
-                    COUNT(DISTINCT s.id) as linked_speakers
+                    COUNT(DISTINCT s.id) as linked_speakers,
+                    COUNT(
+                        DISTINCT CASE WHEN s.is_politician = TRUE THEN s.id END
+                    ) as linked_politician_speakers
                 FROM speakers s
-                INNER JOIN politicians p ON s.politician_id = p.id
-                WHERE s.is_politician = TRUE
+                INNER JOIN politicians p ON s.id = p.speaker_id
             )
             SELECT
                 stats.total_speakers,
-                stats.politician_speakers,
-                stats.non_politician_speakers,
                 linked_stats.linked_speakers,
-                (stats.politician_speakers - linked_stats.linked_speakers)
-                    as unlinked_politician_speakers,
+                stats.politician_speakers,
+                linked_stats.linked_politician_speakers,
+                stats.non_politician_speakers,
                 CASE
                     WHEN stats.politician_speakers > 0
                     THEN ROUND(
-                        CAST(linked_stats.linked_speakers AS NUMERIC) * 100.0 /
-                        stats.politician_speakers, 1
+                        CAST(
+                            linked_stats.linked_politician_speakers AS NUMERIC
+                        ) * 100.0 / stats.politician_speakers, 1
                     )
                     ELSE 0
                 END as link_rate
@@ -412,19 +414,19 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
         if row:
             return {
                 "total_speakers": row.total_speakers,
-                "politician_speakers": row.politician_speakers,
-                "non_politician_speakers": row.non_politician_speakers,
                 "linked_speakers": row.linked_speakers,
-                "unlinked_politician_speakers": row.unlinked_politician_speakers,
+                "politician_speakers": row.politician_speakers,
+                "linked_politician_speakers": row.linked_politician_speakers,
+                "non_politician_speakers": row.non_politician_speakers,
                 "link_rate": float(row.link_rate),
             }
         else:
             return {
                 "total_speakers": 0,
-                "politician_speakers": 0,
-                "non_politician_speakers": 0,
                 "linked_speakers": 0,
-                "unlinked_politician_speakers": 0,
+                "politician_speakers": 0,
+                "linked_politician_speakers": 0,
+                "non_politician_speakers": 0,
                 "link_rate": 0.0,
             }
 

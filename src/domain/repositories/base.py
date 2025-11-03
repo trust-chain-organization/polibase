@@ -34,3 +34,8 @@ class BaseRepository[T: BaseEntity](ABC):
     async def delete(self, entity_id: int) -> bool:
         """Delete an entity by ID."""
         pass
+
+    @abstractmethod
+    async def count(self) -> int:
+        """Count total number of entities."""
+        pass

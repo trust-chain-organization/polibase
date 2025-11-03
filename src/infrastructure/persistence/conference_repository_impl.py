@@ -472,6 +472,13 @@ class ConferenceRepositoryImpl(BaseRepositoryImpl[Conference], ConferenceReposit
                 "Failed to delete conference", {"id": entity_id, "error": str(e)}
             ) from e
 
+    async def count(self) -> int:
+        """Count total number of conferences."""
+        query = text("SELECT COUNT(*) FROM conferences")
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
+
     def _to_entity(self, model: ConferenceModel) -> Conference:
         """Convert database model to domain entity.
 

@@ -674,6 +674,13 @@ class ConversationRepositoryImpl(
             # This should never happen
             return 0
 
+    async def count(self) -> int:
+        """Count total number of conversations."""
+        query = text("SELECT COUNT(*) FROM conversations")
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
+
     def _row_to_entity(self, row: Any) -> Conversation:
         """Convert database row to domain entity."""
         return Conversation(

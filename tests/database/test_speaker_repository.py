@@ -217,7 +217,9 @@ async def test_get_speaker_politician_stats(
     assert stats["politician_speakers"] == 3  # 山田、鈴木、佐藤
     assert stats["non_politician_speakers"] == 1  # 田中
     assert stats["linked_speakers"] == 2  # 山田、鈴木
-    assert stats["unlinked_politician_speakers"] == 1  # 佐藤
+    assert stats["linked_politician_speakers"] == 2  # 山田、鈴木 (linked)
+    # Verify: politician_speakers(3) - linked_politician_speakers(2)
+    # = unlinked count of 1 (佐藤)
     assert stats["link_rate"] == pytest.approx(66.7, rel=0.1)  # 2/3 = 66.7%
 
 
@@ -232,7 +234,7 @@ async def test_get_speaker_politician_stats_empty(
     assert stats["politician_speakers"] == 0
     assert stats["non_politician_speakers"] == 0
     assert stats["linked_speakers"] == 0
-    assert stats["unlinked_politician_speakers"] == 0
+    assert stats["linked_politician_speakers"] == 0
     assert stats["link_rate"] == 0.0
 
 
@@ -260,5 +262,5 @@ async def test_get_speaker_politician_stats_no_politicians(
     assert stats["politician_speakers"] == 0
     assert stats["non_politician_speakers"] == 2
     assert stats["linked_speakers"] == 0
-    assert stats["unlinked_politician_speakers"] == 0
+    assert stats["linked_politician_speakers"] == 0
     assert stats["link_rate"] == 0.0

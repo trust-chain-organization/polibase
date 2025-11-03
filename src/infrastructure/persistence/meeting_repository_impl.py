@@ -5,7 +5,7 @@ import logging
 from datetime import date
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -719,6 +719,13 @@ class MeetingRepositoryImpl(BaseRepositoryImpl[Meeting], MeetingRepository):
                 result = self.sync_session.execute(text(sql), params)
                 return [self._dict_to_entity(dict(row._mapping)) for row in result]  # type: ignore
             return []
+
+    async def count(self) -> int:
+        """Count total number of meetings."""
+        query = text("SELECT COUNT(*) FROM meetings")
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
 
     # Conversion methods
     def _to_entity(self, model: Any) -> Meeting:

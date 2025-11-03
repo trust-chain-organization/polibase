@@ -136,6 +136,36 @@ class GoverningBodyRepositoryImpl(
 
         return [self._row_to_entity(row) for row in rows]
 
+    async def count_with_conferences(self) -> int:
+        """Count governing bodies that have at least one conference."""
+        query = text("""
+            SELECT COUNT(DISTINCT governing_body_id)
+            FROM conferences
+        """)
+
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
+
+    async def count_with_meetings(self) -> int:
+        """Count governing bodies that have at least one meeting."""
+        query = text("""
+            SELECT COUNT(DISTINCT c.governing_body_id)
+            FROM meetings m
+            JOIN conferences c ON m.conference_id = c.id
+        """)
+
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
+
+    async def count(self) -> int:
+        """Count total number of governing bodies."""
+        query = text("SELECT COUNT(*) FROM governing_bodies")
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
+
     def _row_to_entity(self, row: Any) -> GoverningBody:
         """Convert database row to domain entity."""
         return GoverningBody(
