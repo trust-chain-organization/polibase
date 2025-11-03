@@ -375,35 +375,37 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             WITH stats AS (
                 SELECT
                     COUNT(*) as total_speakers,
-                    COUNT(CASE WHEN politician_id IS NOT NULL THEN 1 END)
-                        as linked_speakers,
                     COUNT(CASE WHEN is_politician = TRUE THEN 1 END)
                         as politician_speakers,
-                    COUNT(
-                        CASE
-                            WHEN is_politician = TRUE AND politician_id IS NOT NULL
-                            THEN 1
-                        END
-                    ) as linked_politician_speakers,
                     COUNT(CASE WHEN is_politician = FALSE THEN 1 END)
                         as non_politician_speakers
                 FROM speakers
+            ),
+            linked_stats AS (
+                SELECT
+                    COUNT(DISTINCT s.id) as linked_speakers,
+                    COUNT(
+                        DISTINCT CASE WHEN s.is_politician = TRUE THEN s.id END
+                    ) as linked_politician_speakers
+                FROM speakers s
+                INNER JOIN politicians p ON s.id = p.speaker_id
             )
             SELECT
                 stats.total_speakers,
-                stats.linked_speakers,
+                linked_stats.linked_speakers,
                 stats.politician_speakers,
-                stats.linked_politician_speakers,
+                linked_stats.linked_politician_speakers,
                 stats.non_politician_speakers,
                 CASE
                     WHEN stats.politician_speakers > 0
                     THEN ROUND(
-                        CAST(stats.linked_politician_speakers AS NUMERIC) * 100.0 /
-                        stats.politician_speakers, 1
+                        CAST(
+                            linked_stats.linked_politician_speakers AS NUMERIC
+                        ) * 100.0 / stats.politician_speakers, 1
                     )
                     ELSE 0
                 END as link_rate
-            FROM stats
+            FROM stats, linked_stats
         """)
 
         result = await self.session.execute(query)
