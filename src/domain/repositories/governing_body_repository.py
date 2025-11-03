@@ -27,3 +27,13 @@ class GoverningBodyRepository(BaseRepository[GoverningBody]):
     async def search_by_name(self, name_pattern: str) -> list[GoverningBody]:
         """Search governing bodies by name pattern."""
         pass
+
+    @abstractmethod
+    async def count_with_conferences(self) -> int:
+        """Count governing bodies that have at least one conference."""
+        pass
+
+    @abstractmethod
+    async def count_with_meetings(self) -> int:
+        """Count governing bodies that have at least one meeting."""
+        pass

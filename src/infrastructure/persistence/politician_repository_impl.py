@@ -310,6 +310,13 @@ class PoliticianRepositoryImpl(BaseRepositoryImpl[Politician], PoliticianReposit
 
         return result.rowcount > 0  # type: ignore[attr-defined]
 
+    async def count(self) -> int:
+        """Count total number of politicians."""
+        query = text("SELECT COUNT(*) FROM politicians")
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
+
     async def count_by_party(self, political_party_id: int) -> int:
         """Count politicians by political party."""
         query = text("""
