@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  bi-dashboard:
+    build: .
+    container_name: polibase-bi-dashboard
+    ports:
+      - "8050:8050"
+    environment:
+      - DATABASE_URL=postgresql://polibase:polibase@db:5432/polibase
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+    networks:
+      - polibase-network
+
+  # PostgreSQL database (if not using existing Polibase DB)
+  db:
+    image: postgres:15
+    container_name: polibase-bi-db
+    environment:
+      - POSTGRES_USER=polibase
+      - POSTGRES_PASSWORD=polibase
+      - POSTGRES_DB=polibase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - polibase-network
+
+networks:
+  polibase-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

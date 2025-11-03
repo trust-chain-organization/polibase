@@ -84,6 +84,26 @@ monitoring: _setup_worktree
 		docker compose {{compose_cmd}} exec polibase uv run polibase monitoring
 	fi
 
+# Launch BI Dashboard (Plotly Dash) on port 8050
+bi-dashboard:
+	#!/bin/bash
+	cd src/interfaces/bi_dashboard
+	echo "Starting BI Dashboard (Plotly Dash)..."
+	echo "Access at: http://localhost:8050"
+	docker-compose up --build
+
+# Launch BI Dashboard in background
+bi-dashboard-up:
+	#!/bin/bash
+	cd src/interfaces/bi_dashboard
+	docker-compose up -d --build
+	echo "BI Dashboard started in background"
+	echo "Access at: http://localhost:8050"
+
+# Stop BI Dashboard
+bi-dashboard-down:
+	cd src/interfaces/bi_dashboard && docker-compose down
+
 # Process meeting minutes
 process-minutes: _setup_worktree
 	docker compose {{compose_cmd}} exec polibase uv run polibase process-minutes

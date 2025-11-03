@@ -22,6 +22,7 @@ just up               # Start environment
 # Run application
 just streamlit        # Launch web UI
 just monitoring       # Launch monitoring dashboard
+just bi-dashboard     # Launch BI Dashboard (Plotly Dash)
 
 # Development
 just test             # Run tests
@@ -37,6 +38,7 @@ just db               # Connect to PostgreSQL
 ```bash
 just up                                    # Start containers
 just exec uv run polibase streamlit        # Launch Streamlit UI
+just bi-dashboard                          # Launch BI Dashboard (Plotly Dash)
 just exec uv run polibase process-minutes  # Process meeting minutes
 just exec uv run polibase scrape-politicians --all-parties  # Scrape politicians
 just test                                  # Run tests with type checking
