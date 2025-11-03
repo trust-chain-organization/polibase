@@ -21,7 +21,6 @@ just up               # Start environment
 
 # Run application
 just streamlit        # Launch web UI
-just monitoring       # Launch monitoring dashboard
 just bi-dashboard     # Launch BI Dashboard (Plotly Dash)
 
 # Development
