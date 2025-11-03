@@ -1,8 +1,11 @@
 """Coverage reporting commands for Polibase"""
 
+import asyncio
+
 import click
 from sqlalchemy import text
 
+from src.domain.services.data_coverage_domain_service import DataCoverageDomainService
 from src.infrastructure.di.container import get_container, init_container
 
 
@@ -12,7 +15,7 @@ def get_coverage_commands() -> list[click.Command]:
     Returns:
         List of Click commands
     """
-    return [coverage]
+    return [coverage, coverage_stats]
 
 
 @click.command()
@@ -120,3 +123,103 @@ def coverage():
                     f"- {body.name} ({body.organization_type}, "
                     f"code: {body.organization_code})"
                 )
+
+
+@click.command("coverage-stats")
+def coverage_stats():
+    """Show comprehensive data coverage statistics using DataCoverageDomainService."""
+    # Initialize and get dependencies from DI container
+    try:
+        container = get_container()
+    except RuntimeError:
+        container = init_container()
+
+    # Get repositories from container
+    governing_body_repo = container.repositories.governing_body_repository()
+    conference_repo = container.repositories.conference_repository()
+    meeting_repo = container.repositories.meeting_repository()
+    minutes_repo = container.repositories.minutes_repository()
+    speaker_repo = container.repositories.speaker_repository()
+    politician_repo = container.repositories.politician_repository()
+    conversation_repo = container.repositories.conversation_repository()
+
+    # Create domain service
+    service = DataCoverageDomainService(
+        governing_body_repo=governing_body_repo,
+        conference_repo=conference_repo,
+        meeting_repo=meeting_repo,
+        minutes_repo=minutes_repo,
+        speaker_repo=speaker_repo,
+        politician_repo=politician_repo,
+        conversation_repo=conversation_repo,
+    )
+
+    # Execute async operations
+    async def run_stats():
+        # Calculate all statistics
+        gov_body_coverage = await service.calculate_governing_body_coverage()
+        meeting_coverage = await service.calculate_meeting_coverage()
+        speaker_matching = await service.calculate_speaker_matching_rate()
+        activity_stats = await service.aggregate_activity_statistics()
+
+        # Display results
+        click.echo("=" * 70)
+        click.echo("📊 Polibase Data Coverage Statistics")
+        click.echo("=" * 70)
+
+        # Governing Body Coverage
+        click.echo("\n🏛️  自治体カバレッジ")
+        click.echo("-" * 70)
+        click.echo(f"全国自治体数: {gov_body_coverage['total']:,} (全国の市町村数)")
+        click.echo(
+            f"登録自治体数: {gov_body_coverage['registered']:,} "
+            f"({gov_body_coverage['coverage_rate']:.2f}%)"
+        )
+
+        # Meeting Coverage
+        click.echo("\n📋 会議カバレッジ")
+        click.echo("-" * 70)
+        click.echo(f"登録自治体数: {meeting_coverage['total_governing_bodies']:,}")
+        click.echo(
+            f"会議体を持つ自治体: {meeting_coverage['bodies_with_conferences']:,} "
+            f"({meeting_coverage['conference_coverage_rate']:.2f}%)"
+        )
+        click.echo(
+            f"会議を持つ自治体: {meeting_coverage['bodies_with_meetings']:,} "
+            f"({meeting_coverage['meeting_coverage_rate']:.2f}%)"
+        )
+
+        # Speaker Matching
+        click.echo("\n🔗 Speaker-Politician 紐付け率")
+        click.echo("-" * 70)
+        click.echo(f"全Speaker数: {speaker_matching['total_speakers']:,}")
+        click.echo(
+            f"紐付け済み: {speaker_matching['linked_speakers']:,} "
+            f"({speaker_matching['overall_matching_rate']:.2f}%)"
+        )
+        click.echo(f"未紐付け: {speaker_matching['unlinked_speakers']:,}")
+        click.echo(f"\n政治家Speaker数: {speaker_matching['politician_speakers']:,}")
+        click.echo(
+            f"紐付け済み: {speaker_matching['linked_politician_speakers']:,} "
+            f"({speaker_matching['politician_matching_rate']:.2f}%)"
+        )
+
+        # Activity Statistics
+        click.echo("\n📈 活動統計")
+        click.echo("-" * 70)
+        click.echo(f"会議体数: {activity_stats['total_conferences']:,}")
+        click.echo(f"会議数: {activity_stats['total_meetings']:,}")
+        click.echo(
+            f"議事録数: {activity_stats['total_minutes']:,} "
+            f"(処理済み: {activity_stats['processed_minutes']:,}, "
+            f"未処理: {activity_stats['unprocessed_minutes']:,})"
+        )
+        click.echo(
+            f"議事録処理完了率: {activity_stats['minutes_processing_rate']:.2f}%"
+        )
+        click.echo(f"発言数: {activity_stats['total_conversations']:,}")
+        click.echo(f"政治家数: {activity_stats['total_politicians']:,}")
+
+        click.echo("\n" + "=" * 70)
+
+    asyncio.run(run_stats())

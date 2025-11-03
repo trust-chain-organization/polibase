@@ -23,3 +23,8 @@ class MinutesRepository(BaseRepository[Minutes]):
     async def mark_processed(self, minutes_id: int) -> bool:
         """Mark minutes as processed."""
         pass
+
+    @abstractmethod
+    async def count_processed(self) -> int:
+        """Count minutes that have been processed (processed_at IS NOT NULL)."""
+        pass

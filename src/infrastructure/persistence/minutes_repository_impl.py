@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Column, DateTime, Integer, String, update
+from sqlalchemy import Column, DateTime, Integer, String, func, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import declarative_base
@@ -68,6 +68,20 @@ class MinutesRepositoryImpl(BaseRepositoryImpl[Minutes], MinutesRepository):
         await self.session.commit()
 
         return result.rowcount > 0
+
+    async def count(self) -> int:
+        """Count total number of minutes."""
+        query = text("SELECT COUNT(*) FROM minutes")
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
+
+    async def count_processed(self) -> int:
+        """Count minutes that have been processed (processed_at IS NOT NULL)."""
+        query = select(func.count()).where(MinutesModel.processed_at.is_not(None))
+        result = await self.session.execute(query)
+        count = result.scalar()
+        return count if count is not None else 0
 
     def _to_entity(self, model: Any) -> Minutes:
         """Convert SQLAlchemy model to domain entity."""
