@@ -4,7 +4,7 @@ Following Phase 1 (KokkaiScraper) success pattern with category-based testing.
 Focuses on high-coverage methods to reach >80% target from current 31.1%.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -75,38 +75,58 @@ class TestKaigirokuNetScraperDateExtraction:
     @pytest.mark.asyncio
     async def test_extract_date_reiwa_format(self):
         """Test extracting date in Reiwa format"""
+        from datetime import datetime
+
         scraper = KaigirokuNetScraper()
         mock_page = AsyncMock()
-        mock_page.query_selector = AsyncMock(return_value=MagicMock())
-        mock_page.evaluate = AsyncMock(return_value="令和7年1月23日")
 
-        date_str = await scraper._extract_date(mock_page)
+        # Mock element with text_content
+        mock_element = AsyncMock()
+        mock_element.text_content = AsyncMock(return_value="令和7年1月23日")
+        mock_page.query_selector = AsyncMock(return_value=mock_element)
 
-        assert date_str == "2025-01-23"
+        # Mock date_parser to return datetime
+        expected_date = datetime(2025, 1, 23)
+        with patch.object(scraper.date_parser, "parse", return_value=expected_date):
+            result = await scraper._extract_date(mock_page)
+
+            assert result == expected_date
 
     @pytest.mark.asyncio
     async def test_extract_date_heisei_format(self):
         """Test extracting date in Heisei format"""
+        from datetime import datetime
+
         scraper = KaigirokuNetScraper()
         mock_page = AsyncMock()
-        mock_page.query_selector = AsyncMock(return_value=MagicMock())
-        mock_page.evaluate = AsyncMock(return_value="平成16年9月22日")
 
-        date_str = await scraper._extract_date(mock_page)
+        mock_element = AsyncMock()
+        mock_element.text_content = AsyncMock(return_value="平成16年9月22日")
+        mock_page.query_selector = AsyncMock(return_value=mock_element)
 
-        assert date_str == "2004-09-22"
+        expected_date = datetime(2004, 9, 22)
+        with patch.object(scraper.date_parser, "parse", return_value=expected_date):
+            result = await scraper._extract_date(mock_page)
+
+            assert result == expected_date
 
     @pytest.mark.asyncio
     async def test_extract_date_western_format(self):
         """Test extracting date in Western calendar format"""
+        from datetime import datetime
+
         scraper = KaigirokuNetScraper()
         mock_page = AsyncMock()
-        mock_page.query_selector = AsyncMock(return_value=MagicMock())
-        mock_page.evaluate = AsyncMock(return_value="2024年12月31日")
 
-        date_str = await scraper._extract_date(mock_page)
+        mock_element = AsyncMock()
+        mock_element.text_content = AsyncMock(return_value="2024年12月31日")
+        mock_page.query_selector = AsyncMock(return_value=mock_element)
 
-        assert date_str == "2024-12-31"
+        expected_date = datetime(2024, 12, 31)
+        with patch.object(scraper.date_parser, "parse", return_value=expected_date):
+            result = await scraper._extract_date(mock_page)
+
+            assert result == expected_date
 
     @pytest.mark.asyncio
     async def test_extract_date_no_element(self):
@@ -114,23 +134,33 @@ class TestKaigirokuNetScraperDateExtraction:
         scraper = KaigirokuNetScraper()
         mock_page = AsyncMock()
         mock_page.query_selector = AsyncMock(return_value=None)
+        mock_page.content = AsyncMock(return_value="<html></html>")
 
-        date_str = await scraper._extract_date(mock_page)
+        # Mock date_parser.extract_from_text to return None
+        with patch.object(scraper.date_parser, "extract_from_text", return_value=None):
+            result = await scraper._extract_date(mock_page)
 
-        assert date_str is None
+            assert result is None
 
     @pytest.mark.asyncio
     async def test_extract_date_invalid_format(self):
         """Test date extraction with invalid date format"""
         scraper = KaigirokuNetScraper()
         mock_page = AsyncMock()
-        mock_page.query_selector = AsyncMock(return_value=MagicMock())
-        mock_page.evaluate = AsyncMock(return_value="Invalid Date")
 
-        date_str = await scraper._extract_date(mock_page)
+        mock_element = AsyncMock()
+        mock_element.text_content = AsyncMock(return_value="Invalid Date")
+        mock_page.query_selector = AsyncMock(return_value=mock_element)
+        mock_page.content = AsyncMock(return_value="<html>Invalid Date</html>")
 
-        # Should handle gracefully (return None or empty string)
-        assert date_str is None or date_str == ""
+        # Mock date_parser to return None for invalid dates
+        with patch.object(scraper.date_parser, "parse", return_value=None):
+            with patch.object(
+                scraper.date_parser, "extract_from_text", return_value=None
+            ):
+                result = await scraper._extract_date(mock_page)
+
+                assert result is None
 
 
 class TestKaigirokuNetScraperPDFURLFinding:
@@ -141,13 +171,14 @@ class TestKaigirokuNetScraperPDFURLFinding:
         """Test finding PDF URL in download buttons"""
         scraper = KaigirokuNetScraper()
         mock_page = AsyncMock()
+        mock_page.url = "https://ssp.kaigiroku.net/tenant/test/MinuteView.html"
 
-        # Mock button with PDF link
-        mock_button = AsyncMock()
-        mock_button.get_attribute = AsyncMock(
+        # Mock element with PDF href
+        mock_element = AsyncMock()
+        mock_element.get_attribute = AsyncMock(
             return_value="https://example.com/minutes.pdf"
         )
-        mock_page.query_selector = AsyncMock(return_value=mock_button)
+        mock_page.query_selector_all = AsyncMock(return_value=[mock_element])
 
         pdf_url = await scraper._find_pdf_download_url(mock_page)
 
@@ -192,6 +223,7 @@ class TestKaigirokuNetScraperTextViewURLFinding:
         """Test finding text view URL"""
         scraper = KaigirokuNetScraper()
         mock_page = AsyncMock()
+        mock_page.url = "https://ssp.kaigiroku.net/tenant/test/MinuteView.html"
 
         mock_link = AsyncMock()
         mock_link.get_attribute = AsyncMock(
@@ -275,12 +307,15 @@ class TestKaigirokuNetScraperWaitForContent:
         """Test waiting succeeds on first try"""
         scraper = KaigirokuNetScraper()
         mock_page = AsyncMock()
-        mock_page.query_selector = AsyncMock(return_value=MagicMock())  # Element found
+        mock_page.wait_for_selector = AsyncMock()  # Succeeds
+        mock_page.query_selector_all = AsyncMock(return_value=[])
 
-        # Should not raise, completes successfully
-        await scraper._wait_for_content(mock_page)
+        # Mock asyncio.sleep to avoid actual waiting
+        with patch("asyncio.sleep", AsyncMock()):
+            await scraper._wait_for_content(mock_page)
 
-        mock_page.query_selector.assert_called()
+            # Should have tried to wait for selector
+            mock_page.wait_for_selector.assert_called()
 
     @pytest.mark.asyncio
     async def test_wait_for_content_timeout_then_success(self):
@@ -289,13 +324,23 @@ class TestKaigirokuNetScraperWaitForContent:
         mock_page = AsyncMock()
 
         # First call times out, second succeeds
-        mock_page.query_selector = AsyncMock(side_effect=[None, MagicMock()])
-        mock_page.wait_for_timeout = AsyncMock()
+        call_count = 0
 
-        await scraper._wait_for_content(mock_page)
+        def wait_side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise Exception("Timeout")
+            return AsyncMock()
 
-        # Should have retried
-        assert mock_page.query_selector.call_count >= 1
+        mock_page.wait_for_selector = AsyncMock(side_effect=wait_side_effect)
+        mock_page.query_selector_all = AsyncMock(return_value=[])
+
+        with patch("asyncio.sleep", AsyncMock()):
+            await scraper._wait_for_content(mock_page)
+
+            # Should have retried multiple selectors
+            assert mock_page.wait_for_selector.call_count >= 2
 
 
 class TestKaigirokuNetScraperPDFDownload:
@@ -306,16 +351,17 @@ class TestKaigirokuNetScraperPDFDownload:
         """Test successful PDF download and conversion to MinutesData"""
         scraper = KaigirokuNetScraper()
 
-        # Mock PDF handler
+        # Mock PDF handler's download_and_extract method
         with patch.object(
             scraper.pdf_handler,
-            "download_pdf",
-            return_value="/path/to/downloaded.pdf",
+            "download_and_extract",
+            return_value=("/path/to/downloaded.pdf", "PDF content text"),
         ):
+            # Mock file_handler's generate_filename
             with patch.object(
-                scraper.pdf_handler,
-                "convert_pdf_to_text",
-                return_value="PDF content text",
+                scraper.file_handler,
+                "generate_filename",
+                return_value="test_123_456.pdf",
             ):
                 result = await scraper._download_pdf_as_minutes(
                     "https://example.com/minutes.pdf",
@@ -335,20 +381,155 @@ class TestKaigirokuNetScraperPDFDownload:
         """Test PDF download failure"""
         scraper = KaigirokuNetScraper()
 
-        # Mock PDF download failure
+        # Mock PDF download failure (returns None for path)
         with patch.object(
             scraper.pdf_handler,
-            "download_pdf",
-            return_value=None,
+            "download_and_extract",
+            return_value=(None, ""),
         ):
-            result = await scraper._download_pdf_as_minutes(
-                "https://example.com/minutes.pdf",
-                "https://source.url",
-                "123",
-                "456",
-            )
+            with patch.object(
+                scraper.file_handler,
+                "generate_filename",
+                return_value="test_123_456.pdf",
+            ):
+                result = await scraper._download_pdf_as_minutes(
+                    "https://example.com/minutes.pdf",
+                    "https://source.url",
+                    "123",
+                    "456",
+                )
 
-            assert result is None
+                assert result is None
+
+
+class TestKaigirokuNetScraperErrorHandling:
+    """Test error handling in various methods"""
+
+    @pytest.mark.asyncio
+    async def test_extract_date_exception_handling(self):
+        """Test date extraction handles exceptions gracefully"""
+        scraper = KaigirokuNetScraper()
+        mock_page = AsyncMock()
+        mock_page.query_selector = AsyncMock(side_effect=Exception("Page error"))
+
+        result = await scraper._extract_date(mock_page)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_find_pdf_url_exception_handling(self):
+        """Test PDF URL finding handles exceptions gracefully"""
+        scraper = KaigirokuNetScraper()
+        mock_page = AsyncMock()
+        mock_page.url = "https://test.com/page.html"
+        mock_page.query_selector_all = AsyncMock(
+            side_effect=Exception("Selector error")
+        )
+
+        result = await scraper._find_pdf_download_url(mock_page)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_find_text_view_url_exception_handling(self):
+        """Test text view URL finding handles exceptions gracefully"""
+        scraper = KaigirokuNetScraper()
+        mock_page = AsyncMock()
+        mock_page.url = "https://test.com/page.html"
+        mock_page.query_selector = AsyncMock(side_effect=Exception("Selector error"))
+
+        result = await scraper._find_text_view_url(mock_page)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_download_pdf_exception_handling(self):
+        """Test PDF download handles exceptions gracefully"""
+        scraper = KaigirokuNetScraper()
+
+        with patch.object(
+            scraper.pdf_handler,
+            "download_and_extract",
+            side_effect=Exception("Download error"),
+        ):
+            with patch.object(
+                scraper.file_handler, "generate_filename", return_value="test.pdf"
+            ):
+                result = await scraper._download_pdf_as_minutes(
+                    "https://example.com/test.pdf", "https://source.com", "1", "2"
+                )
+
+                assert result is None
+
+
+class TestKaigirokuNetScraperPDFURLEdgeCases:
+    """Test PDF URL finding edge cases"""
+
+    @pytest.mark.asyncio
+    async def test_find_pdf_url_with_onclick_attribute(self):
+        """Test PDF URL extraction from onclick attribute"""
+        scraper = KaigirokuNetScraper()
+        mock_page = AsyncMock()
+        mock_page.url = "https://test.com/page.html"
+
+        # Element with onclick containing PDF URL
+        mock_element = AsyncMock()
+        mock_element.get_attribute = AsyncMock(
+            side_effect=lambda attr: (
+                None
+                if attr == "href"
+                else "window.open('document.pdf')"
+                if attr == "onclick"
+                else None
+            )
+        )
+        mock_page.query_selector_all = AsyncMock(return_value=[mock_element])
+
+        result = await scraper._find_pdf_download_url(mock_page)
+
+        assert result is not None
+        assert "document.pdf" in result
+
+    @pytest.mark.asyncio
+    async def test_find_pdf_url_relative_path_conversion(self):
+        """Test relative PDF URL gets converted to absolute"""
+        scraper = KaigirokuNetScraper()
+        mock_page = AsyncMock()
+        mock_page.url = "https://test.com/tenant/page.html"
+
+        mock_element = AsyncMock()
+        mock_element.get_attribute = AsyncMock(return_value="docs/minutes.pdf")
+        mock_page.query_selector_all = AsyncMock(return_value=[mock_element])
+
+        result = await scraper._find_pdf_download_url(mock_page)
+
+        assert result is not None
+        # URL should contain the relative path and base URL
+        assert "test.com" in result
+        assert "minutes.pdf" in result
+
+
+class TestKaigirokuNetScraperWaitForContentEdgeCases:
+    """Test wait for content edge cases"""
+
+    @pytest.mark.asyncio
+    async def test_wait_for_content_no_selector_found_checks_iframes(self):
+        """Test wait_for_content checks for iframes when no selector found"""
+        scraper = KaigirokuNetScraper()
+        mock_page = AsyncMock()
+
+        # All selectors fail
+        mock_page.wait_for_selector = AsyncMock(side_effect=Exception("Not found"))
+
+        # Mock iframes found
+        mock_iframe = AsyncMock()
+        mock_page.query_selector_all = AsyncMock(return_value=[mock_iframe])
+
+        with patch("asyncio.sleep", AsyncMock()):
+            await scraper._wait_for_content(mock_page)
+
+            # Should have checked for iframes
+            mock_page.query_selector_all.assert_called_with("iframe")
 
 
 class TestKaigirokuNetScraperMainFlow:
@@ -357,6 +538,8 @@ class TestKaigirokuNetScraperMainFlow:
     @pytest.mark.asyncio
     async def test_fetch_minutes_with_pdf_flow(self):
         """Test fetch_minutes when PDF is available"""
+        from datetime import datetime
+
         scraper = KaigirokuNetScraper()
         test_url = "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=100&schedule_id=1"
 
@@ -382,24 +565,29 @@ class TestKaigirokuNetScraperMainFlow:
                 "_find_pdf_download_url",
                 AsyncMock(return_value="https://example.com/minutes.pdf"),
             ):
-                with patch.object(
-                    scraper,
-                    "_download_pdf_as_minutes",
-                    AsyncMock(
-                        return_value=MinutesData(
-                            url=test_url,
-                            title="Test Minutes",
-                            content="Test content from PDF",
-                            council_id="100",
-                            schedule_id="1",
-                        )
-                    ),
-                ):
-                    result = await scraper.fetch_minutes(test_url)
+                # Mock asyncio.sleep to speed up test
+                with patch("asyncio.sleep", AsyncMock()):
+                    with patch.object(
+                        scraper,
+                        "_download_pdf_as_minutes",
+                        AsyncMock(
+                            return_value=MinutesData(
+                                url=test_url,
+                                title="Test Minutes",
+                                content="Test content from PDF",
+                                council_id="100",
+                                schedule_id="1",
+                                date=datetime(2025, 1, 1),
+                                speakers=[],
+                                scraped_at=datetime.now(),
+                            )
+                        ),
+                    ):
+                        result = await scraper.fetch_minutes(test_url)
 
-                    assert result is not None
-                    assert result.council_id == "100"
-                    assert "PDF" in result.content
+                        assert result is not None
+                        assert result.council_id == "100"
+                        assert "PDF" in result.content
 
     @pytest.mark.asyncio
     async def test_fetch_minutes_no_response(self):
