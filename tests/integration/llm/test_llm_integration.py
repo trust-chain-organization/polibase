@@ -70,65 +70,6 @@ class TestLLMServiceIntegration:
             assert result is not None
             assert len(result.section_info_list) == 2
 
-    @pytest.mark.skip(
-        reason="Legacy test - SpeakerMatchingService requires llm_service and "
-        "speaker_repository in constructor"
-    )
-    def test_speaker_matching_service_integration(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
-        """Test SpeakerMatchingService with LLMService"""
-        # Set dummy API key for testing
-        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
-
-        with LLMServiceMock(
-            [
-                {
-                    "matched": True,
-                    "speaker_id": 456,
-                    "speaker_name": "山田花子",
-                    "confidence": 0.95,
-                    "reason": "完全一致",
-                }
-            ]
-        ):
-            from src.domain.services.speaker_matching_service import (
-                SpeakerMatchingService,
-            )
-
-            service = SpeakerMatchingService()
-            assert service.llm_service is not None
-
-    @pytest.mark.skip(
-        reason="Legacy test - PoliticianMatchingService requires llm_service and "
-        "politician_repository in constructor"
-    )
-    def test_politician_matching_service_integration(
-        self, monkeypatch: MonkeyPatch
-    ) -> None:
-        """Test PoliticianMatchingService with LLMService"""
-        # Set dummy API key for testing
-        monkeypatch.setenv("GOOGLE_API_KEY", "test-key")
-
-        with LLMServiceMock(
-            [
-                {
-                    "matched": True,
-                    "politician_id": 789,
-                    "politician_name": "鈴木一郎",
-                    "political_party_name": "サンプル党",
-                    "confidence": 0.85,
-                    "reason": "表記ゆれだが同一人物",
-                }
-            ]
-        ):
-            from src.domain.services.politician_matching_service import (
-                PoliticianMatchingService,
-            )
-
-            service = PoliticianMatchingService()
-            assert service.llm_service is not None
-
 
 class TestMockFramework:
     """Test the LLM mock framework itself"""
@@ -141,10 +82,12 @@ class TestMockFramework:
 
         # Test first response
         result = mock.invoke("test input")
+        assert isinstance(result.content, str)  # type: ignore[reportUnknownMemberType]
         assert "Response 1" in result.content
 
         # Test second response
         result = mock.invoke("another input")
+        assert isinstance(result.content, str)  # type: ignore[reportUnknownMemberType]
         assert "Response 2" in result.content
 
         # Test call history
