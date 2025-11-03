@@ -149,6 +149,8 @@ class TestKokkaiScraperMainMethods:
         test_url = "https://kokkai.ndl.go.jp/test?sessionId=123&scheduleId=456"
 
         mock_browser = AsyncMock()
+        mock_page = AsyncMock()
+        mock_browser.new_page = AsyncMock(return_value=mock_page)
 
         with patch.object(scraper, "_create_browser", return_value=mock_browser):
             with patch.object(
@@ -156,7 +158,7 @@ class TestKokkaiScraperMainMethods:
                 "_load_page_with_retry",
                 side_effect=ScraperConnectionError("Network error"),
             ):
-                with pytest.raises(ScraperConnectionError):
+                with pytest.raises(ScraperParseError, match="Failed to fetch minutes"):
                     await scraper.fetch_minutes(test_url)
 
                 mock_browser.close.assert_awaited_once()
@@ -234,20 +236,19 @@ class TestKokkaiScraperMainMethods:
         scraper = KokkaiScraper()
         mock_page = AsyncMock()
 
-        mock_title_element = MagicMock()
-        mock_title_element.inner_text = AsyncMock(return_value="第123回国会 予算委員会")
-        mock_page.query_selector = AsyncMock(return_value=mock_title_element)
+        mock_h2_element = MagicMock()
+        mock_h2_element.inner_text = AsyncMock(
+            return_value="第123回国会　衆議院　予算委員会　第1号　令和6年1月15日"
+        )
+        mock_page.query_selector = AsyncMock(return_value=mock_h2_element)
 
-        with patch.object(
-            scraper, "_extract_title", return_value="第123回国会 予算委員会"
-        ):
-            with patch.object(
-                scraper, "_parse_date", return_value=datetime(2024, 1, 1)
-            ):
-                result = await scraper._extract_meeting_info(mock_page)
+        result = await scraper._extract_meeting_info(mock_page)
 
-                assert result["title"] == "第123回国会 予算委員会"
-                assert result["date"] == datetime(2024, 1, 1)
+        assert (
+            result["title"] == "第123回国会　衆議院　予算委員会　第1号　令和6年1月15日"
+        )
+        assert "date" in result
+        assert result["date"] == "令和6年1月15日"
 
     @pytest.mark.asyncio
     async def test_extract_meeting_info_missing_fields(self):
@@ -255,12 +256,9 @@ class TestKokkaiScraperMainMethods:
         mock_page = AsyncMock()
         mock_page.query_selector = AsyncMock(return_value=None)
 
-        with patch.object(scraper, "_extract_title", return_value=""):
-            with patch.object(scraper, "_parse_date", return_value=None):
-                result = await scraper._extract_meeting_info(mock_page)
+        result = await scraper._extract_meeting_info(mock_page)
 
-                assert result["title"] == ""
-                assert result["date"] is None
+        assert result == {}
 
 
 class TestKokkaiScraperContentExtraction:
@@ -285,45 +283,52 @@ class TestKokkaiScraperContentExtraction:
         scraper = KokkaiScraper()
         mock_page = AsyncMock()
         mock_page.query_selector = AsyncMock(return_value=None)
+        mock_page.title = AsyncMock(return_value="")
 
         result = await scraper._extract_title(mock_page)
 
         assert result == ""
 
     @pytest.mark.asyncio
-    async def test_extract_content_with_speakers(self):
+    async def test_extract_content_with_tables(self):
         scraper = KokkaiScraper()
         mock_page = AsyncMock()
 
-        mock_content_element = MagicMock()
-        mock_content_element.inner_text = AsyncMock(
-            return_value="○委員長 会議を開きます"
+        mock_cell = MagicMock()
+        mock_cell.inner_text = AsyncMock(
+            return_value="これは議事録の本文です。二十文字以上のテキストを含む内容です。"
         )
-        mock_page.query_selector = AsyncMock(return_value=mock_content_element)
+
+        mock_row = MagicMock()
+        mock_row.query_selector_all = AsyncMock(return_value=[MagicMock(), mock_cell])
+
+        mock_table = MagicMock()
+        mock_table.query_selector_all = AsyncMock(return_value=[mock_row])
+
+        mock_page.query_selector_all = AsyncMock(return_value=[mock_table])
 
         result = await scraper._extract_content(mock_page)
 
-        assert "会議を開きます" in result
-        mock_page.query_selector.assert_awaited()
+        assert "議事録の本文" in result
 
     @pytest.mark.asyncio
-    async def test_extract_content_without_speakers(self):
+    async def test_extract_content_fallback_to_body(self):
         scraper = KokkaiScraper()
         mock_page = AsyncMock()
 
-        mock_content_element = MagicMock()
-        mock_content_element.inner_text = AsyncMock(return_value="会議内容のみ")
-        mock_page.query_selector = AsyncMock(return_value=mock_content_element)
+        mock_page.query_selector_all = AsyncMock(return_value=[])
+        mock_page.inner_text = AsyncMock(return_value="これは長いテキストです。" * 10)
 
         result = await scraper._extract_content(mock_page)
 
-        assert "会議内容のみ" in result
+        assert "これは長いテキストです" in result
 
     @pytest.mark.asyncio
     async def test_extract_content_empty(self):
         scraper = KokkaiScraper()
         mock_page = AsyncMock()
-        mock_page.query_selector = AsyncMock(return_value=None)
+        mock_page.query_selector_all = AsyncMock(return_value=[])
+        mock_page.inner_text = AsyncMock(return_value="")
 
         result = await scraper._extract_content(mock_page)
 
@@ -335,9 +340,9 @@ class TestKokkaiScraperContentExtraction:
         mock_page = AsyncMock()
 
         mock_speaker1 = MagicMock()
-        mock_speaker1.inner_text = AsyncMock(return_value="○委員長（山田太郎君）")
+        mock_speaker1.inner_text = AsyncMock(return_value="001 山田太郎 発言者情報")
         mock_speaker2 = MagicMock()
-        mock_speaker2.inner_text = AsyncMock(return_value="○佐藤花子君（自民党）")
+        mock_speaker2.inner_text = AsyncMock(return_value="002 佐藤花子 発言者情報")
 
         mock_page.query_selector_all = AsyncMock(
             return_value=[mock_speaker1, mock_speaker2]
@@ -347,6 +352,8 @@ class TestKokkaiScraperContentExtraction:
 
         assert len(result) == 2
         assert all(isinstance(s, SpeakerData) for s in result)
+        assert result[0].name == "山田太郎"
+        assert result[1].name == "佐藤花子"
 
     @pytest.mark.asyncio
     async def test_extract_speakers_single(self):
@@ -354,12 +361,13 @@ class TestKokkaiScraperContentExtraction:
         mock_page = AsyncMock()
 
         mock_speaker = MagicMock()
-        mock_speaker.inner_text = AsyncMock(return_value="○委員長（山田太郎君）")
+        mock_speaker.inner_text = AsyncMock(return_value="001 委員長 発言者情報")
         mock_page.query_selector_all = AsyncMock(return_value=[mock_speaker])
 
         result = await scraper._extract_speakers(mock_page)
 
         assert len(result) == 1
+        assert result[0].name == "委員長"
 
     @pytest.mark.asyncio
     async def test_extract_speakers_none(self):
@@ -409,38 +417,33 @@ class TestKokkaiScraperUtilityMethods:
     def test_extract_ids_from_url_success(self):
         scraper = KokkaiScraper()
 
-        url = "https://kokkai.ndl.go.jp/minutes?sessionId=123&scheduleId=456"
-        session_id, schedule_id = scraper._extract_ids_from_url(url)
+        url = "https://kokkai.ndl.go.jp/minutes?minId=121705253X00320250423"
+        council_id, schedule_id = scraper._extract_ids_from_url(url)
 
-        assert session_id == "123"
-        assert schedule_id == "456"
+        assert council_id == "kokkai_121705253"
+        assert schedule_id == "X00320250423"
 
-    def test_extract_ids_from_url_invalid_format(self):
+    def test_extract_ids_from_url_no_minid(self):
         scraper = KokkaiScraper()
 
-        with pytest.raises(ScraperParseError, match="Invalid URL format"):
-            scraper._extract_ids_from_url("https://example.com/invalid")
+        url = "https://kokkai.ndl.go.jp/invalid"
+        council_id, schedule_id = scraper._extract_ids_from_url(url)
+
+        assert council_id == "kokkai_unknown"
+        assert schedule_id == "1"
 
     @pytest.mark.asyncio
-    async def test_extract_minutes_text_delegates(self):
+    async def test_extract_minutes_text_stub(self):
         scraper = KokkaiScraper()
-        mock_page = AsyncMock()
 
-        with patch.object(scraper, "_extract_content", return_value="Test content"):
-            result = await scraper.extract_minutes_text(mock_page)
+        result = await scraper.extract_minutes_text("")
 
-            assert result == "Test content"
+        assert result == ""
 
     @pytest.mark.asyncio
-    async def test_extract_speakers_delegates(self):
+    async def test_extract_speakers_stub(self):
         scraper = KokkaiScraper()
-        mock_page = AsyncMock()
 
-        expected_speakers = [
-            SpeakerData(name="山田太郎", content="発言内容", role="委員長")
-        ]
+        result = await scraper.extract_speakers("")
 
-        with patch.object(scraper, "_extract_speakers", return_value=expected_speakers):
-            result = await scraper.extract_speakers(mock_page)
-
-            assert result == expected_speakers
+        assert result == []
