@@ -1,0 +1,70 @@
+# ============================================================================
+# Polibase Terraform Configuration Example
+# ============================================================================
+# Copy this file to terraform.tfvars and fill in your actual values.
+# terraform.tfvars is gitignored and should never be committed.
+#
+# Usage:
+#   cp terraform.tfvars.example terraform.tfvars
+#   # Edit terraform.tfvars with your values
+#   terraform init
+#   terraform plan
+#   terraform apply
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Project Configuration
+# ----------------------------------------------------------------------------
+project_id  = "your-gcp-project-id"
+region      = "asia-northeast1" # Tokyo region
+environment = "development"     # development, staging, or production
+
+# ----------------------------------------------------------------------------
+# Network Configuration
+# ----------------------------------------------------------------------------
+network_name = "polibase-vpc"
+
+# ----------------------------------------------------------------------------
+# Database Configuration
+# ----------------------------------------------------------------------------
+database_version = "POSTGRES_15"
+database_tier    = "db-f1-micro" # Use db-custom-2-8192 for production
+database_name    = "polibase_db"
+database_user    = "polibase_user"
+database_password = "CHANGE_ME_TO_SECURE_PASSWORD" # Use a strong password!
+
+# High availability (requires db-custom tier, not available for f1-micro)
+enable_high_availability = false
+enable_backup            = true
+backup_retention_days    = 7
+
+# ----------------------------------------------------------------------------
+# Secrets Configuration
+# ----------------------------------------------------------------------------
+# Google API Key for Gemini
+google_api_key = "your-google-api-key-here"
+
+# Sentry DSN (optional, leave empty to disable)
+sentry_dsn = ""
+
+# ----------------------------------------------------------------------------
+# Container Image Configuration
+# ----------------------------------------------------------------------------
+# Replace PROJECT_ID with your actual GCP project ID
+# These images should be built and pushed to Google Container Registry (GCR)
+# or Artifact Registry before running terraform apply
+
+streamlit_image   = "gcr.io/PROJECT_ID/streamlit-ui:latest"
+monitoring_image  = "gcr.io/PROJECT_ID/monitoring-dashboard:latest"
+scraper_image     = "gcr.io/PROJECT_ID/scraper-worker:latest"
+processor_image   = "gcr.io/PROJECT_ID/processor-worker:latest"
+matcher_image     = "gcr.io/PROJECT_ID/matcher-worker:latest"
+
+# ----------------------------------------------------------------------------
+# Resource Labels
+# ----------------------------------------------------------------------------
+labels = {
+  project    = "polibase"
+  managed_by = "terraform"
+  team       = "your-team-name"
+}
