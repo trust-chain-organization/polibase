@@ -119,6 +119,7 @@ Polibaseプロジェクトでは、以下のスキルが自動的にアクティ
 ### Operations
 - **[DEPLOYMENT.md](docs/DEPLOYMENT.md)**: Deployment procedures
 - **[MONITORING.md](docs/MONITORING.md)**: Monitoring setup
+- **[BI_DASHBOARD.md](docs/BI_DASHBOARD.md)**: BI Dashboard (Plotly Dash) setup and usage
 
 ## Important Notes
 
