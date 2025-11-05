@@ -15,13 +15,13 @@ resource "google_service_account" "cloud_sql_proxy" {
 # IAM Roles for Cloud Run Service Account
 resource "google_project_iam_member" "cloud_run_roles" {
   for_each = toset([
-    "roles/cloudsql.client",        # Cloud SQL Client
+    "roles/cloudsql.client",              # Cloud SQL Client
     "roles/secretmanager.secretAccessor", # Secret Manager Secret Accessor
-    "roles/storage.objectAdmin",    # Storage Object Admin
-    "roles/aiplatform.user",        # Vertex AI User
-    "roles/logging.logWriter",      # Cloud Logging Writer
-    "roles/monitoring.metricWriter", # Cloud Monitoring Metric Writer
-    "roles/cloudtrace.agent",       # Cloud Trace Agent
+    "roles/storage.objectAdmin",          # Storage Object Admin
+    "roles/aiplatform.user",              # Vertex AI User
+    "roles/logging.logWriter",            # Cloud Logging Writer
+    "roles/monitoring.metricWriter",      # Cloud Monitoring Metric Writer
+    "roles/cloudtrace.agent",             # Cloud Trace Agent
   ])
 
   project = var.project_id

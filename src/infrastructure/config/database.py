@@ -21,11 +21,56 @@ load_dotenv()
 # Set up logging
 logger = logging.getLogger(__name__)
 
+
+def _get_database_url() -> str:
+    """Get database URL based on environment configuration
+
+    Supports both local PostgreSQL and Cloud SQL connections.
+    Cloud SQL connection can use Unix socket (via Cloud SQL Proxy) or direct connection.
+
+    Returns:
+        str: Database connection URL
+    """
+    # Check if Cloud SQL Proxy is enabled
+    use_cloud_sql_proxy = os.getenv("USE_CLOUD_SQL_PROXY", "false").lower() == "true"
+
+    if use_cloud_sql_proxy:
+        # Check for explicit DATABASE_URL_CLOUD override
+        cloud_url = os.getenv("DATABASE_URL_CLOUD")
+        if cloud_url:
+            logger.info("Using DATABASE_URL_CLOUD for Cloud SQL connection")
+            return cloud_url
+
+        # Build Cloud SQL connection URL using Unix socket
+        connection_name = os.getenv("CLOUD_SQL_CONNECTION_NAME")
+        if not connection_name:
+            raise ValueError(
+                "CLOUD_SQL_CONNECTION_NAME must be set when USE_CLOUD_SQL_PROXY=true"
+            )
+
+        unix_socket_dir = os.getenv("CLOUD_SQL_UNIX_SOCKET_DIR", "/cloudsql")
+        db_user = os.getenv("DB_USER", "polibase_user")
+        db_password = os.getenv("DB_PASSWORD", "polibase_password")
+        db_name = os.getenv("DB_NAME", "polibase_db")
+
+        # Unix socket connection format
+        socket_path = f"{unix_socket_dir}/{connection_name}"
+        url = f"postgresql://{db_user}:{db_password}@/{db_name}?host={socket_path}"
+
+        logger.info(f"Using Cloud SQL Proxy with Unix socket: {socket_path}")
+        return url
+
+    # Use standard DATABASE_URL for local PostgreSQL
+    url = os.getenv(
+        "DATABASE_URL",
+        "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db",
+    )
+    logger.info("Using standard DATABASE_URL for local PostgreSQL")
+    return url
+
+
 # データベース接続設定
-DATABASE_URL: str = os.getenv(
-    "DATABASE_URL",
-    "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db",
-)
+DATABASE_URL: str = _get_database_url()
 
 # Engine singleton
 _engine: Engine | None = None
