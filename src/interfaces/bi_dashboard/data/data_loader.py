@@ -29,7 +29,7 @@ def load_governing_bodies_coverage() -> pd.DataFrame:
             - id: Governing body ID
             - name: Governing body name
             - organization_type: Type (国/都道府県/市町村)
-            - prefecture: Prefecture name
+            - prefecture: Prefecture name (extracted from name)
             - has_data: Whether we have data for this body
     """
     engine = create_engine(get_database_url())
@@ -39,15 +39,21 @@ def load_governing_bodies_coverage() -> pd.DataFrame:
             gb.id,
             gb.name,
             gb.organization_type,
-            gb.prefecture,
+            CASE
+                WHEN gb.name ~ '^(北海道|.*[都道府県])' THEN
+                    SUBSTRING(gb.name FROM '^(北海道|.*?[都道府県])')
+                ELSE
+                    '不明'
+            END as prefecture,
             CASE
                 WHEN COUNT(m.id) > 0 THEN true
                 ELSE false
             END as has_data
         FROM governing_bodies gb
-        LEFT JOIN meetings m ON gb.id = m.governing_body_id
-        GROUP BY gb.id, gb.name, gb.organization_type, gb.prefecture
-        ORDER BY gb.organization_type, gb.prefecture, gb.name
+        LEFT JOIN conferences c ON gb.id = c.governing_body_id
+        LEFT JOIN meetings m ON c.id = m.conference_id
+        GROUP BY gb.id, gb.name, gb.organization_type
+        ORDER BY gb.organization_type, prefecture, gb.name
     """)
 
     with engine.connect() as conn:
