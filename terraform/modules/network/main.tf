@@ -19,10 +19,10 @@ resource "google_compute_subnetwork" "subnet" {
 
 # VPC Access Connector for Cloud Run
 resource "google_vpc_access_connector" "connector" {
-  name          = "vpc-connector-${var.environment}"
-  region        = var.region
-  network       = google_compute_network.vpc_network.name
-  project       = var.project_id
+  name    = "vpc-connector-${var.environment}"
+  region  = var.region
+  network = google_compute_network.vpc_network.name
+  project = var.project_id
 
   ip_cidr_range = var.vpc_connector_cidr
 

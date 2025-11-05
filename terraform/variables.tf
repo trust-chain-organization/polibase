@@ -41,7 +41,7 @@ variable "database_tier" {
   default     = "db-f1-micro" # Default to small instance for development
 
   validation {
-    condition = can(regex("^db-(f1-micro|g1-small|custom-[0-9]+-[0-9]+)$", var.database_tier))
+    condition     = can(regex("^db-(f1-micro|g1-small|custom-[0-9]+-[0-9]+)$", var.database_tier))
     error_message = "Database tier must be a valid Cloud SQL tier (e.g., db-f1-micro, db-g1-small, db-custom-2-8192)."
   }
 }
@@ -132,7 +132,7 @@ variable "labels" {
   description = "Labels to apply to all resources"
   type        = map(string)
   default = {
-    project     = "polibase"
-    managed_by  = "terraform"
+    project    = "polibase"
+    managed_by = "terraform"
   }
 }

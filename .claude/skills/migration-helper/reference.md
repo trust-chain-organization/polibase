@@ -38,6 +38,126 @@ database/migrations/
 
 `./reset-database.sh` drops and recreates the database, running all migrations from scratch. This is how you test migrations locally.
 
+## Database Design Overview
+
+Polibaseのデータベース設計の全体像を理解することで、適切なマイグレーションを作成できます。
+
+### Master Data（マスターデータ）
+
+シードファイルで事前に投入される固定データ：
+
+#### governing_bodies（統治組織）
+- 国、都道府県、市町村などの政府組織
+- 日本全国の1,966自治体を組織コードで追跡
+- マイグレーション: `001_initial_schema.sql`
+- シードデータ: `database/seeds/`
+
+#### conferences（会議）
+- 立法機関と委員会
+- 国会、地方議会、常任委員会など
+- `members_introduction_url` カラムでメンバー紹介ページを管理
+- マイグレーション: `005_add_members_introduction_url_to_conferences.sql`
+
+#### political_parties（政党）
+- 政党マスターデータ
+- `members_list_url` カラムでメンバーリストページを管理（Web scraping用）
+- マイグレーション: `001_initial_schema.sql`
+
+### Core Tables（コアテーブル）
+
+アプリケーションの主要データを格納：
+
+#### meetings（会議）
+- 個別の会議セッション
+- `gcs_pdf_uri`, `gcs_text_uri` カラムでGCS統合をサポート
+- マイグレーション: `004_add_gcs_uri_to_meetings.sql`
+
+#### minutes（議事録）
+- 会議の議事録
+- PDFまたはテキスト形式
+
+#### speakers（話者）
+- 議事録から抽出された話者
+- `politicians` との多対多リンク可能
+
+#### politicians（政治家）
+- 政党Webサイトからスクレイピングされた政治家情報
+- 政党所属とプロフィール情報を含む
+- 名前 + 政党で重複チェック
+
+#### conversations（会話）
+- 議事録から抽出された個別の発言
+- 話者と発言内容を紐付け
+- `speakers` への外部キー
+
+#### proposals（提案・議案）
+- 立法提案と議案
+
+#### politician_affiliations（政治家所属）
+- 政治家と会議のメンバーシップ
+- 役職（議長、副議長など）を含む
+- マイグレーション: `006_add_role_to_politician_affiliations.sql`
+
+#### extracted_conference_members（抽出された会議メンバー）
+- 会議メンバー抽出の段階的処理用ステージングテーブル
+- ステータス: pending, matched, needs_review, no_match
+- マイグレーション: `007_create_extracted_conference_members_table.sql`
+
+#### parliamentary_groups（議員団/会派）
+- 会議内の議員グループ（議員団、会派）
+- 投票ブロックを表現
+- マイグレーション: `008_create_parliamentary_groups_tables.sql`
+
+#### parliamentary_group_memberships（議員団メンバーシップ）
+- 時系列で政治家の議員団所属を追跡
+- 役職（団長、幹事長など）を含む
+- マイグレーション: `008_create_parliamentary_groups_tables.sql`
+
+### Repository Pattern
+
+すべてのテーブルはClean Architectureのリポジトリパターンに従います：
+
+```
+src/domain/repositories/        # インターフェース定義
+├── i_politician_repository.py
+├── i_speaker_repository.py
+└── ...
+
+src/infrastructure/persistence/ # 実装
+├── politician_repository_impl.py
+├── speaker_repository_impl.py
+└── ...
+```
+
+- `BaseRepository[T]`: 共通CRUD操作
+- `ISessionAdapter`: データベースセッション抽象化
+- すべてのリポジトリメソッドはasync/awaitを使用
+
+### Key Migrations（主要なマイグレーション）
+
+マイグレーションを作成する際の参考として：
+
+- `004_add_gcs_uri_to_meetings.sql`: meetingsテーブルにGCS URIカラムを追加
+- `005_add_members_introduction_url_to_conferences.sql`: conferencesにメンバーURLを追加
+- `006_add_role_to_politician_affiliations.sql`: 所属に役職カラムを追加
+- `007_create_extracted_conference_members_table.sql`: ステージングテーブル作成
+- `008_create_parliamentary_groups_tables.sql`: 議員団と議員団メンバーシップテーブル作成
+- `011_add_organization_code_to_governing_bodies.sql`: governing_bodiesに組織コードと組織タイプを追加
+
+### Migration Workflow
+
+新しいテーブルやカラムを追加する際：
+
+1. **マイグレーションファイル作成**: `database/migrations/XXX_description.sql`
+2. **02_run_migrations.sqlに追加**: 必須！
+3. **Domain層更新**:
+   - Entity: `src/domain/entities/`
+   - Repository Interface: `src/domain/repositories/`
+4. **Infrastructure層更新**:
+   - Repository Implementation: `src/infrastructure/persistence/`
+5. **テスト実行**: `./reset-database.sh`
+6. **ドキュメント更新**: `docs/DATABASE_SCHEMA.md`
+
 ## Detailed Patterns
 
 ### Creating Tables
