@@ -2,26 +2,80 @@
 
 This document provides detailed reference information for implementing Clean Architecture in Polibase.
 
+## Architecture Migration Status
+
+**Overall: 🟢 100% Complete** ✅
+
+| Layer | Files | Status |
+|-------|-------|--------|
+| Domain | 77 | ✅ 100% |
+| Application | 37 | ✅ 100% |
+| Infrastructure | 63 | ✅ 100% |
+| Interfaces | 63 | ✅ 100% |
+| **Legacy Cleanup** | ~20 | ✅ 100% |
+
+**Completed**:
+- ✅ All 22 domain repositories have infrastructure implementations
+- ✅ All 21 use cases implemented
+- ✅ Full async/await support across all repositories
+- ✅ Complete dependency inversion (Domain ← Infrastructure)
+- ✅ `ISessionAdapter` complete with `get()` and `delete()` (Issue #592)
+- ✅ CLI fully migrated to `src/interfaces/cli/` (Issue #641, Phase 5/5)
+- ✅ Web UI migrated to `src/interfaces/web/streamlit/`
+- ✅ Legacy Streamlit directories removed (`src/streamlit/`, `src/interfaces/streamlit/`) (Issue #602)
+- ✅ `src/models/` directory completely removed (Issue #640, Phase 4/5)
+  - All DTOs migrated to `src/application/dtos/`
+  - All entities migrated to `src/domain/entities/`
+  - All tests updated to use domain entities and DTOs
+- ✅ `src/cli_package/` completely migrated to `src/interfaces/cli/` (Issue #641, Phase 5/5)
+- ✅ All deprecated files removed (cli.py, exceptions.py, process_minutes.py, monitoring_app.py)
+- ✅ All backward compatibility stubs removed
+- ✅ 100% Clean Architecture compliance achieved
+
+参考:
+- [CLEAN_ARCHITECTURE_MIGRATION.md](../../../docs/CLEAN_ARCHITECTURE_MIGRATION.md) - Migration guide
+- [tmp/clean_architecture_analysis_2025.md](../../../tmp/clean_architecture_analysis_2025.md) - Detailed analysis
+
 ## Layer Structure
 
-### Domain Layer (`src/domain/`)
+### 1. Domain Layer (`src/domain/`) - ✅ Complete (77 files)
 
 **Purpose**: Core business logic and rules
 
 **Contains**:
-- **Entities** (21 files): Business objects with identity
-  - `BaseEntity`: Common fields (`id`, `created_at`, `updated_at`)
-  - Business entities: `Politician`, `Speaker`, `Meeting`, etc.
-- **Repository Interfaces** (22 files): Abstract data access
-  - `BaseRepository[T]`: Generic CRUD operations
-  - `ISessionAdapter`: Database session abstraction
-  - Entity-specific methods
-- **Domain Services** (18 files): Business logic not belonging to entities
-  - `SpeakerDomainService`: Name normalization, similarity
-  - `PoliticianDomainService`: Deduplication, validation
-  - `MinutesDomainService`: Text processing
-- **Service Interfaces** (8 files): External service abstractions
-  - `ILLMService`, `IStorageService`, `IWebScraperService`
+
+#### Entities (21 files)
+Core business objects with business rules:
+- `BaseEntity`: Common fields and methods for all entities
+- Business entities: `Politician`, `Speaker`, `Meeting`, `Conference`, `Proposal`, `Conversation`, `Minutes`, `GoverningBody`, `PoliticalParty`, `PoliticianAffiliation`, `ExtractedConferenceMember`, `ParliamentaryGroup`, `ParliamentaryGroupMembership`, etc.
+
+#### Repository Interfaces (22 files)
+Abstract interfaces for data access:
+- `BaseRepository[T]`: Generic repository with common CRUD operations
+  - `create()`, `get()`, `update()`, `delete()`, `list()`
+- `ISessionAdapter`: Database session abstraction (Issue #592: now complete with `get()` and `delete()` methods)
+- Entity-specific repositories with additional query methods:
+  - `IPoliticianRepository`: `find_by_name_and_party()`, `find_duplicates()`
+  - `ISpeakerRepository`: `find_by_name()`, `find_unmatched()`
+  - `IConversationRepository`: `find_by_meeting()`, `find_by_speaker()`
+  - など各エンティティ用のリポジトリインターフェース
+
+#### Domain Services (18 files)
+Business logic that doesn't belong to entities:
+- `SpeakerDomainService`: Name normalization, party extraction, similarity calculation
+- `PoliticianDomainService`: Deduplication, validation, merging logic
+- `MinutesDomainService`: Text processing, conversation extraction
+- `ConferenceDomainService`: Member role extraction
+- `ParliamentaryGroupDomainService`: Group membership validation
+- `SpeakerMatchingService`, `PoliticianMatchingService`: Matching algorithms
+
+#### Service Interfaces (8 files)
+External service abstractions:
+- `ILLMService`: LLM API抽象化
+- `IStorageService`: ファイルストレージ抽象化
+- `IWebScraperService`: Webスクレイピング抽象化
+- `ITextExtractorService`: テキスト抽出抽象化
+- その他外部サービスのインターフェース
 
 **Rules**:
 - ✅ No imports from outer layers
@@ -29,19 +83,35 @@ This document provides detailed reference information for implementing Clean Arc
 - ✅ Only Python standard library and minimal dependencies
 - ✅ All repository interfaces use `async def`
 
-### Application Layer (`src/application/`)
+### 2. Application Layer (`src/application/`) - ✅ Complete (37 files)
 
 **Purpose**: Application-specific business rules and orchestration
 
 **Contains**:
-- **Use Cases** (21 files): Application workflows
-  - Coordinate between repositories and services
-  - Transaction boundaries
-  - Error handling
-- **DTOs** (16 files): Data Transfer Objects
-  - Input DTOs: Request data
-  - Output DTOs: Response data
-  - Validation logic
+
+#### Use Cases (21 files)
+Application-specific business rules:
+- `ProcessMinutesUseCase`: Orchestrates minutes processing workflow
+- `MatchSpeakersUseCase`: Speaker-politician matching coordination
+- `ScrapePoliticiansUseCase`: Party member scraping workflow
+- `ManageConferenceMembersUseCase`: Conference member management
+- `ExtractConferenceMembersUseCase`: Conference member extraction
+- `MatchConferenceMembersUseCase`: Conference member matching
+- `CreateAffiliationsUseCase`: Affiliation creation
+- `Extract*UseCase`, `Manage*UseCase`: Various data processing and management
+
+各UseCaseの責務:
+- リポジトリとサービスの調整
+- トランザクション境界の定義
+- エラーハンドリング
+- ビジネスロジックのオーケストレーション
+
+#### DTOs (16 files)
+Data Transfer Objects for clean layer separation:
+- Input/Output DTOs for each use case
+- Prevents domain model leakage to outer layers
+- Includes validation logic
+- 例: `ProcessMinutesInputDTO`, `ProcessMinutesOutputDTO`
 
 **Rules**:
 - ✅ Import only from Domain layer
@@ -50,27 +120,109 @@ This document provides detailed reference information for implementing Clean Arc
 - ✅ No direct database access
 - ✅ No UI concerns
 
-### Infrastructure Layer (`src/infrastructure/`)
+### 3. Infrastructure Layer (`src/infrastructure/`) - ✅ Complete (63 files)
 
-**Purpose**: External service implementations and technical details
+**Purpose**: External system integrations and implementations
 
 **Contains**:
-- **Persistence** (22+ files): Database implementations
-  - `BaseRepositoryImpl[T]`: Generic SQLAlchemy repository
-  - Entity-specific repository implementations
-  - `AsyncSessionAdapter`: Session adapter
-  - `UnitOfWorkImpl`: Transaction management
-- **External Services**: Third-party integrations
-  - `GeminiLLMService`: Google Gemini API
-  - `CachedLLMService`: Decorator for caching
-  - `InstrumentedLLMService`: Decorator for instrumentation
-  - `GCSStorageService`: Google Cloud Storage
-  - `WebScraperService`: Playwright-based scraping
-- **Infrastructure Support**:
-  - DI Container (`di/`): Dependency injection
-  - Logging, monitoring, error handling
+
+#### Persistence (22+ files)
+Database access implementations:
+- `BaseRepositoryImpl[T]`: Generic SQLAlchemy repository using `ISessionAdapter`
+- All 22 domain repositories have corresponding implementations:
+  - `PoliticianRepositoryImpl`
+  - `SpeakerRepositoryImpl`
+  - `ConversationRepositoryImpl`
+  - `MeetingRepositoryImpl`
+  - `ConferenceRepositoryImpl`
+  - など
+- `AsyncSessionAdapter`: Adapts sync sessions for async usage
+- `UnitOfWorkImpl`: Transaction management implementation
+
+#### External Services
+Third-party integrations:
+- `GeminiLLMService`: Google Gemini API integration
+- `CachedLLMService`, `InstrumentedLLMService`: Decorator pattern for caching and instrumentation
+- `GCSStorageService`: Google Cloud Storage integration
+- `WebScraperService`: Playwright-based web scraping
+- `MinutesProcessingService`, `ProposalScraperService`: Domain-specific services
+
+#### Infrastructure Support
+- **DI Container** (`di/`): Dependency injection setup
+- **Logging** (`logging/`): Structured logging configuration
+- **Monitoring** (`monitoring/`): Performance metrics collection
+- **Error Handling** (`error_handling/`): Centralized error management
 
 **Rules**:
+- ✅ Import from Domain and Application layers
+- ✅ Implement repository interfaces
+- ✅ Depend on abstractions (not concretions)
+- ✅ Use async/await consistently
+
+### 4. Interfaces Layer (`src/interfaces/`) - ✅ Mostly Complete (63 files)
+
+**Purpose**: User interfaces and external API endpoints
+
+**Contains**:
+
+#### CLI (`src/interfaces/cli/`)
+Command-line interfaces:
+- Unified `polibase` command entry point
+- Structured commands organized by category:
+  - `scraping/`: Web scraping commands
+  - `database/`: Database management commands
+  - `processing/`: Data processing commands
+  - `monitoring/`: Monitoring commands
+
+#### Web (`src/interfaces/web/streamlit/`)
+Streamlit UI:
+- `views/`: Page views for各entity types
+  - `politician_view.py`
+  - `speaker_view.py`
+  - `meeting_view.py`
+  - など
+- `presenters/`: Business logic presentation layer
+- `components/`: Reusable UI components
+- `dto/`: UI-specific data transfer objects
+- Complete separation of business logic from UI
+
+**Rules**:
+- ✅ Import from all inner layers
+- ✅ Depend on Use Cases (not repositories directly)
+- ✅ Handle user input validation
+- ✅ Format output for presentation
+
+## When Adding New Features
+
+Clean Architectureに従って新機能を追加する際の推奨手順：
+
+1. **Start with Domain Entities and Services**
+   - `src/domain/entities/` に必要なエンティティを定義
+   - `src/domain/services/` にビジネスロジックを実装
+
+2. **Define Repository Interfaces Needed**
+   - `src/domain/repositories/` にリポジトリインターフェースを定義
+   - 必要なメソッドをasync defで宣言
+
+3. **Create Use Cases in Application Layer**
+   - `src/application/usecases/` にユースケースを実装
+   - Input/Output DTOを `src/application/dtos/` に定義
+
+4. **Implement Infrastructure (Repositories, External Services)**
+   - `src/infrastructure/persistence/` にリポジトリ実装を追加
+   - 必要に応じて外部サービス統合を実装
+
+5. **Add Interface Layer Last (CLI/Web)**
+   - `src/interfaces/cli/` または `src/interfaces/web/` にUI/CLI追加
+   - ユースケースを呼び出してDTOをやり取り
+
+6. **Write Tests at Each Layer**
+   - Domain: ユニットテスト（モック不要）
+   - Application: ユニットテスト（リポジトリをモック）
+   - Infrastructure: 統合テスト（実際のDB使用）
+   - Interfaces: E2Eテスト
+
+## Dependency Rule
 - ✅ Import from Domain and Application
 - ✅ Implement interfaces defined in Domain
 - ✅ All repository methods are `async def`
