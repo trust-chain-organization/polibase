@@ -4,7 +4,13 @@ This module provides the main entry point for the Streamlit web interface,
 following Clean Architecture principles with presenter pattern.
 """
 
+import os
+
 import streamlit as st
+
+from src.interfaces.web.streamlit.auth.session_manager import AuthSessionManager
+from src.interfaces.web.streamlit.components.header import render_header
+from src.interfaces.web.streamlit.middleware.auth_middleware import render_login_page
 
 # Import new Clean Architecture views
 from src.interfaces.web.streamlit.views.conferences_view import (
@@ -43,6 +49,15 @@ def main():
         layout="wide",
         initial_sidebar_state="expanded",
     )
+
+    # 認証チェック
+    auth_disabled = os.getenv("GOOGLE_OAUTH_DISABLED", "false").lower() == "true"
+    session_manager = AuthSessionManager()
+
+    if not auth_disabled and not session_manager.is_authenticated():
+        # 未認証の場合はログインページを表示
+        render_login_page(session_manager)
+        return
 
     # Define pages with URL routing
     pages = [
@@ -109,6 +124,9 @@ def main():
 
     # Navigation with automatic sidebar
     pg = st.navigation(pages)
+
+    # ヘッダーを表示（ユーザー情報とログアウトボタン）
+    render_header()
 
     # Footer in sidebar
     st.sidebar.divider()
