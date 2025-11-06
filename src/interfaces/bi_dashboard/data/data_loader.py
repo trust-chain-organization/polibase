@@ -10,16 +10,7 @@ from typing import Any
 import pandas as pd
 from sqlalchemy import create_engine, text
 
-from src.application.usecases.view_data_coverage_usecase import (
-    ViewActivityTrendUseCase,
-    ViewGoverningBodyCoverageUseCase,
-    ViewMeetingCoverageUseCase,
-    ViewSpeakerMatchingStatsUseCase,
-)
-from src.infrastructure.persistence.async_session_adapter import AsyncSessionAdapter
-from src.infrastructure.persistence.data_coverage_repository_impl import (
-    DataCoverageRepositoryImpl,
-)
+from src.infrastructure.di.container import get_container, init_container
 
 
 def get_database_url() -> str:
@@ -131,27 +122,6 @@ def get_prefecture_coverage() -> pd.DataFrame:
 # UseCase経由のデータ取得機能
 
 
-def _get_usecase_dependencies() -> tuple[
-    AsyncSessionAdapter, DataCoverageRepositoryImpl
-]:
-    """UseCaseの依存関係を初期化する.
-
-    Returns:
-        tuple: (AsyncSessionAdapter, DataCoverageRepositoryImpl)
-    """
-    from sqlalchemy.ext.asyncio import create_async_engine
-
-    database_url = get_database_url()
-    # postgresql:// を postgresql+asyncpg:// に変換
-    async_database_url = database_url.replace("postgresql://", "postgresql+asyncpg://")
-
-    engine = create_async_engine(async_database_url, echo=False)
-    session_adapter = AsyncSessionAdapter(engine)
-    repository = DataCoverageRepositoryImpl(session_adapter)
-
-    return session_adapter, repository
-
-
 def get_meeting_coverage_data() -> dict[str, Any]:
     """会議カバレッジデータを取得する.
 
@@ -165,14 +135,21 @@ def get_meeting_coverage_data() -> dict[str, Any]:
     """
 
     async def _get_data() -> dict[str, Any]:
-        session_adapter, repository = _get_usecase_dependencies()
-        usecase = ViewMeetingCoverageUseCase(repository)
+        # DIコンテナを初期化（まだ初期化されていない場合）
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        # UseCaseをDIコンテナから取得
+        usecase = container.use_cases.view_meeting_coverage_usecase()
 
         try:
             result = await usecase.execute()
             return dict(result)
         finally:
-            await session_adapter.close()
+            # セッションのクリーンアップ
+            await container.database.async_session().close()
 
     return asyncio.run(_get_data())
 
@@ -192,14 +169,21 @@ def get_speaker_matching_data() -> dict[str, Any]:
     """
 
     async def _get_data() -> dict[str, Any]:
-        session_adapter, repository = _get_usecase_dependencies()
-        usecase = ViewSpeakerMatchingStatsUseCase(repository)
+        # DIコンテナを初期化（まだ初期化されていない場合）
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        # UseCaseをDIコンテナから取得
+        usecase = container.use_cases.view_speaker_matching_stats_usecase()
 
         try:
             result = await usecase.execute()
             return dict(result)
         finally:
-            await session_adapter.close()
+            # セッションのクリーンアップ
+            await container.database.async_session().close()
 
     return asyncio.run(_get_data())
 
@@ -220,14 +204,21 @@ def get_activity_trend_data(period: str = "30d") -> list[dict[str, Any]]:
     """
 
     async def _get_data() -> list[dict[str, Any]]:
-        session_adapter, repository = _get_usecase_dependencies()
-        usecase = ViewActivityTrendUseCase(repository)
+        # DIコンテナを初期化（まだ初期化されていない場合）
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        # UseCaseをDIコンテナから取得
+        usecase = container.use_cases.view_activity_trend_usecase()
 
         try:
             result = await usecase.execute({"period": period})
             return [dict(item) for item in result]
         finally:
-            await session_adapter.close()
+            # セッションのクリーンアップ
+            await container.database.async_session().close()
 
     return asyncio.run(_get_data())
 
@@ -244,13 +235,20 @@ def get_governing_body_coverage_data() -> dict[str, Any]:
     """
 
     async def _get_data() -> dict[str, Any]:
-        session_adapter, repository = _get_usecase_dependencies()
-        usecase = ViewGoverningBodyCoverageUseCase(repository)
+        # DIコンテナを初期化（まだ初期化されていない場合）
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        # UseCaseをDIコンテナから取得
+        usecase = container.use_cases.view_governing_body_coverage_usecase()
 
         try:
             result = await usecase.execute()
             return dict(result)
         finally:
-            await session_adapter.close()
+            # セッションのクリーンアップ
+            await container.database.async_session().close()
 
     return asyncio.run(_get_data())

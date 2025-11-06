@@ -125,13 +125,14 @@ class TestGetPrefectureCoverage:
 class TestGetMeetingCoverageData:
     """Tests for get_meeting_coverage_data function."""
 
-    @patch("src.interfaces.bi_dashboard.data.data_loader._get_usecase_dependencies")
-    def test_get_meeting_coverage_data_returns_dict(self, mock_get_deps: Mock) -> None:
+    @patch("src.interfaces.bi_dashboard.data.data_loader.get_container")
+    def test_get_meeting_coverage_data_returns_dict(
+        self, mock_get_container: Mock
+    ) -> None:
         """Test that get_meeting_coverage_data returns expected data."""
         # Arrange
-        mock_session = AsyncMock()
-        mock_repo = AsyncMock()
-        mock_get_deps.return_value = (mock_session, mock_repo)
+        mock_container = Mock()
+        mock_get_container.return_value = mock_container
 
         mock_usecase = AsyncMock()
         mock_usecase.execute.return_value = {
@@ -141,13 +142,15 @@ class TestGetMeetingCoverageData:
             "average_conversations_per_meeting": 15.5,
             "meetings_by_conference": {"会議体A": 50, "会議体B": 50},
         }
+        mock_container.use_cases.view_meeting_coverage_usecase.return_value = (
+            mock_usecase
+        )
 
-        with patch(
-            "src.interfaces.bi_dashboard.data.data_loader.ViewMeetingCoverageUseCase",
-            return_value=mock_usecase,
-        ):
-            # Act
-            result = get_meeting_coverage_data()
+        mock_session = AsyncMock()
+        mock_container.database.async_session.return_value = mock_session
+
+        # Act
+        result = get_meeting_coverage_data()
 
         # Assert
         assert isinstance(result, dict)
@@ -160,13 +163,14 @@ class TestGetMeetingCoverageData:
 class TestGetSpeakerMatchingData:
     """Tests for get_speaker_matching_data function."""
 
-    @patch("src.interfaces.bi_dashboard.data.data_loader._get_usecase_dependencies")
-    def test_get_speaker_matching_data_returns_dict(self, mock_get_deps: Mock) -> None:
+    @patch("src.interfaces.bi_dashboard.data.data_loader.get_container")
+    def test_get_speaker_matching_data_returns_dict(
+        self, mock_get_container: Mock
+    ) -> None:
         """Test that get_speaker_matching_data returns expected data."""
         # Arrange
-        mock_session = AsyncMock()
-        mock_repo = AsyncMock()
-        mock_get_deps.return_value = (mock_session, mock_repo)
+        mock_container = Mock()
+        mock_get_container.return_value = mock_container
 
         mock_usecase = AsyncMock()
         mock_usecase.execute.return_value = {
@@ -178,13 +182,15 @@ class TestGetSpeakerMatchingData:
             "linked_conversations": 900,
             "linkage_rate": 90.0,
         }
+        mock_container.use_cases.view_speaker_matching_stats_usecase.return_value = (
+            mock_usecase
+        )
 
-        with patch(
-            "src.interfaces.bi_dashboard.data.data_loader.ViewSpeakerMatchingStatsUseCase",
-            return_value=mock_usecase,
-        ):
-            # Act
-            result = get_speaker_matching_data()
+        mock_session = AsyncMock()
+        mock_container.database.async_session.return_value = mock_session
+
+        # Act
+        result = get_speaker_matching_data()
 
         # Assert
         assert isinstance(result, dict)
@@ -197,13 +203,14 @@ class TestGetSpeakerMatchingData:
 class TestGetActivityTrendData:
     """Tests for get_activity_trend_data function."""
 
-    @patch("src.interfaces.bi_dashboard.data.data_loader._get_usecase_dependencies")
-    def test_get_activity_trend_data_returns_list(self, mock_get_deps: Mock) -> None:
+    @patch("src.interfaces.bi_dashboard.data.data_loader.get_container")
+    def test_get_activity_trend_data_returns_list(
+        self, mock_get_container: Mock
+    ) -> None:
         """Test that get_activity_trend_data returns expected data."""
         # Arrange
-        mock_session = AsyncMock()
-        mock_repo = AsyncMock()
-        mock_get_deps.return_value = (mock_session, mock_repo)
+        mock_container = Mock()
+        mock_get_container.return_value = mock_container
 
         mock_usecase = AsyncMock()
         mock_usecase.execute.return_value = [
@@ -222,13 +229,13 @@ class TestGetActivityTrendData:
                 "politicians_count": 35,
             },
         ]
+        mock_container.use_cases.view_activity_trend_usecase.return_value = mock_usecase
 
-        with patch(
-            "src.interfaces.bi_dashboard.data.data_loader.ViewActivityTrendUseCase",
-            return_value=mock_usecase,
-        ):
-            # Act
-            result = get_activity_trend_data("30d")
+        mock_session = AsyncMock()
+        mock_container.database.async_session.return_value = mock_session
+
+        # Act
+        result = get_activity_trend_data("30d")
 
         # Assert
         assert isinstance(result, list)
@@ -241,15 +248,14 @@ class TestGetActivityTrendData:
 class TestGetGoverningBodyCoverageData:
     """Tests for get_governing_body_coverage_data function."""
 
-    @patch("src.interfaces.bi_dashboard.data.data_loader._get_usecase_dependencies")
+    @patch("src.interfaces.bi_dashboard.data.data_loader.get_container")
     def test_get_governing_body_coverage_data_returns_dict(
-        self, mock_get_deps: Mock
+        self, mock_get_container: Mock
     ) -> None:
         """Test that get_governing_body_coverage_data returns expected data."""
         # Arrange
-        mock_session = AsyncMock()
-        mock_repo = AsyncMock()
-        mock_get_deps.return_value = (mock_session, mock_repo)
+        mock_container = Mock()
+        mock_get_container.return_value = mock_container
 
         mock_usecase = AsyncMock()
         mock_usecase.execute.return_value = {
@@ -258,13 +264,15 @@ class TestGetGoverningBodyCoverageData:
             "with_meetings": 50,
             "coverage_percentage": 5.0,
         }
+        mock_container.use_cases.view_governing_body_coverage_usecase.return_value = (
+            mock_usecase
+        )
 
-        with patch(
-            "src.interfaces.bi_dashboard.data.data_loader.ViewGoverningBodyCoverageUseCase",
-            return_value=mock_usecase,
-        ):
-            # Act
-            result = get_governing_body_coverage_data()
+        mock_session = AsyncMock()
+        mock_container.database.async_session.return_value = mock_session
+
+        # Act
+        result = get_governing_body_coverage_data()
 
         # Assert
         assert isinstance(result, dict)
