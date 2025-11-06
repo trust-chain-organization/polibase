@@ -47,11 +47,11 @@ if [ -f .streamlit/secrets.toml ]; then
 
         # Update redirect_uri in existing file
         if [ "$(uname)" = "Darwin" ]; then
-            # macOS
-            sed -i '' "s|redirect_uri = \"http://localhost:[0-9]\+/oauth2callback\"|redirect_uri = \"http://localhost:$STREAMLIT_PORT/oauth2callback\"|" .streamlit/secrets.toml
+            # macOS - use LC_ALL=C to avoid encoding issues
+            LC_ALL=C sed -i '' "s|redirect_uri = \"http://localhost:[0-9][0-9]*/oauth2callback\"|redirect_uri = \"http://localhost:$STREAMLIT_PORT/oauth2callback\"|" .streamlit/secrets.toml
         else
             # Linux
-            sed -i "s|redirect_uri = \"http://localhost:[0-9]\+/oauth2callback\"|redirect_uri = \"http://localhost:$STREAMLIT_PORT/oauth2callback\"|" .streamlit/secrets.toml
+            sed -i "s|redirect_uri = \"http://localhost:[0-9][0-9]*/oauth2callback\"|redirect_uri = \"http://localhost:$STREAMLIT_PORT/oauth2callback\"|" .streamlit/secrets.toml
         fi
 
         echo "✅ Updated redirect_uri in .streamlit/secrets.toml"
