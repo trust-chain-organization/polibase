@@ -7,7 +7,12 @@ _setup_worktree:
 		if [ "$(git rev-parse --git-common-dir 2>/dev/null)" != ".git" ]; then
 			echo "Git worktree detected. Setting up port configuration..."
 			./scripts/setup-worktree-ports.sh
+			# Also setup Streamlit secrets with the correct port
+			./scripts/setup-streamlit-secrets.sh
 		fi
+	elif [ -f docker/docker-compose.override.yml ] && [ -f .streamlit/secrets.toml ]; then
+		# Update secrets.toml if port changed
+		./scripts/setup-streamlit-secrets.sh
 	fi
 
 # Get compose command based on override file existence
