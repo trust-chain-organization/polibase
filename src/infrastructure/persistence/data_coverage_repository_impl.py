@@ -100,7 +100,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                 with_meetings,
                 CASE
                     WHEN total > 0
-                    THEN ROUND(CAST(with_meetings AS REAL) / total * 100, 2)
+                    THEN ROUND(CAST(with_meetings AS NUMERIC) / total * 100, 2)
                     ELSE 0.0
                 END as coverage_percentage
             FROM stats
@@ -133,17 +133,19 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
             SELECT
                 COUNT(DISTINCT m.id) as total_meetings,
                 COUNT(DISTINCT mi.meeting_id) as with_minutes,
-                COUNT(DISTINCT c.meeting_id) as with_conversations,
+                COUNT(DISTINCT mi.id) FILTER (
+                    WHERE c.id IS NOT NULL
+                ) as with_conversations,
                 CASE
                     WHEN COUNT(DISTINCT m.id) > 0
                     THEN ROUND(
-                        CAST(COUNT(c.id) AS REAL) / COUNT(DISTINCT m.id), 2
+                        CAST(COUNT(c.id) AS NUMERIC) / COUNT(DISTINCT m.id), 2
                     )
                     ELSE 0.0
                 END as avg_conversations
             FROM meetings m
             LEFT JOIN minutes mi ON m.id = mi.meeting_id
-            LEFT JOIN conversations c ON m.id = c.meeting_id
+            LEFT JOIN conversations c ON mi.id = c.minutes_id
         """)
 
         # Conference breakdown query
@@ -215,7 +217,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                 CASE
                     WHEN ss.total_speakers > 0
                     THEN ROUND(
-                        CAST(ss.matched_speakers AS REAL)
+                        CAST(ss.matched_speakers AS NUMERIC)
                         / ss.total_speakers * 100, 2
                     )
                     ELSE 0.0
@@ -225,7 +227,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                 CASE
                     WHEN cs.total_conversations > 0
                     THEN ROUND(
-                        CAST(cs.linked_conversations AS REAL)
+                        CAST(cs.linked_conversations AS NUMERIC)
                         / cs.total_conversations * 100, 2
                     )
                     ELSE 0.0
@@ -302,7 +304,8 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                     DATE(m.date) as date,
                     COUNT(c.id) as count
                 FROM conversations c
-                JOIN meetings m ON c.meeting_id = m.id
+                JOIN minutes mi ON c.minutes_id = mi.id
+                JOIN meetings m ON mi.meeting_id = m.id
                 WHERE m.date >= CURRENT_DATE - :days * INTERVAL '1 day'
                     AND m.date <= CURRENT_DATE
                 GROUP BY DATE(m.date)
