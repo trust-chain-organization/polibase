@@ -581,20 +581,20 @@ class UseCaseContainer(containers.DeclarativeContainer):
     # Data coverage use cases
     view_governing_body_coverage_usecase = providers.Factory(
         ViewGoverningBodyCoverageUseCase,
-        repository=repositories.data_coverage_repository,
+        data_coverage_repo=repositories.data_coverage_repository,
     )
 
     view_meeting_coverage_usecase = providers.Factory(
         ViewMeetingCoverageUseCase,
-        repository=repositories.data_coverage_repository,
+        data_coverage_repo=repositories.data_coverage_repository,
     )
 
     view_speaker_matching_stats_usecase = providers.Factory(
         ViewSpeakerMatchingStatsUseCase,
-        repository=repositories.data_coverage_repository,
+        data_coverage_repo=repositories.data_coverage_repository,
     )
 
     view_activity_trend_usecase = providers.Factory(
         ViewActivityTrendUseCase,
-        repository=repositories.data_coverage_repository,
+        data_coverage_repo=repositories.data_coverage_repository,
     )
