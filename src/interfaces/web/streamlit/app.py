@@ -8,9 +8,8 @@ import os
 
 import streamlit as st
 
-from src.interfaces.web.streamlit.auth.session_manager import AuthSessionManager
+from src.interfaces.web.streamlit.auth import google_sign_in
 from src.interfaces.web.streamlit.components.header import render_header
-from src.interfaces.web.streamlit.middleware.auth_middleware import render_login_page
 
 # Import new Clean Architecture views
 from src.interfaces.web.streamlit.views.conferences_view import (
@@ -52,11 +51,10 @@ def main():
 
     # 認証チェック
     auth_disabled = os.getenv("GOOGLE_OAUTH_DISABLED", "false").lower() == "true"
-    session_manager = AuthSessionManager()
 
-    if not auth_disabled and not session_manager.is_authenticated():
+    if not auth_disabled and not google_sign_in.is_user_logged_in():
         # 未認証の場合はログインページを表示
-        render_login_page(session_manager)
+        google_sign_in.render_login_page()
         return
 
     # Define pages with URL routing
