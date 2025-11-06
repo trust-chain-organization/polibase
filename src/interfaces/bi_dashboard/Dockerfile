@@ -18,6 +18,10 @@ COPY src/ /app/src/
 # Install dependencies using uv
 RUN uv sync --frozen --no-dev
 
+# Install BI Dashboard specific dependencies
+COPY src/interfaces/bi_dashboard/requirements.txt /tmp/bi_requirements.txt
+RUN uv pip install -r /tmp/bi_requirements.txt
+
 # Set Python path to include /app so that 'src' module can be found
 ENV PYTHONPATH=/app
 
