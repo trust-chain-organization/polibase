@@ -21,11 +21,8 @@ RUN uv sync --frozen --no-dev
 # Set Python path to include /app so that 'src' module can be found
 ENV PYTHONPATH=/app
 
-# Set working directory to BI dashboard
-WORKDIR /app/src/interfaces/bi_dashboard
-
 # Expose Dash default port
 EXPOSE 8050
 
-# Run the application using uv
-CMD ["uv", "run", "python", "app.py"]
+# Run the application using uv from /app directory (where .venv is located)
+CMD ["uv", "run", "python", "src/interfaces/bi_dashboard/app.py"]
