@@ -37,23 +37,41 @@ mkdir -p .streamlit
 # Check if secrets.toml already exists
 if [ -f .streamlit/secrets.toml ]; then
     echo "⚠️  .streamlit/secrets.toml already exists."
-    echo "   Updating redirect_uri to use port $STREAMLIT_PORT..."
 
-    # Update redirect_uri in existing file
-    if [ "$(uname)" = "Darwin" ]; then
-        # macOS
-        sed -i '' "s|redirect_uri = \"http://localhost:[0-9]\+/oauth2callback\"|redirect_uri = \"http://localhost:$STREAMLIT_PORT/oauth2callback\"|" .streamlit/secrets.toml
+    # Check if it has placeholder values
+    if grep -q "REPLACE_WITH_YOUR" .streamlit/secrets.toml || grep -q "YOUR_CLIENT" .streamlit/secrets.toml; then
+        echo "   Detected placeholder values. Recreating with environment variables..."
+        rm .streamlit/secrets.toml
     else
-        # Linux
-        sed -i "s|redirect_uri = \"http://localhost:[0-9]\+/oauth2callback\"|redirect_uri = \"http://localhost:$STREAMLIT_PORT/oauth2callback\"|" .streamlit/secrets.toml
-    fi
+        echo "   Updating redirect_uri to use port $STREAMLIT_PORT..."
 
-    echo "✅ Updated redirect_uri in .streamlit/secrets.toml"
-    echo "   Using port: $STREAMLIT_PORT"
-else
+        # Update redirect_uri in existing file
+        if [ "$(uname)" = "Darwin" ]; then
+            # macOS
+            sed -i '' "s|redirect_uri = \"http://localhost:[0-9]\+/oauth2callback\"|redirect_uri = \"http://localhost:$STREAMLIT_PORT/oauth2callback\"|" .streamlit/secrets.toml
+        else
+            # Linux
+            sed -i "s|redirect_uri = \"http://localhost:[0-9]\+/oauth2callback\"|redirect_uri = \"http://localhost:$STREAMLIT_PORT/oauth2callback\"|" .streamlit/secrets.toml
+        fi
+
+        echo "✅ Updated redirect_uri in .streamlit/secrets.toml"
+        echo "   Using port: $STREAMLIT_PORT"
+        exit 0
+    fi
+fi
+
+# Create secrets.toml (either new or recreating)
+if [ ! -f .streamlit/secrets.toml ]; then
     echo "📝 Creating .streamlit/secrets.toml for worktree: $WORKTREE_NAME"
 
     # Create secrets.toml with dynamic port
+    # Load environment variables from .env if it exists
+    if [ -f .env ]; then
+        set -a
+        source .env
+        set +a
+    fi
+
     cat > .streamlit/secrets.toml << EOF
 # Streamlit認証設定
 # このファイルは .gitignore に含まれています（機密情報を含むため）
