@@ -75,6 +75,7 @@ services:
       - ../src:/app/src
       - ../pyproject.toml:/app/pyproject.toml
       - ../uv.lock:/app/uv.lock
+      - ../README.md:/app/README.md
     environment:
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
       - PYTHONPATH=/app
