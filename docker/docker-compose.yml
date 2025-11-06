@@ -73,6 +73,8 @@ services:
     container_name: polibase-bi-dashboard
     volumes:
       - ../src:/app/src
+      - ../pyproject.toml:/app/pyproject.toml
+      - ../uv.lock:/app/uv.lock
     environment:
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
       - PYTHONPATH=/app
