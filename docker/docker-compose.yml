@@ -72,9 +72,10 @@ services:
       dockerfile: src/interfaces/bi_dashboard/Dockerfile
     container_name: polibase-bi-dashboard
     volumes:
-      - ../src/interfaces/bi_dashboard:/app
+      - ../src:/app/src
     environment:
       - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - PYTHONPATH=/app
     ports:
       - "8050:8050" # BI Dashboard用ポート
     depends_on:
