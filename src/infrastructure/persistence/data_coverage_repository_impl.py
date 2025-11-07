@@ -100,7 +100,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                 with_meetings,
                 CASE
                     WHEN total > 0
-                    THEN ROUND(CAST(with_meetings AS NUMERIC) / total * 100, 2)
+                    THEN ROUND(CAST(with_meetings AS REAL) / total * 100, 2)
                     ELSE 0.0
                 END as coverage_percentage
             FROM stats
@@ -139,7 +139,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                 CASE
                     WHEN COUNT(DISTINCT m.id) > 0
                     THEN ROUND(
-                        CAST(COUNT(c.id) AS NUMERIC) / COUNT(DISTINCT m.id), 2
+                        CAST(COUNT(c.id) AS REAL) / COUNT(DISTINCT m.id), 2
                     )
                     ELSE 0.0
                 END as avg_conversations
@@ -217,7 +217,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                 CASE
                     WHEN ss.total_speakers > 0
                     THEN ROUND(
-                        CAST(ss.matched_speakers AS NUMERIC)
+                        CAST(ss.matched_speakers AS REAL)
                         / ss.total_speakers * 100, 2
                     )
                     ELSE 0.0
@@ -227,7 +227,7 @@ class DataCoverageRepositoryImpl(IDataCoverageRepository):
                 CASE
                     WHEN cs.total_conversations > 0
                     THEN ROUND(
-                        CAST(cs.linked_conversations AS NUMERIC)
+                        CAST(cs.linked_conversations AS REAL)
                         / cs.total_conversations * 100, 2
                     )
                     ELSE 0.0
