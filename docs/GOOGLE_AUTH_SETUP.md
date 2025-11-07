@@ -1,6 +1,13 @@
 # Google認証セットアップガイド
 
-このドキュメントでは、Polibaseでgit worktree環境におけるGoogle OAuth認証のセットアップ方法を説明します。
+このドキュメントでは、Polibaseでgit worktree環境におけるGoogle OAuth認証（Streamlit標準認証API使用）のセットアップ方法を説明します。
+
+## ✅ 実装完了（Issue #706）
+
+Streamlit 1.42.0の標準Google Sign-In認証が実装されています。
+- 環境変数不要（`.streamlit/secrets.toml`で自動設定）
+- git worktreeごとの動的ポート対応
+- Docker環境での自動セットアップ
 
 ## 🎯 概要
 

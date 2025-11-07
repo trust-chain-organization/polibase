@@ -24,9 +24,17 @@ default: format
 down: _setup_worktree
 	docker compose {{compose_cmd}} down --remove-orphans
 
-# Start containers and launch Streamlit
+# Start containers in background (for CI/testing)
+up-detached: _setup_worktree
+	#!/bin/bash
+	docker compose {{compose_cmd}} up -d
+	echo "Containers started in detached mode"
+	echo "Run 'just logs' to view logs"
+
+# Start containers and launch Streamlit (foreground mode with logs)
 up: _setup_worktree
 	#!/bin/bash
+	# Start containers in background first
 	docker compose {{compose_cmd}} up -d
 	# Wait for containers to be healthy
 	echo "Waiting for containers to be ready..."
@@ -42,14 +50,28 @@ up: _setup_worktree
 	# Detect actual host port from docker-compose.override.yml if it exists
 	if [ -f docker/docker-compose.override.yml ]; then
 		HOST_PORT=$(grep ":8501" docker/docker-compose.override.yml | awk -F'"' '{print $2}' | cut -d: -f1)
-		if [ -n "$HOST_PORT" ]; then
+	else
+		HOST_PORT=8501
+	fi
+	# Check if Streamlit is already running in the container
+	if docker compose {{compose_cmd}} exec polibase pgrep -f "streamlit run" > /dev/null 2>&1; then
+		echo "⚠️  Streamlit is already running in the container"
+		echo "   Access the app at: http://localhost:$HOST_PORT"
+		echo "   Run 'just logs' to view logs"
+		echo "   Run 'just down && just up' to restart"
+	else
+		if [ -n "$HOST_PORT" ] && [ "$HOST_PORT" != "8501" ]; then
 			echo "Starting Streamlit on port $HOST_PORT..."
+			echo "Press Ctrl+C to stop the server"
+			echo ""
+			# Use exec without -d flag to keep logs flowing
 			docker compose {{compose_cmd}} exec -e STREAMLIT_HOST_PORT=$HOST_PORT polibase uv run polibase streamlit
 		else
+			echo "Starting Streamlit..."
+			echo "Press Ctrl+C to stop the server"
+			echo ""
 			docker compose {{compose_cmd}} exec polibase uv run polibase streamlit
 		fi
-	else
-		docker compose {{compose_cmd}} exec polibase uv run polibase streamlit
 	fi
 
 # Connect to database
