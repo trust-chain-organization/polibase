@@ -8,8 +8,7 @@ import os
 
 import streamlit as st
 
-from src.interfaces.web.streamlit.auth.google_auth import GoogleAuthenticator
-from src.interfaces.web.streamlit.auth.session_manager import AuthSessionManager
+from src.interfaces.web.streamlit.auth import google_sign_in
 
 
 def render_header() -> None:
@@ -18,7 +17,6 @@ def render_header() -> None:
     ユーザーのログイン状態を表示し、ログアウトボタンを提供します。
     認証が無効化されている場合は、開発モードであることを表示します。
     """
-    session_manager = AuthSessionManager()
     auth_disabled = os.getenv("GOOGLE_OAUTH_DISABLED", "false").lower() == "true"
 
     # サイドバーにユーザー情報を表示
@@ -27,19 +25,15 @@ def render_header() -> None:
 
         if auth_disabled:
             st.caption("🔓 開発モード（認証無効）")
-        elif session_manager.is_authenticated():
-            _render_authenticated_user_info(session_manager)
+        elif google_sign_in.is_user_logged_in():
+            _render_authenticated_user_info()
         else:
             st.caption("未認証")
 
 
-def _render_authenticated_user_info(session_manager: AuthSessionManager) -> None:
-    """認証済みユーザーの情報を表示します。
-
-    Args:
-        session_manager: 認証セッションマネージャー
-    """
-    user_info = session_manager.get_user_info()
+def _render_authenticated_user_info() -> None:
+    """認証済みユーザーの情報を表示します。"""
+    user_info = google_sign_in.get_user_info()
 
     if not user_info:
         return
@@ -65,33 +59,15 @@ def _render_authenticated_user_info(session_manager: AuthSessionManager) -> None
 
     # ログアウトボタン
     if st.button("🚪 ログアウト", use_container_width=True, key="logout_button"):
-        _handle_logout(session_manager)
+        _handle_logout()
 
 
-def _handle_logout(session_manager: AuthSessionManager) -> None:
-    """ログアウト処理を実行します。
-
-    Args:
-        session_manager: 認証セッションマネージャー
-    """
+def _handle_logout() -> None:
+    """ログアウト処理を実行します。"""
     try:
-        # トークンを取得
-        token = session_manager.get_token()
-
-        # セッションをクリア
-        session_manager.clear_auth()
-
-        # Google OAuthトークンを無効化（オプション）
-        if token:
-            try:
-                authenticator = GoogleAuthenticator()
-                authenticator.logout(token)
-            except Exception:
-                # トークン無効化に失敗しても続行
-                pass
-
+        # Streamlit標準のログアウトを実行
+        google_sign_in.logout_user()
         # ページをリロード
         st.rerun()
-
     except Exception as e:
         st.error(f"ログアウトに失敗しました: {e}")

@@ -8,6 +8,7 @@ services:
       - ../tests:/app/tests
       - ../database:/app/database
       - ../scripts:/app/scripts
+      - ../.streamlit:/app/.streamlit # Streamlit認証設定をマウント
       - ../pyproject.toml:/app/pyproject.toml
       - ../pyrightconfig.json:/app/pyrightconfig.json
       - ../uv.lock:/app/uv.lock
@@ -37,6 +38,7 @@ services:
       - ../tests:/app/tests
       - ../database:/app/database
       - ../scripts:/app/scripts
+      - ../.streamlit:/app/.streamlit # Streamlit認証設定をマウント
       - ../pyproject.toml:/app/pyproject.toml
       - ../pyrightconfig.json:/app/pyrightconfig.json
       - ../uv.lock:/app/uv.lock
