@@ -3,11 +3,14 @@
 This module handles data retrieval from PostgreSQL database.
 """
 
+import asyncio
 import os
 from typing import Any
 
 import pandas as pd
 from sqlalchemy import create_engine, text
+
+from src.infrastructure.di.container import get_container, init_container
 
 
 def get_database_url() -> str:
@@ -114,3 +117,138 @@ def get_prefecture_coverage() -> pd.DataFrame:
     coverage = coverage.sort_values("coverage_rate", ascending=False)
 
     return coverage.reset_index()
+
+
+# UseCase経由のデータ取得機能
+
+
+def get_meeting_coverage_data() -> dict[str, Any]:
+    """会議カバレッジデータを取得する.
+
+    Returns:
+        dict: 会議カバレッジ統計データ
+            - total_meetings: 総会議数
+            - with_minutes: 議事録がある会議数
+            - with_conversations: 発言がある会議数
+            - average_conversations_per_meeting: 会議あたりの平均発言数
+            - meetings_by_conference: 会議体別の会議数
+    """
+
+    async def _get_data() -> dict[str, Any]:
+        # DIコンテナを初期化（まだ初期化されていない場合）
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        # UseCaseをDIコンテナから取得
+        usecase = container.use_cases.view_meeting_coverage_usecase()
+
+        try:
+            result = await usecase.execute()
+            return dict(result)
+        finally:
+            # セッションのクリーンアップ
+            await container.database.async_session().close()
+
+    return asyncio.run(_get_data())
+
+
+def get_speaker_matching_data() -> dict[str, Any]:
+    """Speaker紐付け統計データを取得する.
+
+    Returns:
+        dict: Speaker紐付け統計データ
+            - total_speakers: 総Speaker数
+            - matched_speakers: 紐付け済みSpeaker数
+            - unmatched_speakers: 未紐付けSpeaker数
+            - matching_rate: 紐付け率(%)
+            - total_conversations: 総発言数
+            - linked_conversations: 紐付け済み発言数
+            - linkage_rate: 発言紐付け率(%)
+    """
+
+    async def _get_data() -> dict[str, Any]:
+        # DIコンテナを初期化（まだ初期化されていない場合）
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        # UseCaseをDIコンテナから取得
+        usecase = container.use_cases.view_speaker_matching_stats_usecase()
+
+        try:
+            result = await usecase.execute()
+            return dict(result)
+        finally:
+            # セッションのクリーンアップ
+            await container.database.async_session().close()
+
+    return asyncio.run(_get_data())
+
+
+def get_activity_trend_data(period: str = "30d") -> list[dict[str, Any]]:
+    """活動推移データを取得する.
+
+    Args:
+        period: 期間指定（例: "7d", "30d", "90d"）
+
+    Returns:
+        list[dict]: 日別の活動データ
+            - date: 日付
+            - meetings_count: 会議数
+            - conversations_count: 発言数
+            - speakers_count: Speaker数
+            - politicians_count: 政治家数
+    """
+
+    async def _get_data() -> list[dict[str, Any]]:
+        # DIコンテナを初期化（まだ初期化されていない場合）
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        # UseCaseをDIコンテナから取得
+        usecase = container.use_cases.view_activity_trend_usecase()
+
+        try:
+            result = await usecase.execute({"period": period})
+            return [dict(item) for item in result]
+        finally:
+            # セッションのクリーンアップ
+            await container.database.async_session().close()
+
+    return asyncio.run(_get_data())
+
+
+def get_governing_body_coverage_data() -> dict[str, Any]:
+    """自治体カバレッジデータを取得する.
+
+    Returns:
+        dict: 自治体カバレッジ統計データ
+            - total: 総自治体数
+            - with_conferences: 会議体がある自治体数
+            - with_meetings: 会議がある自治体数
+            - coverage_percentage: カバレッジ率(%)
+    """
+
+    async def _get_data() -> dict[str, Any]:
+        # DIコンテナを初期化（まだ初期化されていない場合）
+        try:
+            container = get_container()
+        except RuntimeError:
+            container = init_container()
+
+        # UseCaseをDIコンテナから取得
+        usecase = container.use_cases.view_governing_body_coverage_usecase()
+
+        try:
+            result = await usecase.execute()
+            return dict(result)
+        finally:
+            # セッションのクリーンアップ
+            await container.database.async_session().close()
+
+    return asyncio.run(_get_data())
