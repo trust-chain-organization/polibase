@@ -1,0 +1,68 @@
+baseURL = 'https://polibase.example.org/'
+languageCode = 'ja'
+title = 'Polibase - 政治活動追跡アプリケーション'
+theme = 'PaperMod'
+
+# PaperMod テーマの設定
+[params]
+  description = '日本の政治活動を追跡・分析するアプリケーション'
+  author = 'Polibase Team'
+
+  # 表示設定
+  ShowReadingTime = true
+  ShowShareButtons = true
+  ShowPostNavLinks = true
+  ShowBreadCrumbs = true
+  ShowCodeCopyButtons = true
+  ShowRssButtonInSectionTermList = true
+
+  # ホームページ設定
+  defaultTheme = 'auto'  # light, dark, auto
+  disableThemeToggle = false
+
+  # SEO設定
+  enableInlineShortcodes = true
+  enableRobotsTXT = true
+
+  # プロフィール設定
+  [params.profileMode]
+    enabled = true
+    title = 'Polibase'
+    subtitle = '政治活動追跡アプリケーション'
+    imageUrl = ''
+    imageTitle = 'Polibase Logo'
+
+    [[params.profileMode.buttons]]
+      name = '概要'
+      url = '/about'
+    [[params.profileMode.buttons]]
+      name = '機能'
+      url = '/features'
+    [[params.profileMode.buttons]]
+      name = 'お問い合わせ'
+      url = '/contact'
+
+# メニュー設定
+[[menu.main]]
+  name = 'ホーム'
+  url = '/'
+  weight = 10
+
+[[menu.main]]
+  name = '概要'
+  url = '/about/'
+  weight = 20
+
+[[menu.main]]
+  name = '機能'
+  url = '/features/'
+  weight = 30
+
+[[menu.main]]
+  name = 'お問い合わせ'
+  url = '/contact/'
+  weight = 40
+
+# 出力設定
+[outputs]
+  home = ['HTML', 'RSS', 'JSON']
