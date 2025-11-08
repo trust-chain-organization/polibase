@@ -35,6 +35,12 @@ from src.application.usecases.review_extracted_politician_usecase import (
     ReviewExtractedPoliticianUseCase,
 )
 from src.application.usecases.scrape_politicians_usecase import ScrapePoliticiansUseCase
+from src.application.usecases.view_data_coverage_usecase import (
+    ViewActivityTrendUseCase,
+    ViewGoverningBodyCoverageUseCase,
+    ViewMeetingCoverageUseCase,
+    ViewSpeakerMatchingStatsUseCase,
+)
 from src.domain.services.interfaces.html_link_extractor_service import (
     IHtmlLinkExtractorService,
 )
@@ -94,6 +100,9 @@ from src.infrastructure.persistence.conference_repository_impl import (
 )
 from src.infrastructure.persistence.conversation_repository_impl import (
     ConversationRepositoryImpl,
+)
+from src.infrastructure.persistence.data_coverage_repository_impl import (
+    DataCoverageRepositoryImpl,
 )
 from src.infrastructure.persistence.extracted_conference_member_repository_impl import (
     ExtractedConferenceMemberRepositoryImpl,
@@ -366,6 +375,11 @@ class RepositoryContainer(containers.DeclarativeContainer):
         session=database.async_session,
     )
 
+    data_coverage_repository = providers.Factory(
+        DataCoverageRepositoryImpl,
+        session=database.async_session,
+    )
+
 
 class ServiceContainer(containers.DeclarativeContainer):
     """Container for external service implementations."""
@@ -562,4 +576,25 @@ class UseCaseContainer(containers.DeclarativeContainer):
         proposal_judge_repository=repositories.proposal_judge_repository,
         web_scraper_service=services.web_scraper_service,
         llm_service=services.llm_service,
+    )
+
+    # Data coverage use cases
+    view_governing_body_coverage_usecase = providers.Factory(
+        ViewGoverningBodyCoverageUseCase,
+        data_coverage_repo=repositories.data_coverage_repository,
+    )
+
+    view_meeting_coverage_usecase = providers.Factory(
+        ViewMeetingCoverageUseCase,
+        data_coverage_repo=repositories.data_coverage_repository,
+    )
+
+    view_speaker_matching_stats_usecase = providers.Factory(
+        ViewSpeakerMatchingStatsUseCase,
+        data_coverage_repo=repositories.data_coverage_repository,
+    )
+
+    view_activity_trend_usecase = providers.Factory(
+        ViewActivityTrendUseCase,
+        data_coverage_repo=repositories.data_coverage_repository,
     )

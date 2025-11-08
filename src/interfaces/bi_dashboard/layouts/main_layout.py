@@ -33,6 +33,84 @@ def create_layout() -> html.Div:
                 ],
                 style={"padding": "20px"},
             ),
+            # Filter Section
+            html.Div(
+                [
+                    html.H3("フィルタ", style={"textAlign": "center"}),
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    html.Label("期間選択"),
+                                    dcc.Dropdown(
+                                        id="period-filter",
+                                        options=[
+                                            {"label": "過去7日", "value": "7d"},
+                                            {"label": "過去30日", "value": "30d"},
+                                            {"label": "過去90日", "value": "90d"},
+                                        ],
+                                        value="30d",
+                                        clearable=False,
+                                    ),
+                                ],
+                                style={
+                                    "width": "30%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                },
+                            ),
+                            html.Div(
+                                [
+                                    html.Label("会議体フィルタ"),
+                                    dcc.Dropdown(
+                                        id="conference-filter",
+                                        options=[],  # Populated by callback
+                                        value=None,
+                                        placeholder="全ての会議体",
+                                        clearable=True,
+                                    ),
+                                ],
+                                style={
+                                    "width": "30%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                },
+                            ),
+                            html.Div(
+                                [
+                                    html.Button(
+                                        "データを更新",
+                                        id="refresh-button",
+                                        n_clicks=0,
+                                        style={
+                                            "padding": "10px 30px",
+                                            "fontSize": "16px",
+                                            "backgroundColor": "#3498db",
+                                            "color": "white",
+                                            "border": "none",
+                                            "borderRadius": "5px",
+                                            "cursor": "pointer",
+                                            "marginTop": "25px",
+                                        },
+                                    )
+                                ],
+                                style={
+                                    "width": "30%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                    "textAlign": "center",
+                                },
+                            ),
+                        ],
+                        style={"display": "flex", "justifyContent": "space-around"},
+                    ),
+                ],
+                style={
+                    "padding": "20px",
+                    "backgroundColor": "#ecf0f1",
+                    "marginBottom": "20px",
+                },
+            ),
             # Summary Cards
             html.Div(
                 id="summary-cards",
@@ -41,67 +119,205 @@ def create_layout() -> html.Div:
                     "justifyContent": "space-around",
                     "padding": "20px",
                     "backgroundColor": "#ecf0f1",
+                    "flexWrap": "wrap",
                 },
             ),
-            # Charts Section
+            # Section 1: 自治体カバレッジ
             html.Div(
                 [
-                    # Coverage Pie Chart
+                    html.H2(
+                        "📊 自治体カバレッジ",
+                        style={"textAlign": "center", "color": "#2c3e50"},
+                    ),
                     html.Div(
                         [
-                            html.H3("全体カバレッジ率", style={"textAlign": "center"}),
-                            dcc.Graph(id="coverage-pie-chart"),
+                            # Coverage Pie Chart
+                            html.Div(
+                                [
+                                    html.H3(
+                                        "全体カバレッジ率",
+                                        style={"textAlign": "center"},
+                                    ),
+                                    dcc.Graph(id="coverage-pie-chart"),
+                                ],
+                                style={
+                                    "width": "48%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                    "verticalAlign": "top",
+                                },
+                            ),
+                            # Coverage by Type Bar Chart
+                            html.Div(
+                                [
+                                    html.H3(
+                                        "組織タイプ別カバレッジ",
+                                        style={"textAlign": "center"},
+                                    ),
+                                    dcc.Graph(id="coverage-by-type-chart"),
+                                ],
+                                style={
+                                    "width": "48%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                    "verticalAlign": "top",
+                                },
+                            ),
                         ],
-                        style={
-                            "width": "48%",
-                            "display": "inline-block",
-                            "padding": "10px",
-                        },
+                        style={"padding": "20px"},
                     ),
-                    # Coverage by Type Bar Chart
+                    # Prefecture Coverage Table
                     html.Div(
                         [
                             html.H3(
-                                "組織タイプ別カバレッジ", style={"textAlign": "center"}
+                                "都道府県別カバレッジ", style={"textAlign": "center"}
                             ),
-                            dcc.Graph(id="coverage-by-type-chart"),
+                            html.Div(id="prefecture-table"),
                         ],
-                        style={
-                            "width": "48%",
-                            "display": "inline-block",
-                            "padding": "10px",
-                        },
+                        style={"padding": "20px"},
                     ),
                 ],
-                style={"padding": "20px"},
+                style={"marginBottom": "40px"},
             ),
-            # Prefecture Coverage Table
+            # Section 2: 会議カバレッジ
             html.Div(
                 [
-                    html.H3("都道府県別カバレッジ", style={"textAlign": "center"}),
-                    html.Div(id="prefecture-table"),
+                    html.H2(
+                        "📅 会議カバレッジ",
+                        style={"textAlign": "center", "color": "#2c3e50"},
+                    ),
+                    html.Div(
+                        [
+                            # Meetings Coverage Pie Chart
+                            html.Div(
+                                [
+                                    html.H3(
+                                        "議事録完了率", style={"textAlign": "center"}
+                                    ),
+                                    dcc.Graph(id="meetings-coverage-pie"),
+                                ],
+                                style={
+                                    "width": "48%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                    "verticalAlign": "top",
+                                },
+                            ),
+                            # Meetings by Conference Bar Chart
+                            html.Div(
+                                [
+                                    html.H3(
+                                        "会議体別会議数", style={"textAlign": "center"}
+                                    ),
+                                    dcc.Graph(id="meetings-by-conference-bar"),
+                                ],
+                                style={
+                                    "width": "48%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                    "verticalAlign": "top",
+                                },
+                            ),
+                        ],
+                        style={"padding": "20px"},
+                    ),
                 ],
-                style={"padding": "20px"},
+                style={"marginBottom": "40px", "backgroundColor": "#f8f9fa"},
             ),
-            # Refresh Button
+            # Section 3: Speaker紐付け率
             html.Div(
                 [
-                    html.Button(
-                        "データを更新",
-                        id="refresh-button",
-                        n_clicks=0,
-                        style={
-                            "padding": "10px 30px",
-                            "fontSize": "16px",
-                            "backgroundColor": "#3498db",
-                            "color": "white",
-                            "border": "none",
-                            "borderRadius": "5px",
-                            "cursor": "pointer",
-                        },
-                    )
+                    html.H2(
+                        "🎤 Speaker紐付け統計",
+                        style={"textAlign": "center", "color": "#2c3e50"},
+                    ),
+                    html.Div(
+                        [
+                            # Speaker Matching Gauge
+                            html.Div(
+                                [
+                                    html.H3(
+                                        "Speaker紐付け率", style={"textAlign": "center"}
+                                    ),
+                                    dcc.Graph(id="speaker-matching-gauge"),
+                                ],
+                                style={
+                                    "width": "32%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                    "verticalAlign": "top",
+                                },
+                            ),
+                            # Conversation Linkage Gauge
+                            html.Div(
+                                [
+                                    html.H3(
+                                        "発言紐付け率", style={"textAlign": "center"}
+                                    ),
+                                    dcc.Graph(id="conversation-linkage-gauge"),
+                                ],
+                                style={
+                                    "width": "32%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                    "verticalAlign": "top",
+                                },
+                            ),
+                            # Speaker Stats Bar Chart
+                            html.Div(
+                                [
+                                    html.H3(
+                                        "紐付け状況", style={"textAlign": "center"}
+                                    ),
+                                    dcc.Graph(id="speaker-stats-bar"),
+                                ],
+                                style={
+                                    "width": "32%",
+                                    "display": "inline-block",
+                                    "padding": "10px",
+                                    "verticalAlign": "top",
+                                },
+                            ),
+                        ],
+                        style={"padding": "20px"},
+                    ),
                 ],
-                style={"textAlign": "center", "padding": "20px"},
+                style={"marginBottom": "40px"},
+            ),
+            # Section 4: 活動推移
+            html.Div(
+                [
+                    html.H2(
+                        "📈 活動推移", style={"textAlign": "center", "color": "#2c3e50"}
+                    ),
+                    html.Div(
+                        [
+                            # Activity Trend Line Chart
+                            html.Div(
+                                [
+                                    html.H3(
+                                        "日別活動推移", style={"textAlign": "center"}
+                                    ),
+                                    dcc.Graph(id="activity-trend-line"),
+                                ],
+                                style={"padding": "10px"},
+                            ),
+                            # Activity Heatmap
+                            html.Div(
+                                [
+                                    html.H3(
+                                        "活動ヒートマップ",
+                                        style={"textAlign": "center"},
+                                    ),
+                                    dcc.Graph(id="activity-heatmap"),
+                                ],
+                                style={"padding": "10px"},
+                            ),
+                        ],
+                        style={"padding": "20px"},
+                    ),
+                ],
+                style={"marginBottom": "40px", "backgroundColor": "#f8f9fa"},
             ),
             # Hidden div for storing data
             html.Div(id="data-store", style={"display": "none"}),
