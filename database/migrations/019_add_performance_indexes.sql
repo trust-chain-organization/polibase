@@ -32,7 +32,8 @@ WHERE processed_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_meetings_conference_date ON meetings(conference_id, date DESC);
 
 -- 10. Add index for politician speaker relationship
-CREATE INDEX IF NOT EXISTS idx_politicians_speaker_party ON politicians(speaker_id, political_party_id);
+-- CREATE INDEX IF NOT EXISTS idx_politicians_speaker_party ON politicians(speaker_id, political_party_id);
+-- Note: speaker_id column was removed from politicians table in migration 032
 
 -- Performance note: These indexes will improve query performance for:
 -- - Speaker name searches (reduces full table scans)

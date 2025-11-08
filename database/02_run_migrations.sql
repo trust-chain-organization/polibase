@@ -38,5 +38,6 @@
 \i /docker-entrypoint-initdb.d/02_migrations/033_add_furigana_to_politicians.sql
 \i /docker-entrypoint-initdb.d/02_migrations/034_add_unique_constraint_extracted_parliamentary_group_members.sql
 \i /docker-entrypoint-initdb.d/02_migrations/035_create_users_table.sql
+\i /docker-entrypoint-initdb.d/02_migrations/036_add_user_id_to_work_tables.sql
 
 \echo 'Migrations completed.'

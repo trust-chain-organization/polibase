@@ -6,8 +6,9 @@ ADD COLUMN IF NOT EXISTS electoral_district TEXT,
 ADD COLUMN IF NOT EXISTS profile_url TEXT;
 
 -- Make speaker_id nullable temporarily to allow insertion without speaker
-ALTER TABLE politicians
-ALTER COLUMN speaker_id DROP NOT NULL;
+-- ALTER TABLE politicians
+-- ALTER COLUMN speaker_id DROP NOT NULL;
+-- Note: speaker_id column was removed in migration 032
 
 -- Add comments
 COMMENT ON COLUMN politicians.position IS '役職（衆議院議員、参議院議員など）';
