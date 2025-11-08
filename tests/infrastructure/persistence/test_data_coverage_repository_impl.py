@@ -62,11 +62,15 @@ async def async_session() -> AsyncGenerator[AsyncSession]:
             text("""
             CREATE TABLE conversations (
                 id INTEGER PRIMARY KEY,
-                meeting_id INTEGER,
+                minutes_id INTEGER,
                 speaker_id INTEGER,
                 speaker_name TEXT,
-                content TEXT,
-                sequence INTEGER
+                comment TEXT NOT NULL,
+                sequence_number INTEGER NOT NULL,
+                chapter_number INTEGER,
+                sub_chapter_number INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         )
@@ -306,7 +310,9 @@ async def test_get_meeting_stats_with_data(
 
     await async_session.execute(
         text("""
-            INSERT INTO conversations (id, meeting_id, speaker_name, content, sequence)
+            INSERT INTO conversations (
+                id, minutes_id, speaker_name, comment, sequence_number
+            )
             VALUES
                 (1, 1, 'Speaker 1', 'Content 1', 1),
                 (2, 1, 'Speaker 2', 'Content 2', 2)
@@ -416,8 +422,15 @@ async def test_get_speaker_matching_stats_with_data(
 
     await async_session.execute(
         text("""
+            INSERT INTO minutes (id, meeting_id, content)
+            VALUES (1, 1, 'Test minutes content')
+        """)
+    )
+
+    await async_session.execute(
+        text("""
             INSERT INTO conversations (
-                id, meeting_id, speaker_name, content, sequence, speaker_id
+                id, minutes_id, speaker_name, comment, sequence_number, speaker_id
             )
             VALUES
                 (1, 1, 'Politician 1', 'Content 1', 1, 1),

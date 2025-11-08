@@ -1,0 +1,71 @@
+# Cloud Run用Dockerfile for Streamlit Application
+# マルチステージビルドを使用して最適化
+
+# ステージ1: 依存関係のビルド
+FROM python:3.13-slim AS dependencies
+
+WORKDIR /app
+
+# curlをインストールしてからuvをインストール
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# uvをインストール（BuildKitキャッシュマウントを使用）
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cache/uv \
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+ENV PATH="/root/.local/bin:$PATH"
+ENV UV_PROJECT_ENVIRONMENT=/app/.venv
+ENV UV_CACHE_DIR=/root/.cache/uv
+
+# 依存関係ファイルのみをコピー（キャッシュ効率向上）
+COPY pyproject.toml uv.lock README.md ./
+
+# 依存関係をインストール（本番環境用、Playwright等の開発依存を除外）
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+
+# ステージ2: システムパッケージのインストール
+FROM python:3.13-slim AS system-packages
+
+# Cloud Run用の最小限のシステムパッケージ
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ステージ3: 最終イメージ
+FROM system-packages AS final
+
+WORKDIR /app
+
+# uvとPython環境をコピー
+COPY --from=dependencies /root/.local /root/.local
+COPY --from=dependencies /app/.venv /app/.venv
+COPY --from=dependencies /app/pyproject.toml /app/uv.lock /app/README.md ./
+
+ENV PATH="/root/.local/bin:$PATH"
+ENV UV_PROJECT_ENVIRONMENT=/app/.venv
+
+# アプリケーションファイルをコピー
+COPY src/ src/
+COPY database/ database/
+
+# Cloud Run環境変数
+ENV CLOUD_RUN=true
+ENV PYTHONUNBUFFERED=1
+
+# Cloud RunのPORT環境変数を使用（デフォルト8080）
+ENV PORT=8080
+ENV HEALTH_CHECK_PORT=8081
+
+# 非rootユーザーで実行（セキュリティベストプラクティス）
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Streamlitエントリーポイントを起動
+CMD ["uv", "run", "python", "src/interfaces/web/streamlit/entrypoint.py"]
