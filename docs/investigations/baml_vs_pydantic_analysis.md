@@ -554,6 +554,240 @@ BAML移行の代わりに、Pydanticのまま最適化する方法：
 
 ---
 
+---
+
+## 8. ハイブリッドアプローチの検討 🆕
+
+### 8.1 アプローチ概要
+
+「LLM部分だけBAML、他はPydantic」という棲み分けのアイデアについて検討します。
+
+**コンセプト**:
+- **LLMアウトプット**: BAMLで型定義（トークン効率化）
+- **その他の型**: Pydanticを継続使用（DTO、DBモデル）
+
+### 8.2 技術的実現可能性
+
+#### ✅ 理論的には可能
+
+BAMLとPydanticは**技術的に共存可能**です：
+
+```python
+# LLM部分: BAML
+from baml_client import b
+
+# LLMでの抽出
+extracted = await b.ExtractMember(html_content)
+
+# その他の部分: Pydantic
+from pydantic import BaseModel
+
+class MemberDTO(BaseModel):
+    """アプリケーション層のDTO"""
+    name: str
+    role: str | None
+
+# BAMLの結果をPydanticに変換
+dto = MemberDTO(
+    name=extracted.name,
+    role=extracted.role
+)
+```
+
+#### ⚠️ しかし、実践的には複雑
+
+**課題1: LangChainとの統合が依然として必要**
+
+Polibaseの現在のアーキテクチャ：
+```python
+# 現在（Pydantic + LangChain）
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+structured_llm = llm.with_structured_output(PydanticModel)
+result = structured_llm.invoke(prompt)
+```
+
+BAML統合パターン：
+```python
+# BAMLとの統合（LangChain不使用）
+from baml_client import b
+
+result = await b.ExtractMember(html_content)  # BAMLクライアント直接呼び出し
+```
+
+**問題**: LangChainの`with_structured_output()`はPydantic専用。BAMLを使う場合、LangChain経由の呼び出しは不可能。
+
+**課題2: 重複したモデル定義**
+
+LLM用とDTO用で型定義が重複：
+
+```
+# BAML定義（.bamlファイル）
+class ExtractedMember {
+    name string
+    role string?
+    party_name string?
+}
+
+# Pydantic定義（Pythonファイル）
+class ExtractedMemberDTO(BaseModel):
+    name: str
+    role: str | None
+    party_name: str | None
+```
+
+**問題**: DRY原則違反、メンテナンスコスト増
+
+**課題3: 型変換のオーバーヘッド**
+
+BAMLの結果をPydanticに変換する必要：
+
+```python
+# BAML → Pydantic変換
+baml_result = await b.ExtractMember(html)
+pydantic_dto = ExtractedMemberDTO(
+    name=baml_result.name,
+    role=baml_result.role,
+    party_name=baml_result.party_name
+)
+```
+
+**問題**: ボイラープレート増加、パフォーマンスオーバーヘッド
+
+### 8.3 Polibaseでの影響範囲分析
+
+#### LLM専用Pydanticモデル（BAML移行候補）
+
+調査結果、以下のモデルがLLMアウトプット専用：
+
+1. **議事録処理系** (`src/minutes_divide_processor/models.py`)
+   - `SectionInfo`, `SectionInfoList`
+   - `SpeakerAndSpeechContent`, `SpeakerAndSpeechContentList`
+   - `MinutesBoundary`, `AttendeesMapping`
+   - **合計**: 10モデル
+
+2. **議員抽出系**
+   - `ExtractedMember` (`src/conference_member_extractor/models.py`)
+   - `PartyMemberInfo`, `PartyMemberList` (`src/party_member_extractor/models.py`)
+   - `ExtractedMember` (`src/parliamentary_group_member_extractor/models.py`)
+   - **合計**: 4モデル
+
+3. **マッチング系** (`src/domain/services/`)
+   - `PoliticianMatch` (`politician_matching_service.py`)
+   - `SpeakerMatch` (`speaker_matching_service.py`)
+   - `LinkClassification` (`interfaces/llm_link_classifier_service.py`)
+   - **合計**: 3モデル
+
+**LLM専用モデル合計**: 約17モデル
+
+#### 汎用Pydanticモデル（継続使用）
+
+1. **DTO** (`src/application/dtos/`)
+   - `AnalyzeLinksInputDTO`, `LinkClassificationDTO`
+   - 他多数
+   - **合計**: 10以上
+
+2. **DBモデル** (`src/infrastructure/persistence/`)
+   - `ConferenceModel`, `ProposalModel`
+   - 他多数（`PydanticBaseModel`使用）
+   - **合計**: 10以上
+
+### 8.4 ハイブリッドアプローチのコスト分析
+
+#### 移行対象の縮小
+
+| 項目 | 全面移行 | ハイブリッド |
+|------|---------|------------|
+| **BAML型定義** | 19モデル | 17モデル |
+| **Pydantic保持** | 0モデル | 20+モデル |
+| **LangChain改修** | 全面置き換え | **部分置き換え** |
+| **移行工数** | 54-81人日 | **30-45人日** |
+| **移行コスト** | $27k-40k | **$15k-22k** |
+
+#### トークン削減効果
+
+LLM専用モデルのみの削減：
+- **対象**: 17モデル（全体の約89%）
+- **削減率**: 控えめ見積もりで3.3% → **実質2.9%**
+- **月間削減**: $0.09 → **$0.08**
+- **年間削減**: $1.08 → **$0.96**
+
+#### ROI（ハイブリッドアプローチ）
+
+- **投資**: $15k-22k
+- **年間リターン**: $0.96
+- **回収期間**: **15,625～22,917年**
+
+**結論**: ハイブリッドでもROIは依然として極めて悪い
+
+### 8.5 ハイブリッドアプローチの判定
+
+#### ✅ メリット
+
+1. **移行コストの削減** - 全面移行より$12k-18k安い
+2. **段階的移行** - リスクを分散できる
+3. **既存資産の活用** - DTO、DBモデルはそのまま
+4. **学習曲線の緩和** - BAMLの使用範囲が限定的
+
+#### ❌ デメリット
+
+1. **依然として高い移行コスト** - $15k-22k
+2. **ROIが極めて悪い** - 投資回収に15,000年以上
+3. **複雑性の増加** - 2つの型システムを維持
+4. **重複定義** - LLM用とDTO用で同じ型を定義
+5. **型変換のオーバーヘッド** - BAML → Pydantic変換が必要
+6. **LangChainとの分断** - 一部でLangChain不使用
+
+### 8.6 代替案: 段階的BAML PoC
+
+ハイブリッドアプローチの代わりに、より現実的な段階的PoCを推奨：
+
+#### フェーズ1: 最小PoC（2-3人日、$1k-1.5k）
+
+**対象**: 1つのユースケースのみ
+- 例: `ExtractedMember`（会議体メンバー抽出）
+
+**実施内容**:
+1. BAML型定義作成
+2. BAMLクライアント統合
+3. トークン使用量の実測
+4. 開発体験の評価
+
+**判断基準**:
+- トークン削減50%以上 → フェーズ2へ
+- トークン削減30-50% → 再検討
+- トークン削減30%未満 → Pydantic継続
+
+#### フェーズ2: 限定ロールアウト（5-7人日、$2.5k-3.5k）
+
+**対象**: 3-5ユースケース
+- 議員抽出系すべて
+
+**実施内容**:
+- 複数ユースケースでの効果検証
+- 運用コストの評価
+- チームの学習曲線測定
+
+#### フェーズ3: 全面移行判断
+
+フェーズ2の結果に基づき、全面移行のGo/No-Goを判断
+
+### 8.7 最終判定：ハイブリッドアプローチ
+
+**結論**: ❌ **推奨しない**
+
+**理由**:
+1. 移行コストは削減されるが、依然として$15k-22k
+2. ROIは全面移行と同様に極めて悪い（15,000年以上）
+3. システムの複雑性が増加（2つの型システム）
+4. トークン削減効果は限定的（年間$0.96）
+
+**推奨**: 段階的PoCアプローチ
+- フェーズ1（最小PoC）で実測
+- データに基づく合理的判断
+- リスクとコストを最小化
+
+---
+
 **レポート作成者**: Claude Code
 **レビュー待ち**: チーム
-**最終更新**: 2025-11-08
+**最終更新**: 2025-11-08（ハイブリッドアプローチ分析追加）
