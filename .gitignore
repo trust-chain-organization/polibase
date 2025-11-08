@@ -43,3 +43,8 @@ terraform/*_override.tf
 terraform/*_override.tf.json
 terraform/.terraformrc
 terraform/terraform.rc
+
+# Hugo
+website/public/
+website/resources/
+website/.hugo_build.lock
