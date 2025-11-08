@@ -106,14 +106,35 @@ hugo --minify
 
 ## デプロイ
 
-デプロイ方法については、以下のプラットフォームをご検討ください：
+このサイトは **Cloudflare Pages** にデプロイされます。
 
-- **GitHub Pages**: 無料、簡単に設定可能
-- **Netlify**: 継続的デプロイ、プレビュー機能
-- **Vercel**: 高速、簡単なデプロイ
-- **Cloudflare Pages**: グローバルCDN、無料
+### 自動デプロイ
 
-デプロイ設定の詳細は、別途ドキュメントを参照してください。
+GitHubリポジトリとCloudflare Pagesが連携しており、以下のように自動デプロイされます：
+
+- **本番環境**: `main` ブランチへのプッシュで自動デプロイ
+  - URL: `<プロジェクト名>.pages.dev`
+- **プレビュー環境**: その他のブランチへのプッシュでプレビュー環境が自動作成
+  - URL: `<ブランチ名>.<プロジェクト名>.pages.dev`
+
+### ビルド設定
+
+Cloudflare Pagesでは以下の設定でビルドされます：
+
+```
+Build command: hugo --minify
+Build output directory: public
+Root directory: website
+Environment variables:
+  - HUGO_VERSION=0.152.2
+  - HUGO_ENV=production
+```
+
+### 詳細な手順
+
+Cloudflare Pagesの初回設定、カスタムドメインの設定、トラブルシューティングなど、詳細な手順については以下のドキュメントを参照してください：
+
+📖 **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Cloudflare Pagesデプロイメント完全ガイド
 
 ## カスタマイズ
 
