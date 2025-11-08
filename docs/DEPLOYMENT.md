@@ -370,7 +370,61 @@ SELECT COUNT(*) FROM politicians;
 
 ## Cloud Run デプロイ
 
-### 1. コンテナイメージのビルド
+PolibaseのStreamlitアプリケーションをCloud Runにデプロイする方法を説明します。
+
+### 前提条件
+
+1. GCPプロジェクトが作成されている
+2. gcloud CLIがインストール・認証済み
+3. Docker Engineがインストールされている
+4. Cloud SQL インスタンスが作成されている（[Cloud SQL セットアップ](#cloud-sql-セットアップ)参照）
+5. Secret Managerにシークレットが登録されている（[Secret Manager 設定](#secret-manager-設定)参照）
+
+### 方法1: 自動デプロイスクリプト（推奨）
+
+最も簡単な方法は、用意されているデプロイスクリプトを使用することです。
+
+```bash
+# 環境変数を設定
+export PROJECT_ID="your-project-id"
+export REGION="asia-northeast1"
+export SERVICE_NAME="polibase-streamlit"
+export CLOUD_SQL_INSTANCE="your-project:asia-northeast1:polibase-db"
+
+# デプロイスクリプトを実行
+./scripts/deploy_to_cloud_run.sh
+```
+
+このスクリプトは以下を自動実行します：
+
+1. Artifact Registryリポジトリの確認/作成
+2. Dockerイメージのビルド（`Dockerfile.cloudrun`使用）
+3. イメージのプッシュ
+4. Cloud Runサービスのデプロイ
+5. ヘルスチェックの確認
+
+### 方法2: Cloud Build（CI/CD）
+
+Cloud Buildを使用した自動デプロイも可能です。
+
+```bash
+# Cloud Build設定ファイルを使用してデプロイ
+gcloud builds submit \
+  --config=cloudbuild.yaml \
+  --substitutions=_CLOUD_SQL_INSTANCE="PROJECT_ID:REGION:INSTANCE_NAME" \
+  --project=YOUR_PROJECT_ID
+```
+
+`cloudbuild.yaml`では以下のステップが実行されます：
+
+1. Dockerイメージのビルド
+2. Artifact Registryへのプッシュ
+3. Cloud Runへのデプロイ
+4. ヘルスチェックの確認
+
+### 方法3: 手動デプロイ（詳細制御）
+
+#### 1. コンテナイメージのビルド
 
 ```bash
 # Artifact Registryリポジトリの作成（初回のみ）
@@ -379,28 +433,130 @@ gcloud artifacts repositories create polibase \
   --location=asia-northeast1 \
   --project=YOUR_PROJECT_ID
 
-# Dockerイメージのビルドとプッシュ
-docker build -t asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/streamlit-ui:latest .
-docker push asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/streamlit-ui:latest
+# Docker認証設定
+gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+
+# Dockerイメージのビルド（Cloud Run用Dockerfile使用）
+docker build -f Dockerfile.cloudrun \
+  -t asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:latest .
+
+# イメージのプッシュ
+docker push asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:latest
 ```
 
-### 2. Cloud Runサービスのデプロイ
+#### 2. Cloud Runサービスのデプロイ
 
 ```bash
-gcloud run deploy polibase-ui \
-  --image=asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/streamlit-ui:latest \
+gcloud run deploy polibase-streamlit \
+  --image=asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:latest \
   --region=asia-northeast1 \
   --platform=managed \
   --allow-unauthenticated \
+  --port=8080 \
+  --cpu=2 \
+  --memory=2Gi \
+  --timeout=300 \
+  --max-instances=10 \
+  --min-instances=0 \
+  --set-env-vars="CLOUD_RUN=true,PORT=8080,HEALTH_CHECK_PORT=8081,LOG_LEVEL=INFO" \
   --set-env-vars="USE_CLOUD_SQL_PROXY=true" \
   --set-env-vars="CLOUD_SQL_CONNECTION_NAME=PROJECT_ID:REGION:INSTANCE_NAME" \
+  --set-env-vars="CLOUD_SQL_UNIX_SOCKET_DIR=/cloudsql" \
+  --set-env-vars="DB_USER=polibase_user" \
+  --set-env-vars="DB_NAME=polibase_db" \
   --set-secrets="GOOGLE_API_KEY=google-api-key:latest" \
   --set-secrets="DB_PASSWORD=database-password:latest" \
   --add-cloudsql-instances=PROJECT_ID:REGION:INSTANCE_NAME \
+  --no-cpu-throttling \
   --project=YOUR_PROJECT_ID
 ```
 
-**重要**: Cloud RunからCloud SQLへの接続は、`--add-cloudsql-instances`フラグで自動的にCloud SQL Proxyが設定されます。
+**重要事項**:
+
+- `--add-cloudsql-instances`: Cloud SQL Proxyを自動設定
+- `--port=8080`: Streamlitアプリのポート
+- `--no-cpu-throttling`: アイドル時のCPU制限を無効化（レスポンス速度向上）
+- `--set-secrets`: Secret Managerからシークレットを自動注入
+
+### ローカルテスト
+
+デプロイ前にローカルでCloud Run環境をテストできます。
+
+```bash
+# ローカルテストスクリプトを実行
+./scripts/test_cloud_run_locally.sh
+```
+
+このスクリプトは以下を実行します：
+
+1. `Dockerfile.cloudrun`でイメージをビルド
+2. ローカルでコンテナを起動
+3. ヘルスチェックエンドポイント確認（`http://localhost:8081/health`）
+4. Streamlitアプリケーション確認（`http://localhost:8080`）
+
+### デプロイ後の確認
+
+```bash
+# サービスURLの取得
+SERVICE_URL=$(gcloud run services describe polibase-streamlit \
+  --region=asia-northeast1 \
+  --project=YOUR_PROJECT_ID \
+  --format='value(status.url)')
+
+echo "Service URL: $SERVICE_URL"
+
+# ヘルスチェック確認（注: Cloud Runではポート8081は外部公開されません）
+# ヘルスチェックはCloud Run内部で使用されます
+
+# アプリケーションアクセス
+curl "$SERVICE_URL"
+
+# ログの確認
+gcloud run logs tail polibase-streamlit \
+  --region=asia-northeast1 \
+  --project=YOUR_PROJECT_ID
+```
+
+### 環境変数とシークレット
+
+Cloud Runサービスで設定される主な環境変数：
+
+| 環境変数 | 値 | 説明 |
+|---------|-----|------|
+| `CLOUD_RUN` | `true` | Cloud Run環境フラグ |
+| `PORT` | `8080` | Streamlitアプリのポート |
+| `HEALTH_CHECK_PORT` | `8081` | ヘルスチェックポート（内部使用） |
+| `USE_CLOUD_SQL_PROXY` | `true` | Cloud SQL Proxy有効化 |
+| `CLOUD_SQL_CONNECTION_NAME` | `PROJECT:REGION:INSTANCE` | Cloud SQLインスタンス名 |
+| `LOG_LEVEL` | `INFO` | ログレベル |
+
+Secret Managerから注入されるシークレット：
+
+- `GOOGLE_API_KEY`: Google Gemini API キー
+- `DB_PASSWORD`: データベースパスワード
+
+### サービスの更新
+
+既存のサービスを更新する場合：
+
+```bash
+# 新しいイメージをビルド＆プッシュ
+docker build -f Dockerfile.cloudrun \
+  -t asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:v2 .
+docker push asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:v2
+
+# サービスを更新
+gcloud run services update polibase-streamlit \
+  --image=asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:v2 \
+  --region=asia-northeast1 \
+  --project=YOUR_PROJECT_ID
+```
+
+または、デプロイスクリプトを再実行：
+
+```bash
+./scripts/deploy_to_cloud_run.sh
+```
 
 ---
 
