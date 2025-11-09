@@ -57,7 +57,7 @@ if ! gcloud artifacts repositories describe "$REPOSITORY" \
     gcloud artifacts repositories create "$REPOSITORY" \
         --repository-format=docker \
         --location="$REGION" \
-        --description="Polibase container images" \
+        --description="Sagebase container images" \
         --project="$PROJECT_ID"
 else
     echo -e "${GREEN}✓ Artifact Registry repository already exists${NC}"

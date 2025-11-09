@@ -29,13 +29,13 @@ calculate_port_offset() {
 OFFSET=$(calculate_port_offset "$WORKTREE_NAME")
 
 # Define base ports
-BASE_POLIBASE_PORT=8000
+BASE_SAGEBASE_PORT=8000
 BASE_STREAMLIT_PORT=8501
 BASE_MONITORING_PORT=8502
 BASE_POSTGRES_PORT=5432
 
 # Calculate actual ports
-POLIBASE_PORT=$(( BASE_POLIBASE_PORT + OFFSET ))
+SAGEBASE_PORT=$(( BASE_SAGEBASE_PORT + OFFSET ))
 STREAMLIT_PORT=$(( BASE_STREAMLIT_PORT + OFFSET ))
 MONITORING_PORT=$(( BASE_MONITORING_PORT + OFFSET ))
 POSTGRES_PORT=$(( BASE_POSTGRES_PORT + OFFSET ))
@@ -47,12 +47,12 @@ cat > docker/docker-compose.override.yml << EOF
 # DO NOT COMMIT THIS FILE
 
 services:
-  polibase:
+  sagebase:
     ports: !override
-      - "$POLIBASE_PORT:8000"
+      - "$SAGEBASE_PORT:8000"
       - "$STREAMLIT_PORT:8501"
 
-  polibase-monitoring:
+  sagebase-monitoring:
     ports: !override
       - "$MONITORING_PORT:8502"
 
@@ -63,7 +63,7 @@ EOF
 
 echo "✅ Created docker-compose.override.yml for worktree: $WORKTREE_NAME"
 echo "   Port configuration:"
-echo "     - Polibase API: $POLIBASE_PORT"
+echo "     - Sagebase API: $SAGEBASE_PORT"
 echo "     - Streamlit UI: $STREAMLIT_PORT"
 echo "     - Monitoring: $MONITORING_PORT"
 echo "     - PostgreSQL: $POSTGRES_PORT"
