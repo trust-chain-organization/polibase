@@ -536,7 +536,7 @@ class MeetingPresenter(CRUDPresenter[list[Meeting]]):
             from src.infrastructure.external.llm_service import GeminiLLMService
 
             # Initialize services
-            bucket_name = os.getenv("GCS_BUCKET_NAME", "polibase-bucket")
+            bucket_name = os.getenv("GCS_BUCKET_NAME", "sagebase-bucket")
             storage_service: IStorageService = GCSStorageService(
                 bucket_name=bucket_name
             )

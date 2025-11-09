@@ -59,7 +59,7 @@ class ExecuteProcessesUseCase:
                     "name": "議事録分割処理",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run python -m src.process_minutes"
+                        "exec sagebase uv run python -m src.process_minutes"
                     ),
                     "description": "PDFまたはテキストから議事録を分割して発言を抽出",
                 },
@@ -67,7 +67,7 @@ class ExecuteProcessesUseCase:
                     "name": "発言者抽出",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase extract-speakers"
+                        "exec sagebase uv run sagebase extract-speakers"
                     ),
                     "description": "議事録から発言者情報を抽出",
                 },
@@ -75,7 +75,7 @@ class ExecuteProcessesUseCase:
                     "name": "発言者マッチング（LLM）",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase update-speakers --use-llm"
+                        "exec sagebase uv run sagebase update-speakers --use-llm"
                     ),
                     "description": "LLMを使用して発言者と政治家をマッチング",
                 },
@@ -85,7 +85,7 @@ class ExecuteProcessesUseCase:
                     "name": "政党議員スクレイピング",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase scrape-politicians --all-parties"
+                        "exec sagebase uv run sagebase scrape-politicians --all-parties"
                     ),
                     "description": "全政党の議員情報をWebサイトから取得",
                 },
@@ -95,7 +95,7 @@ class ExecuteProcessesUseCase:
                     "name": "会議体メンバー抽出",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase "
+                        "exec sagebase uv run sagebase "
                         "extract-conference-members --force"
                     ),
                     "description": "会議体メンバーをURLから抽出",
@@ -104,7 +104,7 @@ class ExecuteProcessesUseCase:
                     "name": "メンバーマッチング",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase match-conference-members"
+                        "exec sagebase uv run sagebase match-conference-members"
                     ),
                     "description": "抽出したメンバーと政治家をマッチング",
                 },
@@ -112,7 +112,7 @@ class ExecuteProcessesUseCase:
                     "name": "所属関係作成",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase create-affiliations"
+                        "exec sagebase uv run sagebase create-affiliations"
                     ),
                     "description": "マッチング結果から所属関係を作成",
                 },
@@ -122,7 +122,7 @@ class ExecuteProcessesUseCase:
                     "name": "議事録スクレイピング（京都）",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase batch-scrape --tenant kyoto"
+                        "exec sagebase uv run sagebase batch-scrape --tenant kyoto"
                     ),
                     "description": "京都市議会の議事録を一括取得",
                 },
@@ -130,7 +130,7 @@ class ExecuteProcessesUseCase:
                     "name": "議事録スクレイピング（大阪）",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase batch-scrape --tenant osaka"
+                        "exec sagebase uv run sagebase batch-scrape --tenant osaka"
                     ),
                     "description": "大阪市議会の議事録を一括取得",
                 },
@@ -140,7 +140,7 @@ class ExecuteProcessesUseCase:
                     "name": "カバレッジ統計",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase coverage"
+                        "exec sagebase uv run sagebase coverage"
                     ),
                     "description": "開催主体のカバレッジ統計を表示",
                 },
@@ -148,7 +148,7 @@ class ExecuteProcessesUseCase:
                     "name": "データベースバックアップ",
                     "command": (
                         "docker compose -f docker/docker-compose.yml "
-                        "exec polibase uv run polibase database backup"
+                        "exec sagebase uv run sagebase database backup"
                     ),
                     "description": "データベースをバックアップ",
                 },

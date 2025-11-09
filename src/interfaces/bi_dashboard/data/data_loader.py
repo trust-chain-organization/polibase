@@ -20,7 +20,7 @@ def get_database_url() -> str:
         str: Database connection URL
     """
     return os.getenv(
-        "DATABASE_URL", "postgresql://polibase:polibase@localhost:5432/polibase"
+        "DATABASE_URL", "postgresql://sagebase:sagebase@localhost:5432/sagebase"
     )
 
 

@@ -33,7 +33,7 @@ def setup_test_metrics():
     are initialized before any LLM services are created.
     """
     setup_metrics(
-        service_name="polibase-test",
+        service_name="sagebase-test",
         service_version="0.1.0",
         enable_prometheus=False,  # Don't start Prometheus server in tests
     )

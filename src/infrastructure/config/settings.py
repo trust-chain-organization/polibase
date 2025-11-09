@@ -94,7 +94,7 @@ class Settings:
         self.sentry_profiles_sample_rate: float = float(
             os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")
         )
-        self.sentry_release: str = os.getenv("SENTRY_RELEASE", "polibase@0.1.0")
+        self.sentry_release: str = os.getenv("SENTRY_RELEASE", "sagebase@0.1.0")
 
         # Validate paths exist
         self._validate_paths()

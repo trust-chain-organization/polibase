@@ -1,1 +1,1 @@
-"""End-to-end tests for polibase CLI."""
+"""End-to-end tests for sagebase CLI."""
