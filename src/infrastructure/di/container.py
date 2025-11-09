@@ -173,7 +173,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
                 google_api_key = ""  # Will need to be set
                 llm_model = "gemini-2.0-flash"
                 llm_temperature = 0.0
-                gcs_bucket_name = "polibase-scraped-minutes"
+                gcs_bucket_name = "sagebase-scraped-minutes"
                 gcs_project_id = None
                 web_scraper_timeout = 60
                 page_load_timeout = 30
@@ -214,7 +214,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
                 google_api_key = "dev-api-key"
                 llm_model = "gemini-2.0-flash"
                 llm_temperature = 0.0
-                gcs_bucket_name = "polibase-scraped-minutes"
+                gcs_bucket_name = "sagebase-scraped-minutes"
                 gcs_project_id = None
                 web_scraper_timeout = 60
                 page_load_timeout = 30

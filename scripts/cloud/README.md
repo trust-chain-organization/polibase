@@ -29,8 +29,8 @@ scripts/cloud/
 ```bash
 export GCP_PROJECT_ID="your-project-id"
 export GCP_REGION="asia-northeast1"
-export CLOUD_SQL_INSTANCE="polibase-dev-db"
-export GCS_BUCKET_NAME="polibase-backups"
+export CLOUD_SQL_INSTANCE="sagebase-dev-db"
+export GCS_BUCKET_NAME="sagebase-backups"
 ```
 
 または、`.env`ファイルに記載：
@@ -38,8 +38,8 @@ export GCS_BUCKET_NAME="polibase-backups"
 ```bash
 GCP_PROJECT_ID=your-project-id
 GCP_REGION=asia-northeast1
-CLOUD_SQL_INSTANCE=polibase-dev-db
-GCS_BUCKET_NAME=polibase-backups
+CLOUD_SQL_INSTANCE=sagebase-dev-db
+GCS_BUCKET_NAME=sagebase-backups
 ```
 
 2. **GCSバケットを作成**（初回のみ）

@@ -22,7 +22,7 @@ environment = "development"     # development, staging, or production
 # ----------------------------------------------------------------------------
 # Network Configuration
 # ----------------------------------------------------------------------------
-network_name = "polibase-vpc"
+network_name = "sagebase-vpc"
 
 # ----------------------------------------------------------------------------
 # Database Configuration

@@ -2,7 +2,7 @@
 # GCSに保存されたバックアップ一覧を表示
 set -e
 
-GCS_BUCKET="${GCS_BUCKET_NAME:-polibase-backups}"
+GCS_BUCKET="${GCS_BUCKET_NAME:-sagebase-backups}"
 
 echo "📋 Cloud SQL Backups in GCS"
 echo "Bucket: gs://$GCS_BUCKET/database-snapshots/"

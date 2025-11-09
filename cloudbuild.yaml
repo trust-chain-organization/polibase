@@ -83,9 +83,9 @@ steps:
 # 置換変数のデフォルト値
 substitutions:
   _REGION: "asia-northeast1"
-  _REPOSITORY: "polibase"
-  _IMAGE_NAME: "polibase-streamlit"
-  _SERVICE_NAME: "polibase-streamlit"
+  _REPOSITORY: "sagebase"
+  _IMAGE_NAME: "sagebase-streamlit"
+  _SERVICE_NAME: "sagebase-streamlit"
   _CLOUD_SQL_INSTANCE: "" # 'PROJECT_ID:REGION:INSTANCE_NAME' の形式で指定
 
 # ビルドオプション

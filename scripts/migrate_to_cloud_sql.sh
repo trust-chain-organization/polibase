@@ -147,7 +147,7 @@ echo ""
 echo -e "${BLUE}☁️  Step 3: GCSへのバックアップアップロード${NC}"
 echo ""
 
-GCS_BUCKET="${GCS_BUCKET_NAME:-polibase-backups}"
+GCS_BUCKET="${GCS_BUCKET_NAME:-sagebase-backups}"
 GCS_PATH="gs://$GCS_BUCKET/database-migrations/migration_$(date +%Y%m%d_%H%M%S).sql"
 
 echo "   GCSバケット: $GCS_BUCKET"

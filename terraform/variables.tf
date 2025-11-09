@@ -25,7 +25,7 @@ variable "environment" {
 variable "network_name" {
   description = "Name of the VPC network"
   type        = string
-  default     = "polibase-vpc"
+  default     = "sagebase-vpc"
 }
 
 # Database Configuration

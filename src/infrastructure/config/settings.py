@@ -72,7 +72,7 @@ class Settings:
 
         # GCS Configuration
         self.gcs_bucket_name: str = os.getenv(
-            "GCS_BUCKET_NAME", "polibase-scraped-minutes"
+            "GCS_BUCKET_NAME", "sagebase-scraped-minutes"
         )
         self.gcs_project_id: str | None = os.getenv("GCS_PROJECT_ID")
         self.gcs_upload_enabled: bool = (

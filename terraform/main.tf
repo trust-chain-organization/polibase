@@ -15,7 +15,7 @@ terraform {
   # Backend configuration for storing Terraform state
   # Uncomment and configure for production use
   # backend "gcs" {
-  #   bucket = "polibase-terraform-state"
+  #   bucket = "sagebase-terraform-state"
   #   prefix = "terraform/state"
   # }
 }

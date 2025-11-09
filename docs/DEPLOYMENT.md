@@ -74,7 +74,7 @@ docker build -t asia-northeast1-docker.pkg.dev/PROJECT_ID/polibase/streamlit-ui:
 docker push asia-northeast1-docker.pkg.dev/PROJECT_ID/polibase/streamlit-ui:latest
 
 # Cloud Runへデプロイ（Terraformで自動実行可能）
-gcloud run deploy polibase-ui --image=... --region=asia-northeast1
+gcloud run deploy sagebase-ui --image=... --region=asia-northeast1
 ```
 
 **特徴**:
@@ -334,17 +334,17 @@ docker exec docker-postgres-1 pg_dump \
 
 ```bash
 # GCSバケット作成（初回のみ）
-gsutil mb -p YOUR_PROJECT_ID -c STANDARD -l asia-northeast1 gs://polibase-backups
+gsutil mb -p YOUR_PROJECT_ID -c STANDARD -l asia-northeast1 gs://sagebase-backups
 
 # バックアップをアップロード
-gsutil cp backup.sql gs://polibase-backups/migrations/backup_$(date +%Y%m%d).sql
+gsutil cp backup.sql gs://sagebase-backups/migrations/backup_$(date +%Y%m%d).sql
 ```
 
 #### 3. Cloud SQLへのインポート
 
 ```bash
 gcloud sql import sql INSTANCE_NAME \
-  gs://polibase-backups/migrations/backup_YYYYMMDD.sql \
+  gs://sagebase-backups/migrations/backup_YYYYMMDD.sql \
   --database=sagebase_db \
   --project=YOUR_PROJECT_ID
 ```
@@ -388,8 +388,8 @@ PolibaseのStreamlitアプリケーションをCloud Runにデプロイする方
 # 環境変数を設定
 export PROJECT_ID="your-project-id"
 export REGION="asia-northeast1"
-export SERVICE_NAME="polibase-streamlit"
-export CLOUD_SQL_INSTANCE="your-project:asia-northeast1:polibase-db"
+export SERVICE_NAME="sagebase-streamlit"
+export CLOUD_SQL_INSTANCE="your-project:asia-northeast1:sagebase-db"
 
 # デプロイスクリプトを実行
 ./scripts/deploy_to_cloud_run.sh
@@ -438,17 +438,17 @@ gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
 # Dockerイメージのビルド（Cloud Run用Dockerfile使用）
 docker build -f Dockerfile.cloudrun \
-  -t asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:latest .
+  -t asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/sagebase-streamlit:latest .
 
 # イメージのプッシュ
-docker push asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:latest
+docker push asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/sagebase-streamlit:latest
 ```
 
 #### 2. Cloud Runサービスのデプロイ
 
 ```bash
-gcloud run deploy polibase-streamlit \
-  --image=asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:latest \
+gcloud run deploy sagebase-streamlit \
+  --image=asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/sagebase-streamlit:latest \
   --region=asia-northeast1 \
   --platform=managed \
   --allow-unauthenticated \
@@ -498,7 +498,7 @@ gcloud run deploy polibase-streamlit \
 
 ```bash
 # サービスURLの取得
-SERVICE_URL=$(gcloud run services describe polibase-streamlit \
+SERVICE_URL=$(gcloud run services describe sagebase-streamlit \
   --region=asia-northeast1 \
   --project=YOUR_PROJECT_ID \
   --format='value(status.url)')
@@ -512,7 +512,7 @@ echo "Service URL: $SERVICE_URL"
 curl "$SERVICE_URL"
 
 # ログの確認
-gcloud run logs tail polibase-streamlit \
+gcloud run logs tail sagebase-streamlit \
   --region=asia-northeast1 \
   --project=YOUR_PROJECT_ID
 ```
@@ -542,12 +542,12 @@ Secret Managerから注入されるシークレット：
 ```bash
 # 新しいイメージをビルド＆プッシュ
 docker build -f Dockerfile.cloudrun \
-  -t asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:v2 .
-docker push asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:v2
+  -t asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/sagebase-streamlit:v2 .
+docker push asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/sagebase-streamlit:v2
 
 # サービスを更新
-gcloud run services update polibase-streamlit \
-  --image=asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/polibase-streamlit:v2 \
+gcloud run services update sagebase-streamlit \
+  --image=asia-northeast1-docker.pkg.dev/YOUR_PROJECT_ID/polibase/sagebase-streamlit:v2 \
   --region=asia-northeast1 \
   --project=YOUR_PROJECT_ID
 ```
@@ -593,7 +593,7 @@ Terraformでは`terraform/modules/security/main.tf`でSecret Managerを管理し
 Cloud Runでシークレットを使用：
 
 ```bash
-gcloud run services update polibase-ui \
+gcloud run services update sagebase-ui \
   --set-secrets="GOOGLE_API_KEY=google-api-key:latest" \
   --set-secrets="DB_PASSWORD=database-password:latest" \
   --region=asia-northeast1 \
@@ -631,7 +631,7 @@ gcloud sql backups create --instance=INSTANCE_NAME --project=YOUR_PROJECT_ID
 
 # GCSへのエクスポート（推奨）
 gcloud sql export sql INSTANCE_NAME \
-  gs://polibase-backups/manual-backups/backup_$(date +%Y%m%d_%H%M%S).sql \
+  gs://sagebase-backups/manual-backups/backup_$(date +%Y%m%d_%H%M%S).sql \
   --database=sagebase_db \
   --project=YOUR_PROJECT_ID
 ```
@@ -707,7 +707,7 @@ gcloud sql users set-password sagebase_user \
 1. Cloud SQL接続が設定されているか確認
 
 ```bash
-gcloud run services describe polibase-ui \
+gcloud run services describe sagebase-ui \
   --region=asia-northeast1 \
   --project=YOUR_PROJECT_ID \
   --format='value(spec.template.spec.containers[0].cloudSqlInstances)'
@@ -716,7 +716,7 @@ gcloud run services describe polibase-ui \
 2. 環境変数を確認
 
 ```bash
-gcloud run services describe polibase-ui \
+gcloud run services describe sagebase-ui \
   --region=asia-northeast1 \
   --project=YOUR_PROJECT_ID \
   --format='value(spec.template.spec.containers[0].env)'
@@ -746,7 +746,7 @@ gcloud sql instances describe INSTANCE_NAME \
 
 # GCSバケットへのアクセス権限を付与
 gsutil iam ch serviceAccount:SERVICE_ACCOUNT_EMAIL:objectAdmin \
-  gs://polibase-backups
+  gs://sagebase-backups
 ```
 
 2. ファイルサイズとタイムアウトを確認
@@ -754,7 +754,7 @@ gsutil iam ch serviceAccount:SERVICE_ACCOUNT_EMAIL:objectAdmin \
 ```bash
 # 大きなファイルの場合、圧縮を検討
 gzip backup.sql
-gsutil cp backup.sql.gz gs://polibase-backups/
+gsutil cp backup.sql.gz gs://sagebase-backups/
 ```
 
 ---
