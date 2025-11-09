@@ -1,8 +1,8 @@
 # Sagebase - 政治活動追跡アプリケーション
 
-[![Tests](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml/badge.svg)](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml)
-[![Type Check](https://github.com/trust-chain-organization/polibase/actions/workflows/pyright.yml/badge.svg)](https://github.com/trust-chain-organization/polibase/actions/workflows/pyright.yml)
-[![codecov](https://codecov.io/gh/trust-chain-organization/sagebase/branch/main/graph/badge.svg)](https://codecov.io/gh/trust-chain-organization/polibase)
+[![Tests](https://github.com/trust-chain-organization/sagebase/actions/workflows/test.yml/badge.svg)](https://github.com/trust-chain-organization/sagebase/actions/workflows/test.yml)
+[![Type Check](https://github.com/trust-chain-organization/sagebase/actions/workflows/pyright.yml/badge.svg)](https://github.com/trust-chain-organization/sagebase/actions/workflows/pyright.yml)
+[![codecov](https://codecov.io/gh/trust-chain-organization/sagebase/branch/main/graph/badge.svg)](https://codecov.io/gh/trust-chain-organization/sagebase)
 
 政治家の発言、議事録、公約などを体系的に管理・分析するためのアプリケーションです。
 
@@ -28,8 +28,8 @@ https://dbdocs.io/sagebase/Sagebase
 
 ### 1. リポジトリのクローン
 ```bash
-git clone https://github.com/trust-chain-organization/polibase.git
-cd polibase
+git clone https://github.com/trust-chain-organization/sagebase.git
+cd sagebase
 ```
 
 ### 2. 環境変数の設定
@@ -305,7 +305,7 @@ docker compose -f docker/docker-compose.yml up -d
 
 ### データのバックアップ・リストア
 
-Polibaseは、ローカルとGoogle Cloud Storage（GCS）の両方にデータベースバックアップを保存できます。
+Sagebaseは、ローカルとGoogle Cloud Storage（GCS）の両方にデータベースバックアップを保存できます。
 
 **GCS連携の設定（オプション）**:
 - GCSを使用する場合は、事前に以下の設定が必要です：
@@ -340,13 +340,13 @@ docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase databa
 #### リストア実行
 ```bash
 # ローカルファイルからリストア
-docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database restore database/backups/polibase_backup_20241230_123456.sql
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database restore database/backups/sagebase_backup_20241230_123456.sql
 
 # GCSからリストア
-docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database restore gs://sagebase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database restore gs://sagebase-scraped-minutes/database-backups/sagebase_backup_20241230_123456.sql
 
 # 従来のスクリプトを使用（ローカルのみ）
-./scripts/backup-database.sh restore database/backups/polibase_backup_20240529_123456.sql
+./scripts/backup-database.sh restore database/backups/sagebase_backup_20240529_123456.sql
 ```
 
 #### 手動バックアップ・リストア
@@ -376,7 +376,7 @@ docker compose -f docker/docker-compose.yml exec sagebase uv run --frozen pyrigh
 
 ## 📊 監視システム
 
-Polibaseには、Grafana、Prometheus、Lokiを使用した包括的な監視システムが含まれています。
+Sagebaseには、Grafana、Prometheus、Lokiを使用した包括的な監視システムが含まれています。
 
 ### 監視サービスの起動
 
@@ -543,7 +543,7 @@ sagebase/
 ├── test-setup.sh              # → scripts/test-setup.sh (シンボリックリンク)
 ├── pyproject.toml             # Python依存関係
 ├── CLAUDE.md                  # Claude Code用ガイド
-└── polibase.dbml              # データベーススキーマ定義
+└── sagebase.dbml              # データベーススキーマ定義
 ```
 
 ## 🛠️ トラブルシューティング
@@ -659,7 +659,7 @@ gsutil iam get gs://YOUR_BUCKET_NAME/
 
 ### Clean Architecture
 
-Polibaseは、保守性と拡張性を向上させるためClean Architectureを採用しています。
+Sagebaseは、保守性と拡張性を向上させるためClean Architectureを採用しています。
 
 **移行状況**: 🟢 **90%完了** - コアアーキテクチャは完全に実装され、レガシーコードのクリーンアップが進行中です。
 
@@ -757,7 +757,7 @@ graph TB
 
 4. **インターフェース層** (`src/interfaces/`) - ✅ 大部分完了
    - **CLI** (`src/interfaces/cli/`): コマンドラインインターフェース
-     - 統一CLIエントリーポイント: `polibase`コマンド
+     - 統一CLIエントリーポイント: `sagebase`コマンド
      - 構造化されたコマンド群: scraping, database, processing, monitoring
    - **Web** (`src/interfaces/web/streamlit/`): Streamlit Webインターフェース
      - Views, Presenters, Components, DTOsで構成
