@@ -1,5 +1,5 @@
 services:
-  polibase:
+  sagebase:
     build:
       context: ../
       dockerfile: docker/Dockerfile
@@ -29,7 +29,7 @@ services:
     depends_on:
       - postgres
 
-  polibase-monitoring:
+  sagebase-monitoring:
     build:
       context: ../
       dockerfile: docker/Dockerfile
@@ -72,7 +72,7 @@ services:
     build:
       context: ../
       dockerfile: src/interfaces/bi_dashboard/Dockerfile
-    container_name: polibase-bi-dashboard
+    container_name: sagebase-bi-dashboard
     volumes:
       - ../src:/app/src
       - ../pyproject.toml:/app/pyproject.toml

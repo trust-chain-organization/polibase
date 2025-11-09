@@ -1,5 +1,5 @@
 services:
-  polibase:
+  sagebase:
     build:
       context: ../
       dockerfile: docker/Dockerfile
@@ -27,7 +27,7 @@ services:
     depends_on:
       - postgres
 
-  polibase-monitoring:
+  sagebase-monitoring:
     build:
       context: ../
       dockerfile: docker/Dockerfile
