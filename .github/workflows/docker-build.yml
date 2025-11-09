@@ -110,8 +110,8 @@ jobs:
 
       - name: Test CLI
         run: |
-          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run polibase --help
-          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run polibase test-connection
+          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run sagebase --help
+          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run sagebase test-connection
 
       - name: Run smoke tests
         run: |
