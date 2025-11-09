@@ -504,7 +504,7 @@ VACUUM ANALYZE meetings;
 
 ```bash
 # リソース使用状況を確認
-docker stats polibase-bi-dashboard --no-stream
+docker stats sagebase-bi-dashboard --no-stream
 docker stats postgres --no-stream
 ```
 
@@ -532,7 +532,7 @@ services:
 ```python
 def get_database_url() -> str:
     return os.getenv(
-        "DATABASE_URL", "postgresql://polibase:polibase@localhost:5432/polibase"
+        "DATABASE_URL", "postgresql://sagebase:polibase@localhost:5432/polibase"
     ) + "?pool_size=10&max_overflow=20"
 ```
 

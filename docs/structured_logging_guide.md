@@ -183,23 +183,23 @@ logger.info(
 
 ```bash
 # エラーログのみ表示
-docker compose exec polibase uv run python main.py | jq 'select(.level=="error")'
+docker compose exec sagebase uv run python main.py | jq 'select(.level=="error")'
 
 # 特定のユーザーのログ
-docker compose exec polibase uv run python main.py | jq 'select(.user_id==123)'
+docker compose exec sagebase uv run python main.py | jq 'select(.user_id==123)'
 
 # 遅い処理を検出（1000ms以上）
-docker compose exec polibase uv run python main.py | jq 'select(.elapsed_ms > 1000)'
+docker compose exec sagebase uv run python main.py | jq 'select(.elapsed_ms > 1000)'
 ```
 
 ### ログの集計
 
 ```bash
 # エラーレベル別の集計
-docker compose exec polibase uv run python main.py | jq -r '.level' | sort | uniq -c
+docker compose exec sagebase uv run python main.py | jq -r '.level' | sort | uniq -c
 
 # モジュール別のエラー数
-docker compose exec polibase uv run python main.py | jq 'select(.level=="error") | .logger' | sort | uniq -c
+docker compose exec sagebase uv run python main.py | jq 'select(.level=="error") | .logger' | sort | uniq -c
 ```
 
 ## 動作確認
@@ -208,10 +208,10 @@ docker compose exec polibase uv run python main.py | jq 'select(.level=="error")
 
 ```bash
 # 動作確認スクリプトの実行
-docker compose exec polibase uv run python scripts/verify_logging.py
+docker compose exec sagebase uv run python scripts/verify_logging.py
 
 # JSON形式で見やすく表示
-docker compose exec polibase uv run python scripts/verify_logging.py | jq
+docker compose exec sagebase uv run python scripts/verify_logging.py | jq
 ```
 
 ## トラブルシューティング

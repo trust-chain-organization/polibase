@@ -1,19 +1,19 @@
 ---
-name: polibase-commands
-description: Provides quick reference for all Polibase CLI commands and Docker operations. Activates when user asks how to run application, test, format code, manage database, or execute any Polibase operation. Includes just commands, unified CLI, testing, formatting, and database management.
+name: sagebase-commands
+description: Provides quick reference for all Sagebase CLI commands and Docker operations. Activates when user asks how to run application, test, format code, manage database, or execute any Sagebase operation. Includes just commands, unified CLI, testing, formatting, and database management.
 ---
 
-# Polibase Commands
+# Sagebase Commands
 
 ## Purpose
-Quick reference for all Polibase CLI commands and Docker operations.
+Quick reference for all Sagebase CLI commands and Docker operations.
 
 ## When to Activate
 This skill activates automatically when:
 - User asks how to run the application
 - User mentions "run", "execute", "test", "format", or "database"
 - User asks about Docker commands
-- User needs to perform any Polibase operation
+- User needs to perform any Sagebase operation
 
 ## Quick Command Reference
 
@@ -38,19 +38,19 @@ See [reference.md](reference.md) for all just commands.
 
 ```bash
 # Process minutes
-just exec uv run polibase process-minutes
+just exec uv run sagebase process-minutes
 
 # Scrape politicians
-just exec uv run polibase scrape-politicians --all-parties
+just exec uv run sagebase scrape-politicians --all-parties
 
 # Launch Streamlit UI
-just exec uv run polibase streamlit
+just exec uv run sagebase streamlit
 
 # Launch monitoring
-just exec uv run polibase monitoring
+just exec uv run sagebase monitoring
 
 # Show coverage stats
-just exec uv run polibase coverage
+just exec uv run sagebase coverage
 ```
 
 ### Testing Commands
@@ -86,10 +86,10 @@ uv run --frozen pyright
 just db
 
 # Backup database
-just exec uv run polibase database backup
+just exec uv run sagebase database backup
 
 # Restore database
-just exec uv run polibase database restore backup.sql
+just exec uv run sagebase database restore backup.sql
 
 # Reset database
 ./reset-database.sh

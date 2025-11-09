@@ -2,13 +2,13 @@
 
 [![Tests](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml/badge.svg)](https://github.com/trust-chain-organization/polibase/actions/workflows/test.yml)
 [![Type Check](https://github.com/trust-chain-organization/polibase/actions/workflows/pyright.yml/badge.svg)](https://github.com/trust-chain-organization/polibase/actions/workflows/pyright.yml)
-[![codecov](https://codecov.io/gh/trust-chain-organization/polibase/branch/main/graph/badge.svg)](https://codecov.io/gh/trust-chain-organization/polibase)
+[![codecov](https://codecov.io/gh/trust-chain-organization/sagebase/branch/main/graph/badge.svg)](https://codecov.io/gh/trust-chain-organization/polibase)
 
 政治家の発言、議事録、公約などを体系的に管理・分析するためのアプリケーションです。
 
 ## 🗄️ テーブル構造
 詳細なデータベース設計はこちらをご確認ください：
-https://dbdocs.io/polibase/Polibase
+https://dbdocs.io/sagebase/Sagebase
 
 ### 主要エンティティの役割
 
@@ -132,10 +132,10 @@ Sagebaseは以下の設計原則に基づいて構築されています：
 
 ```bash
 # 議事録を処理（発言を抽出）
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase process-minutes
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase process-minutes
 
 # 会議管理Web UIを起動
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase streamlit
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase streamlit
 ```
 
 ### 主要な機能
@@ -193,7 +193,7 @@ docker compose -f docker/docker-compose.yml logs -f bi-dashboard
 ### テストの実行
 ```bash
 # 全テスト実行
-docker compose -f docker/docker-compose.yml exec polibase uv run pytest
+docker compose -f docker/docker-compose.yml exec sagebase uv run pytest
 
 # 特定のテストを実行
 uv run pytest tests/test_minutes_divider.py -v
@@ -250,7 +250,7 @@ LIMIT 10;
 ### 3. データベース接続テスト
 ```bash
 # Pythonでデータベース接続をテスト
-docker compose -f docker/docker-compose.yml exec polibase uv run python -c "
+docker compose -f docker/docker-compose.yml exec sagebase uv run python -c "
 from src.config.database import test_connection
 test_connection()
 "
@@ -316,10 +316,10 @@ Polibaseは、ローカルとGoogle Cloud Storage（GCS）の両方にデータ�
 #### バックアップ作成
 ```bash
 # ローカルとGCSの両方にバックアップ（デフォルト）
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase database backup
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database backup
 
 # ローカルのみにバックアップ
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase database backup --no-gcs
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database backup --no-gcs
 
 # 従来のスクリプトを使用（ローカルのみ）
 ./scripts/backup-database.sh backup
@@ -328,10 +328,10 @@ docker compose -f docker/docker-compose.yml exec polibase uv run sagebase databa
 #### バックアップ一覧の確認
 ```bash
 # ローカルとGCSのバックアップを表示
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase database list
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database list
 
 # ローカルのバックアップのみ表示
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase database list --no-gcs
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database list --no-gcs
 
 # 従来のスクリプトを使用
 ./scripts/backup-database.sh list
@@ -340,10 +340,10 @@ docker compose -f docker/docker-compose.yml exec polibase uv run sagebase databa
 #### リストア実行
 ```bash
 # ローカルファイルからリストア
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase database restore database/backups/polibase_backup_20241230_123456.sql
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database restore database/backups/polibase_backup_20241230_123456.sql
 
 # GCSからリストア
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase database restore gs://sagebase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase database restore gs://sagebase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
 
 # 従来のスクリプトを使用（ローカルのみ）
 ./scripts/backup-database.sh restore database/backups/polibase_backup_20240529_123456.sql
@@ -363,13 +363,13 @@ docker compose -f docker/docker-compose.yml exec -T postgres psql -U sagebase_us
 ### コードフォーマットとリンティング
 ```bash
 # コードフォーマット
-docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff format .
+docker compose -f docker/docker-compose.yml exec sagebase uv run --frozen ruff format .
 
 # リンティング
-docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check .
+docker compose -f docker/docker-compose.yml exec sagebase uv run --frozen ruff check .
 
 # 型チェック
-docker compose -f docker/docker-compose.yml exec polibase uv run --frozen pyright
+docker compose -f docker/docker-compose.yml exec sagebase uv run --frozen pyright
 ```
 
 詳細な開発用コマンドは [COMMANDS.md](COMMANDS.md#開発用コマンド) を参照してください。
@@ -385,7 +385,7 @@ Polibaseには、Grafana、Prometheus、Lokiを使用した包括的な監視シ
 docker compose -f docker/docker-compose.yml -f docker/docker-compose.monitoring.yml up -d
 
 # 動作確認
-docker compose -f docker/docker-compose.yml exec polibase uv run python scripts/verify_monitoring.py
+docker compose -f docker/docker-compose.yml exec sagebase uv run python scripts/verify_monitoring.py
 ```
 
 ### アクセスURL
@@ -436,7 +436,7 @@ docker compose -f docker/docker-compose.yml exec polibase uv run python scripts/
 ## 📁 プロジェクト構成
 
 ```
-polibase/
+sagebase/
 ├── src/                          # メインアプリケーションコード
 │   ├── cli.py                   # 統一CLIエントリーポイント
 │   ├── process_minutes.py       # 議事録分割処理
@@ -849,8 +849,8 @@ docker compose -f docker/docker-compose.yml up -d      # バックグラウン�
 docker compose -f docker/docker-compose.yml down       # 停止（データは保持）
 
 # 🏃 主要な処理実行
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase process-minutes      # 議事録分割
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase streamlit           # Web UI起動（管理）
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase process-minutes      # 議事録分割
+docker compose -f docker/docker-compose.yml exec sagebase uv run sagebase streamlit           # Web UI起動（管理）
 
 # 📊 BIダッシュボード起動（別インスタンス）
 cd src/interfaces/bi_dashboard && docker-compose up --build                                   # BIダッシュボード起動

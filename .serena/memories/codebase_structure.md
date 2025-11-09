@@ -2,7 +2,7 @@
 
 ## Root Directory Structure
 ```
-polibase/
+sagebase/
 ├── src/                    # Main application code
 ├── database/              # Database scripts and migrations
 ├── docker/                # Docker configuration

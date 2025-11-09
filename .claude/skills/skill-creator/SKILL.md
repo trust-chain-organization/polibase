@@ -140,7 +140,7 @@ mkdir -p .claude/skills/your-skill-name/templates
 - `test-writer`: テスト作成ガイド（reference.md, examples.md, templates/あり）
 - `clean-architecture-checker`: アーキテクチャチェック（reference.md, examples.md, templates/あり）
 - `migration-helper`: データベース移行支援（reference.md, templates/あり）
-- `polibase-commands`: コマンドリファレンス（reference.mdあり）
+- `sagebase-commands`: コマンドリファレンス（reference.mdあり）
 - `bi-dashboard-commands`: BIダッシュボードコマンド（reference.mdあり）
 
 具体的な例は [examples.md](examples.md) を参照してください。

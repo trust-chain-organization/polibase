@@ -245,7 +245,7 @@ sequenceDiagram
     participant ConvRepo as IConversationRepository
     participant DB as Database
 
-    User->>CLI: polibase process-minutes --meeting-id 123
+    User->>CLI: sagebase process-minutes --meeting-id 123
     activate CLI
 
     CLI->>UseCase: execute(meeting_id=123)

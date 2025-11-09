@@ -133,7 +133,7 @@ scrape_configs:
   - job_name: 'polibase'
     scrape_interval: 15s
     static_configs:
-      - targets: ['polibase:9090']
+      - targets: ['sagebase:9090']
 ```
 
 ### 3. メトリクスの確認
@@ -245,7 +245,7 @@ setup_metrics(prometheus_port=9091)
 
 ```bash
 # 動作確認スクリプトを実行
-docker compose exec polibase uv run python scripts/verify_metrics.py
+docker compose exec sagebase uv run python scripts/verify_metrics.py
 ```
 
 ## ベストプラクティス
