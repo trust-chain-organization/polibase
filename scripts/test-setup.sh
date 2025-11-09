@@ -1,7 +1,7 @@
 #!/bin/bash
 # データベース接続テストスクリプト
 
-echo "🏗️  Polibase データベース接続テスト"
+echo "🏗️  Sagebase データベース接続テスト"
 echo "=================================="
 
 # Docker Composeが起動しているかチェック
@@ -17,7 +17,7 @@ echo "✅ PostgreSQLコンテナが起動中です"
 # データベース接続テスト
 echo ""
 echo "🔍 データベース接続テストを実行中..."
-docker compose -f docker/docker-compose.yml exec -T polibase uv run python -c "
+docker compose -f docker/docker-compose.yml exec -T sagebase uv run python -c "
 from src.config.database import test_connection
 import sys
 if test_connection():
@@ -36,9 +36,9 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "🎉 セットアップ完了！"
     echo "以下のコマンドでアプリケーションを実行できます："
-    echo "- 議事録分割処理: docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.main"
-    echo "- 政治家抽出処理: docker compose -f docker/docker-compose.yml exec polibase uv run python -m src.main2"
-    echo "- テスト実行: docker compose -f docker/docker-compose.yml exec polibase uv run pytest"
+    echo "- 議事録分割処理: docker compose -f docker/docker-compose.yml exec sagebase uv run python -m src.main"
+    echo "- 政治家抽出処理: docker compose -f docker/docker-compose.yml exec sagebase uv run python -m src.main2"
+    echo "- テスト実行: docker compose -f docker/docker-compose.yml exec sagebase uv run pytest"
 else
     echo ""
     echo "❌ セットアップに失敗しました"

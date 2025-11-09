@@ -13,14 +13,14 @@ fi
 
 # Process minutes
 echo "Processing meeting ID: $MEETING_ID"
-just exec uv run polibase process-minutes --meeting-id "$MEETING_ID"
+just exec uv run sagebase process-minutes --meeting-id "$MEETING_ID"
 
 # Extract speakers
 echo "Extracting speakers..."
-just exec uv run polibase extract-speakers
+just exec uv run sagebase extract-speakers
 
 # Match speakers with politicians
 echo "Matching speakers with politicians..."
-just exec uv run polibase update-speakers --use-llm
+just exec uv run sagebase update-speakers --use-llm
 
 echo "Processing complete for meeting ID: $MEETING_ID"
