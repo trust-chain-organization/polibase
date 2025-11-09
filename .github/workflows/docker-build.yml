@@ -106,17 +106,17 @@ jobs:
             docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db
 
           # 接続テスト
-          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run python -c "from src.infrastructure.config.database import test_connection; assert test_connection()"
+          docker compose -f docker/docker-compose.ci.yml exec -T sagebase uv run python -c "from src.infrastructure.config.database import test_connection; assert test_connection()"
 
       - name: Test CLI
         run: |
-          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run sagebase --help
-          docker compose -f docker/docker-compose.ci.yml exec -T polibase uv run sagebase test-connection
+          docker compose -f docker/docker-compose.ci.yml exec -T sagebase uv run sagebase --help
+          docker compose -f docker/docker-compose.ci.yml exec -T sagebase uv run sagebase test-connection
 
       - name: Run smoke tests
         run: |
           # CI用の軽量テストのみ実行
-          docker compose -f docker/docker-compose.ci.yml exec -T -e CI=true polibase uv run pytest tests/smoke/test_ci_smoke.py -v
+          docker compose -f docker/docker-compose.ci.yml exec -T -e CI=true sagebase uv run pytest tests/smoke/test_ci_smoke.py -v
 
       - name: Stop services
         if: always()
