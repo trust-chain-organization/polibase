@@ -671,7 +671,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["polibase", "performance"],
+  "tags": ["sagebase", "performance"],
   "templating": {
     "list": [
       {
@@ -700,8 +700,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Polibase パフォーマンス",
-  "uid": "polibase-performance",
+  "title": "Sagebase パフォーマンス",
+  "uid": "sagebase-performance",
   "version": 1,
   "weekStart": ""
 }
