@@ -50,10 +50,10 @@ class PoliticianCommands(BaseCommand):
         using LLM to extract structured data and saves them to the database.
 
         Examples:
-            polibase scrape-politicians --party-id 1
-            polibase scrape-politicians --all-parties
-            polibase scrape-politicians --all-parties --dry-run
-            polibase scrape-politicians --party-id 1 --hierarchical --max-depth 3
+            sagebase scrape-politicians --party-id 1
+            sagebase scrape-politicians --all-parties
+            sagebase scrape-politicians --all-parties --dry-run
+            sagebase scrape-politicians --party-id 1 --hierarchical --max-depth 3
         """
         # Run the async scraping operation
         asyncio.run(
@@ -443,9 +443,9 @@ class PoliticianCommands(BaseCommand):
         and converts them to the main politicians/speakers tables.
 
         Examples:
-            polibase convert-politicians
-            polibase convert-politicians --party-id 1
-            polibase convert-politicians --batch-size 50 --dry-run
+            sagebase convert-politicians
+            sagebase convert-politicians --party-id 1
+            sagebase convert-politicians --batch-size 50 --dry-run
         """
         asyncio.run(
             PoliticianCommands._async_convert_politicians(party_id, batch_size, dry_run)

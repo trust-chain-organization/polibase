@@ -59,10 +59,10 @@ class ScrapingCommands(BaseCommand):
         You can specify either a URL or a meeting ID:
 
         Example with URL:
-            polibase scrape-minutes "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
+            sagebase scrape-minutes "https://ssp.kaigiroku.net/tenant/kyoto/MinuteView.html?council_id=6030&schedule_id=1"
 
         Example with meeting ID:
-            polibase scrape-minutes --meeting-id 123
+            sagebase scrape-minutes --meeting-id 123
         """
         # URLとmeeting-idの両方が指定されていない、
         # または両方が指定されている場合はエラー
@@ -327,8 +327,8 @@ class ScrapingCommands(BaseCommand):
         by iterating through council and schedule IDs.
 
         Examples:
-            polibase batch-scrape --tenant kyoto --start-id 6000 --end-id 6010
-            polibase batch-scrape --tenant osaka --start-id 1000 --end-id 1100
+            sagebase batch-scrape --tenant kyoto --start-id 6000 --end-id 6010
+            sagebase batch-scrape --tenant osaka --start-id 1000 --end-id 1100
         """
         ScrapingCommands.show_progress(
             f"Batch scraping from kaigiroku.net tenant: {tenant}"

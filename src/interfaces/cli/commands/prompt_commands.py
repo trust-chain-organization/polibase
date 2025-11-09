@@ -27,9 +27,9 @@ class PromptCommands(BaseCommand):
         """List prompt versions (プロンプトバージョン一覧)
 
         Examples:
-        - polibase prompt-list                    # List all active prompts
-        - polibase prompt-list --prompt-key minutes_divide  # List specific prompt
-        - polibase prompt-list --limit 20         # Show more versions
+        - sagebase prompt-list                    # List all active prompts
+        - sagebase prompt-list --prompt-key minutes_divide  # List specific prompt
+        - sagebase prompt-list --limit 20         # Show more versions
         """
         from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence.prompt_version_repository_impl import (
@@ -107,8 +107,8 @@ class PromptCommands(BaseCommand):
         - VERSION: Version identifier (e.g., 1.0.0, latest for active version)
 
         Examples:
-        - polibase prompt-show minutes_divide latest     # Show active version
-        - polibase prompt-show speaker_match 1.0.0       # Show specific version
+        - sagebase prompt-show minutes_divide latest     # Show active version
+        - sagebase prompt-show speaker_match 1.0.0       # Show specific version
         """
         from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence.prompt_version_repository_impl import (
@@ -178,8 +178,8 @@ class PromptCommands(BaseCommand):
         - VERSION: Version to activate
 
         Examples:
-        - polibase prompt-activate minutes_divide 2.0.0
-        - polibase prompt-activate speaker_match 1.5.0
+        - sagebase prompt-activate minutes_divide 2.0.0
+        - sagebase prompt-activate speaker_match 1.5.0
         """
         from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence.prompt_version_repository_impl import (
@@ -221,8 +221,8 @@ class PromptCommands(BaseCommand):
         database-backed version management system.
 
         Examples:
-        - polibase prompt-migrate                      # Migrate as 'system'
-        - polibase prompt-migrate --created-by admin   # Migrate with custom creator
+        - sagebase prompt-migrate                      # Migrate as 'system'
+        - sagebase prompt-migrate --created-by admin   # Migrate with custom creator
         """
         from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.external.versioned_prompt_manager import (
@@ -268,8 +268,8 @@ class PromptCommands(BaseCommand):
         - PROMPT_KEY: Prompt key to show history for
 
         Examples:
-        - polibase prompt-history minutes_divide
-        - polibase prompt-history speaker_match --limit 20
+        - sagebase prompt-history minutes_divide
+        - sagebase prompt-history speaker_match --limit 20
         """
         from src.infrastructure.config.async_database import get_async_session
         from src.infrastructure.persistence.prompt_version_repository_impl import (

@@ -15,7 +15,7 @@ This project primarily uses Japanese for all documentation, comments, and commun
 
 ## Project Overview
 
-Polibase is a Political Activity Tracking Application (政治活動追跡アプリケーション) for managing and analyzing Japanese political activities including politician statements, meeting minutes, political promises, and voting records.
+Sagebase is a Political Activity Tracking Application (政治活動追跡アプリケーション) for managing and analyzing Japanese political activities including politician statements, meeting minutes, political promises, and voting records.
 
 ### Core Concepts
 
@@ -45,11 +45,11 @@ just db               # Connect to PostgreSQL
 ./reset-database.sh   # Reset database
 ```
 
-**📖 For detailed commands**: See [.claude/skills/polibase-commands/](.claude/skills/polibase-commands/)
+**📖 For detailed commands**: See [.claude/skills/sagebase-commands/](.claude/skills/sagebase-commands/)
 
 ## Architecture
 
-Polibase follows **Clean Architecture** principles. **Status: 🟢 100% Complete**
+Sagebase follows **Clean Architecture** principles. **Status: 🟢 100% Complete**
 
 ### Layer Overview
 
@@ -94,7 +94,7 @@ src/
 
 ## Key Skills
 
-Polibaseプロジェクトでは、以下のスキルが自動的にアクティベートされます：
+Sagebaseプロジェクトでは、以下のスキルが自動的にアクティベートされます：
 
 - **[data-processing-workflows](.claude/skills/data-processing-workflows/)**: データ処理パイプラインとワークフロー
 - **[clean-architecture-checker](.claude/skills/clean-architecture-checker/)**: Clean Architectureの原則とレイヤー構造
@@ -144,7 +144,7 @@ Polibaseプロジェクトでは、以下のスキルが自動的にアクティ
 
 ### Development
 - **Docker-first**: All commands run through Docker containers
-- **Unified CLI**: `polibase` command provides single entry point
+- **Unified CLI**: `sagebase` command provides single entry point
 - **GCS URI Format**: Always use `gs://` format, not HTTPS URLs
 
 **📖 For detailed conventions**: See [.claude/skills/project-conventions/](.claude/skills/project-conventions/)
