@@ -74,7 +74,7 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "up{job=~\"polibase.*\"}",
+          "expr": "up{job=~\"sagebase.*\"}",
           "instant": true,
           "refId": "A"
         }
@@ -642,7 +642,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["polibase", "overview"],
+  "tags": ["sagebase", "overview"],
   "templating": {
     "list": [
       {
@@ -671,8 +671,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Polibase システム概要",
-  "uid": "polibase-system-overview",
+  "title": "Sagebase システム概要",
+  "uid": "sagebase-system-overview",
   "version": 1,
   "weekStart": ""
 }

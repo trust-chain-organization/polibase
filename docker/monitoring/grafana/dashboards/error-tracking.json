@@ -324,7 +324,7 @@
             "uid": "${loki_datasource}"
           },
           "editorMode": "code",
-          "expr": "{job=\"polibase\"} |= \"ERROR\"",
+          "expr": "{job=\"sagebase\"} |= \"ERROR\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -536,7 +536,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["polibase", "errors", "monitoring"],
+  "tags": ["sagebase", "errors", "monitoring"],
   "templating": {
     "list": [
       {
@@ -583,8 +583,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Polibase エラー追跡",
-  "uid": "polibase-error-tracking",
+  "title": "Sagebase エラー追跡",
+  "uid": "sagebase-error-tracking",
   "version": 1,
   "weekStart": ""
 }
