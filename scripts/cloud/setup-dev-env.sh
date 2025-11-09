@@ -10,7 +10,7 @@ DB_USER="${DB_USER:-sagebase_user}"
 GCS_BUCKET="${GCS_BUCKET_NAME:-sagebase-backups}"
 BACKUP_FILE="database-snapshots/latest.sql"
 
-echo "🚀 Starting Polibase development environment..."
+echo "🚀 Starting Sagebase development environment..."
 echo "Project: $PROJECT_ID"
 echo "Region: $REGION"
 echo ""

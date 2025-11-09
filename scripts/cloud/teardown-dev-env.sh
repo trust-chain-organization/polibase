@@ -9,7 +9,7 @@ DATABASE_NAME="${DATABASE_NAME:-sagebase_db}"
 GCS_BUCKET="${GCS_BUCKET_NAME:-sagebase-backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-echo "🛑 Stopping Polibase development environment..."
+echo "🛑 Stopping Sagebase development environment..."
 echo "Project: $PROJECT_ID"
 echo ""
 
