@@ -5,7 +5,7 @@ resource "random_id" "db_name_suffix" {
 
 # Cloud SQL PostgreSQL Instance
 resource "google_sql_database_instance" "postgres" {
-  name             = "polibase-db-${var.environment}-${random_id.db_name_suffix.hex}"
+  name             = "sagebase-db-${var.environment}-${random_id.db_name_suffix.hex}"
   database_version = var.database_version
   region           = var.region
   project          = var.project_id
@@ -89,7 +89,7 @@ resource "google_sql_user" "user" {
 resource "google_sql_database_instance" "read_replica" {
   count = var.enable_read_replica ? 1 : 0
 
-  name                 = "polibase-db-replica-${var.environment}-${random_id.db_name_suffix.hex}"
+  name                 = "sagebase-db-replica-${var.environment}-${random_id.db_name_suffix.hex}"
   database_version     = var.database_version
   master_instance_name = google_sql_database_instance.postgres.name
   region               = var.region

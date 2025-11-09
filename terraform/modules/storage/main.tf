@@ -1,6 +1,6 @@
 # GCS Bucket for Scraped Minutes
 resource "google_storage_bucket" "minutes" {
-  name          = "${var.project_id}-polibase-minutes-${var.environment}"
+  name          = "${var.project_id}-sagebase-minutes-${var.environment}"
   location      = var.region
   project       = var.project_id
   storage_class = "STANDARD"
@@ -43,7 +43,7 @@ resource "google_storage_bucket" "minutes" {
 
 # GCS Bucket for Database Backups
 resource "google_storage_bucket" "backups" {
-  name          = "${var.project_id}-polibase-backups-${var.environment}"
+  name          = "${var.project_id}-sagebase-backups-${var.environment}"
   location      = var.region
   project       = var.project_id
   storage_class = "STANDARD"
@@ -84,7 +84,7 @@ resource "google_storage_bucket" "backups" {
 
 # GCS Bucket for Data Exports
 resource "google_storage_bucket" "exports" {
-  name          = "${var.project_id}-polibase-exports-${var.environment}"
+  name          = "${var.project_id}-sagebase-exports-${var.environment}"
   location      = var.region
   project       = var.project_id
   storage_class = "STANDARD"

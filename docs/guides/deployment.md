@@ -138,7 +138,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/dbname
 GOOGLE_API_KEY=your-google-api-key
 
 # Google Cloud Storage
-GCS_BUCKET_NAME=polibase-production
+GCS_BUCKET_NAME=sagebase-production
 GCS_UPLOAD_ENABLED=true
 
 # アプリケーション設定
@@ -420,14 +420,14 @@ jobs:
       - name: Backup Database
         run: |
           pg_dump ${{ secrets.DATABASE_URL }} | \
-            gsutil cp - gs://polibase-backups/$(date +%Y%m%d).sql.gz
+            gsutil cp - gs://sagebase-backups/$(date +%Y%m%d).sql.gz
 ```
 
 ### リストア手順
 
 ```bash
 # 最新バックアップからリストア
-gsutil cp gs://polibase-backups/latest.sql.gz - | \
+gsutil cp gs://sagebase-backups/latest.sql.gz - | \
   gunzip | \
   psql $DATABASE_URL
 ```

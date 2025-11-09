@@ -65,7 +65,7 @@ DATABASE_URL: str = os.getenv(
 )
 
 # GCS Configuration
-GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "polibase-scraped-minutes")
+GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "sagebase-scraped-minutes")
 GCS_PROJECT_ID: str | None = os.getenv(
     "GCS_PROJECT_ID"
 )  # Optional, uses default if not set

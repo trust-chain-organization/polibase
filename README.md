@@ -343,7 +343,7 @@ docker compose -f docker/docker-compose.yml exec polibase uv run sagebase databa
 docker compose -f docker/docker-compose.yml exec polibase uv run sagebase database restore database/backups/polibase_backup_20241230_123456.sql
 
 # GCSからリストア
-docker compose -f docker/docker-compose.yml exec polibase uv run sagebase database restore gs://polibase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
+docker compose -f docker/docker-compose.yml exec polibase uv run sagebase database restore gs://sagebase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
 
 # 従来のスクリプトを使用（ローカルのみ）
 ./scripts/backup-database.sh restore database/backups/polibase_backup_20240529_123456.sql

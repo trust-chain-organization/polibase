@@ -26,9 +26,9 @@ check_env_var "PROJECT_ID"
 check_env_var "REGION"
 
 # オプション変数のデフォルト値設定
-SERVICE_NAME="${SERVICE_NAME:-polibase-streamlit}"
+SERVICE_NAME="${SERVICE_NAME:-sagebase-streamlit}"
 IMAGE_NAME="${IMAGE_NAME:-$SERVICE_NAME}"
-REPOSITORY="${REPOSITORY:-polibase}"
+REPOSITORY="${REPOSITORY:-sagebase}"
 TAG="${TAG:-latest}"
 
 # Cloud SQL設定（オプション）

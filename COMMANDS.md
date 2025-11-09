@@ -124,7 +124,7 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase member
 
 ```bash
 # 監視ダッシュボード（専用コンテナ）
-docker compose -f docker/docker-compose.yml up -d polibase-monitoring
+docker compose -f docker/docker-compose.yml up -d sagebase-monitoring
 ```
 
 ## データベース管理
@@ -144,7 +144,7 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase databa
 
 # リストア実行
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore database/backups/polibase_backup_20241230_123456.sql
-docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore gs://polibase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
+docker compose -f docker/docker-compose.yml exec polibase uv run polibase database restore gs://sagebase-scraped-minutes/database-backups/polibase_backup_20241230_123456.sql
 ```
 
 ### 直接データベース操作

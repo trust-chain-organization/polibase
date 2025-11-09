@@ -527,9 +527,9 @@ graph TB
         end
 
         subgraph gcs["Google Cloud Storage"]
-            GCS_MINUTES[Scraped Minutes<br/>gs://polibase-minutes/]
-            GCS_BACKUPS[DB Backups<br/>gs://polibase-backups/]
-            GCS_EXPORTS[Data Exports<br/>gs://polibase-exports/]
+            GCS_MINUTES[Scraped Minutes<br/>gs://sagebase-minutes/]
+            GCS_BACKUPS[DB Backups<br/>gs://sagebase-backups/]
+            GCS_EXPORTS[Data Exports<br/>gs://sagebase-exports/]
         end
     end
 
@@ -670,9 +670,9 @@ graph TB
 
 3. **Google Cloud Storage**
    - **バケット構成**:
-     - `polibase-minutes`: スクレイピングした議事録PDF/テキスト
-     - `polibase-backups`: データベースバックアップ
-     - `polibase-exports`: データエクスポート（CSV等）
+     - `sagebase-minutes`: スクレイピングした議事録PDF/テキスト
+     - `sagebase-backups`: データベースバックアップ
+     - `sagebase-exports`: データエクスポート（CSV等）
    - **アクセス制御**:
      - バケット単位のIAMポリシー
      - Cloud Runサービスアカウント経由のアクセス
@@ -712,7 +712,7 @@ graph TB
 
 6. **VPC Network**
    - **構成**:
-     - カスタムVPC: `polibase-vpc`
+     - カスタムVPC: `sagebase-vpc`
      - サブネット: 各リージョンに配置
      - プライベートサービス接続（Cloud SQL用）
    - **セキュリティ**:
@@ -796,7 +796,7 @@ Cloud Run Services
 #### プライベートネットワーク
 
 ```
-VPC Network (polibase-vpc)
+VPC Network (sagebase-vpc)
     ├─ Cloud Run Services
     │   └─ サービス間通信（プライベート）
     │
@@ -1056,7 +1056,7 @@ External Websites
    **実装詳細**:
    - スクリプト: `scripts/cloud/`
    - ドキュメント: `scripts/cloud/README.md`
-   - バックアップ保存先: `gs://polibase-backups/database-snapshots/`
+   - バックアップ保存先: `gs://sagebase-backups/database-snapshots/`
    - 自動化: Justfileコマンド（`cloud-up`, `cloud-down`, `cloud-status`）
 
 4. **スケーラビリティ対応**
@@ -1075,7 +1075,7 @@ External Websites
    # 環境変数を設定
    export GCP_PROJECT_ID="your-project-id"
    export GCP_REGION="asia-northeast1"
-   export GCS_BUCKET_NAME="polibase-backups"
+   export GCS_BUCKET_NAME="sagebase-backups"
 
    # GCSバケット作成（バックアップ保存用）
    gsutil mb -p $GCP_PROJECT_ID \
@@ -1116,23 +1116,23 @@ External Websites
 1. **インフラ構築（Terraform推奨）**
    ```bash
    # VPC作成
-   gcloud compute networks create polibase-vpc --subnet-mode=custom
+   gcloud compute networks create sagebase-vpc --subnet-mode=custom
 
    # Cloud SQL作成（本番環境）
-   gcloud sql instances create polibase-db \
+   gcloud sql instances create sagebase-db \
      --database-version=POSTGRES_15 \
      --tier=db-custom-2-8192 \
      --region=asia-northeast1
 
    # または開発環境（低スペック）
-   gcloud sql instances create polibase-dev-db \
+   gcloud sql instances create sagebase-dev-db \
      --database-version=POSTGRES_15 \
      --tier=db-f1-micro \
      --region=asia-northeast1
 
    # GCSバケット作成
-   gcloud storage buckets create gs://polibase-minutes
-   gcloud storage buckets create gs://polibase-backups
+   gcloud storage buckets create gs://sagebase-minutes
+   gcloud storage buckets create gs://sagebase-backups
    ```
 
 2. **シークレット設定**
@@ -1140,22 +1140,22 @@ External Websites
    # Secret Manager登録
    echo -n "your-api-key" | gcloud secrets create GOOGLE_API_KEY --data-file=-
    gcloud secrets add-iam-policy-binding GOOGLE_API_KEY \
-     --member=serviceAccount:polibase-sa@PROJECT_ID.iam.gserviceaccount.com \
+     --member=serviceAccount:sagebase-sa@PROJECT_ID.iam.gserviceaccount.com \
      --role=roles/secretmanager.secretAccessor
    ```
 
 3. **Cloud Runデプロイ**
    ```bash
    # コンテナビルド
-   gcloud builds submit --tag gcr.io/PROJECT_ID/polibase-ui
+   gcloud builds submit --tag gcr.io/PROJECT_ID/sagebase-ui
 
    # Cloud Runデプロイ
    gcloud run deploy streamlit-ui \
-     --image gcr.io/PROJECT_ID/polibase-ui \
+     --image gcr.io/PROJECT_ID/sagebase-ui \
      --platform managed \
      --region asia-northeast1 \
      --set-secrets=GOOGLE_API_KEY=GOOGLE_API_KEY:latest \
-     --set-cloudsql-instances=PROJECT_ID:asia-northeast1:polibase-db
+     --set-cloudsql-instances=PROJECT_ID:asia-northeast1:sagebase-db
    ```
 
 #### 継続的デプロイ（CI/CD）
@@ -1164,16 +1164,16 @@ External Websites
 # cloudbuild.yaml (例)
 steps:
   # テスト
-  - name: 'gcr.io/PROJECT_ID/polibase-ci'
+  - name: 'gcr.io/PROJECT_ID/sagebase-ci'
     args: ['uv', 'run', 'pytest']
 
   # ビルド
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/PROJECT_ID/polibase-ui', '.']
+    args: ['build', '-t', 'gcr.io/PROJECT_ID/sagebase-ui', '.']
 
   # プッシュ
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/PROJECT_ID/polibase-ui']
+    args: ['push', 'gcr.io/PROJECT_ID/sagebase-ui']
 
   # デプロイ
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -1181,7 +1181,7 @@ steps:
       - 'run'
       - 'deploy'
       - 'streamlit-ui'
-      - '--image=gcr.io/PROJECT_ID/polibase-ui'
+      - '--image=gcr.io/PROJECT_ID/sagebase-ui'
       - '--region=asia-northeast1'
 ```
 
