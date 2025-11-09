@@ -784,7 +784,7 @@
   "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["polibase", "business", "metrics"],
+  "tags": ["sagebase", "business", "metrics"],
   "templating": {
     "list": [
       {
@@ -813,8 +813,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Polibase ビジネスメトリクス",
-  "uid": "polibase-business-metrics",
+  "title": "Sagebase ビジネスメトリクス",
+  "uid": "sagebase-business-metrics",
   "version": 1,
   "weekStart": ""
 }
