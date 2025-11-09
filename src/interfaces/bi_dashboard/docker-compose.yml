@@ -3,35 +3,35 @@ version: "3.8"
 services:
   bi-dashboard:
     build: .
-    container_name: polibase-bi-dashboard
+    container_name: sagebase-bi-dashboard
     ports:
       - "8050:8050"
     environment:
-      - DATABASE_URL=postgresql://polibase:polibase@db:5432/polibase
+      - DATABASE_URL=postgresql://sagebase:sagebase@db:5432/sagebase
     volumes:
       - .:/app
     depends_on:
       - db
     networks:
-      - polibase-network
+      - sagebase-network
 
   # PostgreSQL database (if not using existing Polibase DB)
   db:
     image: postgres:15
-    container_name: polibase-bi-db
+    container_name: sagebase-bi-db
     environment:
-      - POSTGRES_USER=polibase
-      - POSTGRES_PASSWORD=polibase
-      - POSTGRES_DB=polibase
+      - POSTGRES_USER=sagebase
+      - POSTGRES_PASSWORD=sagebase
+      - POSTGRES_DB=sagebase
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
-      - polibase-network
+      - sagebase-network
 
 networks:
-  polibase-network:
+  sagebase-network:
     driver: bridge
 
 volumes:

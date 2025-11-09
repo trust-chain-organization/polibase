@@ -84,14 +84,14 @@ docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.y
 #### Docker環境
 ```bash
 # docker-compose.yml で定義
-DATABASE_URL=postgresql://sagebase_user:polibase_pass@postgres:5432/sagebase_db
+DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
 GOOGLE_API_KEY=${GOOGLE_API_KEY}
 ```
 
 #### ローカル環境
 ```bash
 # .env ファイルで定義
-DATABASE_URL=postgresql://sagebase_user:polibase_pass@localhost:5432/sagebase_db
+DATABASE_URL=postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db
 GOOGLE_API_KEY=your-api-key-here
 ```
 
