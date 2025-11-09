@@ -46,13 +46,13 @@ class AnalyzeMatchingHistoryCommand:
 
         Examples:
             # Analyze last 30 days
-            polibase analyze-matching-history
+            sagebase analyze-matching-history
 
             # Analyze specific conference
-            polibase analyze-matching-history --conference-id 123
+            sagebase analyze-matching-history --conference-id 123
 
             # Export to CSV
-            polibase analyze-matching-history --export-csv results.csv
+            sagebase analyze-matching-history --export-csv results.csv
         """
 
         from src.domain.entities.llm_processing_history import (

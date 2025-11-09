@@ -104,8 +104,8 @@ class TestLogError:
         mock_logger.log.assert_called_once()
 
     @patch("src.infrastructure.logging.error_logger.logging.getLogger")
-    def test_log_error_polibase_exception(self, mock_get_logger, error_logger):
-        """Test logging Polibase exception includes error code."""
+    def test_log_error_sagebase_exception(self, mock_get_logger, error_logger):
+        """Test logging Sagebase exception includes error code."""
         mock_logger = MagicMock()
         error_logger.logger = mock_logger
 
@@ -303,8 +303,8 @@ class TestBuildLogData:
 
         assert log_data["global_context"] == {"global_key": "global_value"}
 
-    def test_build_log_data_polibase_exception(self, error_logger):
-        """Test building log data for Polibase exception."""
+    def test_build_log_data_sagebase_exception(self, error_logger):
+        """Test building log data for Sagebase exception."""
         exception = PolibaseException(
             "Test error", error_code="ERR_001", details={"key": "value"}
         )
@@ -440,7 +440,7 @@ class TestGetErrorLogger:
 
         # Should return same instance
         assert logger1 is logger2
-        assert logger1.logger.name == "polibase.error"
+        assert logger1.logger.name == "sagebase.error"
 
     def test_get_error_logger_returns_new_instance_with_name(self):
         """Test getting error logger with name returns new instance each time."""

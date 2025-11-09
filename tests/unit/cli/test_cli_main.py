@@ -21,7 +21,7 @@ class TestCLIMain:
         result = runner.invoke(cli, ["--help"])
 
         assert result.exit_code == 0
-        assert "Polibase" in result.output
+        assert "Sagebase" in result.output
         assert (
             "Political Activity Tracking Application" in result.output
             or "政治活動追跡アプリケーション" in result.output

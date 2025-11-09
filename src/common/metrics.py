@@ -23,7 +23,7 @@ _metrics_cache: dict[str, Any] = {}
 
 
 def setup_metrics(
-    service_name: str = "polibase",
+    service_name: str = "sagebase",
     service_version: str = "1.0.0",
     prometheus_port: int = 9090,
     enable_prometheus: bool = True,

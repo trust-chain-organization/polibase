@@ -1,4 +1,4 @@
-"""Main CLI entry point for Polibase using Clean Architecture."""
+"""Main CLI entry point for Sagebase using Clean Architecture."""
 
 import logging
 import sys
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 @click.group()
 def cli():
-    """Polibase - Political Activity Tracking Application.
+    """Sagebase - Political Activity Tracking Application.
 
     政治活動追跡アプリケーション
     """

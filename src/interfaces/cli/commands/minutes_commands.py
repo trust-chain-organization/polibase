@@ -32,7 +32,7 @@ class MinutesCommands(BaseCommand):
         --meeting-id or --process-all-gcs.
         """
         MinutesCommands.error(
-            "This command is deprecated. Please use 'polibase process-minutes --help' "
+            "This command is deprecated. Please use 'sagebase process-minutes --help' "
             "for the updated command options.",
             exit_code=1,
         )

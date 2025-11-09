@@ -81,7 +81,7 @@ def init_sentry() -> None:
             profiles_sample_rate=profiles_sample_rate,
             attach_stacktrace=True,
             send_default_pii=False,  # Don't send personally identifiable information
-            release=os.getenv("SENTRY_RELEASE", "polibase@0.1.0"),
+            release=os.getenv("SENTRY_RELEASE", "sagebase@0.1.0"),
             debug=settings.debug,
             before_send=before_send_filter,
             before_send_transaction=before_send_transaction_filter,

@@ -266,14 +266,14 @@ class TestInfrastructureExceptions:
             "upload",
             "document.pdf",
             "バケットが見つかりません",
-            bucket="polibase-bucket",
+            bucket="sagebase-bucket",
         )
         assert (
             "GCSストレージエラー (upload): document.pdf - バケットが見つかりません"
             in str(exception)
         )
         assert exception.error_code == "INF-005"
-        assert exception.details["bucket"] == "polibase-bucket"
+        assert exception.details["bucket"] == "sagebase-bucket"
 
     def test_network_exception(self):
         """ネットワーク例外のテスト"""

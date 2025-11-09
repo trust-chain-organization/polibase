@@ -23,7 +23,7 @@ class TestExecuteProcessesUseCase:
         input_dto = ProcessExecutionInputDto(
             process_type="minutes_division",
             command=(
-                "docker compose -f docker/docker-compose.yml exec polibase uv "
+                "docker compose -f docker/docker-compose.yml exec sagebase uv "
                 "run python -m src.process_minutes"
             ),
         )
@@ -43,8 +43,8 @@ class TestExecuteProcessesUseCase:
         input_dto = ProcessExecutionInputDto(
             process_type="speaker_extraction",
             command=(
-                "docker compose -f docker/docker-compose.yml exec polibase uv "
-                "run polibase extract-speakers"
+                "docker compose -f docker/docker-compose.yml exec sagebase uv "
+                "run sagebase extract-speakers"
             ),
         )
 

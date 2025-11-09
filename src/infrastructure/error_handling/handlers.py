@@ -97,9 +97,9 @@ class ErrorHandler:
             response.request_id = request_id
             return response
 
-        # Polibase例外の汎用処理
+        # Sagebase例外の汎用処理
         if isinstance(exception, PolibaseException):
-            return self._handle_polibase_exception(exception, request_id)
+            return self._handle_sagebase_exception(exception, request_id)
 
         # その他の例外
         return self._handle_unknown_exception(exception, request_id)
@@ -338,10 +338,10 @@ class ErrorHandler:
         )
 
     # Generic handlers
-    def _handle_polibase_exception(
+    def _handle_sagebase_exception(
         self, exception: PolibaseException, request_id: str
     ) -> ErrorResponse:
-        """Polibase例外の汎用処理"""
+        """Sagebase例外の汎用処理"""
         return ErrorResponse(
             status_code=500,
             message=exception.message,
@@ -439,7 +439,7 @@ class GlobalErrorHandler:
             "traceback": traceback.format_exc(),
         }
 
-        # Polibase例外の場合は詳細情報も記録
+        # Sagebase例外の場合は詳細情報も記録
         if isinstance(exception, PolibaseException):
             log_data["error_code"] = exception.error_code
             log_data["error_details"] = exception.details
