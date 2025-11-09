@@ -22,10 +22,10 @@
 #### 実行コマンド
 ```bash
 # ローカルPDFファイルから
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase process-minutes --pdf-path /path/to/file.pdf
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase process-minutes --pdf-path /path/to/file.pdf
 
 # GCSから（meeting IDを指定）
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase process-minutes --meeting-id 123
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase process-minutes --meeting-id 123
 ```
 
 #### 注意点
@@ -55,7 +55,7 @@ WHERE speaker_name = ...;
 
 #### 実行コマンド
 ```bash
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run python src/extract_speakers_from_minutes.py
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run python src/extract_speakers_from_minutes.py
 ```
 
 #### 注意点
@@ -91,7 +91,7 @@ confidence = llm.match(prompt)
 
 #### 実行コマンド
 ```bash
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run python update_speaker_links_llm.py
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run python update_speaker_links_llm.py
 ```
 
 #### 注意点
@@ -108,12 +108,12 @@ docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.y
 #### 実行コマンド
 ```bash
 # GCSアップロードあり
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase scrape-minutes \
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase scrape-minutes \
   --council-id 123 \
   --upload-to-gcs
 
 # ローカルのみ
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase scrape-minutes \
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase scrape-minutes \
   --council-id 123
 ```
 
@@ -149,10 +149,10 @@ docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.y
 #### 実行コマンド
 ```bash
 # 全政党
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase scrape-politicians --all-parties
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase scrape-politicians --all-parties
 
 # 特定政党
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase scrape-politicians --party-id 1
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase scrape-politicians --party-id 1
 ```
 
 #### 重複防止
@@ -201,13 +201,13 @@ else:
 #### 実行コマンド
 ```bash
 # ステップ1: 抽出
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase extract-conference-members --conference-id 1
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase extract-conference-members --conference-id 1
 
 # ステップ2: マッチング
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase match-conference-members --conference-id 1
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase match-conference-members --conference-id 1
 
 # ステップ3: 所属作成
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase create-affiliations --conference-id 1
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase create-affiliations --conference-id 1
 ```
 
 #### 手動レビュー
@@ -238,7 +238,7 @@ WHERE id = 456;
 **解決方法:**
 ```bash
 # 環境変数確認
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase env | grep GOOGLE_API_KEY
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase env | grep GOOGLE_API_KEY
 
 # .envファイル確認
 cat .env
@@ -281,7 +281,7 @@ CONFIDENCE_THRESHOLD = 0.7  # デフォルト
 **解決方法:**
 ```bash
 # Playwright依存関係確認（Dockerイメージに含まれているはず）
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase playwright install
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase playwright install
 
 # GCS認証
 gcloud auth application-default login
@@ -410,4 +410,4 @@ session.commit()
 - [Politician Scraping Flow](../../../docs/diagrams/data-flow-politician-scraping.mmd): 政治家スクレイピングフロー図
 
 ### コマンドリファレンス
-- [polibase-commands](../../polibase-commands/): すべてのコマンドの詳細
+- [sagebase-commands](../../sagebase-commands/): すべてのコマンドの詳細

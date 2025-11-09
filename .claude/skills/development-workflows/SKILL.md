@@ -24,13 +24,13 @@ Polibaseの開発パターン、ワークフロー、ベストプラクティス
 #### 基本パターン
 ```bash
 # コマンド実行の基本形
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase <command>
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase <command>
 
 # 例: Pythonスクリプト実行
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run python src/script.py
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run python src/script.py
 
 # 例: テスト実行
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run pytest
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run pytest
 
 # 例: データベース接続
 docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec postgres psql -U sagebase_user -d sagebase_db
@@ -57,13 +57,13 @@ just db
 #### 議事録処理の順序
 ```bash
 # ステップ1: 議事録を分割
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase process-minutes
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase process-minutes
 
 # ステップ2: 話者を抽出
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run python src/extract_speakers_from_minutes.py
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run python src/extract_speakers_from_minutes.py
 
 # ステップ3: 話者をマッチング
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run python update_speaker_links_llm.py
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run python update_speaker_links_llm.py
 ```
 
 **⚠️ この順序を変更しないこと！**
@@ -71,10 +71,10 @@ docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.y
 #### Web Scraping → GCS → Processing
 ```bash
 # ステップ1: スクレイピング + GCS アップロード
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase scrape-minutes --upload-to-gcs
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase scrape-minutes --upload-to-gcs
 
 # ステップ2: GCSから処理
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run polibase process-minutes --meeting-id <id>
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run sagebase process-minutes --meeting-id <id>
 
 # ステップ3: 以降は標準フローと同じ
 ```

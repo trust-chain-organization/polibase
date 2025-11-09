@@ -14,10 +14,10 @@ The safest method is to use the provided Python script:
 
 ```bash
 # Verify migration status
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python scripts/migrate_politicians_to_extracted.py --verify
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec sagebase uv run python scripts/migrate_politicians_to_extracted.py --verify
 
 # Rollback migration (removes migrated records)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run python scripts/migrate_politicians_to_extracted.py --rollback
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec sagebase uv run python scripts/migrate_politicians_to_extracted.py --rollback
 ```
 
 ### Method 2: Manual SQL Rollback

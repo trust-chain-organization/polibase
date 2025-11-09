@@ -5,11 +5,11 @@ When completing a task in Polibase, ALWAYS perform these checks:
 ## 1. Code Quality Checks (REQUIRED)
 ```bash
 # Format code with Ruff
-docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff format .
+docker compose -f docker/docker-compose.yml exec sagebase uv run --frozen ruff format .
 
 # Check linting with Ruff
-docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check .
-docker compose -f docker/docker-compose.yml exec polibase uv run --frozen ruff check . --fix  # Auto-fix issues
+docker compose -f docker/docker-compose.yml exec sagebase uv run --frozen ruff check .
+docker compose -f docker/docker-compose.yml exec sagebase uv run --frozen ruff check . --fix  # Auto-fix issues
 
 # Type checking with Pyright
 # NOTE: Run locally, not in Docker
@@ -19,10 +19,10 @@ uv run --frozen pyright
 ## 2. Run Tests
 ```bash
 # Run all tests
-docker compose -f docker/docker-compose.yml exec polibase uv run pytest
+docker compose -f docker/docker-compose.yml exec sagebase uv run pytest
 
 # Run specific test file
-docker compose -f docker/docker-compose.yml exec polibase uv run pytest tests/test_specific.py -v
+docker compose -f docker/docker-compose.yml exec sagebase uv run pytest tests/test_specific.py -v
 ```
 
 ## 3. Verify Functionality
@@ -37,16 +37,16 @@ When adding new migration files:
 2. **MUST** add to `database/02_run_migrations.sql` for reset-database.sh
 3. Test migration:
 ```bash
-docker compose -f docker/docker-compose.yml exec polibase cat /app/database/migrations/016_new_migration.sql | docker compose -f docker/docker-compose.yml exec -T postgres psql -U sagebase_user -d sagebase_db
+docker compose -f docker/docker-compose.yml exec sagebase cat /app/database/migrations/016_new_migration.sql | docker compose -f docker/docker-compose.yml exec -T postgres psql -U sagebase_user -d sagebase_db
 ```
 
 ## 5. Pre-commit Hooks
 ```bash
 # Run pre-commit on changed files
-docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit run
+docker compose -f docker/docker-compose.yml exec sagebase uv run pre-commit run
 
 # Run on all files
-docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit run --all-files
+docker compose -f docker/docker-compose.yml exec sagebase uv run pre-commit run --all-files
 ```
 
 ## 6. UI Testing (if UI changes)

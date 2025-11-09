@@ -1,6 +1,6 @@
-# Polibase Commands Reference
+# Sagebase Commands Reference
 
-Comprehensive command reference for Polibase operations.
+Comprehensive command reference for Sagebase operations.
 
 ## Command Prefix Convention
 
@@ -13,7 +13,7 @@ Throughout this document:
 just test
 
 # Full Docker command (verbose)
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec polibase uv run pytest
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec sagebase uv run pytest
 ```
 
 **Note**: git worktreeを使用している場合、`docker-compose.override.yml`が自動生成されます。`just`コマンドはこれを自動検出しますが、手動でDocker Composeを実行する場合は必ず`-f docker/docker-compose.override.yml`を含めてください。
@@ -48,7 +48,7 @@ just down
 just logs
 
 # View specific service logs
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml logs -f polibase
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml logs -f sagebase
 
 # Check running containers
 docker ps
@@ -97,119 +97,119 @@ cat docker/docker-compose.override.yml
 
 ## 2. Application Commands
 
-### Unified CLI (polibase command)
+### Unified CLI (sagebase command)
 
-All commands use: `just exec uv run polibase <subcommand>`
+All commands use: `just exec uv run sagebase <subcommand>`
 
 #### Help
 
 ```bash
 # Show all available commands
-just exec uv run polibase --help
+just exec uv run sagebase --help
 ```
 
 #### Process Meeting Minutes
 
 ```bash
 # Process all unprocessed minutes
-just exec uv run polibase process-minutes
+just exec uv run sagebase process-minutes
 
 # Process specific meeting (from GCS)
-just exec uv run polibase process-minutes --meeting-id 123
+just exec uv run sagebase process-minutes --meeting-id 123
 ```
 
 #### Scrape Politicians
 
 ```bash
 # Scrape all parties
-just exec uv run polibase scrape-politicians --all-parties
+just exec uv run sagebase scrape-politicians --all-parties
 
 # Scrape specific party
-just exec uv run polibase scrape-politicians --party-id 5
+just exec uv run sagebase scrape-politicians --party-id 5
 
 # Dry run (preview without saving)
-just exec uv run polibase scrape-politicians --all-parties --dry-run
+just exec uv run sagebase scrape-politicians --all-parties --dry-run
 
 # Hierarchical scraping (experimental)
-just exec uv run polibase scrape-politicians --party-id 5 --hierarchical
-just exec uv run polibase scrape-politicians --party-id 5 --hierarchical --max-depth 5
+just exec uv run sagebase scrape-politicians --party-id 5 --hierarchical
+just exec uv run sagebase scrape-politicians --party-id 5 --hierarchical --max-depth 5
 ```
 
 #### Speaker Operations
 
 ```bash
 # Extract speakers from minutes
-just exec uv run polibase extract-speakers
+just exec uv run sagebase extract-speakers
 
 # Update speaker links with LLM
-just exec uv run polibase update-speakers --use-llm
+just exec uv run sagebase update-speakers --use-llm
 ```
 
 #### Web Scraping
 
 ```bash
 # Scrape single meeting minutes
-just exec uv run polibase scrape-minutes "https://example.com/minutes"
+just exec uv run sagebase scrape-minutes "https://example.com/minutes"
 
 # Scrape with GCS upload
-just exec uv run polibase scrape-minutes "URL" --upload-to-gcs
-just exec uv run polibase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
+just exec uv run sagebase scrape-minutes "URL" --upload-to-gcs
+just exec uv run sagebase scrape-minutes "URL" --upload-to-gcs --gcs-bucket my-bucket
 
 # Batch scrape multiple minutes
-just exec uv run polibase batch-scrape --tenant kyoto
-just exec uv run polibase batch-scrape --tenant osaka
+just exec uv run sagebase batch-scrape --tenant kyoto
+just exec uv run sagebase batch-scrape --tenant osaka
 
 # Batch scrape with GCS upload
-just exec uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
+just exec uv run sagebase batch-scrape --tenant kyoto --upload-to-gcs
 ```
 
 #### Conference Member Extraction (3-step process)
 
 ```bash
 # Step 1: Extract members from conference URLs
-just exec uv run polibase extract-conference-members --conference-id 185
-just exec uv run polibase extract-conference-members --force  # Re-extract all
+just exec uv run sagebase extract-conference-members --conference-id 185
+just exec uv run sagebase extract-conference-members --force  # Re-extract all
 
 # Step 2: Match with existing politicians
-just exec uv run polibase match-conference-members --conference-id 185
-just exec uv run polibase match-conference-members  # Process all pending
+just exec uv run sagebase match-conference-members --conference-id 185
+just exec uv run sagebase match-conference-members  # Process all pending
 
 # Step 3: Create affiliations
-just exec uv run polibase create-affiliations --conference-id 185
-just exec uv run polibase create-affiliations --start-date 2024-01-01
+just exec uv run sagebase create-affiliations --conference-id 185
+just exec uv run sagebase create-affiliations --start-date 2024-01-01
 
 # Check status
-just exec uv run polibase member-status --conference-id 185
+just exec uv run sagebase member-status --conference-id 185
 ```
 
 #### Parliamentary Group Member Extraction (3-step process)
 
 ```bash
 # Step 1: Extract members
-just exec uv run polibase extract-parliamentary-group-members --parliamentary-group-id 1
-just exec uv run polibase extract-parliamentary-group-members --force
+just exec uv run sagebase extract-parliamentary-group-members --parliamentary-group-id 1
+just exec uv run sagebase extract-parliamentary-group-members --force
 
 # Step 2: Match with politicians
-just exec uv run polibase match-parliamentary-group-members --parliamentary-group-id 1
-just exec uv run polibase match-parliamentary-group-members  # Process all pending
+just exec uv run sagebase match-parliamentary-group-members --parliamentary-group-id 1
+just exec uv run sagebase match-parliamentary-group-members  # Process all pending
 
 # Step 3: Create memberships
-just exec uv run polibase create-parliamentary-group-affiliations --parliamentary-group-id 1
-just exec uv run polibase create-parliamentary-group-affiliations --start-date 2024-01-01
-just exec uv run polibase create-parliamentary-group-affiliations --min-confidence 0.8
+just exec uv run sagebase create-parliamentary-group-affiliations --parliamentary-group-id 1
+just exec uv run sagebase create-parliamentary-group-affiliations --start-date 2024-01-01
+just exec uv run sagebase create-parliamentary-group-affiliations --min-confidence 0.8
 
 # Check status
-just exec uv run polibase parliamentary-group-member-status --parliamentary-group-id 1
+just exec uv run sagebase parliamentary-group-member-status --parliamentary-group-id 1
 ```
 
 #### User Interfaces
 
 ```bash
 # Launch Streamlit web UI
-just exec uv run polibase streamlit
+just exec uv run sagebase streamlit
 
 # Launch monitoring dashboard
-just exec uv run polibase monitoring
+just exec uv run sagebase monitoring
 # or
 just monitoring
 ```
@@ -218,7 +218,7 @@ just monitoring
 
 ```bash
 # Show governing body coverage
-just exec uv run polibase coverage
+just exec uv run sagebase coverage
 ```
 
 ### Legacy Direct Module Execution
@@ -298,7 +298,7 @@ just exec uv run python -c "from src.config.database import test_connection; tes
 
 ```bash
 # Run LLM evaluation tests (local - uses mock by default)
-just exec uv run polibase evaluate --all
+just exec uv run sagebase evaluate --all
 
 # Run with real LLM API (manual only)
 RUN_EVALUATION_TESTS=true just exec uv run pytest tests/evaluation/ -m evaluation
@@ -312,12 +312,12 @@ RUN_EVALUATION_TESTS=true just exec uv run pytest tests/evaluation/ -m evaluatio
 # Format code
 just format
 # Full command:
-# docker compose ... exec polibase uv run --frozen ruff format .
+# docker compose ... exec sagebase uv run --frozen ruff format .
 
 # Check code style
 just lint
 # Full command:
-# docker compose ... exec polibase uv run --frozen ruff check .
+# docker compose ... exec sagebase uv run --frozen ruff check .
 
 # Fix auto-fixable issues
 just exec uv run --frozen ruff check . --fix
@@ -402,22 +402,22 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 
 ```bash
 # Backup to local and GCS
-just exec uv run polibase database backup
+just exec uv run sagebase database backup
 
 # Backup to local only
-just exec uv run polibase database backup --no-gcs
+just exec uv run sagebase database backup --no-gcs
 
 # Restore from local file
-just exec uv run polibase database restore backup.sql
+just exec uv run sagebase database restore backup.sql
 
 # Restore from GCS
-just exec uv run polibase database restore gs://bucket/backup.sql
+just exec uv run sagebase database restore gs://bucket/backup.sql
 
 # List all backups
-just exec uv run polibase database list
+just exec uv run sagebase database list
 
 # List local backups only
-just exec uv run polibase database list --no-gcs
+just exec uv run sagebase database list --no-gcs
 ```
 
 #### Using Legacy Scripts (local only)
@@ -546,16 +546,16 @@ git commit -m "Your message"
 
 ```bash
 # 1. Scrape meeting minutes from web
-just exec uv run polibase scrape-minutes "URL" --upload-to-gcs
+just exec uv run sagebase scrape-minutes "URL" --upload-to-gcs
 
 # 2. Process minutes (extract speeches)
-just exec uv run polibase process-minutes --meeting-id 123
+just exec uv run sagebase process-minutes --meeting-id 123
 
 # 3. Extract speakers
-just exec uv run polibase extract-speakers
+just exec uv run sagebase extract-speakers
 
 # 4. Match speakers with politicians
-just exec uv run polibase update-speakers --use-llm
+just exec uv run sagebase update-speakers --use-llm
 
 # 5. View results in Streamlit
 just streamlit
@@ -565,19 +565,19 @@ just streamlit
 
 ```bash
 # 1. Extract members
-just exec uv run polibase extract-conference-members --conference-id 185
+just exec uv run sagebase extract-conference-members --conference-id 185
 
 # 2. Review extraction (optional - via Streamlit)
 just streamlit
 
 # 3. Match with politicians
-just exec uv run polibase match-conference-members --conference-id 185
+just exec uv run sagebase match-conference-members --conference-id 185
 
 # 4. Review matches (optional)
-just exec uv run polibase member-status --conference-id 185
+just exec uv run sagebase member-status --conference-id 185
 
 # 5. Create affiliations (only for matched records)
-just exec uv run polibase create-affiliations --conference-id 185
+just exec uv run sagebase create-affiliations --conference-id 185
 ```
 
 ### Database Migration Workflow
@@ -711,7 +711,7 @@ just up
 just streamlit
 
 # Process minutes
-just exec uv run polibase process-minutes
+just exec uv run sagebase process-minutes
 
 # Code quality check
 just format && just lint && uv run pyright
