@@ -139,5 +139,5 @@ class CustomCouncilScraper(BaseScraper):
 
 Run tests with:
 ```bash
-docker compose exec polibase uv run pytest tests/test_web_scraper.py -v
+docker compose exec sagebase uv run pytest tests/test_web_scraper.py -v
 ```

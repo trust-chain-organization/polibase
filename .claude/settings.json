@@ -64,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/okodoon/project/polibase/.claude/hooks/post-file-edit",
+            "command": "/Users/okodoon/project/sagebase/.claude/hooks/post-file-edit",
             "timeout": 120
           }
         ]

@@ -47,7 +47,7 @@ src/interfaces/bi_dashboard/
 cd src/interfaces/bi_dashboard
 
 # 環境変数を設定してアプリを起動
-export DATABASE_URL=postgresql://polibase:polibase@localhost:5432/polibase
+export DATABASE_URL=postgresql://sagebase:sagebase@localhost:5432/sagebase
 python app.py
 ```
 

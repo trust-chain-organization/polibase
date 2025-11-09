@@ -26,8 +26,8 @@ docker compose -f docker/docker-compose.yml exec sagebase uv run pytest tests/te
 ```
 
 ## 3. Verify Functionality
-- If modifying minutes processing: Run `polibase process-minutes`
-- If modifying UI: Test with `polibase streamlit`
+- If modifying minutes processing: Run `sagebase process-minutes`
+- If modifying UI: Test with `sagebase streamlit`
 - If modifying scraping: Test specific scraper commands
 - Always verify database changes are applied correctly
 

@@ -7,7 +7,7 @@ Real-world workflow examples for common Sagebase operations.
 ```bash
 # 1. Clone repository (if not already done)
 git clone <repository-url>
-cd polibase
+cd sagebase
 
 # 2. Copy and configure environment
 cp .env.example .env
