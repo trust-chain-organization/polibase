@@ -2,7 +2,7 @@
 # データベースはコンテナ停止時に削除されます
 
 services:
-  polibase:
+  sagebase:
     build:
       context: ../
       dockerfile: docker/Dockerfile
