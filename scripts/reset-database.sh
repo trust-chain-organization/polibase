@@ -52,7 +52,7 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     fi
 
     # pg_isreadyでPostgreSQLの準備状態を確認
-    if docker exec docker-postgres-1 pg_isready -U polibase_user -d polibase_db > /dev/null 2>&1; then
+    if docker exec docker-postgres-1 pg_isready -U sagebase_user -d sagebase_db > /dev/null 2>&1; then
         echo "✅ PostgreSQLが起動しました"
         break
     fi
@@ -73,33 +73,33 @@ echo ""
 echo "🔍 データベース初期化状態を確認中..."
 echo ""
 echo "📋 テーブル一覧:"
-docker exec docker-postgres-1 psql -U polibase_user -d polibase_db -c "\dt" | grep -E "public|meetings|conferences|politicians|speakers|conversations|proposals|governing_bodies|political_parties|parliamentary_groups|extracted_conference_members|politician_affiliations"
+docker exec docker-postgres-1 psql -U sagebase_user -d sagebase_db -c "\dt" | grep -E "public|meetings|conferences|politicians|speakers|conversations|proposals|governing_bodies|political_parties|parliamentary_groups|extracted_conference_members|politician_affiliations"
 
 echo ""
 echo "🔄 マイグレーション実行状況を確認中..."
 echo ""
 echo "meetings テーブルのカラム確認:"
-docker exec docker-postgres-1 psql -U polibase_user -d polibase_db -c "\d meetings" | grep -E "gcs_pdf_uri|gcs_text_uri|url|name|processed_at" || echo "  ✅ meetings テーブルのマイグレーション確認完了"
+docker exec docker-postgres-1 psql -U sagebase_user -d sagebase_db -c "\d meetings" | grep -E "gcs_pdf_uri|gcs_text_uri|url|name|processed_at" || echo "  ✅ meetings テーブルのマイグレーション確認完了"
 
 echo ""
 echo "conferences テーブルのカラム確認:"
-docker exec docker-postgres-1 psql -U polibase_user -d polibase_db -c "\d conferences" | grep "members_introduction_url" || echo "  ✅ conferences テーブルのマイグレーション確認完了"
+docker exec docker-postgres-1 psql -U sagebase_user -d sagebase_db -c "\d conferences" | grep "members_introduction_url" || echo "  ✅ conferences テーブルのマイグレーション確認完了"
 
 echo ""
 echo "🎉 データベースリセット完了！"
 echo ""
 echo "📊 初期データが設定されています："
 echo "統治機関 (governing_bodies):"
-docker exec docker-postgres-1 psql -U polibase_user -d polibase_db -t -c "SELECT COUNT(*) as count, type FROM governing_bodies GROUP BY type ORDER BY type;" | grep -v "^$"
+docker exec docker-postgres-1 psql -U sagebase_user -d sagebase_db -t -c "SELECT COUNT(*) as count, type FROM governing_bodies GROUP BY type ORDER BY type;" | grep -v "^$"
 
 echo ""
 echo "政党 (political_parties):"
-docker exec docker-postgres-1 psql -U polibase_user -d polibase_db -t -c "SELECT name FROM political_parties ORDER BY name;" | head -5
+docker exec docker-postgres-1 psql -U sagebase_user -d sagebase_db -t -c "SELECT name FROM political_parties ORDER BY name;" | head -5
 echo "... (他の政党は省略)"
 
 echo ""
 echo "会議 (conferences):"
-docker exec docker-postgres-1 psql -U polibase_user -d polibase_db -t -c "SELECT COUNT(*) FROM conferences;" | tr -d ' '
+docker exec docker-postgres-1 psql -U sagebase_user -d sagebase_db -t -c "SELECT COUNT(*) FROM conferences;" | tr -d ' '
 echo "件の会議データ"
 
 echo ""

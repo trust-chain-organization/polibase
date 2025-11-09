@@ -224,10 +224,10 @@ def create_engine_with_config(database_url: str | None):
         # Check if running in Docker
         if os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER"):
             database_url = (
-                "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db"
+                "postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db"
             )
         else:
-            database_url = "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db"
+            database_url = "postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db"
 
     engine_kwargs = {
         "url": database_url,

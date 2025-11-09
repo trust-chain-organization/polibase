@@ -80,7 +80,7 @@ curl http://localhost:8050
 
 ```bash
 # データベースに接続
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db
 
 # 自治体データを確認
 SELECT COUNT(*) FROM governing_bodies;
@@ -231,7 +231,7 @@ docker compose -f docker/docker-compose.yml exec bi-dashboard env | grep DATABAS
 
 正しい接続情報であることを確認してください：
 ```
-DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
 ```
 
 ---
@@ -322,7 +322,7 @@ KeyError: 'DATABASE_URL'
 services:
   bi-dashboard:
     environment:
-      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
 ```
 
 **2. サービスを再起動**
@@ -406,7 +406,7 @@ print(stats)
 
 ```bash
 # データベースに接続
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db
 
 # データを確認
 SELECT COUNT(*) FROM governing_bodies;
@@ -435,7 +435,7 @@ docker compose -f docker/docker-compose.yml exec bi-dashboard nc -zv postgres 54
 
 ```bash
 # データベースに接続
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db
 
 # クエリのパフォーマンスを確認
 EXPLAIN ANALYZE
@@ -488,7 +488,7 @@ CREATE INDEX IF NOT EXISTS idx_meetings_conference_id ON meetings(conference_id)
 
 ```bash
 # データベースに接続
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db
 
 # VACUUM ANALYZE を実行
 VACUUM ANALYZE governing_bodies;
@@ -544,7 +544,7 @@ def get_database_url() -> str:
 
 ```bash
 # 同時接続数を確認
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -c "SELECT count(*) FROM pg_stat_activity;"
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db -c "SELECT count(*) FROM pg_stat_activity;"
 ```
 
 #### 解決方法
@@ -553,7 +553,7 @@ docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user 
 
 ```bash
 # PostgreSQLの設定を確認
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -c "SHOW max_connections;"
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db -c "SHOW max_connections;"
 
 # 必要に応じて、PostgreSQLの設定を変更
 ```

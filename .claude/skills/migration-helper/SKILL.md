@@ -97,7 +97,7 @@ For comprehensive migration patterns and SQL details, see [reference.md](referen
 
 # Verify migration applied
 docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec postgres \
-    psql -U polibase_user -d polibase_db \
+    psql -U sagebase_user -d sagebase_db \
     -c "\d table_name"
 ```
 

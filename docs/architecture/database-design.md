@@ -579,7 +579,7 @@ touch database/migrations/018_your_migration.sql
 ```bash
 # Docker環境で実行
 docker compose exec polibase cat database/migrations/018_your_migration.sql | \
-    docker compose exec -T postgres psql -U polibase_user -d polibase_db
+    docker compose exec -T postgres psql -U sagebase_user -d sagebase_db
 
 # またはリセット
 ./reset-database.sh
@@ -722,13 +722,13 @@ ALTER SYSTEM SET archive_command = 'gsutil cp %p gs://backup-bucket/wal/%f';
 ```sql
 -- 読み取り専用ユーザー
 CREATE USER readonly_user WITH PASSWORD 'secure_password';
-GRANT CONNECT ON DATABASE polibase_db TO readonly_user;
+GRANT CONNECT ON DATABASE sagebase_db TO readonly_user;
 GRANT USAGE ON SCHEMA public TO readonly_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
 
 -- アプリケーションユーザー
 CREATE USER app_user WITH PASSWORD 'secure_password';
-GRANT ALL PRIVILEGES ON DATABASE polibase_db TO app_user;
+GRANT ALL PRIVILEGES ON DATABASE sagebase_db TO app_user;
 ```
 
 ### データ暗号化

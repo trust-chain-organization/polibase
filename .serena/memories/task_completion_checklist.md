@@ -37,7 +37,7 @@ When adding new migration files:
 2. **MUST** add to `database/02_run_migrations.sql` for reset-database.sh
 3. Test migration:
 ```bash
-docker compose -f docker/docker-compose.yml exec polibase cat /app/database/migrations/016_new_migration.sql | docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec polibase cat /app/database/migrations/016_new_migration.sql | docker compose -f docker/docker-compose.yml exec -T postgres psql -U sagebase_user -d sagebase_db
 ```
 
 ## 5. Pre-commit Hooks

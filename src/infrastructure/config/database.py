@@ -49,9 +49,9 @@ def _get_database_url() -> str:
             )
 
         unix_socket_dir = os.getenv("CLOUD_SQL_UNIX_SOCKET_DIR", "/cloudsql")
-        db_user = os.getenv("DB_USER", "polibase_user")
-        db_password = os.getenv("DB_PASSWORD", "polibase_password")
-        db_name = os.getenv("DB_NAME", "polibase_db")
+        db_user = os.getenv("DB_USER", "sagebase_user")
+        db_password = os.getenv("DB_PASSWORD", "sagebase_password")
+        db_name = os.getenv("DB_NAME", "sagebase_db")
 
         # Unix socket connection format
         socket_path = f"{unix_socket_dir}/{connection_name}"
@@ -63,7 +63,7 @@ def _get_database_url() -> str:
     # Use standard DATABASE_URL for local PostgreSQL
     url = os.getenv(
         "DATABASE_URL",
-        "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db",
+        "postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db",
     )
     logger.info("Using standard DATABASE_URL for local PostgreSQL")
     return url

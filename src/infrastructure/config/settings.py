@@ -34,7 +34,7 @@ class Settings:
         # Database configuration
         self.database_url: str = os.getenv(
             "DATABASE_URL",
-            "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db",
+            "postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db",
         )
 
         # API Keys
@@ -147,7 +147,7 @@ class Settings:
         # Ensure database_url is not None
         if not self.database_url:
             # Use default PostgreSQL URL
-            self.database_url = "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db"
+            self.database_url = "postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db"
 
         # Check if running in Docker
         if os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER"):

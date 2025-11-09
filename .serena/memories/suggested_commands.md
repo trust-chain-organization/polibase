@@ -71,7 +71,7 @@ docker compose -f docker/docker-compose.yml exec polibase uv run pre-commit run 
 ### Database Commands
 ```bash
 # Connect to PostgreSQL
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db
 
 # Backup database
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase database backup
@@ -80,7 +80,7 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase databa
 ./scripts/reset-database.sh
 
 # Apply migration
-docker compose -f docker/docker-compose.yml exec polibase cat /app/database/migrations/XXX.sql | docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec polibase cat /app/database/migrations/XXX.sql | docker compose -f docker/docker-compose.yml exec -T postgres psql -U sagebase_user -d sagebase_db
 ```
 
 ### Web Scraping

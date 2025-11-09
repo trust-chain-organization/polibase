@@ -393,7 +393,7 @@ just exec uv run pre-commit autoupdate
 just db
 
 # Full command
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml exec postgres psql -U sagebase_user -d sagebase_db
 ```
 
 ### Backup and Restore
@@ -443,7 +443,7 @@ just exec uv run polibase database list --no-gcs
 # Apply specific migration manually
 cat database/migrations/016_new_migration.sql | \
     docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.yml \
-    exec -T postgres psql -U polibase_user -d polibase_db
+    exec -T postgres psql -U sagebase_user -d sagebase_db
 ```
 
 ### Database Inspection
@@ -690,7 +690,7 @@ Key environment variables in `.env`:
 GOOGLE_API_KEY=your-gemini-api-key
 
 # Database (auto-configured in Docker)
-DATABASE_URL=postgresql://polibase_user:polibase_password@localhost:5432/polibase_db
+DATABASE_URL=postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db
 
 # Optional: Google Cloud Storage
 GCS_BUCKET_NAME=your-bucket-name

@@ -214,7 +214,7 @@ uv run pytest tests/test_minutes_divider.py -v
 ### 1. PostgreSQLに接続
 ```bash
 # Docker環境のPostgreSQLに接続
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db
 ```
 
 ### 2. 基本的なSQLクエリ例
@@ -352,10 +352,10 @@ docker compose -f docker/docker-compose.yml exec polibase uv run sagebase databa
 #### 手動バックアップ・リストア
 ```bash
 # 手動バックアップ
-docker compose -f docker/docker-compose.yml exec postgres pg_dump -U polibase_user polibase_db > backup.sql
+docker compose -f docker/docker-compose.yml exec postgres pg_dump -U sagebase_user sagebase_db > backup.sql
 
 # 手動リストア
-docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
+docker compose -f docker/docker-compose.yml exec -T postgres psql -U sagebase_user -d sagebase_db < backup.sql
 ```
 
 ## 🔧 開発
@@ -416,7 +416,7 @@ docker compose -f docker/docker-compose.yml exec polibase uv run python scripts/
 
 ### 必須設定
 - `GOOGLE_API_KEY`: Google Gemini APIキー（議事録処理・政治家抽出に必要）
-- `DATABASE_URL`: PostgreSQL接続URL（デフォルト: `postgresql://polibase_user:polibase_password@localhost:5432/polibase_db`）
+- `DATABASE_URL`: PostgreSQL接続URL（デフォルト: `postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db`）
 
 ### タイムアウト設定（秒単位）
 - `WEB_SCRAPER_TIMEOUT`: Webページ読み込みタイムアウト（デフォルト: 60秒）

@@ -36,9 +36,9 @@ jobs:
       postgres:
         image: postgres:15-alpine
         env:
-          POSTGRES_USER: polibase_user
-          POSTGRES_PASSWORD: polibase_password
-          POSTGRES_DB: polibase_db
+          POSTGRES_USER: sagebase_user
+          POSTGRES_PASSWORD: sagebase_password
+          POSTGRES_DB: sagebase_db
         ports:
           - 5432:5432
         options: >-
@@ -70,7 +70,7 @@ jobs:
       - name: Set up environment
         run: |
           cp .env.example .env
-          echo "DATABASE_URL=postgresql://polibase_user:polibase_password@localhost:5432/polibase_db" >> .env
+          echo "DATABASE_URL=postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db" >> .env
 
           # Use real API key if provided and use_real_llm is true
           if [[ "${{ inputs.use_real_llm }}" == "true" ]] && [[ -n "${{ secrets.GOOGLE_API_KEY }}" ]]; then
@@ -85,12 +85,12 @@ jobs:
 
       - name: Initialize database
         run: |
-          PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f database/init_ci.sql
+          PGPASSWORD=sagebase_password psql -h localhost -U sagebase_user -d sagebase_db -f database/init_ci.sql
           # Apply migrations
           for file in database/migrations/*.sql; do
             if [ -f "$file" ]; then
               echo "Applying migration: $file"
-              PGPASSWORD=polibase_password psql -h localhost -U polibase_user -d polibase_db -f "$file"
+              PGPASSWORD=sagebase_password psql -h localhost -U sagebase_user -d sagebase_db -f "$file"
             fi
           done
 

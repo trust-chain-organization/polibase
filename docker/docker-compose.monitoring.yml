@@ -88,7 +88,7 @@ services:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: sagebase-postgres-exporter
     environment:
-      DATA_SOURCE_NAME: "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db?sslmode=disable"
     ports:
       - "9187:9187"
     depends_on:

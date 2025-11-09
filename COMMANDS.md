@@ -151,16 +151,16 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase databa
 
 ```bash
 # PostgreSQLに接続
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db
 
 # 手動バックアップ
-docker compose -f docker/docker-compose.yml exec postgres pg_dump -U polibase_user polibase_db > backup.sql
+docker compose -f docker/docker-compose.yml exec postgres pg_dump -U sagebase_user sagebase_db > backup.sql
 
 # 手動リストア
-docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db < backup.sql
+docker compose -f docker/docker-compose.yml exec -T postgres psql -U sagebase_user -d sagebase_db < backup.sql
 
 # マイグレーションの適用
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -f /docker-entrypoint-initdb.d/migrations/004_add_gcs_uri_to_meetings.sql
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db -f /docker-entrypoint-initdb.d/migrations/004_add_gcs_uri_to_meetings.sql
 ```
 
 ## 開発用コマンド
@@ -211,7 +211,7 @@ docker compose -f docker/docker-compose.yml exec polibase uv run python -c "from
 docker compose -f docker/docker-compose.yml logs postgres
 
 # データベースの状態確認
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -c "\dt"
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db -c "\dt"
 ```
 
 
@@ -242,5 +242,5 @@ docker compose -f docker/docker-compose.yml exec polibase uv run polibase update
 docker compose -f docker/docker-compose.yml exec polibase uv run polibase scrape-politicians --all-parties  # 政治家情報取得
 
 # 🗃️ データベース操作
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db  # DB接続
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db  # DB接続
 ```

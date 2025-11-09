@@ -43,7 +43,7 @@ up: _setup_worktree
 	echo "Installing Playwright browsers..."
 	docker compose {{compose_cmd}} exec polibase uv run playwright install chromium
 	# Run test-setup.sh if it exists (for initial database setup)
-	if [ -f scripts/test-setup.sh ] && docker compose {{compose_cmd}} exec postgres psql -U polibase_user -d polibase_db -c "SELECT COUNT(*) FROM meetings;" 2>/dev/null | grep -q "0"; then
+	if [ -f scripts/test-setup.sh ] && docker compose {{compose_cmd}} exec postgres psql -U sagebase_user -d sagebase_db -c "SELECT COUNT(*) FROM meetings;" 2>/dev/null | grep -q "0"; then
 		echo "Setting up test data..."
 		./scripts/test-setup.sh
 	fi
@@ -76,7 +76,7 @@ up: _setup_worktree
 
 # Connect to database
 db: _setup_worktree
-	docker compose {{compose_cmd}} exec postgres psql -U polibase_user -d polibase_db
+	docker compose {{compose_cmd}} exec postgres psql -U sagebase_user -d sagebase_db
 
 # Run tests with type checking
 test: _setup_worktree

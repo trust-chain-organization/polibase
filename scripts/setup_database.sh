@@ -15,11 +15,11 @@ echo "データベース接続をテストしています..."
 docker compose -f docker/docker-compose.yml exec polibase python -m src.config.database
 
 echo "PostgreSQLデータベースの状態を確認しています..."
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -c "\dt"
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db -c "\dt"
 
 echo "テーブル作成状況を確認しています..."
-docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"
+docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"
 
 echo "設定完了！以下のコマンドでコンテナにアクセスできます："
 echo "docker compose -f docker/docker-compose.yml exec polibase bash"
-echo "docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db"
+echo "docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db"

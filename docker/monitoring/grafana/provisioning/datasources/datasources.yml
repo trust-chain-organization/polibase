@@ -30,10 +30,10 @@ datasources:
   - name: PostgreSQL
     type: postgres
     url: postgres:5432
-    database: polibase_db
-    user: polibase_user
+    database: sagebase_db
+    user: sagebase_user
     secureJsonData:
-      password: polibase_password
+      password: sagebase_password
     jsonData:
       sslmode: "disable"
       maxOpenConns: 10
