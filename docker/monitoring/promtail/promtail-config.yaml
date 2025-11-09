@@ -76,13 +76,13 @@ scrape_configs:
           source: timestamp
 
   # アプリケーションログの収集
-  - job_name: polibase
+  - job_name: sagebase
     static_configs:
       - targets:
           - localhost
         labels:
-          job: polibase
-          __path__: /var/log/polibase/*.log
+          job: sagebase
+          __path__: /var/log/sagebase/*.log
 
     pipeline_stages:
       # 構造化ログのパース

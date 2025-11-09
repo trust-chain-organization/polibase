@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     # メトリクスの初期化（Prometheusサーバーは別ポートで起動）
     setup_metrics(
-        service_name="polibase",
+        service_name="sagebase",
         service_version="1.0.0",
         prometheus_port=9090,
         enable_prometheus=True,
@@ -85,7 +85,7 @@ async def metrics_middleware(
 @app.get("/health")
 async def health_check():
     """ヘルスチェックエンドポイント."""
-    return {"status": "healthy", "service": "polibase-metrics"}
+    return {"status": "healthy", "service": "sagebase-metrics"}
 
 
 @app.get("/metrics", response_class=PlainTextResponse)
@@ -123,13 +123,13 @@ async def metrics():
 async def root() -> dict[str, Any]:
     """ルートエンドポイント."""
     return {
-        "service": "polibase-metrics",
+        "service": "sagebase-metrics",
         "endpoints": {
             "health": "/health",
             "metrics": "/metrics",
             "prometheus": "http://localhost:9090/metrics",
         },
-        "description": "Metrics service for Polibase application",
+        "description": "Metrics service for Sagebase application",
     }
 
 

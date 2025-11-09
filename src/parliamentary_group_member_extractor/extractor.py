@@ -186,7 +186,7 @@ HTMLコンテンツ（構造の参考用）:
             if "playwright" in str(e).lower():
                 logger.error(
                     "Playwright error - browser may not be properly installed. "
-                    "Run: docker compose exec polibase uv run playwright install"
+                    "Run: docker compose exec sagebase uv run playwright install"
                 )
             return None
 

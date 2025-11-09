@@ -4,12 +4,12 @@ set -e
 
 PROJECT_ID="${GCP_PROJECT_ID:-trust-chain-828ad}"
 REGION="${GCP_REGION:-asia-northeast1}"
-INSTANCE_NAME="${CLOUD_SQL_INSTANCE:-polibase-dev-db}"
-DATABASE_NAME="${DATABASE_NAME:-polibase_db}"
-GCS_BUCKET="${GCS_BUCKET_NAME:-polibase-backups}"
+INSTANCE_NAME="${CLOUD_SQL_INSTANCE:-sagebase-dev-db}"
+DATABASE_NAME="${DATABASE_NAME:-sagebase_db}"
+GCS_BUCKET="${GCS_BUCKET_NAME:-sagebase-backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-echo "🛑 Stopping Polibase development environment..."
+echo "🛑 Stopping Sagebase development environment..."
 echo "Project: $PROJECT_ID"
 echo ""
 

@@ -578,8 +578,8 @@ touch database/migrations/018_your_migration.sql
 3. **マイグレーション実行**
 ```bash
 # Docker環境で実行
-docker compose exec polibase cat database/migrations/018_your_migration.sql | \
-    docker compose exec -T postgres psql -U polibase_user -d polibase_db
+docker compose exec sagebase cat database/migrations/018_your_migration.sql | \
+    docker compose exec -T postgres psql -U sagebase_user -d sagebase_db
 
 # またはリセット
 ./reset-database.sh
@@ -673,10 +673,10 @@ VACUUM ANALYZE speakers;
 #### 自動バックアップ
 ```bash
 # 日次バックアップ（GCS連携）
-docker compose exec polibase uv run polibase database backup
+docker compose exec sagebase uv run sagebase database backup
 
 # ローカルのみ
-docker compose exec polibase uv run polibase database backup --no-gcs
+docker compose exec sagebase uv run sagebase database backup --no-gcs
 ```
 
 #### バックアップ構成
@@ -690,13 +690,13 @@ docker compose exec polibase uv run polibase database backup --no-gcs
 
 ```bash
 # 最新バックアップからリストア
-docker compose exec polibase uv run polibase database restore backup.sql
+docker compose exec sagebase uv run sagebase database restore backup.sql
 
 # GCSからリストア
-docker compose exec polibase uv run polibase database restore gs://bucket/backup.sql
+docker compose exec sagebase uv run sagebase database restore gs://bucket/backup.sql
 
 # 特定日付のバックアップをリストア
-./backup-database.sh restore database/backups/polibase_backup_20240801_120000.sql
+./backup-database.sh restore database/backups/sagebase_backup_20240801_120000.sql
 ```
 
 ### ポイントインタイムリカバリー
@@ -722,13 +722,13 @@ ALTER SYSTEM SET archive_command = 'gsutil cp %p gs://backup-bucket/wal/%f';
 ```sql
 -- 読み取り専用ユーザー
 CREATE USER readonly_user WITH PASSWORD 'secure_password';
-GRANT CONNECT ON DATABASE polibase_db TO readonly_user;
+GRANT CONNECT ON DATABASE sagebase_db TO readonly_user;
 GRANT USAGE ON SCHEMA public TO readonly_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
 
 -- アプリケーションユーザー
 CREATE USER app_user WITH PASSWORD 'secure_password';
-GRANT ALL PRIVILEGES ON DATABASE polibase_db TO app_user;
+GRANT ALL PRIVILEGES ON DATABASE sagebase_db TO app_user;
 ```
 
 ### データ暗号化

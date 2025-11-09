@@ -36,11 +36,11 @@ class DatabaseCommands(BaseCommand):
         - list: List available backups (local and GCS)
 
         Examples:
-        - polibase database backup                     # Backup to local and GCS
-        - polibase database backup --no-gcs            # Backup to local only
-        - polibase database restore backup.sql         # Restore from local file
-        - polibase database restore gs://bucket/x.sql  # Restore from GCS
-        - polibase database list                       # List all backups
+        - sagebase database backup                     # Backup to local and GCS
+        - sagebase database backup --no-gcs            # Backup to local only
+        - sagebase database restore backup.sql         # Restore from local file
+        - sagebase database restore gs://bucket/x.sql  # Restore from GCS
+        - sagebase database list                       # List all backups
         """
         import sys
         from pathlib import Path

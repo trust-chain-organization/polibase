@@ -80,7 +80,7 @@ CMD ["uv", "run", "polibase", "streamlit"]
 version: '3.8'
 
 services:
-  polibase:
+  sagebase:
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -116,13 +116,13 @@ volumes:
 
 ```bash
 # イメージビルド
-docker build -t polibase:latest -f docker/Dockerfile .
+docker build -t sagebase:latest -f docker/Dockerfile .
 
 # タグ付け
-docker tag polibase:latest gcr.io/project-id/polibase:v1.0.0
+docker tag sagebase:latest gcr.io/project-id/sagebase:v1.0.0
 
 # レジストリへプッシュ
-docker push gcr.io/project-id/polibase:v1.0.0
+docker push gcr.io/project-id/sagebase:v1.0.0
 ```
 
 ## 環境変数設定
@@ -138,7 +138,7 @@ DATABASE_URL=postgresql://user:pass@host:5432/dbname
 GOOGLE_API_KEY=your-google-api-key
 
 # Google Cloud Storage
-GCS_BUCKET_NAME=polibase-production
+GCS_BUCKET_NAME=sagebase-production
 GCS_UPLOAD_ENABLED=true
 
 # アプリケーション設定
@@ -184,7 +184,7 @@ settings = Settings()
 ssh user@server
 
 # 2. 最新コードを取得
-cd /app/polibase
+cd /app/sagebase
 git pull origin main
 
 # 3. 環境変数を設定
@@ -198,7 +198,7 @@ docker compose down
 docker compose up -d
 
 # 6. マイグレーション実行
-docker compose exec polibase uv run alembic upgrade head
+docker compose exec sagebase uv run alembic upgrade head
 
 # 7. ヘルスチェック
 curl http://localhost:8501/health
@@ -274,16 +274,16 @@ jobs:
           file: docker/Dockerfile
           push: true
           tags: |
-            gcr.io/${{ secrets.GCP_PROJECT }}/polibase:latest
-            gcr.io/${{ secrets.GCP_PROJECT }}/polibase:${{ github.sha }}
+            gcr.io/${{ secrets.GCP_PROJECT }}/sagebase:latest
+            gcr.io/${{ secrets.GCP_PROJECT }}/sagebase:${{ github.sha }}
 
       - name: Deploy to Cloud Run
         if: github.ref == 'refs/heads/main'
         run: |
           echo "${{ secrets.GCP_SA_KEY }}" | base64 -d > key.json
           gcloud auth activate-service-account --key-file=key.json
-          gcloud run deploy polibase \
-            --image gcr.io/${{ secrets.GCP_PROJECT }}/polibase:${{ github.sha }} \
+          gcloud run deploy sagebase \
+            --image gcr.io/${{ secrets.GCP_PROJECT }}/sagebase:${{ github.sha }} \
             --platform managed \
             --region asia-northeast1 \
             --allow-unauthenticated
@@ -296,14 +296,14 @@ jobs:
 # migrate.sh
 
 # バックアップ作成
-docker compose exec polibase uv run polibase database backup
+docker compose exec sagebase uv run sagebase database backup
 
 # マイグレーション実行
-docker compose exec polibase cat database/migrations/latest.sql | \
+docker compose exec sagebase cat database/migrations/latest.sql | \
   docker compose exec -T postgres psql -U $DB_USER -d $DB_NAME
 
 # 検証
-docker compose exec polibase python -c "
+docker compose exec sagebase python -c "
 from src.config.database import test_connection
 test_connection()
 "
@@ -371,7 +371,7 @@ logging.basicConfig(
     level=logging.INFO,
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("/var/log/polibase/app.log")
+        logging.FileHandler("/var/log/sagebase/app.log")
     ]
 )
 
@@ -420,14 +420,14 @@ jobs:
       - name: Backup Database
         run: |
           pg_dump ${{ secrets.DATABASE_URL }} | \
-            gsutil cp - gs://polibase-backups/$(date +%Y%m%d).sql.gz
+            gsutil cp - gs://sagebase-backups/$(date +%Y%m%d).sql.gz
 ```
 
 ### リストア手順
 
 ```bash
 # 最新バックアップからリストア
-gsutil cp gs://polibase-backups/latest.sql.gz - | \
+gsutil cp gs://sagebase-backups/latest.sql.gz - | \
   gunzip | \
   psql $DATABASE_URL
 ```
@@ -440,10 +440,10 @@ gsutil cp gs://polibase-backups/latest.sql.gz - | \
 # nginx.conf
 server {
     listen 443 ssl http2;
-    server_name polibase.jp;
+    server_name sagebase.jp;
 
-    ssl_certificate /etc/ssl/certs/polibase.crt;
-    ssl_certificate_key /etc/ssl/private/polibase.key;
+    ssl_certificate /etc/ssl/certs/sagebase.crt;
+    ssl_certificate_key /etc/ssl/private/sagebase.key;
 
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
@@ -480,7 +480,7 @@ git checkout HEAD~1
 docker compose up -d
 
 # ログ確認
-docker compose logs -f polibase
+docker compose logs -f sagebase
 
 # コンテナに入って調査
 docker compose exec polibase bash

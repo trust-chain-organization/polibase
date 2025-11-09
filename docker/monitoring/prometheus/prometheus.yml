@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    monitor: "polibase-monitor"
+    monitor: "sagebase-monitor"
 
 # アラートマネージャーの設定
 alerting:
@@ -16,24 +16,24 @@ rule_files:
 
 # スクレイプ設定
 scrape_configs:
-  # Polibaseアプリケーションのメトリクス
-  - job_name: "polibase-app"
+  # Sagebaseアプリケーションのメトリクス
+  - job_name: "sagebase-app"
     scrape_interval: 15s
     static_configs:
       - targets:
-          - "polibase:9090" # OpenTelemetryメトリクスエンドポイント
+          - "sagebase:9090" # OpenTelemetryメトリクスエンドポイント
         labels:
-          service: "polibase"
+          service: "sagebase"
           environment: "production"
 
   # Streamlit監視アプリのメトリクス
-  - job_name: "polibase-monitoring-app"
+  - job_name: "sagebase-monitoring-app"
     scrape_interval: 15s
     static_configs:
       - targets:
-          - "polibase-monitoring:9090"
+          - "sagebase-monitoring:9090"
         labels:
-          service: "polibase-monitoring"
+          service: "sagebase-monitoring"
           environment: "production"
 
   # Prometheus自身のメトリクス
@@ -46,14 +46,14 @@ scrape_configs:
     static_configs:
       - targets: ["node-exporter:9100"]
         labels:
-          instance: "polibase-host"
+          instance: "sagebase-host"
 
   # PostgreSQL Exporterのメトリクス
   - job_name: "postgres"
     static_configs:
       - targets: ["postgres-exporter:9187"]
         labels:
-          database: "polibase_db"
+          database: "sagebase_db"
 
   # Grafanaのメトリクス
   - job_name: "grafana"

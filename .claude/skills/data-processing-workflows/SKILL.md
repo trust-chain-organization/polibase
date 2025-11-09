@@ -102,7 +102,7 @@ Linked Conversations
 **出力:** リンク済み `conversations`
 
 #### ステップ4: Politician Data Collection
-**コマンド:** `polibase scrape-politicians`
+**コマンド:** `sagebase scrape-politicians`
 
 **処理内容:**
 - 政党Webサイトから最新の政治家情報を取得
@@ -143,7 +143,7 @@ Meetings Table (gcs_pdf_uri, gcs_text_uri)
 - `--upload-to-gcs`: GCSにアップロード
 
 #### ステップ2: GCS-based Processing
-**コマンド:** `polibase process-minutes --meeting-id <id>`
+**コマンド:** `sagebase process-minutes --meeting-id <id>`
 
 **処理内容:**
 - Minutes Dividerが `--meeting-id` パラメータでGCSからデータを直接取得
@@ -170,7 +170,7 @@ politician_affiliations
 ```
 
 #### ステップ1: Extract Conference Members
-**コマンド:** `polibase extract-conference-members`
+**コマンド:** `sagebase extract-conference-members`
 
 **処理内容:**
 - 会議URLからメンバー情報をスクレイピング
@@ -181,7 +181,7 @@ politician_affiliations
 **出力:** `extracted_conference_members` (status='pending')
 
 #### ステップ2: Match with Politicians
-**コマンド:** `polibase match-conference-members`
+**コマンド:** `sagebase match-conference-members`
 
 **処理内容:**
 - LLMベースのファジーマッチング
@@ -196,7 +196,7 @@ politician_affiliations
 **出力:** `extracted_conference_members` (status更新)
 
 #### ステップ3: Create Affiliations
-**コマンド:** `polibase create-affiliations`
+**コマンド:** `sagebase create-affiliations`
 
 **処理内容:**
 - 最終的な政治家-会議の関係を作成

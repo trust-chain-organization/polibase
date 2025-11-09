@@ -2,7 +2,7 @@
 
 ## Root Directory Structure
 ```
-polibase/
+sagebase/
 ├── src/                    # Main application code
 ├── database/              # Database scripts and migrations
 ├── docker/                # Docker configuration
@@ -125,7 +125,7 @@ polibase/
 - `docker/docker-compose.override.yml`: ポート上書き (git worktree用)
 
 ## Entry Points
-- `src/cli_package/`: メインCLI (polibaseコマンド)
+- `src/cli_package/`: メインCLI (sagebaseコマンド)
 - `src/interfaces/web/streamlit/app.py`: Streamlit UI (Clean Architecture)
 - `src/monitoring_app.py`: モニタリングダッシュボード
 

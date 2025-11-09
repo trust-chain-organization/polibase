@@ -235,13 +235,13 @@ def mock_env(monkeypatch):
 
 ```bash
 # カバレッジ測定
-docker compose exec polibase uv run pytest --cov=src --cov-report=term-missing
+docker compose exec sagebase uv run pytest --cov=src --cov-report=term-missing
 
 # HTMLレポート生成
-docker compose exec polibase uv run pytest --cov=src --cov-report=html
+docker compose exec sagebase uv run pytest --cov=src --cov-report=html
 
 # 特定モジュールのカバレッジ
-docker compose exec polibase uv run pytest --cov=src.domain tests/domain/
+docker compose exec sagebase uv run pytest --cov=src.domain tests/domain/
 ```
 
 ### カバレッジ設定

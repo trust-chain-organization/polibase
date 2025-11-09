@@ -49,13 +49,13 @@ class EvaluationCommands(BaseCommand):
 
         Examples:
             # Evaluate specific task
-            polibase evaluate --task minutes_division
+            sagebase evaluate --task minutes_division
 
             # Evaluate with custom dataset
-            polibase evaluate --task speaker_matching --dataset custom.json
+            sagebase evaluate --task speaker_matching --dataset custom.json
 
             # Evaluate all tasks
-            polibase evaluate --all
+            sagebase evaluate --all
         """
         from src.evaluation import EvaluationRunner
 

@@ -167,7 +167,7 @@ Third-party integrations:
 
 #### CLI (`src/interfaces/cli/`)
 Command-line interfaces:
-- Unified `polibase` command entry point
+- Unified `sagebase` command entry point
 - Structured commands organized by category:
   - `scraping/`: Web scraping commands
   - `database/`: Database management commands
@@ -235,7 +235,7 @@ Clean Architectureに従って新機能を追加する際の推奨手順：
 
 **Contains**:
 - **CLI** (`src/interfaces/cli/`): Command-line interfaces
-  - Unified `polibase` command
+  - Unified `sagebase` command
   - Command groups: `scraping/`, `database/`, `processing/`
 - **Web** (`src/interfaces/web/streamlit/`): Web UI
   - `views/`: Page views

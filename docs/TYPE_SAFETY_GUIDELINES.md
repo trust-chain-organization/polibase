@@ -160,7 +160,7 @@ def process_data(data: dict[str, str]) -> list[str]:
 
 ```bash
 # Docker環境での実行
-docker compose exec polibase uv run --frozen pyright
+docker compose exec sagebase uv run --frozen pyright
 
 # ローカル環境での実行
 uv run pyright
@@ -175,7 +175,7 @@ GitHub Actionsなどで自動的に型チェックを実行し、エラーがあ
 `tests/test_type_safety.py`で型安全性のテストを実行できます：
 
 ```bash
-docker compose exec polibase uv run pytest tests/test_type_safety.py
+docker compose exec sagebase uv run pytest tests/test_type_safety.py
 ```
 
 ## 実装例

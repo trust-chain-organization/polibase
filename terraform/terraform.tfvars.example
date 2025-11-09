@@ -22,15 +22,15 @@ environment = "development"     # development, staging, or production
 # ----------------------------------------------------------------------------
 # Network Configuration
 # ----------------------------------------------------------------------------
-network_name = "polibase-vpc"
+network_name = "sagebase-vpc"
 
 # ----------------------------------------------------------------------------
 # Database Configuration
 # ----------------------------------------------------------------------------
 database_version = "POSTGRES_15"
 database_tier    = "db-f1-micro" # Use db-custom-2-8192 for production
-database_name    = "polibase_db"
-database_user    = "polibase_user"
+database_name    = "sagebase_db"
+database_user    = "sagebase_user"
 database_password = "CHANGE_ME_TO_SECURE_PASSWORD" # Use a strong password!
 
 # High availability (requires db-custom tier, not available for f1-micro)

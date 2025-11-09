@@ -1,5 +1,5 @@
 [project]
-name = "polibase"
+name = "sagebase"
 version = "0.1.0"
 description = ""
 authors = [{ name = "okodoon", email = "31516823+okodoon@users.noreply.github.com" }]
@@ -59,7 +59,7 @@ dev = [
 ]
 
 [project.scripts]
-polibase = "src.interfaces.cli.cli:main"
+sagebase = "src.interfaces.cli.cli:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -1590,136 +1590,6 @@ wheels = [
 ]
 
 [[package]]
-name = "polibase"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "asyncpg" },
-    { name = "authlib" },
-    { name = "beautifulsoup4" },
-    { name = "click" },
-    { name = "dependency-injector" },
-    { name = "duckdb" },
-    { name = "fastapi" },
-    { name = "folium" },
-    { name = "google-auth" },
-    { name = "google-auth-oauthlib" },
-    { name = "google-cloud-storage" },
-    { name = "langchain" },
-    { name = "langchain-google-genai" },
-    { name = "langgraph" },
-    { name = "nest-asyncio" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-exporter-prometheus" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-instrumentation-aiohttp-client" },
-    { name = "opentelemetry-instrumentation-requests" },
-    { name = "opentelemetry-instrumentation-sqlalchemy" },
-    { name = "opentelemetry-sdk" },
-    { name = "pandas" },
-    { name = "playwright" },
-    { name = "plotly" },
-    { name = "prometheus-client" },
-    { name = "psycopg2-binary" },
-    { name = "pydantic" },
-    { name = "pypdfium2" },
-    { name = "pytest" },
-    { name = "python-dotenv" },
-    { name = "requests" },
-    { name = "selenium" },
-    { name = "sentry-sdk" },
-    { name = "sqlalchemy" },
-    { name = "streamlit" },
-    { name = "streamlit-folium" },
-    { name = "streamlit-oauth" },
-    { name = "structlog" },
-    { name = "uvicorn" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "bandit" },
-    { name = "pip-audit" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "aiosqlite" },
-    { name = "pre-commit" },
-    { name = "pyright" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiohttp", specifier = ">=3.9.0,<4" },
-    { name = "asyncpg", specifier = ">=0.29.0,<1" },
-    { name = "authlib", specifier = ">=1.3.2,<2" },
-    { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.7.5" },
-    { name = "beautifulsoup4", specifier = ">=4.12.0,<5" },
-    { name = "click", specifier = ">=8.0.0,<9" },
-    { name = "dependency-injector", specifier = ">=4.41.0,<5" },
-    { name = "duckdb", specifier = ">=1.2.1,<2" },
-    { name = "fastapi", specifier = ">=0.110.0,<1" },
-    { name = "folium", specifier = ">=0.15.0,<1" },
-    { name = "google-auth", specifier = ">=2.0.0,<3" },
-    { name = "google-auth-oauthlib", specifier = ">=1.0.0,<2" },
-    { name = "google-cloud-storage", specifier = ">=2.10.0,<3" },
-    { name = "langchain", specifier = ">=0.3.20,<0.4" },
-    { name = "langchain-google-genai", specifier = ">=2.0.11,<3" },
-    { name = "langgraph", specifier = ">=0.3.5,<0.4" },
-    { name = "nest-asyncio", specifier = ">=1.6.0,<2" },
-    { name = "opentelemetry-api", specifier = ">=1.24.0,<2" },
-    { name = "opentelemetry-exporter-prometheus", specifier = ">=0.45b0,<1" },
-    { name = "opentelemetry-instrumentation", specifier = ">=0.45b0,<1" },
-    { name = "opentelemetry-instrumentation-aiohttp-client", specifier = ">=0.45b0,<1" },
-    { name = "opentelemetry-instrumentation-requests", specifier = ">=0.45b0,<1" },
-    { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.45b0,<1" },
-    { name = "opentelemetry-sdk", specifier = ">=1.24.0,<2" },
-    { name = "pandas", specifier = ">=2.0.0,<3" },
-    { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.6.0" },
-    { name = "playwright", specifier = ">=1.40.0,<2" },
-    { name = "plotly", specifier = ">=5.18.0,<6" },
-    { name = "prometheus-client", specifier = ">=0.19.0,<1" },
-    { name = "psycopg2-binary", specifier = ">=2.9.0,<3" },
-    { name = "pydantic", specifier = ">=2.0.0,<3" },
-    { name = "pypdfium2", specifier = ">=4.30.0,<4.30.1" },
-    { name = "pytest", specifier = ">=8.3.5,<9" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
-    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.10.0" },
-    { name = "python-dotenv", specifier = ">=1.0.1,<2" },
-    { name = "requests", specifier = ">=2.31.0,<3" },
-    { name = "selenium", specifier = ">=4.0.0,<5" },
-    { name = "sentry-sdk", specifier = ">=2.19.0,<3" },
-    { name = "sqlalchemy", specifier = ">=2.0.0,<3" },
-    { name = "streamlit", specifier = ">=1.42.0,<2" },
-    { name = "streamlit-folium", specifier = ">=0.17.0,<1" },
-    { name = "streamlit-oauth", specifier = ">=0.1.0" },
-    { name = "structlog", specifier = ">=24.0.0,<25" },
-    { name = "uvicorn", specifier = ">=0.27.0,<1" },
-]
-provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "aiosqlite", specifier = ">=0.21.0" },
-    { name = "pre-commit", specifier = ">=3.5.0" },
-    { name = "pyright", specifier = ">=1.1.387" },
-    { name = "pytest-asyncio", specifier = ">=1.0.0" },
-    { name = "pytest-cov", specifier = ">=4.0.0" },
-    { name = "pytest-mock", specifier = ">=3.10.0" },
-    { name = "ruff", specifier = ">=0.8.0" },
-]
-
-[[package]]
 name = "pre-commit"
 version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2263,6 +2133,136 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/51/de/8589fa724590faa057e5a6d171e7f2f6cffe3287406ef40e49c682c07d89/ruff-0.12.2-py3-none-win32.whl", hash = "sha256:369ffb69b70cd55b6c3fc453b9492d98aed98062db9fec828cdfd069555f5f1a", size = 10523823, upload-time = "2025-07-03T16:40:13.203Z" },
     { url = "https://files.pythonhosted.org/packages/94/47/8abf129102ae4c90cba0c2199a1a9b0fa896f6f806238d6f8c14448cc748/ruff-0.12.2-py3-none-win_amd64.whl", hash = "sha256:dca8a3b6d6dc9810ed8f328d406516bf4d660c00caeaef36eb831cf4871b0639", size = 11629831, upload-time = "2025-07-03T16:40:15.478Z" },
     { url = "https://files.pythonhosted.org/packages/e2/1f/72d2946e3cc7456bb837e88000eb3437e55f80db339c840c04015a11115d/ruff-0.12.2-py3-none-win_arm64.whl", hash = "sha256:48d6c6bfb4761df68bc05ae630e24f506755e702d4fb08f08460be778c7ccb12", size = 10735334, upload-time = "2025-07-03T16:40:17.677Z" },
+]
+
+[[package]]
+name = "sagebase"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "asyncpg" },
+    { name = "authlib" },
+    { name = "beautifulsoup4" },
+    { name = "click" },
+    { name = "dependency-injector" },
+    { name = "duckdb" },
+    { name = "fastapi" },
+    { name = "folium" },
+    { name = "google-auth" },
+    { name = "google-auth-oauthlib" },
+    { name = "google-cloud-storage" },
+    { name = "langchain" },
+    { name = "langchain-google-genai" },
+    { name = "langgraph" },
+    { name = "nest-asyncio" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-prometheus" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-instrumentation-aiohttp-client" },
+    { name = "opentelemetry-instrumentation-requests" },
+    { name = "opentelemetry-instrumentation-sqlalchemy" },
+    { name = "opentelemetry-sdk" },
+    { name = "pandas" },
+    { name = "playwright" },
+    { name = "plotly" },
+    { name = "prometheus-client" },
+    { name = "psycopg2-binary" },
+    { name = "pydantic" },
+    { name = "pypdfium2" },
+    { name = "pytest" },
+    { name = "python-dotenv" },
+    { name = "requests" },
+    { name = "selenium" },
+    { name = "sentry-sdk" },
+    { name = "sqlalchemy" },
+    { name = "streamlit" },
+    { name = "streamlit-folium" },
+    { name = "streamlit-oauth" },
+    { name = "structlog" },
+    { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "bandit" },
+    { name = "pip-audit" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "aiosqlite" },
+    { name = "pre-commit" },
+    { name = "pyright" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp", specifier = ">=3.9.0,<4" },
+    { name = "asyncpg", specifier = ">=0.29.0,<1" },
+    { name = "authlib", specifier = ">=1.3.2,<2" },
+    { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.7.5" },
+    { name = "beautifulsoup4", specifier = ">=4.12.0,<5" },
+    { name = "click", specifier = ">=8.0.0,<9" },
+    { name = "dependency-injector", specifier = ">=4.41.0,<5" },
+    { name = "duckdb", specifier = ">=1.2.1,<2" },
+    { name = "fastapi", specifier = ">=0.110.0,<1" },
+    { name = "folium", specifier = ">=0.15.0,<1" },
+    { name = "google-auth", specifier = ">=2.0.0,<3" },
+    { name = "google-auth-oauthlib", specifier = ">=1.0.0,<2" },
+    { name = "google-cloud-storage", specifier = ">=2.10.0,<3" },
+    { name = "langchain", specifier = ">=0.3.20,<0.4" },
+    { name = "langchain-google-genai", specifier = ">=2.0.11,<3" },
+    { name = "langgraph", specifier = ">=0.3.5,<0.4" },
+    { name = "nest-asyncio", specifier = ">=1.6.0,<2" },
+    { name = "opentelemetry-api", specifier = ">=1.24.0,<2" },
+    { name = "opentelemetry-exporter-prometheus", specifier = ">=0.45b0,<1" },
+    { name = "opentelemetry-instrumentation", specifier = ">=0.45b0,<1" },
+    { name = "opentelemetry-instrumentation-aiohttp-client", specifier = ">=0.45b0,<1" },
+    { name = "opentelemetry-instrumentation-requests", specifier = ">=0.45b0,<1" },
+    { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.45b0,<1" },
+    { name = "opentelemetry-sdk", specifier = ">=1.24.0,<2" },
+    { name = "pandas", specifier = ">=2.0.0,<3" },
+    { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.6.0" },
+    { name = "playwright", specifier = ">=1.40.0,<2" },
+    { name = "plotly", specifier = ">=5.18.0,<6" },
+    { name = "prometheus-client", specifier = ">=0.19.0,<1" },
+    { name = "psycopg2-binary", specifier = ">=2.9.0,<3" },
+    { name = "pydantic", specifier = ">=2.0.0,<3" },
+    { name = "pypdfium2", specifier = ">=4.30.0,<4.30.1" },
+    { name = "pytest", specifier = ">=8.3.5,<9" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.21.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "pytest-mock", marker = "extra == 'dev'", specifier = ">=3.10.0" },
+    { name = "python-dotenv", specifier = ">=1.0.1,<2" },
+    { name = "requests", specifier = ">=2.31.0,<3" },
+    { name = "selenium", specifier = ">=4.0.0,<5" },
+    { name = "sentry-sdk", specifier = ">=2.19.0,<3" },
+    { name = "sqlalchemy", specifier = ">=2.0.0,<3" },
+    { name = "streamlit", specifier = ">=1.42.0,<2" },
+    { name = "streamlit-folium", specifier = ">=0.17.0,<1" },
+    { name = "streamlit-oauth", specifier = ">=0.1.0" },
+    { name = "structlog", specifier = ">=24.0.0,<25" },
+    { name = "uvicorn", specifier = ">=0.27.0,<1" },
+]
+provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "aiosqlite", specifier = ">=0.21.0" },
+    { name = "pre-commit", specifier = ">=3.5.0" },
+    { name = "pyright", specifier = ">=1.1.387" },
+    { name = "pytest-asyncio", specifier = ">=1.0.0" },
+    { name = "pytest-cov", specifier = ">=4.0.0" },
+    { name = "pytest-mock", specifier = ">=3.10.0" },
+    { name = "ruff", specifier = ">=0.8.0" },
 ]
 
 [[package]]

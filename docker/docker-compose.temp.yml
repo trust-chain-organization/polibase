@@ -2,7 +2,7 @@
 # データベースはコンテナ停止時に削除されます
 
 services:
-  polibase:
+  sagebase:
     build:
       context: ../
       dockerfile: docker/Dockerfile
@@ -10,7 +10,7 @@ services:
       - ../:/app
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
-      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
     ports:
       - "8000:8000" # 必要に応じてポートを設定
     stdin_open: true # 追加
@@ -21,16 +21,16 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: polibase_db
-      POSTGRES_USER: polibase_user
-      POSTGRES_PASSWORD: polibase_password
+      POSTGRES_DB: sagebase_db
+      POSTGRES_USER: sagebase_user
+      POSTGRES_PASSWORD: sagebase_password
     ports:
       - "5432:5432"
     volumes:
       # 注意: postgres_dataボリュームを使用しないため、データは永続化されません
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db"]
+      test: ["CMD-SHELL", "pg_isready -U sagebase_user -d sagebase_db"]
       interval: 10s
       timeout: 5s
       retries: 5

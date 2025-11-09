@@ -1,5 +1,5 @@
 services:
-  polibase:
+  sagebase:
     build:
       context: ../
       dockerfile: docker/Dockerfile
@@ -16,7 +16,7 @@ services:
       - ../.env
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
-      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
       - GOOGLE_CLOUD_PROJECT=trust-chain-828ad
     ports:
@@ -27,7 +27,7 @@ services:
     depends_on:
       - postgres
 
-  polibase-monitoring:
+  sagebase-monitoring:
     build:
       context: ../
       dockerfile: docker/Dockerfile
@@ -44,7 +44,7 @@ services:
       - ../.env
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
-      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
       - GOOGLE_CLOUD_PROJECT=trust-chain-828ad
     ports:
@@ -67,9 +67,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: polibase_db
-      POSTGRES_USER: polibase_user
-      POSTGRES_PASSWORD: polibase_password
+      POSTGRES_DB: sagebase_db
+      POSTGRES_USER: sagebase_user
+      POSTGRES_PASSWORD: sagebase_password
       # PostgreSQLの起動を高速化
       POSTGRES_FSYNC: "off"
       POSTGRES_SYNCHRONOUS_COMMIT: "off"
@@ -85,7 +85,7 @@ services:
       - ../database/seed_conferences_generated.sql:/seed-data/seed_conferences_generated.sql:ro
     healthcheck:
       test:
-        ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db || exit 1"]
+        ["CMD-SHELL", "pg_isready -U sagebase_user -d sagebase_db || exit 1"]
       interval: 2s # より頻繁にチェック
       timeout: 2s
       retries: 15

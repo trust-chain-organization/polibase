@@ -38,13 +38,13 @@ variable "database_tier" {
 variable "database_name" {
   description = "Database name"
   type        = string
-  default     = "polibase_db"
+  default     = "sagebase_db"
 }
 
 variable "database_user" {
   description = "Database user"
   type        = string
-  default     = "polibase_user"
+  default     = "sagebase_user"
 }
 
 variable "database_password" {

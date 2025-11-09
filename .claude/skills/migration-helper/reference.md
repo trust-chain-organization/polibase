@@ -593,17 +593,17 @@ DROP TABLE IF EXISTS politicians;
 
 # Check if table/column exists
 docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec postgres \
-    psql -U polibase_user -d polibase_db \
+    psql -U sagebase_user -d sagebase_db \
     -c "\d table_name"
 
 # Check column details
 docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec postgres \
-    psql -U polibase_user -d polibase_db \
+    psql -U sagebase_user -d sagebase_db \
     -c "\d+ table_name"
 
 # Check indexes
 docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec postgres \
-    psql -U polibase_user -d polibase_db \
+    psql -U sagebase_user -d sagebase_db \
     -c "\di+ table_name*"
 ```
 
@@ -613,7 +613,7 @@ docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.y
 # Apply single migration manually
 cat database/migrations/XXX_migration.sql | \
     docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec -T postgres \
-    psql -U polibase_user -d polibase_db
+    psql -U sagebase_user -d sagebase_db
 ```
 
 ### Rollback Strategy

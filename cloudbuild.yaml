@@ -47,7 +47,7 @@ steps:
       - "--set-env-vars=CLOUD_RUN=true,PORT=8080,HEALTH_CHECK_PORT=8081,LOG_LEVEL=INFO"
       - "--set-secrets=GOOGLE_API_KEY=google-api-key:latest,DB_PASSWORD=database-password:latest"
       - "--add-cloudsql-instances=${_CLOUD_SQL_INSTANCE}"
-      - "--set-env-vars=USE_CLOUD_SQL_PROXY=true,CLOUD_SQL_CONNECTION_NAME=${_CLOUD_SQL_INSTANCE},CLOUD_SQL_UNIX_SOCKET_DIR=/cloudsql,DB_USER=polibase_user,DB_NAME=polibase_db"
+      - "--set-env-vars=USE_CLOUD_SQL_PROXY=true,CLOUD_SQL_CONNECTION_NAME=${_CLOUD_SQL_INSTANCE},CLOUD_SQL_UNIX_SOCKET_DIR=/cloudsql,DB_USER=sagebase_user,DB_NAME=sagebase_db"
       - "--no-cpu-throttling"
     waitFor:
       - "push-image"
@@ -83,9 +83,9 @@ steps:
 # 置換変数のデフォルト値
 substitutions:
   _REGION: "asia-northeast1"
-  _REPOSITORY: "polibase"
-  _IMAGE_NAME: "polibase-streamlit"
-  _SERVICE_NAME: "polibase-streamlit"
+  _REPOSITORY: "sagebase"
+  _IMAGE_NAME: "sagebase-streamlit"
+  _SERVICE_NAME: "sagebase-streamlit"
   _CLOUD_SQL_INSTANCE: "" # 'PROJECT_ID:REGION:INSTANCE_NAME' の形式で指定
 
 # ビルドオプション
@@ -111,4 +111,4 @@ images:
 tags:
   - "cloud-run"
   - "streamlit"
-  - "polibase"
+  - "sagebase"

@@ -41,9 +41,9 @@ up: _setup_worktree
 	sleep 3
 	# Install Playwright browsers
 	echo "Installing Playwright browsers..."
-	docker compose {{compose_cmd}} exec polibase uv run playwright install chromium
+	docker compose {{compose_cmd}} exec sagebase uv run playwright install chromium
 	# Run test-setup.sh if it exists (for initial database setup)
-	if [ -f scripts/test-setup.sh ] && docker compose {{compose_cmd}} exec postgres psql -U polibase_user -d polibase_db -c "SELECT COUNT(*) FROM meetings;" 2>/dev/null | grep -q "0"; then
+	if [ -f scripts/test-setup.sh ] && docker compose {{compose_cmd}} exec postgres psql -U sagebase_user -d sagebase_db -c "SELECT COUNT(*) FROM meetings;" 2>/dev/null | grep -q "0"; then
 		echo "Setting up test data..."
 		./scripts/test-setup.sh
 	fi
@@ -54,7 +54,7 @@ up: _setup_worktree
 		HOST_PORT=8501
 	fi
 	# Check if Streamlit is already running in the container
-	if docker compose {{compose_cmd}} exec polibase pgrep -f "streamlit run" > /dev/null 2>&1; then
+	if docker compose {{compose_cmd}} exec sagebase pgrep -f "streamlit run" > /dev/null 2>&1; then
 		echo "⚠️  Streamlit is already running in the container"
 		echo "   Access the app at: http://localhost:$HOST_PORT"
 		echo "   Run 'just logs' to view logs"
@@ -65,24 +65,24 @@ up: _setup_worktree
 			echo "Press Ctrl+C to stop the server"
 			echo ""
 			# Use exec without -d flag to keep logs flowing
-			docker compose {{compose_cmd}} exec -e STREAMLIT_HOST_PORT=$HOST_PORT polibase uv run polibase streamlit
+			docker compose {{compose_cmd}} exec -e STREAMLIT_HOST_PORT=$HOST_PORT sagebase uv run sagebase streamlit
 		else
 			echo "Starting Streamlit..."
 			echo "Press Ctrl+C to stop the server"
 			echo ""
-			docker compose {{compose_cmd}} exec polibase uv run polibase streamlit
+			docker compose {{compose_cmd}} exec sagebase uv run sagebase streamlit
 		fi
 	fi
 
 # Connect to database
 db: _setup_worktree
-	docker compose {{compose_cmd}} exec postgres psql -U polibase_user -d polibase_db
+	docker compose {{compose_cmd}} exec postgres psql -U sagebase_user -d sagebase_db
 
 # Run tests with type checking
 test: _setup_worktree
 	uv run --frozen pyright
 	docker compose {{compose_cmd}} up -d
-	docker compose {{compose_cmd}} exec polibase uv run pytest
+	docker compose {{compose_cmd}} exec sagebase uv run pytest
 
 # Format code
 format:
@@ -94,7 +94,7 @@ lint:
 
 # Run pytest only
 pytest: _setup_worktree
-	docker compose {{compose_cmd}} exec polibase uv run pytest
+	docker compose {{compose_cmd}} exec sagebase uv run pytest
 
 # Run monitoring dashboard
 monitoring: _setup_worktree
@@ -103,12 +103,12 @@ monitoring: _setup_worktree
 	if [ -f docker/docker-compose.override.yml ]; then
 		HOST_PORT=$(grep ":8502" docker/docker-compose.override.yml | awk -F'"' '{print $2}' | cut -d: -f1)
 		if [ -n "$HOST_PORT" ]; then
-			docker compose {{compose_cmd}} exec -e MONITORING_HOST_PORT=$HOST_PORT polibase uv run polibase monitoring
+			docker compose {{compose_cmd}} exec -e MONITORING_HOST_PORT=$HOST_PORT sagebase uv run sagebase monitoring
 		else
-			docker compose {{compose_cmd}} exec polibase uv run polibase monitoring
+			docker compose {{compose_cmd}} exec sagebase uv run sagebase monitoring
 		fi
 	else
-		docker compose {{compose_cmd}} exec polibase uv run polibase monitoring
+		docker compose {{compose_cmd}} exec sagebase uv run sagebase monitoring
 	fi
 
 # Launch BI Dashboard (Plotly Dash) on port 8050
@@ -131,11 +131,11 @@ bi-dashboard-down: _setup_worktree
 
 # Process meeting minutes
 process-minutes: _setup_worktree
-	docker compose {{compose_cmd}} exec polibase uv run polibase process-minutes
+	docker compose {{compose_cmd}} exec sagebase uv run sagebase process-minutes
 
 # Show all available CLI commands
 help: _setup_worktree
-	docker compose {{compose_cmd}} exec polibase uv run polibase --help
+	docker compose {{compose_cmd}} exec sagebase uv run sagebase --help
 
 # Rebuild containers
 rebuild: _setup_worktree
@@ -147,7 +147,7 @@ logs: _setup_worktree
 
 # Execute arbitrary command in container
 exec *args: _setup_worktree
-	docker compose {{compose_cmd}} exec polibase {{args}}
+	docker compose {{compose_cmd}} exec sagebase {{args}}
 
 # Clean up all containers and volumes (dangerous!)
 clean: down

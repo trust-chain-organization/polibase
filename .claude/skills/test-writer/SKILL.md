@@ -190,16 +190,16 @@ See [examples.md](examples.md) for concrete test examples at each layer.
 
 ```bash
 # Run all tests
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run pytest
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run pytest
 
 # Run specific test file
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run pytest tests/unit/domain/test_speaker_domain_service.py
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run pytest tests/unit/domain/test_speaker_domain_service.py
 
 # Run with coverage
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run pytest --cov=src
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run pytest --cov=src
 
 # Run only unit tests
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run pytest tests/unit/
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec sagebase uv run pytest tests/unit/
 ```
 
 ## Common Anti-Patterns

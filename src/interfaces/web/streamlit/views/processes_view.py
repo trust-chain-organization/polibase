@@ -69,7 +69,7 @@ def render_process_category(
     with st.form(f"custom_command_{category}"):
         custom_command = st.text_area(
             "実行するコマンド",
-            placeholder="docker compose -f docker/docker-compose.yml exec polibase ...",
+            placeholder="docker compose -f docker/docker-compose.yml exec sagebase ...",
             help="Dockerコンテナ内で実行するコマンドを入力してください",
         )
 

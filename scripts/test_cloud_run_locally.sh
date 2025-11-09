@@ -12,8 +12,8 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}=== Cloud Run Docker Image Local Test ===${NC}"
 
 # 変数設定
-IMAGE_NAME="polibase-streamlit-cloudrun"
-CONTAINER_NAME="polibase-cloudrun-test"
+IMAGE_NAME="sagebase-streamlit-cloudrun"
+CONTAINER_NAME="sagebase-cloudrun-test"
 PORT=8080
 HEALTH_PORT=8081
 

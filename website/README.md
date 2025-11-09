@@ -45,7 +45,7 @@ scoop install hugo-extended
 
 ```bash
 git clone https://github.com/trust-chain-organization/polibase.git
-cd polibase/website
+cd sagebase/website
 ```
 
 ### 3. サブモジュールの初期化

@@ -55,7 +55,7 @@ docker-compose down
 cd src/interfaces/bi_dashboard
 
 # Set database URL
-export DATABASE_URL=postgresql://polibase:polibase@localhost:5432/polibase
+export DATABASE_URL=postgresql://sagebase:sagebase@localhost:5432/sagebase
 
 # Run directly
 python app.py
@@ -155,7 +155,7 @@ docker-compose up --build
 ```bash
 # Verify database has data
 docker compose -f docker/docker-compose.yml exec postgres \
-  psql -U polibase_user -d polibase_db \
+  psql -U sagebase_user -d sagebase_db \
   -c "SELECT COUNT(*) FROM governing_bodies;"
 
 # Check database connection string
@@ -179,7 +179,7 @@ docker-compose exec bi-dashboard pip list | grep plotly
 ```bash
 # Check database query performance
 docker compose -f docker/docker-compose.yml exec postgres \
-  psql -U polibase_user -d polibase_db \
+  psql -U sagebase_user -d sagebase_db \
   -c "EXPLAIN ANALYZE SELECT * FROM governing_bodies LEFT JOIN meetings ON governing_bodies.id = meetings.governing_body_id;"
 
 # Monitor resource usage

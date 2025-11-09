@@ -25,7 +25,7 @@ variable "environment" {
 variable "network_name" {
   description = "Name of the VPC network"
   type        = string
-  default     = "polibase-vpc"
+  default     = "sagebase-vpc"
 }
 
 # Database Configuration
@@ -49,13 +49,13 @@ variable "database_tier" {
 variable "database_name" {
   description = "PostgreSQL database name"
   type        = string
-  default     = "polibase_db"
+  default     = "sagebase_db"
 }
 
 variable "database_user" {
   description = "PostgreSQL database user"
   type        = string
-  default     = "polibase_user"
+  default     = "sagebase_user"
 }
 
 variable "database_password" {

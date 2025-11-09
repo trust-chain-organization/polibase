@@ -276,7 +276,7 @@ def get_error_logger(name: str | None = None) -> ErrorLogger:
         return ErrorLogger(name)
 
     if _error_logger is None:
-        _error_logger = ErrorLogger("polibase.error")
+        _error_logger = ErrorLogger("sagebase.error")
 
     return _error_logger
 

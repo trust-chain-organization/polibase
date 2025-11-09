@@ -168,7 +168,7 @@ just bi-dashboard-up
 
 | 変数名 | 説明 | デフォルト値 | 例 |
 |--------|------|--------------|-----|
-| `DATABASE_URL` | PostgreSQL接続URL | `postgresql://polibase_user:polibase_password@postgres:5432/polibase_db` | `postgresql://user:pass@host:5432/db` |
+| `DATABASE_URL` | PostgreSQL接続URL | `postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db` | `postgresql://user:pass@host:5432/db` |
 
 ### オプション環境変数
 
@@ -196,7 +196,7 @@ vi docker/docker-compose.yml
 services:
   bi-dashboard:
     environment:
-      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
 ```
 
 #### 3. サービスを再起動
@@ -218,7 +218,7 @@ BIダッシュボードはデータを保存しないため、データベース
 
 ```bash
 # データベース全体をバックアップ
-docker compose -f docker/docker-compose.yml exec postgres pg_dump -U polibase_user -d polibase_db > backup_$(date +%Y%m%d).sql
+docker compose -f docker/docker-compose.yml exec postgres pg_dump -U sagebase_user -d sagebase_db > backup_$(date +%Y%m%d).sql
 ```
 
 #### 2. 定期バックアップの設定
@@ -232,14 +232,14 @@ crontab -e
 
 ```
 # 毎日午前2時にバックアップ
-0 2 * * * cd /path/to/polibase && docker compose -f docker/docker-compose.yml exec postgres pg_dump -U polibase_user -d polibase_db > backup_$(date +\%Y\%m\%d).sql
+0 2 * * * cd /path/to/polibase && docker compose -f docker/docker-compose.yml exec postgres pg_dump -U sagebase_user -d sagebase_db > backup_$(date +\%Y\%m\%d).sql
 ```
 
 ### データベースの復旧
 
 ```bash
 # データベースを復旧
-docker compose -f docker/docker-compose.yml exec -T postgres psql -U polibase_user -d polibase_db < backup_20250101.sql
+docker compose -f docker/docker-compose.yml exec -T postgres psql -U sagebase_user -d sagebase_db < backup_20250101.sql
 ```
 
 ### BIダッシュボードの復旧
@@ -277,7 +277,7 @@ polibase-bi-dashboard     polibase-bi-dashboard   "python app.py"          bi-da
 
 ```bash
 # CPU、メモリ使用率を確認
-docker stats polibase-bi-dashboard
+docker stats sagebase-bi-dashboard
 ```
 
 出力例：
@@ -329,7 +329,7 @@ echo ""
 
 # リソース使用状況
 echo "2. リソース使用状況:"
-docker stats polibase-bi-dashboard --no-stream
+docker stats sagebase-bi-dashboard --no-stream
 echo ""
 
 # 接続テスト

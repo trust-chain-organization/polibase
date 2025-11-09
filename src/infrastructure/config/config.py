@@ -61,11 +61,11 @@ TAVILY_API_KEY: str | None = os.getenv("TAVILY_API_KEY")
 # Database Configuration
 DATABASE_URL: str = os.getenv(
     "DATABASE_URL",
-    "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db",
+    "postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db",
 )
 
 # GCS Configuration
-GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "polibase-scraped-minutes")
+GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "sagebase-scraped-minutes")
 GCS_PROJECT_ID: str | None = os.getenv(
     "GCS_PROJECT_ID"
 )  # Optional, uses default if not set

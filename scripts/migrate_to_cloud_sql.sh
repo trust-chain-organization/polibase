@@ -40,8 +40,8 @@ if [ -n "$CLOUD_SQL_CONNECTION_NAME" ]; then
 fi
 
 # データベース設定
-DB_NAME="${DB_NAME:-polibase_db}"
-DB_USER="${DB_USER:-polibase_user}"
+DB_NAME="${DB_NAME:-sagebase_db}"
+DB_USER="${DB_USER:-sagebase_user}"
 BACKUP_DIR="./tmp/db_migration_$(date +%Y%m%d_%H%M%S)"
 
 echo -e "${BLUE}📋 移行設定:${NC}"
@@ -147,7 +147,7 @@ echo ""
 echo -e "${BLUE}☁️  Step 3: GCSへのバックアップアップロード${NC}"
 echo ""
 
-GCS_BUCKET="${GCS_BUCKET_NAME:-polibase-backups}"
+GCS_BUCKET="${GCS_BUCKET_NAME:-sagebase-backups}"
 GCS_PATH="gs://$GCS_BUCKET/database-migrations/migration_$(date +%Y%m%d_%H%M%S).sql"
 
 echo "   GCSバケット: $GCS_BUCKET"

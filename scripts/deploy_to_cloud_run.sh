@@ -26,9 +26,9 @@ check_env_var "PROJECT_ID"
 check_env_var "REGION"
 
 # オプション変数のデフォルト値設定
-SERVICE_NAME="${SERVICE_NAME:-polibase-streamlit}"
+SERVICE_NAME="${SERVICE_NAME:-sagebase-streamlit}"
 IMAGE_NAME="${IMAGE_NAME:-$SERVICE_NAME}"
-REPOSITORY="${REPOSITORY:-polibase}"
+REPOSITORY="${REPOSITORY:-sagebase}"
 TAG="${TAG:-latest}"
 
 # Cloud SQL設定（オプション）
@@ -57,7 +57,7 @@ if ! gcloud artifacts repositories describe "$REPOSITORY" \
     gcloud artifacts repositories create "$REPOSITORY" \
         --repository-format=docker \
         --location="$REGION" \
-        --description="Polibase container images" \
+        --description="Sagebase container images" \
         --project="$PROJECT_ID"
 else
     echo -e "${GREEN}✓ Artifact Registry repository already exists${NC}"
@@ -119,8 +119,8 @@ if [ -n "$CLOUD_SQL_INSTANCE" ]; then
     DEPLOY_ARGS+=("--set-env-vars=USE_CLOUD_SQL_PROXY=true")
     DEPLOY_ARGS+=("--set-env-vars=CLOUD_SQL_CONNECTION_NAME=$CLOUD_SQL_INSTANCE")
     DEPLOY_ARGS+=("--set-env-vars=CLOUD_SQL_UNIX_SOCKET_DIR=/cloudsql")
-    DEPLOY_ARGS+=("--set-env-vars=DB_USER=polibase_user")
-    DEPLOY_ARGS+=("--set-env-vars=DB_NAME=polibase_db")
+    DEPLOY_ARGS+=("--set-env-vars=DB_USER=sagebase_user")
+    DEPLOY_ARGS+=("--set-env-vars=DB_NAME=sagebase_db")
 fi
 
 # ヘルスチェック設定

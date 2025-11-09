@@ -1,5 +1,5 @@
 services:
-  polibase:
+  sagebase:
     build:
       context: ../
       dockerfile: docker/Dockerfile
@@ -18,7 +18,7 @@ services:
       - ../.env
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
-      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
       - GOOGLE_CLOUD_PROJECT=trust-chain-828ad
     ports:
@@ -29,7 +29,7 @@ services:
     depends_on:
       - postgres
 
-  polibase-monitoring:
+  sagebase-monitoring:
     build:
       context: ../
       dockerfile: docker/Dockerfile
@@ -48,7 +48,7 @@ services:
       - ../.env
     environment:
       - ENV_VAR_NAME=env_var_value # 必要な環境変数を設定
-      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
       - GOOGLE_APPLICATION_CREDENTIALS=/root/.config/gcloud/application_default_credentials.json
       - GOOGLE_CLOUD_PROJECT=trust-chain-828ad
     ports:
@@ -72,14 +72,14 @@ services:
     build:
       context: ../
       dockerfile: src/interfaces/bi_dashboard/Dockerfile
-    container_name: polibase-bi-dashboard
+    container_name: sagebase-bi-dashboard
     volumes:
       - ../src:/app/src
       - ../pyproject.toml:/app/pyproject.toml
       - ../uv.lock:/app/uv.lock
       - ../README.md:/app/README.md
     environment:
-      - DATABASE_URL=postgresql://polibase_user:polibase_password@postgres:5432/polibase_db
+      - DATABASE_URL=postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db
       - PYTHONPATH=/app
     ports:
       - "8050:8050" # BI Dashboard用ポート
@@ -91,9 +91,9 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      POSTGRES_DB: polibase_db
-      POSTGRES_USER: polibase_user
-      POSTGRES_PASSWORD: polibase_password
+      POSTGRES_DB: sagebase_db
+      POSTGRES_USER: sagebase_user
+      POSTGRES_PASSWORD: sagebase_password
     ports:
       - "5432:5432"
     volumes:
@@ -108,7 +108,7 @@ services:
       - ../database/seed_meetings_generated.sql:/docker-entrypoint-initdb.d/07_seed_meetings_generated.sql:ro
       - ../database/seed_politicians_generated.sql:/docker-entrypoint-initdb.d/08_seed_politicians_generated.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U polibase_user -d polibase_db"]
+      test: ["CMD-SHELL", "pg_isready -U sagebase_user -d sagebase_db"]
       interval: 10s
       timeout: 5s
       retries: 5

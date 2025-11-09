@@ -34,7 +34,7 @@ class Settings:
         # Database configuration
         self.database_url: str = os.getenv(
             "DATABASE_URL",
-            "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db",
+            "postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db",
         )
 
         # API Keys
@@ -72,7 +72,7 @@ class Settings:
 
         # GCS Configuration
         self.gcs_bucket_name: str = os.getenv(
-            "GCS_BUCKET_NAME", "polibase-scraped-minutes"
+            "GCS_BUCKET_NAME", "sagebase-scraped-minutes"
         )
         self.gcs_project_id: str | None = os.getenv("GCS_PROJECT_ID")
         self.gcs_upload_enabled: bool = (
@@ -94,7 +94,7 @@ class Settings:
         self.sentry_profiles_sample_rate: float = float(
             os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")
         )
-        self.sentry_release: str = os.getenv("SENTRY_RELEASE", "polibase@0.1.0")
+        self.sentry_release: str = os.getenv("SENTRY_RELEASE", "sagebase@0.1.0")
 
         # Validate paths exist
         self._validate_paths()
@@ -147,7 +147,7 @@ class Settings:
         # Ensure database_url is not None
         if not self.database_url:
             # Use default PostgreSQL URL
-            self.database_url = "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db"
+            self.database_url = "postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db"
 
         # Check if running in Docker
         if os.path.exists("/.dockerenv") or os.getenv("DOCKER_CONTAINER"):
