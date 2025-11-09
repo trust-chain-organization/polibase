@@ -65,7 +65,7 @@ docker compose ps postgres
 docker compose logs postgres
 
 # 3. 接続テスト
-docker compose exec polibase python -c "
+docker compose exec sagebase python -c "
 from src.config.database import test_connection
 test_connection()
 "
@@ -84,11 +84,11 @@ test_connection()
 docker compose exec postgres psql -U sagebase_user -d sagebase_db -c "\dt"
 
 # 2. マイグレーション実行
-docker compose exec polibase cat database/migrations/*.sql | \
+docker compose exec sagebase cat database/migrations/*.sql | \
   docker compose exec -T postgres psql -U sagebase_user -d sagebase_db
 
 # 3. 特定のマイグレーションのみ実行
-docker compose exec polibase cat database/migrations/017_add_process_id_to_minutes.sql | \
+docker compose exec sagebase cat database/migrations/017_add_process_id_to_minutes.sql | \
   docker compose exec -T postgres psql -U sagebase_user -d sagebase_db
 ```
 
@@ -111,7 +111,7 @@ docker compose down
 docker compose up -d
 
 # 4. APIキーの検証
-docker compose exec polibase python -c "
+docker compose exec sagebase python -c "
 import os
 import google.generativeai as genai
 genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
@@ -155,18 +155,18 @@ class GeminiLLMService:
 **解決方法:**
 ```bash
 # 1. Chromiumの確認
-docker compose exec polibase which chromium
+docker compose exec sagebase which chromium
 
 # 2. 依存パッケージのインストール
-docker compose exec polibase apt-get update && apt-get install -y \
+docker compose exec sagebase apt-get update && apt-get install -y \
   libglib2.0-0 libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
   libcups2 libdrm2 libdbus-1-3 libxkbcommon0 libx11-6 \
   libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2 \
   libgbm1 libxcb1 libxss1 libasound2
 
 # 3. Playwrightの再インストール
-docker compose exec polibase uv pip install --force-reinstall playwright
-docker compose exec polibase playwright install chromium
+docker compose exec sagebase uv pip install --force-reinstall playwright
+docker compose exec sagebase playwright install chromium
 ```
 
 ### パフォーマンス問題
@@ -298,11 +298,11 @@ async def process_parallel(items):
 ```bash
 # Dockerコンテナ内
 /app/logs/app.log
-/var/log/polibase/
+/var/log/sagebase/
 
 # ホストマシン
 ./logs/
-docker compose logs polibase
+docker compose logs sagebase
 ```
 
 ### ログレベル設定
@@ -325,16 +325,16 @@ logging.basicConfig(
 
 ```bash
 # エラーログのみ表示
-docker compose logs polibase | grep ERROR
+docker compose logs sagebase | grep ERROR
 
 # 特定の日時範囲
 docker compose logs --since "2024-08-01" --until "2024-08-02" polibase
 
 # リアルタイム監視
-docker compose logs -f polibase
+docker compose logs -f sagebase
 
 # 特定のモジュールのログ
-docker compose logs polibase | grep "minutes_divider"
+docker compose logs sagebase | grep "minutes_divider"
 ```
 
 ### 構造化ログの解析
@@ -377,7 +377,7 @@ docker compose ps
 systemctl status docker
 
 # 2. ログ確認
-docker compose logs --tail=100 polibase
+docker compose logs --tail=100 sagebase
 journalctl -u docker -n 100
 
 # 3. 緊急再起動
@@ -393,11 +393,11 @@ curl http://localhost:8501/health
 
 ```bash
 # 1. 即座にサービス停止
-docker compose stop polibase
+docker compose stop sagebase
 
 # 2. バックアップから復元
-docker compose exec polibase uv run polibase database list
-docker compose exec polibase uv run polibase database restore backup_20240801.sql
+docker compose exec sagebase uv run sagebase database list
+docker compose exec sagebase uv run sagebase database restore backup_20240801.sql
 
 # 3. データ整合性チェック
 docker compose exec postgres psql -U sagebase_user -d sagebase_db -c "
@@ -407,14 +407,14 @@ SELECT COUNT(*) FROM conversations;
 "
 
 # 4. サービス再開
-docker compose start polibase
+docker compose start sagebase
 ```
 
 ### セキュリティインシデント
 
 ```bash
 # 1. 影響範囲の特定
-grep "suspicious" /var/log/polibase/*.log
+grep "suspicious" /var/log/sagebase/*.log
 
 # 2. APIキーの無効化と再発行
 # Google Cloud Consoleでキーを無効化

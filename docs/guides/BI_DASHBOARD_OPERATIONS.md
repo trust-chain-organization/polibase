@@ -277,7 +277,7 @@ polibase-bi-dashboard     polibase-bi-dashboard   "python app.py"          bi-da
 
 ```bash
 # CPU、メモリ使用率を確認
-docker stats polibase-bi-dashboard
+docker stats sagebase-bi-dashboard
 ```
 
 出力例：
@@ -329,7 +329,7 @@ echo ""
 
 # リソース使用状況
 echo "2. リソース使用状況:"
-docker stats polibase-bi-dashboard --no-stream
+docker stats sagebase-bi-dashboard --no-stream
 echo ""
 
 # 接続テスト

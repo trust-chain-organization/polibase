@@ -221,7 +221,7 @@ graph LR
 
 ```yaml
 services:
-  polibase:
+  sagebase:
     # アプリケーションコンテナ
     - Python 3.11
     - UV for package management

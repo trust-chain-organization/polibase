@@ -33,7 +33,7 @@ docker compose -f docker/docker-compose.yml up -d
 ./test-setup.sh
 
 # 4. 動作確認
-docker compose exec polibase uv run polibase --help
+docker compose exec sagebase uv run sagebase --help
 ```
 
 ## CLIコマンドリファレンス
@@ -41,7 +41,7 @@ docker compose exec polibase uv run polibase --help
 ### 基本コマンド構文
 
 ```bash
-docker compose exec polibase uv run polibase [コマンド] [オプション]
+docker compose exec sagebase uv run sagebase [コマンド] [オプション]
 ```
 
 ### 主要コマンド一覧
@@ -353,7 +353,7 @@ docker compose ps
 **Q: データベース接続エラー**
 A: DATABASE_URLが正しく設定されているか確認してください。
 ```bash
-docker compose exec polibase python -c "from src.config.database import test_connection; test_connection()"
+docker compose exec sagebase python -c "from src.config.database import test_connection; test_connection()"
 ```
 
 ## サポート

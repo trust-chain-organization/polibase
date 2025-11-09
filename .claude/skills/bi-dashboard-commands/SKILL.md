@@ -55,7 +55,7 @@ docker-compose down
 cd src/interfaces/bi_dashboard
 
 # Set database URL
-export DATABASE_URL=postgresql://polibase:polibase@localhost:5432/polibase
+export DATABASE_URL=postgresql://sagebase:sagebase@localhost:5432/sagebase
 
 # Run directly
 python app.py

@@ -1,6 +1,6 @@
-# Polibase Command Examples
+# Sagebase Command Examples
 
-Real-world workflow examples for common Polibase operations.
+Real-world workflow examples for common Sagebase operations.
 
 ## Example 1: First Time Setup
 
@@ -79,21 +79,21 @@ just streamlit
 # Navigate to "会議管理" and add meeting record with PDF path
 
 # 3. Process the PDF minutes (extract speeches)
-just exec uv run polibase process-minutes --meeting-id 123
+just exec uv run sagebase process-minutes --meeting-id 123
 
 # Expected output:
 # - Conversations extracted and saved to database
 # - Processing status updated in meetings table
 
 # 4. Extract speaker information
-just exec uv run polibase extract-speakers
+just exec uv run sagebase extract-speakers
 
 # Expected output:
 # - Speaker records created from conversations
 # - Speaker names normalized
 
 # 5. Match speakers with politicians using LLM
-just exec uv run polibase update-speakers --use-llm
+just exec uv run sagebase update-speakers --use-llm
 
 # Expected output:
 # - Speakers linked to politicians table
@@ -112,7 +112,7 @@ just db
 
 ```bash
 # 1. Scrape minutes from web and upload to GCS
-just exec uv run polibase scrape-minutes "https://example.com/minutes" --upload-to-gcs
+just exec uv run sagebase scrape-minutes "https://example.com/minutes" --upload-to-gcs
 
 # Expected output:
 # - PDF downloaded and uploaded to GCS
@@ -120,7 +120,7 @@ just exec uv run polibase scrape-minutes "https://example.com/minutes" --upload-
 # - Meeting record created
 
 # 2. Process from GCS (using meeting ID from step 1)
-just exec uv run polibase process-minutes --meeting-id 124
+just exec uv run sagebase process-minutes --meeting-id 124
 
 # 3-6. Same as above (extract speakers, match, view)
 ```
@@ -129,7 +129,7 @@ just exec uv run polibase process-minutes --meeting-id 124
 
 ```bash
 # Batch scrape from kaigiroku.net
-just exec uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
+just exec uv run sagebase batch-scrape --tenant kyoto --upload-to-gcs
 
 # Expected output:
 # - Multiple meetings scraped
@@ -138,14 +138,14 @@ just exec uv run polibase batch-scrape --tenant kyoto --upload-to-gcs
 
 # Process all new meetings
 for meeting_id in $(seq 100 110); do
-    just exec uv run polibase process-minutes --meeting-id $meeting_id
+    just exec uv run sagebase process-minutes --meeting-id $meeting_id
 done
 
 # Extract speakers for all
-just exec uv run polibase extract-speakers
+just exec uv run sagebase extract-speakers
 
 # Match all speakers
-just exec uv run polibase update-speakers --use-llm
+just exec uv run sagebase update-speakers --use-llm
 ```
 
 ## Example 4: Conference Member Management
@@ -159,7 +159,7 @@ just streamlit
 # Edit conference and set members_introduction_url
 
 # 2. Extract members from URL
-just exec uv run polibase extract-conference-members --conference-id 185
+just exec uv run sagebase extract-conference-members --conference-id 185
 
 # Expected output:
 # - Members extracted to staging table
@@ -170,7 +170,7 @@ just streamlit
 # Navigate to "議会委員抽出" to review extracted data
 
 # 4. Match with existing politicians
-just exec uv run polibase match-conference-members --conference-id 185
+just exec uv run sagebase match-conference-members --conference-id 185
 
 # Expected output:
 # - Fuzzy matching performed
@@ -178,7 +178,7 @@ just exec uv run polibase match-conference-members --conference-id 185
 # - Confidence scores calculated
 
 # 5. Check matching status
-just exec uv run polibase member-status --conference-id 185
+just exec uv run sagebase member-status --conference-id 185
 
 # Sample output:
 # Conference 185: 京都府議会
@@ -192,7 +192,7 @@ just streamlit
 # Navigate to "議会委員抽出" and filter by "needs_review"
 
 # 7. Create affiliations (only for matched records)
-just exec uv run polibase create-affiliations --conference-id 185
+just exec uv run sagebase create-affiliations --conference-id 185
 
 # Expected output:
 # - Politician affiliations created
@@ -220,21 +220,21 @@ just streamlit
 # For each party, set members_list_url field
 
 # 2. Scrape all parties (dry run first to preview)
-just exec uv run polibase scrape-politicians --all-parties --dry-run
+just exec uv run sagebase scrape-politicians --all-parties --dry-run
 
 # Expected output:
 # - Shows politicians that would be created/updated
 # - No database changes
 
 # 3. Actually scrape and save
-just exec uv run polibase scrape-politicians --all-parties
+just exec uv run sagebase scrape-politicians --all-parties
 
 # Expected output:
 # - Politicians created or updated
 # - Duplicates avoided (checks by name + party)
 
 # 4. Scrape specific party with hierarchical mode
-just exec uv run polibase scrape-politicians --party-id 5 --hierarchical --max-depth 3
+just exec uv run sagebase scrape-politicians --party-id 5 --hierarchical --max-depth 3
 
 # Expected output:
 # - Follows links recursively up to depth 3
@@ -251,7 +251,7 @@ just streamlit
 
 ```bash
 # 1. Create backup before risky operation
-just exec uv run polibase database backup
+just exec uv run sagebase database backup
 
 # Expected output:
 # - Backup saved to database/backups/
@@ -259,13 +259,13 @@ just exec uv run polibase database backup
 # - Filename includes timestamp
 
 # 2. Perform risky operation
-just exec uv run polibase process-minutes --meeting-id 999
+just exec uv run sagebase process-minutes --meeting-id 999
 
 # 3. If something went wrong, restore
-just exec uv run polibase database restore database/backups/backup_2025-01-30_120000.sql
+just exec uv run sagebase database restore database/backups/backup_2025-01-30_120000.sql
 
 # Or restore from GCS
-just exec uv run polibase database restore gs://bucket/backups/backup_2025-01-30_120000.sql
+just exec uv run sagebase database restore gs://bucket/backups/backup_2025-01-30_120000.sql
 ```
 
 ### Scenario: Database migration
@@ -447,7 +447,7 @@ uv run --frozen pyright
 
 ```bash
 # 1. Check current coverage
-just exec uv run polibase coverage
+just exec uv run sagebase coverage
 
 # Expected output:
 # === Coverage Statistics ===

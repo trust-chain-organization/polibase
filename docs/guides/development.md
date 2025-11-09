@@ -63,7 +63,7 @@ docker compose -f docker/docker-compose.yml -f docker/docker-compose.override.ym
 uv sync
 
 # Docker内で実行
-docker compose exec polibase uv sync
+docker compose exec sagebase uv sync
 ```
 
 #### 5. Google Cloud認証（GCS使用時）
@@ -410,10 +410,10 @@ git checkout -b feature/issue-123-implement-xxx
 # ...
 
 # フォーマット
-docker compose exec polibase uv run ruff format .
+docker compose exec sagebase uv run ruff format .
 
 # リント
-docker compose exec polibase uv run ruff check . --fix
+docker compose exec sagebase uv run ruff check . --fix
 
 # 型チェック
 uv run pyright
@@ -423,10 +423,10 @@ uv run pyright
 
 ```bash
 # ユニットテスト実行
-docker compose exec polibase uv run pytest
+docker compose exec sagebase uv run pytest
 
 # カバレッジ測定
-docker compose exec polibase uv run pytest --cov=src --cov-report=html
+docker compose exec sagebase uv run pytest --cov=src --cov-report=html
 ```
 
 ### 5. コミット
@@ -757,7 +757,7 @@ logger.info(sanitize_log(f"API call with key={api_key}"))
 
 ```bash
 # コンテナが起動しない
-docker compose logs polibase
+docker compose logs sagebase
 docker compose down
 docker compose up -d --build
 
@@ -773,7 +773,7 @@ kill -9 <PID>
 ```bash
 # 接続エラー
 # DATABASE_URLを確認
-docker compose exec polibase python -c "from src.config.database import test_connection; test_connection()"
+docker compose exec sagebase python -c "from src.config.database import test_connection; test_connection()"
 
 # マイグレーションエラー
 ./reset-database.sh
