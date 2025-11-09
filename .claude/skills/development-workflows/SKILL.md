@@ -33,7 +33,7 @@ docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.y
 docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec polibase uv run pytest
 
 # 例: データベース接続
-docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec postgres psql -U polibase_user -d polibase_db
+docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.yml] exec postgres psql -U sagebase_user -d sagebase_db
 ```
 
 #### ショートカット（just コマンド）
@@ -84,14 +84,14 @@ docker compose -f docker/docker-compose.yml [-f docker/docker-compose.override.y
 #### Docker環境
 ```bash
 # docker-compose.yml で定義
-DATABASE_URL=postgresql://polibase_user:polibase_pass@postgres:5432/polibase_db
+DATABASE_URL=postgresql://sagebase_user:polibase_pass@postgres:5432/sagebase_db
 GOOGLE_API_KEY=${GOOGLE_API_KEY}
 ```
 
 #### ローカル環境
 ```bash
 # .env ファイルで定義
-DATABASE_URL=postgresql://polibase_user:polibase_pass@localhost:5432/polibase_db
+DATABASE_URL=postgresql://sagebase_user:polibase_pass@localhost:5432/sagebase_db
 GOOGLE_API_KEY=your-api-key-here
 ```
 

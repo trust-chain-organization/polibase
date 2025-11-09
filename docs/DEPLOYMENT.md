@@ -34,7 +34,7 @@ Polibaseは環境に応じて異なるデータベース構成を使用します
 **.envファイル設定**:
 ```bash
 # ローカルPostgreSQL（デフォルト）
-DATABASE_URL=postgresql://polibase_user:polibase_password@localhost:5432/polibase_db
+DATABASE_URL=postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db
 USE_CLOUD_SQL_PROXY=false  # または未設定
 ```
 
@@ -116,9 +116,9 @@ CLOUD_SQL_CONNECTION_NAME=PROJECT_ID:REGION:INSTANCE_NAME
 CLOUD_SQL_UNIX_SOCKET_DIR=/cloudsql
 
 # データベース認証情報
-DB_USER=polibase_user
+DB_USER=sagebase_user
 DB_PASSWORD=YOUR_PASSWORD
-DB_NAME=polibase_db
+DB_NAME=sagebase_db
 ```
 
 **セットアップ方法**:
@@ -195,8 +195,8 @@ terraform apply
 作成されるリソース：
 
 - **Cloud SQL インスタンス**: PostgreSQL 15
-- **データベース**: polibase_db
-- **データベースユーザー**: polibase_user
+- **データベース**: sagebase_db
+- **データベースユーザー**: sagebase_user
 - **VPCネットワーク**: プライベートIP接続用
 - **Secret Manager**: API キーとパスワードの保存
 - **バックアップ設定**: 自動バックアップ（7日間保持）
@@ -270,9 +270,9 @@ USE_CLOUD_SQL_PROXY=true
 CLOUD_SQL_UNIX_SOCKET_DIR=/cloudsql
 
 # データベース認証情報
-DB_USER=polibase_user
+DB_USER=sagebase_user
 DB_PASSWORD=YOUR_PASSWORD
-DB_NAME=polibase_db
+DB_NAME=sagebase_db
 ```
 
 4. **Cloud SQL Auth Proxyの起動**
@@ -284,7 +284,7 @@ mkdir -p /cloudsql
 
 # TCP接続（代替方法）
 # ./cloud-sql-proxy --port=5433 PROJECT_ID:REGION:INSTANCE_NAME
-# DATABASE_URL=postgresql://polibase_user:password@localhost:5433/polibase_db
+# DATABASE_URL=postgresql://sagebase_user:password@localhost:5433/sagebase_db
 ```
 
 ### 接続テスト
@@ -294,7 +294,7 @@ mkdir -p /cloudsql
 python -m src.infrastructure.config.database
 
 # psqlで直接接続（Unixソケット）
-psql "host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME user=polibase_user dbname=polibase_db"
+psql "host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME user=sagebase_user dbname=sagebase_db"
 ```
 
 ---
@@ -324,8 +324,8 @@ psql "host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME user=polibase_user dbname=p
 ```bash
 # Dockerコンテナからエクスポート
 docker exec docker-postgres-1 pg_dump \
-  -U polibase_user \
-  -d polibase_db \
+  -U sagebase_user \
+  -d sagebase_db \
   --clean --if-exists \
   > backup.sql
 ```
@@ -345,7 +345,7 @@ gsutil cp backup.sql gs://polibase-backups/migrations/backup_$(date +%Y%m%d).sql
 ```bash
 gcloud sql import sql INSTANCE_NAME \
   gs://polibase-backups/migrations/backup_YYYYMMDD.sql \
-  --database=polibase_db \
+  --database=sagebase_db \
   --project=YOUR_PROJECT_ID
 ```
 
@@ -356,7 +356,7 @@ gcloud sql import sql INSTANCE_NAME \
 ./cloud-sql-proxy --unix-socket=/cloudsql PROJECT_ID:REGION:INSTANCE_NAME
 
 # psqlで接続して確認
-psql "host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME user=polibase_user dbname=polibase_db"
+psql "host=/cloudsql/PROJECT_ID:REGION:INSTANCE_NAME user=sagebase_user dbname=sagebase_db"
 
 # テーブル一覧
 \dt
@@ -462,8 +462,8 @@ gcloud run deploy polibase-streamlit \
   --set-env-vars="USE_CLOUD_SQL_PROXY=true" \
   --set-env-vars="CLOUD_SQL_CONNECTION_NAME=PROJECT_ID:REGION:INSTANCE_NAME" \
   --set-env-vars="CLOUD_SQL_UNIX_SOCKET_DIR=/cloudsql" \
-  --set-env-vars="DB_USER=polibase_user" \
-  --set-env-vars="DB_NAME=polibase_db" \
+  --set-env-vars="DB_USER=sagebase_user" \
+  --set-env-vars="DB_NAME=sagebase_db" \
   --set-secrets="GOOGLE_API_KEY=google-api-key:latest" \
   --set-secrets="DB_PASSWORD=database-password:latest" \
   --add-cloudsql-instances=PROJECT_ID:REGION:INSTANCE_NAME \
@@ -632,7 +632,7 @@ gcloud sql backups create --instance=INSTANCE_NAME --project=YOUR_PROJECT_ID
 # GCSへのエクスポート（推奨）
 gcloud sql export sql INSTANCE_NAME \
   gs://polibase-backups/manual-backups/backup_$(date +%Y%m%d_%H%M%S).sql \
-  --database=polibase_db \
+  --database=sagebase_db \
   --project=YOUR_PROJECT_ID
 ```
 
@@ -692,7 +692,7 @@ gcloud secrets versions access latest --secret=database-password --project=YOUR_
 2. ユーザーを再作成
 
 ```bash
-gcloud sql users set-password polibase_user \
+gcloud sql users set-password sagebase_user \
   --instance=INSTANCE_NAME \
   --password=NEW_PASSWORD \
   --project=YOUR_PROJECT_ID

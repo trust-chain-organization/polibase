@@ -81,15 +81,15 @@ test_connection()
 **解決方法:**
 ```bash
 # 1. 現在のスキーマ確認
-docker compose exec postgres psql -U polibase_user -d polibase_db -c "\dt"
+docker compose exec postgres psql -U sagebase_user -d sagebase_db -c "\dt"
 
 # 2. マイグレーション実行
 docker compose exec polibase cat database/migrations/*.sql | \
-  docker compose exec -T postgres psql -U polibase_user -d polibase_db
+  docker compose exec -T postgres psql -U sagebase_user -d sagebase_db
 
 # 3. 特定のマイグレーションのみ実行
 docker compose exec polibase cat database/migrations/017_add_process_id_to_minutes.sql | \
-  docker compose exec -T postgres psql -U polibase_user -d polibase_db
+  docker compose exec -T postgres psql -U sagebase_user -d sagebase_db
 ```
 
 ### LLM処理関連
@@ -181,7 +181,7 @@ docker compose exec polibase playwright install chromium
 docker stats
 
 # 2. データベースのスロークエリ確認
-docker compose exec postgres psql -U polibase_user -d polibase_db -c "
+docker compose exec postgres psql -U sagebase_user -d sagebase_db -c "
 SELECT query, calls, mean_exec_time
 FROM pg_stat_statements
 ORDER BY mean_exec_time DESC
@@ -189,13 +189,13 @@ LIMIT 10;
 "
 
 # 3. インデックスの確認と追加
-docker compose exec postgres psql -U polibase_user -d polibase_db -c "
+docker compose exec postgres psql -U sagebase_user -d sagebase_db -c "
 CREATE INDEX CONCURRENTLY idx_conversations_speaker_id
 ON conversations(speaker_id);
 "
 
 # 4. バキューム実行
-docker compose exec postgres psql -U polibase_user -d polibase_db -c "
+docker compose exec postgres psql -U sagebase_user -d sagebase_db -c "
 VACUUM ANALYZE;
 "
 ```
@@ -400,7 +400,7 @@ docker compose exec polibase uv run polibase database list
 docker compose exec polibase uv run polibase database restore backup_20240801.sql
 
 # 3. データ整合性チェック
-docker compose exec postgres psql -U polibase_user -d polibase_db -c "
+docker compose exec postgres psql -U sagebase_user -d sagebase_db -c "
 SELECT COUNT(*) FROM politicians;
 SELECT COUNT(*) FROM meetings;
 SELECT COUNT(*) FROM conversations;
@@ -427,7 +427,7 @@ docker compose down
 docker compose up -d
 
 # 5. 監査ログの確認
-docker compose exec postgres psql -U polibase_user -d polibase_db -c "
+docker compose exec postgres psql -U sagebase_user -d sagebase_db -c "
 SELECT * FROM audit_log
 WHERE created_at >= NOW() - INTERVAL '1 day'
 ORDER BY created_at DESC;

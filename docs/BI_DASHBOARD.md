@@ -140,7 +140,7 @@ docker compose -f docker/docker-compose.yml stop bi-dashboard
 cd src/interfaces/bi_dashboard
 
 # 環境変数を設定
-export DATABASE_URL=postgresql://polibase_user:polibase_password@localhost:5432/polibase_db
+export DATABASE_URL=postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db
 
 # 依存関係をインストール
 pip install -r requirements.txt
@@ -223,7 +223,7 @@ def load_custom_data() -> pd.DataFrame:
 **解決方法**:
 1. データベースにデータが存在するか確認
    ```bash
-   docker compose -f docker/docker-compose.yml exec postgres psql -U polibase_user -d polibase_db -c "SELECT COUNT(*) FROM governing_bodies;"
+   docker compose -f docker/docker-compose.yml exec postgres psql -U sagebase_user -d sagebase_db -c "SELECT COUNT(*) FROM governing_bodies;"
    ```
 2. ブラウザの開発者ツールでJavaScriptエラーを確認
 3. コンテナログを確認

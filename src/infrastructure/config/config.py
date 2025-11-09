@@ -61,7 +61,7 @@ TAVILY_API_KEY: str | None = os.getenv("TAVILY_API_KEY")
 # Database Configuration
 DATABASE_URL: str = os.getenv(
     "DATABASE_URL",
-    "postgresql://polibase_user:polibase_password@localhost:5432/polibase_db",
+    "postgresql://sagebase_user:sagebase_password@localhost:5432/sagebase_db",
 )
 
 # GCS Configuration

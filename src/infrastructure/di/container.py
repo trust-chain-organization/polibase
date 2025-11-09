@@ -169,7 +169,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
                 logger.warning(
                     "Settings not initialized properly, using fallback values"
                 )
-                database_url = "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db"
+                database_url = "postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db"
                 google_api_key = ""  # Will need to be set
                 llm_model = "gemini-2.0-flash"
                 llm_temperature = 0.0
@@ -210,7 +210,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
                 logger.warning(
                     "Settings is None, using fallback values for development env"
                 )
-                database_url = "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db"
+                database_url = "postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db"
                 google_api_key = "dev-api-key"
                 llm_model = "gemini-2.0-flash"
                 llm_temperature = 0.0
@@ -222,7 +222,7 @@ class ApplicationContainer(containers.DeclarativeContainer):
             # Ensure database_url is never None
             if database_url is None:
                 logger.warning("database_url is None after settings, using fallback")
-                database_url = "postgresql://polibase_user:polibase_password@postgres:5432/polibase_db"
+                database_url = "postgresql://sagebase_user:sagebase_password@postgres:5432/sagebase_db"
 
             logger.info(
                 f"Setting database_url in container config: {database_url[:50]}..."

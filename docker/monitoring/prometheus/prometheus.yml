@@ -53,7 +53,7 @@ scrape_configs:
     static_configs:
       - targets: ["postgres-exporter:9187"]
         labels:
-          database: "polibase_db"
+          database: "sagebase_db"
 
   # Grafanaのメトリクス
   - job_name: "grafana"

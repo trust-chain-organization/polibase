@@ -93,7 +93,7 @@ jobs:
         run: |
           echo "Waiting for PostgreSQL to start..."
           # より効率的なヘルスチェック
-          timeout 30 bash -c 'until docker compose -f docker/docker-compose.ci.yml exec -T postgres pg_isready -U polibase_user -d polibase_db; do sleep 1; done'
+          timeout 30 bash -c 'until docker compose -f docker/docker-compose.ci.yml exec -T postgres pg_isready -U sagebase_user -d sagebase_db; do sleep 1; done'
           echo "PostgreSQL is ready!"
 
       - name: Run database setup
@@ -103,7 +103,7 @@ jobs:
 
           # 全てのSQLファイルを一度に実行
           cat database/migrations/*.sql database/seed_*_generated.sql | \
-            docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U polibase_user -d polibase_db
+            docker compose -f docker/docker-compose.ci.yml exec -T postgres psql -U sagebase_user -d sagebase_db
 
           # 接続テスト
           docker compose -f docker/docker-compose.ci.yml exec -T sagebase uv run python -c "from src.infrastructure.config.database import test_connection; assert test_connection()"

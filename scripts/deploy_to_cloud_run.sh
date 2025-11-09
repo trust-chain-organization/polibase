@@ -119,8 +119,8 @@ if [ -n "$CLOUD_SQL_INSTANCE" ]; then
     DEPLOY_ARGS+=("--set-env-vars=USE_CLOUD_SQL_PROXY=true")
     DEPLOY_ARGS+=("--set-env-vars=CLOUD_SQL_CONNECTION_NAME=$CLOUD_SQL_INSTANCE")
     DEPLOY_ARGS+=("--set-env-vars=CLOUD_SQL_UNIX_SOCKET_DIR=/cloudsql")
-    DEPLOY_ARGS+=("--set-env-vars=DB_USER=polibase_user")
-    DEPLOY_ARGS+=("--set-env-vars=DB_NAME=polibase_db")
+    DEPLOY_ARGS+=("--set-env-vars=DB_USER=sagebase_user")
+    DEPLOY_ARGS+=("--set-env-vars=DB_NAME=sagebase_db")
 fi
 
 # ヘルスチェック設定
