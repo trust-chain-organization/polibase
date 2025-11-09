@@ -111,7 +111,7 @@ jobs:
           fi
 
           echo "Running evaluation with parameters: $TASK_PARAM $DATASET_PARAM"
-          uv run polibase evaluate $TASK_PARAM $DATASET_PARAM
+          uv run sagebase evaluate $TASK_PARAM $DATASET_PARAM
 
       - name: Upload evaluation results
         if: always()
@@ -149,9 +149,9 @@ jobs:
 
             # Run evaluation again with summary output
             if [[ -n "${{ inputs.task }}" ]]; then
-              uv run polibase evaluate --task ${{ inputs.task }} 2>/dev/null | tail -20 >> $GITHUB_STEP_SUMMARY || true
+              uv run sagebase evaluate --task ${{ inputs.task }} 2>/dev/null | tail -20 >> $GITHUB_STEP_SUMMARY || true
             else
-              uv run polibase evaluate --all 2>/dev/null | tail -50 >> $GITHUB_STEP_SUMMARY || true
+              uv run sagebase evaluate --all 2>/dev/null | tail -50 >> $GITHUB_STEP_SUMMARY || true
             fi
           fi
 

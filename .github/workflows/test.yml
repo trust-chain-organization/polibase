@@ -334,13 +334,13 @@ jobs:
 
       - name: Test CLI commands
         run: |
-          uv run polibase --help
-          uv run polibase test-connection
-          uv run polibase coverage --help
+          uv run sagebase --help
+          uv run sagebase test-connection
+          uv run sagebase coverage --help
 
       - name: Test Streamlit app startup
         run: |
-          timeout 10s uv run polibase streamlit --help || true
+          timeout 10s uv run sagebase streamlit --help || true
 
   build-time-report:
     name: Build Performance Report
