@@ -1,0 +1,58 @@
+name: Hugo Build Check
+
+on:
+  pull_request:
+    paths:
+      - "website/**"
+      - ".github/workflows/hugo-build-check.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "website/**"
+      - ".github/workflows/hugo-build-check.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.152.2"
+          extended: true
+
+      - name: Build Hugo site
+        working-directory: ./website
+        run: hugo --minify
+
+      - name: Check build output
+        run: |
+          if [ ! -d "website/public" ]; then
+            echo "Error: Build output directory 'public' not found"
+            exit 1
+          fi
+
+          if [ ! -f "website/public/index.html" ]; then
+            echo "Error: index.html not found in build output"
+            exit 1
+          fi
+
+          echo "✅ Hugo build successful"
+          echo "Build output directory contents:"
+          ls -la website/public
+
+      - name: Upload build artifacts (for inspection)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hugo-build-output
+          path: website/public/
+          retention-days: 7

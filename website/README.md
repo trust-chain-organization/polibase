@@ -1,10 +1,10 @@
-# Polibase Website
+# Sagebase Website
 
-Polibase（政治活動追跡アプリケーション）の公式ウェブサイトです。
+Sagebase（政治活動追跡アプリケーション）の公式ウェブサイトです。
 
 ## 概要
 
-このサイトは、Hugoフレームワークを使用して構築された静的サイトで、Polibaseの機能や使い方を紹介しています。
+このサイトは、Hugoフレームワークを使用して構築された静的サイトで、Sagebaseの機能や使い方を紹介しています。
 
 ## 技術スタック
 
@@ -44,7 +44,7 @@ scoop install hugo-extended
 ### 2. リポジトリのクローン
 
 ```bash
-git clone https://github.com/trust-chain-organization/polibase.git
+git clone https://github.com/trust-chain-organization/sagebase.git
 cd sagebase/website
 ```
 
@@ -106,14 +106,41 @@ hugo --minify
 
 ## デプロイ
 
-デプロイ方法については、以下のプラットフォームをご検討ください：
+このサイトは **Cloudflare Pages** にデプロイされます。
 
-- **GitHub Pages**: 無料、簡単に設定可能
-- **Netlify**: 継続的デプロイ、プレビュー機能
-- **Vercel**: 高速、簡単なデプロイ
-- **Cloudflare Pages**: グローバルCDN、無料
+### 公開URL
 
-デプロイ設定の詳細は、別途ドキュメントを参照してください。
+- **本番環境**: https://sage-base.com
+- **Cloudflare Pages URL**: https://sagebase-k37.pages.dev
+
+### 自動デプロイ
+
+GitHubリポジトリとCloudflare Pagesが連携しており、以下のように自動デプロイされます：
+
+- **本番環境**: `main` ブランチへのプッシュで自動デプロイ
+  - カスタムドメイン: https://sage-base.com
+  - Cloudflare Pages URL: https://sagebase-k37.pages.dev
+- **プレビュー環境**: その他のブランチへのプッシュでプレビュー環境が自動作成
+  - URL: `https://<ブランチ名>.sagebase-k37.pages.dev`
+
+### ビルド設定
+
+Cloudflare Pagesでは以下の設定でビルドされます：
+
+```
+Build command: hugo --minify
+Build output directory: public
+Root directory: website
+Environment variables:
+  - HUGO_VERSION=0.152.2
+  - HUGO_ENV=production
+```
+
+### 詳細な手順
+
+Cloudflare Pagesの初回設定、カスタムドメインの設定、トラブルシューティングなど、詳細な手順については以下のドキュメントを参照してください：
+
+📖 **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Cloudflare Pagesデプロイメント完全ガイド
 
 ## カスタマイズ
 
@@ -156,4 +183,4 @@ hugo version
 
 ## お問い合わせ
 
-ご質問やご提案は、[GitHubのIssue](https://github.com/trust-chain-organization/polibase/issues)からお願いします。
+ご質問やご提案は、[GitHubのIssue](https://github.com/trust-chain-organization/sagebase/issues)からお願いします。
