@@ -1,10 +1,10 @@
-# Polibase Website
+# Sagebase Website
 
-Polibase（政治活動追跡アプリケーション）の公式ウェブサイトです。
+Sagebase（政治活動追跡アプリケーション）の公式ウェブサイトです。
 
 ## 概要
 
-このサイトは、Hugoフレームワークを使用して構築された静的サイトで、Polibaseの機能や使い方を紹介しています。
+このサイトは、Hugoフレームワークを使用して構築された静的サイトで、Sagebaseの機能や使い方を紹介しています。
 
 ## 技術スタック
 
@@ -44,7 +44,7 @@ scoop install hugo-extended
 ### 2. リポジトリのクローン
 
 ```bash
-git clone https://github.com/trust-chain-organization/polibase.git
+git clone https://github.com/trust-chain-organization/sagebase.git
 cd sagebase/website
 ```
 
@@ -108,14 +108,20 @@ hugo --minify
 
 このサイトは **Cloudflare Pages** にデプロイされます。
 
+### 公開URL
+
+- **本番環境**: https://sage-base.com
+- **Cloudflare Pages URL**: https://sagebase-k37.pages.dev
+
 ### 自動デプロイ
 
 GitHubリポジトリとCloudflare Pagesが連携しており、以下のように自動デプロイされます：
 
 - **本番環境**: `main` ブランチへのプッシュで自動デプロイ
-  - URL: `<プロジェクト名>.pages.dev`
+  - カスタムドメイン: https://sage-base.com
+  - Cloudflare Pages URL: https://sagebase-k37.pages.dev
 - **プレビュー環境**: その他のブランチへのプッシュでプレビュー環境が自動作成
-  - URL: `<ブランチ名>.<プロジェクト名>.pages.dev`
+  - URL: `https://<ブランチ名>.sagebase-k37.pages.dev`
 
 ### ビルド設定
 
@@ -177,4 +183,4 @@ hugo version
 
 ## お問い合わせ
 
-ご質問やご提案は、[GitHubのIssue](https://github.com/trust-chain-organization/polibase/issues)からお願いします。
+ご質問やご提案は、[GitHubのIssue](https://github.com/trust-chain-organization/sagebase/issues)からお願いします。
