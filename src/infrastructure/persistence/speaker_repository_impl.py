@@ -113,6 +113,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             position=model.position,
             is_politician=model.is_politician,
             politician_id=getattr(model, "politician_id", None),
+            matched_by_user_id=getattr(model, "matched_by_user_id", None),
             id=model.id,
         )
 
@@ -125,6 +126,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             position=entity.position,
             is_politician=entity.is_politician,
             politician_id=entity.politician_id,
+            matched_by_user_id=entity.matched_by_user_id,
         )
 
     def _update_model(self, model: Any, entity: Speaker) -> None:
@@ -135,6 +137,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
         model.position = entity.position
         model.is_politician = entity.is_politician
         model.politician_id = entity.politician_id
+        model.matched_by_user_id = entity.matched_by_user_id
 
     async def get_speakers_with_conversation_count(
         self,
@@ -293,7 +296,9 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
                 type = :type,
                 political_party_name = :political_party_name,
                 position = :position,
-                is_politician = :is_politician
+                is_politician = :is_politician,
+                politician_id = :politician_id,
+                matched_by_user_id = :matched_by_user_id
             WHERE id = :id
             RETURNING *
         """)
@@ -305,6 +310,8 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             "political_party_name": entity.political_party_name,
             "position": entity.position,
             "is_politician": entity.is_politician,
+            "politician_id": entity.politician_id,
+            "matched_by_user_id": entity.matched_by_user_id,
         }
 
         result = await self.session.execute(query, params)
@@ -325,6 +332,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             position=getattr(row, "position", None),
             is_politician=getattr(row, "is_politician", False),
             politician_id=getattr(row, "politician_id", None),
+            matched_by_user_id=getattr(row, "matched_by_user_id", None),
         )
 
     async def get_speakers_with_politician_info(self) -> list[dict[str, Any]]:
