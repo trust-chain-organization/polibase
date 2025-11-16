@@ -1,6 +1,7 @@
 """Speaker repository implementation."""
 
 from typing import Any
+from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +22,7 @@ class SpeakerModel:
     position: str | None
     is_politician: bool
     politician_id: int | None
+    matched_by_user_id: UUID | None
 
     def __init__(self, **kwargs: Any):
         for key, value in kwargs.items():
@@ -264,10 +266,12 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
         """Create a new speaker."""
         query = text("""
             INSERT INTO speakers (
-                name, type, political_party_name, position, is_politician
+                name, type, political_party_name, position, is_politician,
+                matched_by_user_id
             )
             VALUES (
-                :name, :type, :political_party_name, :position, :is_politician
+                :name, :type, :political_party_name, :position, :is_politician,
+                :matched_by_user_id
             )
             RETURNING *
         """)
@@ -278,6 +282,7 @@ class SpeakerRepositoryImpl(BaseRepositoryImpl[Speaker], SpeakerRepository):
             "political_party_name": entity.political_party_name,
             "position": entity.position,
             "is_politician": entity.is_politician,
+            "matched_by_user_id": entity.matched_by_user_id,
         }
 
         result = await self.session.execute(query, params)
